@@ -50,6 +50,7 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
   margin-bottom:8px; box-shadow:var(--shadow); cursor:grab; display:block; color:inherit;
 }
 .card:active { cursor:grabbing; }
+.card.focused { outline:2px solid var(--accent); outline-offset:1px; }
 .card .id { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); }
 .card .title { font-weight:500; margin:2px 0 6px; }
 .card .meta { display:flex; flex-wrap:wrap; gap:6px; }
