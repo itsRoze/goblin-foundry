@@ -7,14 +7,16 @@ export type QuestionCard = {
   prompt: string;
   options: readonly { label: string; description: string }[];
   multiSelect: boolean;
+  askedAt: number;
   answer?: string | null;
   answeredAt?: number | null;
 };
 
 /**
  * The other half of a grill round: a parked phase is sitting on these, and the
- * answer is what lets it carry on. Options are one-click; "Something else" is
- * always available, because the agent's four choices are not the whole world.
+ * answers are what let it carry on. A round is answered as a round — clicking
+ * an option picks it, and nothing is sent until you send it, because the agent
+ * asked all four together and is waiting for all four.
  */
 export function Questions({ questions, title = 'The goblin needs you' }: {
   questions: QuestionCard[];
@@ -23,70 +25,95 @@ export function Questions({ questions, title = 'The goblin needs you' }: {
   const open = questions.filter(q => !q.answeredAt);
   if (!open.length) return null;
   return (
+    <>
+      {rounds(open).map(round => (
+        <Round key={round[0]!.id} round={round} title={title} />
+      ))}
+    </>
+  );
+}
+
+/** One `AskUserQuestion` call asks up to four questions at the same instant. */
+function rounds(questions: QuestionCard[]): QuestionCard[][] {
+  const byRound = new Map<number, QuestionCard[]>();
+  for (const q of questions) {
+    const at = Math.round(q.askedAt / 1000);
+    byRound.set(at, [...(byRound.get(at) ?? []), q]);
+  }
+  return [...byRound.entries()].sort((a, b) => a[0] - b[0]).map(([, qs]) => qs);
+}
+
+function Round({ round, title }: { round: QuestionCard[]; title: string }) {
+  const [picked, setPicked] = useState<Record<string, string[]>>({});
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const answerFor = (q: QuestionCard) => (typed[q.id]?.trim() || (picked[q.id] ?? []).join(', '));
+  const answered = round.filter(q => answerFor(q));
+
+  const send = async () => {
+    if (answered.length < round.length || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      for (const q of round) await api.answerQuestion(q.id, answerFor(q));
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  const pick = (q: QuestionCard, label: string) => {
+    setPicked(p => {
+      const current = p[q.id] ?? [];
+      if (!q.multiSelect) return { ...p, [q.id]: current.includes(label) ? [] : [label] };
+      return { ...p, [q.id]: current.includes(label) ? current.filter(l => l !== label) : [...current, label] };
+    });
+  };
+
+  return (
     <div className="panel asks">
       <div className="asks-head">
         <span className="pill human">awaiting input</span>
         <strong>{title}</strong>
+        <span className="mono round-count">{answered.length}/{round.length} answered</span>
       </div>
-      {open.map(q => <Question key={q.id} q={q} />)}
-    </div>
-  );
-}
 
-function Question({ q }: { q: QuestionCard }) {
-  const [picked, setPicked] = useState<string[]>([]);
-  const [other, setOther] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const send = async (answer: string) => {
-    if (!answer.trim() || busy) return;
-    setBusy(true);
-    setError('');
-    try { await api.answerQuestion(q.id, answer.trim()); }
-    catch (e) { setError((e as Error).message); setBusy(false); }
-  };
-
-  const toggle = (label: string) => {
-    if (!q.multiSelect) { void send(label); return; }
-    setPicked(p => (p.includes(label) ? p.filter(l => l !== label) : [...p, label]));
-  };
-
-  return (
-    <div className="ask">
-      {q.header && <div className="ask-header mono">{q.header}</div>}
-      <div className="ask-prompt">{q.prompt}</div>
-      <div className="ask-options">
-        {q.options.map(o => (
-          <button
-            key={o.label}
-            className={`btn ghost${picked.includes(o.label) ? ' picked' : ''}`}
+      {round.map(q => (
+        <div className="ask" key={q.id}>
+          {q.header && <div className="ask-header mono">{q.header}{q.multiSelect ? ' · pick any' : ''}</div>}
+          <div className="ask-prompt">{q.prompt}</div>
+          <div className="ask-options">
+            {q.options.map(o => (
+              <button
+                key={o.label}
+                className={`btn ghost${(picked[q.id] ?? []).includes(o.label) ? ' picked' : ''}`}
+                disabled={busy}
+                onClick={() => pick(q, o.label)}
+              >
+                {o.label}
+                {o.description && <span className="ask-desc">{o.description}</span>}
+              </button>
+            ))}
+          </div>
+          <input
+            placeholder={q.options.length ? 'Something else…' : 'Your answer…'}
+            value={typed[q.id] ?? ''}
             disabled={busy}
-            title={o.description}
-            onClick={() => toggle(o.label)}
-          >
-            {o.label}
-            {o.description && <span className="ask-desc">{o.description}</span>}
-          </button>
-        ))}
-      </div>
-      <div className="ask-other">
-        <input
-          placeholder={q.options.length ? 'Something else…' : 'Your answer…'}
-          value={other}
-          disabled={busy}
-          onChange={e => setOther(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') void send(other); }}
-        />
-        <button
-          className="btn"
-          disabled={busy || (!other.trim() && !picked.length)}
-          onClick={() => void send(other.trim() || picked.join(', '))}
-        >
-          {busy ? 'Sending…' : 'Answer'}
+            onChange={e => setTyped(t => ({ ...t, [q.id]: e.target.value }))}
+          />
+        </div>
+      ))}
+
+      <div className="asks-foot">
+        {error && <span className="ask-error">{error}</span>}
+        <button className="btn" disabled={busy || answered.length < round.length} onClick={() => void send()}>
+          {busy ? 'Sending…'
+            : answered.length < round.length ? `${round.length - answered.length} still to answer`
+            : `Send ${round.length > 1 ? `${round.length} answers` : 'answer'}`}
         </button>
       </div>
-      {error && <div className="ask-error">{error}</div>}
     </div>
   );
 }
