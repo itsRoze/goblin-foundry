@@ -86,6 +86,7 @@ export function Board() {
                         run {run.status} · {usd(run.costUsd)}
                       </span>
                     )}
+                    {run?.questions.length ? <span className="pill human">answer me</span> : null}
                     {status.kind === 'design_review' && <span className="pill human">needs you</span>}
                   </div>
                 </a>

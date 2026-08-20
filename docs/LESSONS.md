@@ -86,3 +86,11 @@ Things that bit us while building the factory. Newest last.
   *nothing*, because no socket is ever opened. Close every tab on the origin,
   then open one. Diagnosing this from the server costs an hour: the replica, the
   CVR and the API all look perfectly healthy, because they are.
+- **`canUseTool` is skipped under `bypassPermissions` — except for
+  `AskUserQuestion`.** The SDK warns `CLAUDE_SDK_CAN_USE_TOOL_SHADOWED`
+  ("canUseTool will not be invoked … use a PreToolUse hook instead"), and for
+  ordinary tools that is true, which is why the worktree guard is a hook. A
+  question round still routes through the callback: verified with a throwaway
+  phase that asked one question, parked while the answer arrived over the API,
+  and read it back. Returning `{behavior: 'allow', updatedInput: {...input,
+  answers}}` is how the answer reaches the agent — keyed by the question text.

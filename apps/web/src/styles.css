@@ -144,3 +144,20 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
   .column.empty { display:none; }
   .lane { grid-template-columns:110px 1fr; }
 }
+
+/* A run that stopped to ask you something. */
+.asks { border-color:var(--human); background:var(--human-soft); margin-top:14px; }
+.asks-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.ask { border-top:1px solid var(--line); padding-top:10px; margin-top:10px; }
+.asks .ask:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+.ask-header { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.ask-prompt { margin:2px 0 8px; }
+.ask-options { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.ask-options .btn { display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  text-align:left; max-width:280px; background:var(--surface); }
+.ask-options .btn.picked { border-color:var(--accent); color:var(--ink); }
+.ask-desc { font-size:11.5px; color:var(--muted); font-weight:400; }
+.ask-other { display:flex; gap:6px; }
+.ask-other input { flex:1; min-width:0; padding:7px 10px; border:1px solid var(--line);
+  border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:14px; }
+.ask-error { color:var(--bad); font-size:12.5px; margin-top:6px; }

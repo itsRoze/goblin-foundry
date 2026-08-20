@@ -112,6 +112,32 @@ app.post('/api/designs/:id/reject', async c => {
   return c.json({ ok: true, design: design.id, status: 'ready_for_design' });
 });
 
+/** Open questions across every project — what the approvals inbox reads. */
+app.get('/api/questions', async c => {
+  const rows = await sql`
+    select q.*, t.short_id, t.title as ticket_title, r.id as run
+    from question q
+    join run r on r.id = q.run_id
+    join ticket t on t.id = r.ticket_id
+    where q.answered_at is null
+    order by q.asked_at desc, q.seq asc`;
+  return c.json({ questions: rows });
+});
+
+const answerBody = z.object({ answer: z.string(), answered_by: z.string().default('roze') });
+/** Answering releases the phase that is parked on this question. */
+app.post('/api/questions/:id/answer', async c => {
+  const parsed = answerBody.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
+  const rows = await sql<{ id: string }[]>`
+    update question set answer = ${parsed.data.answer},
+                        answered_by = ${parsed.data.answered_by}, answered_at = now()
+    where id = ${c.req.param('id')} and answered_at is null
+    returning id`;
+  if (!rows.length) return c.json({ error: 'not found or already answered' }, 404);
+  return c.json({ ok: true, question: rows[0]!.id });
+});
+
 app.get('/api/runs/:id', async c => {
   const [run] = await sql`select * from run where id = ${c.req.param('id')}`;
   if (!run) return c.json({ error: 'not found' }, 404);

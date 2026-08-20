@@ -10,19 +10,27 @@ export const queries = defineQueries({
   statuses: defineQuery(() => b.status.where('enabled', true).orderBy('sortOrder', 'asc')),
 
   board: defineQuery(() =>
-    b.ticket.related('runs', r => r.orderBy('startedAt', 'desc').limit(1))),
+    b.ticket.related('runs', r => r.orderBy('startedAt', 'desc').limit(1)
+      .related('questions', q => q.where('answeredAt', 'IS', null)))),
 
   ticket: defineQuery(z.object({ shortId: z.number() }), ({ args }) =>
     b.ticket.where('shortId', args.shortId)
       .related('status')
       .related('designs', d => d.orderBy('version', 'desc'))
-      .related('runs', r => r.orderBy('startedAt', 'desc'))
+      .related('runs', r => r.orderBy('startedAt', 'desc')
+        .related('questions', q => q.orderBy('askedAt', 'asc').orderBy('seq', 'asc')))
       .related('comments', c => c.orderBy('createdAt', 'asc'))
       .limit(1)),
+
+  /** Everything waiting on you: unanswered questions, newest first. */
+  openQuestions: defineQuery(() =>
+    b.question.where('answeredAt', 'IS', null).orderBy('askedAt', 'desc')
+      .related('run', r => r.related('ticket'))),
 
   run: defineQuery(z.object({ runId: z.string() }), ({ args }) =>
     b.run.where('id', args.runId)
       .related('ticket')
-      .related('phases', p => p.orderBy('seq', 'asc').related('gates').related('envelopes'))
+      .related('phases', p => p.orderBy('seq', 'asc').related('gates').related('envelopes')
+        .related('questions', q => q.orderBy('seq', 'asc')))
       .limit(1)),
 });

@@ -5,6 +5,7 @@ import { marked } from 'marked';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { clock, usd } from '../format.ts';
+import { Questions } from '../components/Questions.tsx';
 
 export function Ticket({ shortId }: { shortId: number }) {
   // The request object must be stable: a fresh one every render re-subscribes forever.
@@ -16,6 +17,8 @@ export function Ticket({ shortId }: { shortId: number }) {
   if (!ticket) return <div className="page">Loading FAC-{shortId}…</div>;
   const design = ticket.designs[0];
   const status = ticket.status;
+  // A parked phase is waiting on these, so they sit above the tabs, not inside one.
+  const open = ticket.runs.flatMap(r => r.questions).filter(q => !q.answeredAt);
 
   return (
     <div className="page">
@@ -27,6 +30,8 @@ export function Ticket({ shortId }: { shortId: number }) {
         {ticket.assignee && <span className="pill human">{ticket.assignee}</span>}
         {ticket.delegate && <span className="pill agent">{ticket.delegate}</span>}
       </div>
+
+      <Questions questions={open} />
 
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'body'} onClick={() => setTab('body')}>Ticket</button>

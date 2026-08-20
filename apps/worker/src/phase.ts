@@ -1,6 +1,10 @@
-import { query, type HookCallback, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import {
+  query, type CanUseTool, type HookCallback, type Options, type SDKMessage,
+} from '@anthropic-ai/claude-agent-sdk';
 import * as db from './db.ts';
 import { checkTool } from './guard.ts';
+import { parseAsk } from './ask.ts';
+import { askHuman } from './questions.ts';
 
 export type PhaseRun = {
   runId: string;
@@ -15,6 +19,8 @@ export type PhaseRun = {
   systemPrompt: string;
   protectedPaths: string[];
   jsonSchema?: Record<string, unknown>;
+  /** When true, AskUserQuestion parks the phase until you answer on the board. */
+  askHuman?: boolean;
 };
 
 export type PhaseResult = {
@@ -101,6 +107,17 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
     return {};
   };
 
+  // AskUserQuestion is the one tool whose result comes from a human. The CLI
+  // routes it through canUseTool, which may stay pending indefinitely: the
+  // questions go to the board and the answers come back as the tool's input.
+  const onAsk: CanUseTool = async (toolName, input) => {
+    if (toolName !== 'AskUserQuestion') return { behavior: 'allow', updatedInput: input };
+    const questions = parseAsk(input);
+    if (!questions.length) return { behavior: 'deny', message: 'AskUserQuestion needs at least one question.' };
+    const answers = await askHuman({ runId: p.runId, phaseId: p.phaseId }, questions);
+    return { behavior: 'allow', updatedInput: { ...input, answers } };
+  };
+
   const options: Options = {
     cwd: p.cwd,
     env: phaseEnv(),
@@ -126,6 +143,7 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
         db.appendTranscript(key.projectKey, key.sessionId, key.subpath ?? '', entries),
       load: async key => (await db.loadTranscript(key.sessionId, key.subpath ?? '')) as never,
     },
+    ...(p.askHuman ? { canUseTool: onAsk } : {}),
     ...(p.jsonSchema ? { outputFormat: { type: 'json_schema', schema: p.jsonSchema } } : {}),
     ...(resume ? { resume } : {}),
   };

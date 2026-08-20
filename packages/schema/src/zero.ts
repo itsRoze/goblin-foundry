@@ -154,10 +154,15 @@ const gate = table('gate').columns({
 const question = table('question').columns({
   id: string(),
   phaseId: string().from('phase_id'),
+  runId: string().from('run_id').optional(),
+  seq: number(),
+  header: string(),
   prompt: string(),
-  options: json<ReadonlyJSONValue[]>(),
+  options: json<{ label: string; description: string }[]>(),
+  multiSelect: boolean().from('multi_select'),
   recommended: string().optional(),
   answer: string().optional(),
+  answeredBy: string().from('answered_by').optional(),
   askedAt: number().from('asked_at'),
   answeredAt: number().from('answered_at').optional(),
 }).primaryKey('id');
@@ -184,6 +189,7 @@ const runRel = relationships(run, ({ one, many }) => ({
   ticket: one({ sourceField: ['ticketId'], destSchema: ticket, destField: ['id'] }),
   design: one({ sourceField: ['designId'], destSchema: design, destField: ['id'] }),
   phases: many({ sourceField: ['id'], destSchema: phase, destField: ['runId'] }),
+  questions: many({ sourceField: ['id'], destSchema: question, destField: ['runId'] }),
 }));
 
 const phaseRel = relationships(phase, ({ one, many }) => ({
@@ -191,6 +197,11 @@ const phaseRel = relationships(phase, ({ one, many }) => ({
   envelopes: many({ sourceField: ['id'], destSchema: envelope, destField: ['phaseId'] }),
   gates: many({ sourceField: ['id'], destSchema: gate, destField: ['phaseId'] }),
   questions: many({ sourceField: ['id'], destSchema: question, destField: ['phaseId'] }),
+}));
+
+const questionRel = relationships(question, ({ one }) => ({
+  phase: one({ sourceField: ['phaseId'], destSchema: phase, destField: ['id'] }),
+  run: one({ sourceField: ['runId'], destSchema: run, destField: ['id'] }),
 }));
 
 const designRel = relationships(design, ({ one }) => ({
@@ -203,7 +214,7 @@ const statusRel = relationships(status, ({ many }) => ({
 
 export const schema = createSchema({
   tables: [project, status, ticket, comment, label, ticketLabel, design, run, phase, envelope, gate, question],
-  relationships: [projectRel, ticketRel, runRel, phaseRel, designRel, statusRel],
+  relationships: [projectRel, ticketRel, runRel, phaseRel, designRel, statusRel, questionRel],
 });
 
 export type Schema = typeof schema;

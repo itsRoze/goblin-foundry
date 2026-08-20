@@ -196,3 +196,33 @@ export async function loadTranscript(sessionId: string, subpath: string) {
 export async function clearDelegate(ticketId: string) {
   await sql`update ticket set delegate = null, updated_at = now() where id = ${ticketId}`;
 }
+
+// ── Questions: the seam where a run waits for you ────────────────────────────
+
+export type QuestionRow = {
+  id: string; run_id: string | null; phase_id: string; seq: number;
+  header: string; prompt: string; options: unknown; multi_select: boolean;
+  answer: string | null; answered_by: string | null;
+  asked_at: string; answered_at: string | null;
+};
+
+export async function insertQuestion(q: {
+  id: string; runId: string; phaseId: string; seq: number;
+  header: string; prompt: string; options: unknown; multiSelect: boolean;
+}) {
+  await sql`insert into question (id, run_id, phase_id, seq, header, prompt, options, multi_select)
+            values (${q.id}, ${q.runId}, ${q.phaseId}, ${q.seq}, ${q.header}, ${q.prompt},
+                    ${sql.json((q.options ?? []) as never)}, ${q.multiSelect})`;
+}
+
+export async function questionsById(ids: string[]): Promise<QuestionRow[]> {
+  if (!ids.length) return [];
+  return sql<QuestionRow[]>`select * from question where id in ${sql(ids)} order by seq`;
+}
+
+/** A waiting run says so: the board shows it, and the reaper still sees a heartbeat. */
+export async function setAwaitingInput(runId: string, phaseId: string, waiting: boolean) {
+  const status = waiting ? 'awaiting_input' : 'running';
+  await sql`update run set status = ${status} where id = ${runId} and status in ('running','awaiting_input')`;
+  await sql`update phase set status = ${status} where id = ${phaseId} and status in ('running','awaiting_input')`;
+}
