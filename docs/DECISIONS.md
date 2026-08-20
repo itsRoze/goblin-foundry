@@ -15,3 +15,7 @@ build itself decided.
 - 2026-08-19 — The SSE stream accepts `?token=` as well as a bearer header. Why: browser `EventSource` cannot set headers.
 - 2026-08-19 — UI reads go through named synced queries in `packages/schema/src/queries.ts`, served by the API at `/zero/query`. Why: client ZQL is legacy in Zero 1.9 and syncs nothing; this is the path Zero is keeping.
 - 2026-08-19 — The web app is a hash-routed Vite app with no router dependency, styled from the blueprint's own palette. Why: three views, and the factory should look like its plan.
+- 2026-08-19 — The builder runs with `permissionMode: 'bypassPermissions'` and `settingSources: []`, with a PreToolUse hook as the actual boundary. Why: hook denies apply even under bypass, so one guard covers every call — path escapes, git redirection, and policy protected paths — instead of relying on permission-rule syntax.
+- 2026-08-19 — Worktrees are cut with `git worktree add -B` after a forced remove and prune. Why: `-p` runs never clean up, so a killed worker leaves a worktree and branch that would otherwise be silently reused by the next attempt.
+- 2026-08-19 — The builder's prompt embeds the envelope's JSON Schema generated from the zod type. Why: disler's "synced triad" (type, prompt example, call site) drifts; generating the example removes the failure mode.
+- 2026-08-19 — The planner is a skill (`/plan`) linked into `.claude/skills` by `just install-skills`, not a worker phase. Why: M0 scope — it runs in the user's terminal and writes back through the API.

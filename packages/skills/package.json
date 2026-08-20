@@ -1,0 +1,7 @@
+{
+  "name": "@goblin/skills",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Skills the goblins (and you) run: plan, and later build/review/librarian."
+}

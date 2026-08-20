@@ -48,7 +48,8 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
       runId: claim.runId, phaseId, agent: 'builder', cwd: worktree.path, model,
       effort: effort as 'xhigh', maxTurns: claim.policy.models.builder?.maxTurns ?? 80,
       maxBudgetUsd: claim.policy.models.builder?.budgetUsd ?? 12,
-      allowedTools: BUILDER_TOOLS, systemPrompt, jsonSchema: schema,
+      allowedTools: BUILDER_TOOLS, protectedPaths: claim.policy.tools.protectedPaths ?? [],
+      systemPrompt, jsonSchema: schema,
     };
 
     const gateCtx = {

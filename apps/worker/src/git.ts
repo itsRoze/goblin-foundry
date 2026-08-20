@@ -36,7 +36,12 @@ export async function addWorktree(repo: string, branch: string, base: string): P
   const path = join(repo, '.goblin', 'worktrees', branch.replace(/\//g, '-'));
   await mkdir(join(repo, '.goblin', 'worktrees'), { recursive: true });
   await excludeGoblinDir(repo);
-  await git(repo, 'worktree', 'add', '-b', branch, path, base);
+  // A previous attempt may have left this worktree and branch behind: `-p` runs
+  // never clean up, and a killed worker never gets the chance. Start clean.
+  await git(repo, 'worktree', 'remove', '--force', path);
+  await git(repo, 'worktree', 'prune');
+  const add = await git(repo, 'worktree', 'add', '-B', branch, path, base);
+  if (add.code !== 0) throw new Error(`git worktree add failed: ${add.stderr.trim()}`);
   return { path, branch };
 }
 

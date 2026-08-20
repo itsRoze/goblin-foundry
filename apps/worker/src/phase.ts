@@ -1,5 +1,6 @@
 import { query, type HookCallback, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import * as db from './db.ts';
+import { checkTool } from './guard.ts';
 
 export type PhaseRun = {
   runId: string;
@@ -12,6 +13,7 @@ export type PhaseRun = {
   maxBudgetUsd: number;
   allowedTools: string[];
   systemPrompt: string;
+  protectedPaths: string[];
   jsonSchema?: Record<string, unknown>;
 };
 
@@ -51,6 +53,20 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
 
   const onPreTool: HookCallback = async input => {
     if (input.hook_event_name !== 'PreToolUse') return {};
+    const breach = checkTool(input.tool_name, input.tool_input, p.cwd, p.protectedPaths);
+    if (breach) {
+      await db.event({
+        runId: p.runId, phaseId: p.phaseId, type: 'error', name: 'permission_breach',
+        payload: { tool: input.tool_name, input: truncate(input.tool_input), reason: breach.reason },
+      }).catch(() => {});
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: `${breach.reason}. Stay inside your worktree.`,
+        },
+      };
+    }
     const startedAt = new Date();
     try {
       const eventId = await db.event({

@@ -24,3 +24,12 @@ Things that bit us while building the factory. Newest last.
   `ZERO_QUERY_API_KEY`), not a bearer token — verified in `zero-cache/src/custom/fetch.ts`.
 - **Permissions still have to be deployed** (`zero-deploy-permissions`) or nothing
   syncs, even though the CLI prints "Permissions are deprecated".
+- **An unguarded builder leaves its worktree immediately.** The first real run
+  did `cat .env` within a minute: with
+  `bypassPermissions` there is no boundary, and the agent treats the repo root as
+  fair game. The PreToolUse guard (`apps/worker/src/guard.ts`) denies absolute
+  paths outside the worktree, `git -C`/`--git-dir` redirection, and writes to
+  policy-protected paths, and records a `permission_breach` event.
+- **Check `git worktree add`'s exit code.** When a previous attempt left the
+  branch behind, the add fails but the stale directory still exists, so the phase
+  runs happily in the *old* worktree and nothing looks wrong in the trace.

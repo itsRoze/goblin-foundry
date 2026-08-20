@@ -45,3 +45,29 @@ zero:
 
 # Fresh database: nuke, up, migrate, seed.
 reset: nuke up migrate seed
+
+# Link the factory's skills into this repo's .claude/skills so /plan works here.
+install-skills:
+    @mkdir -p .claude/skills
+    @for s in packages/skills/*/; do \
+        name=$(basename "$s"); \
+        rm -rf ".claude/skills/$name"; \
+        ln -s "../../$s" ".claude/skills/$name"; \
+        echo "linked /$name"; \
+    done
+
+# Run the worker: claim tickets in ready_for_dev and build them.
+work:
+    pnpm --filter @goblin/worker start
+
+# Claim and build exactly one ticket, then exit.
+work-once:
+    pnpm --filter @goblin/worker once
+
+# The API (SSE feed, designs, approvals).
+api:
+    pnpm --filter @goblin/api dev
+
+# The web UI.
+web:
+    pnpm --filter @goblin/web dev
