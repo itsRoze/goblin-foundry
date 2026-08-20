@@ -30,7 +30,7 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
     worktreePath = worktree.path;
     await db.setRunBranch(claim.runId, worktree.path, branch);
     await db.event({ runId: claim.runId, phaseId, type: 'log', name: 'worktree',
-                     payload: { path: worktree.path, branch, base: claim.defaultBranch } });
+                     payload: { path: worktree.path, branch, base: claim.defaultBranch, base_sha: worktree.baseSha } });
 
     // Designs are stored, never committed: the DB is the source, the worktree
     // gets a git-ignored copy so the agent can read it with plain file tools.
@@ -54,7 +54,7 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
 
     const gateCtx = {
       worktree: worktree.path,
-      base: claim.defaultBranch,
+      base: worktree.baseSha,
       testCommand: claim.policy.commands.test ?? '',
     };
 

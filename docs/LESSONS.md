@@ -33,3 +33,8 @@ Things that bit us while building the factory. Newest last.
 - **Check `git worktree add`'s exit code.** When a previous attempt left the
   branch behind, the add fails but the stale directory still exists, so the phase
   runs happily in the *old* worktree and nothing looks wrong in the trace.
+- **Diff the worktree against the base *commit*, not the base *branch*.** The
+  first green run failed `diff_matches_claims` on ten files the builder never
+  touched: the base branch had moved on while the run was in flight, so
+  `git diff --name-only <branch>` reported everything committed to the base since
+  the worktree was cut. Pin `rev-parse HEAD` at creation and diff against that.

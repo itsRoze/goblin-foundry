@@ -26,7 +26,7 @@ export async function git(repo: string, ...args: string[]): Promise<Exec> {
   return sh('git', args, repo);
 }
 
-export type Worktree = { path: string; branch: string };
+export type Worktree = { path: string; branch: string; baseSha: string };
 
 /**
  * One worktree per ticket, cut from the project's default branch.
@@ -42,7 +42,10 @@ export async function addWorktree(repo: string, branch: string, base: string): P
   await git(repo, 'worktree', 'prune');
   const add = await git(repo, 'worktree', 'add', '-B', branch, path, base);
   if (add.code !== 0) throw new Error(`git worktree add failed: ${add.stderr.trim()}`);
-  return { path, branch };
+  // Pin the base commit: the branch it was cut from keeps moving, and diffing
+  // against a moving name makes the builder's own work look undeclared.
+  const sha = await git(path, 'rev-parse', 'HEAD');
+  return { path, branch, baseSha: sha.stdout.trim() };
 }
 
 export async function removeWorktree(repo: string, path: string) {
