@@ -13,3 +13,5 @@ build itself decided.
 - 2026-08-19 — Timestamps are `timestamptz` in Postgres and `number()` (epoch ms) in Zero. Why: Zero maps them natively, so SQL keeps real time types.
 - 2026-08-19 — Reads go through Zero (client ZQL); writes that mean something (status moves, design create/approve) go through REST on the API. Why: no custom-mutator/push plumbing in M0, and every writer — browser, planner skill, worker — uses one audited path.
 - 2026-08-19 — The SSE stream accepts `?token=` as well as a bearer header. Why: browser `EventSource` cannot set headers.
+- 2026-08-19 — UI reads go through named synced queries in `packages/schema/src/queries.ts`, served by the API at `/zero/query`. Why: client ZQL is legacy in Zero 1.9 and syncs nothing; this is the path Zero is keeping.
+- 2026-08-19 — The web app is a hash-routed Vite app with no router dependency, styled from the blueprint's own palette. Why: three views, and the factory should look like its plan.

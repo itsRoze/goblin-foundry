@@ -14,3 +14,13 @@ Things that bit us while building the factory. Newest last.
 - **Postgres `timestamptz` maps to a Zero `number`** (epoch ms), verified in
   `zero-cache/src/types/pg-data-type.js`. So SQL keeps real timestamps and the client
   still gets numbers.
+- **Client-side ZQL is legacy in Zero 1.9.** `createSchema` defaults
+  `enableLegacyQueries: false`, so a query built with `createBuilder` and passed
+  to `useQuery` registers with zero-cache but syncs **zero rows** — silently, no
+  error anywhere. The supported path is `defineQueries`/`defineQuery` in shared
+  code, `handleQueryRequest` on the API, and `ZERO_QUERY_URL` pointing zero-cache
+  at it. `zero.query` is also `undefined` at runtime for the same reason.
+- **zero-cache authenticates to the query endpoint with `X-Api-Key`** (from
+  `ZERO_QUERY_API_KEY`), not a bearer token — verified in `zero-cache/src/custom/fetch.ts`.
+- **Permissions still have to be deployed** (`zero-deploy-permissions`) or nothing
+  syncs, even though the CLI prints "Permissions are deprecated".

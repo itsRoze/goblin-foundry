@@ -4,6 +4,10 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import { statusKind } from '@goblin/schema';
+import { schema } from '@goblin/schema/zero';
+import { queries } from '@goblin/schema/queries';
+import { handleQueryRequest } from '@rocicorp/zero/server';
+import { mustGetQuery } from '@rocicorp/zero';
 import { sql, getTicket, moveTicket, createDesign, eventsAfter } from './db.ts';
 import { onEvent } from './notify.ts';
 
@@ -19,6 +23,18 @@ app.get('/healthz', async c => {
   try { await sql`select 1`; } catch (e) { db = `error: ${(e as Error).message}`; }
   return c.json({ status: db === 'ok' ? 'ok' : 'degraded', version: VERSION,
                   uptime_s: Math.round((Date.now() - startedAt) / 1000), db });
+});
+
+/** zero-cache asks us what a named query means; it authenticates with X-Api-Key. */
+app.post('/zero/query', async c => {
+  if (c.req.header('X-Api-Key') !== TOKEN) return c.json({ error: 'unauthorized' }, 401);
+  const response = await handleQueryRequest({
+    handler: (name, args) => mustGetQuery(queries, name).fn({ args, ctx: undefined } as never),
+    schema,
+    request: c.req.raw,
+    userID: 'roze',
+  });
+  return c.json(response as never);
 });
 
 // Single user, single token. EventSource can't send headers, so ?token= is honored too.
