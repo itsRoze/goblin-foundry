@@ -22,7 +22,7 @@ export function Board() {
         return (
           <section
             key={status.id}
-            className={`column${over === status.id ? ' over' : ''}`}
+            className={`column${over === status.id ? ' over' : ''}${cards.length ? '' : ' empty'}`}
             onDragOver={e => { e.preventDefault(); setOver(status.id); }}
             onDragLeave={() => setOver(o => (o === status.id ? null : o))}
             onDrop={async e => {

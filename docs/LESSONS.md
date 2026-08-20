@@ -38,3 +38,12 @@ Things that bit us while building the factory. Newest last.
   touched: the base branch had moved on while the run was in flight, so
   `git diff --name-only <branch>` reported everything committed to the base since
   the worktree was cut. Pin `rev-parse HEAD` at creation and diff against that.
+- **`useQuery` needs a stable request object.** Building
+  `queries.ticket({shortId})` inline re-subscribes on every render, and the page
+  sits on "Loading…" forever while `zero.run()` with the identical request returns
+  the row instantly. Memoize on the args.
+- **Never hand-edit a run's status to "canceled" while its process may still be
+  alive.** Doing that let a second worker claim the same ticket: the first run
+  finished, removed the shared worktree out from under the second, and both
+  committed to the same branch. `pkill -f "apps/worker"` also does not match the
+  tsx child — kill by pid or by the script path.

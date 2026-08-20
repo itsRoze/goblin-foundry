@@ -114,6 +114,8 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
 
 @media (max-width: 760px) {
   .board { flex-direction:column; padding:12px; }
-  .column { flex:1 1 auto; width:100%; }
+  .column { flex:1 1 auto; width:100%; min-height:0; }
+  /* On a phone you are reading, not dragging — empty columns are just scroll. */
+  .column.empty { display:none; }
   .lane { grid-template-columns:110px 1fr; }
 }
