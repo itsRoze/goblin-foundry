@@ -87,7 +87,14 @@ export type Trailers = {
   ticket: string; run: string; phase: string; design: string | null;
 };
 
-export async function commitAll(worktree: string, message: string, t: Trailers): Promise<Exec> {
+/**
+ * One commit per attempt, carrying provenance. The builder may commit as it
+ * works — those commits have no trailers, and rewriting them is the only way to
+ * guarantee every agent commit is traceable — so the branch is folded back to
+ * its base and re-committed once the gates are green.
+ */
+export async function commitAll(worktree: string, message: string, t: Trailers, baseSha?: string): Promise<Exec> {
+  if (baseSha) await git(worktree, 'reset', '--soft', baseSha);
   const trailers = [
     `Factory-Ticket: ${t.ticket}`,
     `Factory-Run: ${t.run}`,
@@ -97,6 +104,11 @@ export async function commitAll(worktree: string, message: string, t: Trailers):
   ].join('\n');
   await git(worktree, 'add', '-A');
   return git(worktree, 'commit', '-m', `${message}\n\n${trailers}`);
+}
+
+export async function hasCommitsSince(worktree: string, baseSha: string): Promise<boolean> {
+  const { stdout } = await git(worktree, 'rev-list', '--count', `${baseSha}..HEAD`);
+  return Number(stdout.trim()) > 0;
 }
 
 export async function hasRemote(repo: string): Promise<boolean> {

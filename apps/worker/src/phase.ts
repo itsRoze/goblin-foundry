@@ -140,6 +140,13 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
     if (message.type === 'system' && message.subtype === 'init') {
       sessionId = message.session_id;
       await db.updatePhase(p.phaseId, { sessionId });
+      // Which credential the subprocess actually used — subscription token,
+      // API key, or the interactive login. Worth seeing in the trace.
+      await db.event({
+        runId: p.runId, phaseId: p.phaseId, type: 'log', name: 'session',
+        payload: { session_id: sessionId, api_key_source: message.apiKeySource,
+                   claude_code_version: message.claude_code_version, model: message.model },
+      });
     } else if (message.type === 'assistant') {
       const blocks = message.message.content as { type: string; text?: string }[];
       for (const block of blocks) {

@@ -10,7 +10,9 @@ typed report the harness can verify.
 - Read the design at `.goblin/design.md` first. It is the contract. The ticket
   body is context; the design's acceptance criteria are the specification.
 - Work only inside your worktree. Never touch files outside it, never push, never
-  merge, never edit CI configuration.
+  merge, never edit CI configuration. Commit as you go if it helps you work — the
+  harness folds your attempt into one commit carrying the ticket, run, phase and
+  design ids, so the final history is not yours to craft.
 - Red before green: for each slice of behaviour, write the failing test first and
   confirm it fails for the right reason, then write only enough code to pass it.
   Every acceptance criterion ends up with a test.

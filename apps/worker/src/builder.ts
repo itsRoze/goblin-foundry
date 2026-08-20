@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { buildOutput, envelopeJsonSchema, violations, type BuildOutput } from '@goblin/schema';
 import * as db from './db.ts';
 import {
-  addWorktree, commitAll, hasRemote, isClean, materializeDesign, pushAndOpenPr, removeWorktree,
+  addWorktree, commitAll, hasCommitsSince, hasRemote, isClean, materializeDesign,
+  pushAndOpenPr, removeWorktree,
 } from './git.ts';
 import { GATES } from './gates.ts';
 import { runPhase } from './phase.ts';
@@ -121,12 +122,16 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
       return 'fail';
     }
 
-    // Commit anything the builder left uncommitted, with provenance trailers.
-    if (!(await isClean(worktree.path))) {
-      const commit = await commitAll(worktree.path, envelope.commit_message || `FAC-${claim.shortId}: ${claim.title}`, {
-        ticket: `FAC-${claim.shortId}`, run: claim.runId, phase: `builder/${attempt}`,
-        design: claim.designId,
-      });
+    // Fold the attempt into one commit that carries the provenance trailers,
+    // whether the builder committed as it went or left everything staged.
+    if (!(await isClean(worktree.path)) || await hasCommitsSince(worktree.path, worktree.baseSha)) {
+      const commit = await commitAll(
+        worktree.path,
+        envelope.commit_message || `FAC-${claim.shortId}: ${claim.title}`,
+        { ticket: `FAC-${claim.shortId}`, run: claim.runId, phase: `builder/${attempt}`,
+          design: claim.designId },
+        worktree.baseSha,
+      );
       await db.event({ runId: claim.runId, phaseId, type: 'log', name: 'commit',
                        payload: { code: commit.code, out: commit.stdout.slice(-500) } });
     }
@@ -181,7 +186,8 @@ function firstPrompt(claim: db.Claim, designPath: string | null, schema: Record<
     '## Task',
     '',
     'Implement this ticket in the current worktree. You are already on the ticket branch.',
-    'Commit your work as you go if you like; the harness will commit anything you leave behind.',
+    'Commit as you go if it helps you work; the harness folds the attempt into one commit',
+    'carrying the ticket, run, phase and design ids, so do not craft the final history yourself.',
     '',
     '## Report',
     '',

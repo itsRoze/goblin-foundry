@@ -47,3 +47,13 @@ Things that bit us while building the factory. Newest last.
   finished, removed the shared worktree out from under the second, and both
   committed to the same branch. `pkill -f "apps/worker"` also does not match the
   tsx child — kill by pid or by the script path.
+- **Provenance trailers only land if the harness makes the commit.** PR #1's
+  commit had none: the builder committed its own work, and nothing rewrote it.
+  Each attempt is now folded back to the worktree's base commit and re-committed
+  once by the worker, so every agent commit carries Factory-Ticket / Factory-Run /
+  Factory-Phase / Factory-Design.
+- **`claude setup-token` needs a real TTY.** Run through the harness with stdin on
+  /dev/null it hangs silently and prints nothing. Run it in a terminal window and
+  paste the token into `.env` — verified working by running a throwaway `query()`
+  with `CLAUDE_CONFIG_DIR` pointed at an empty directory, which removes the
+  keychain login as a fallback.
