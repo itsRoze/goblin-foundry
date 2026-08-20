@@ -35,6 +35,21 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
   text-transform:uppercase; color:var(--muted); }
 .topbar .spacer { margin-left:auto; }
 
+/* The board being empty and the backend being gone look identical otherwise. */
+.offline {
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--bad); background:var(--bad-soft); border-radius:999px; padding:3px 10px; white-space:nowrap;
+}
+.offline-bar {
+  background:var(--bad-soft); color:var(--bad); border-bottom:1px solid var(--line);
+  padding:8px 18px; font-size:13.5px; font-family:"IBM Plex Mono",monospace;
+  display:flex; gap:12px; align-items:center;
+}
+.offline-bar button {
+  font-family:inherit; font-size:12px; color:var(--bad); background:none;
+  border:1px solid currentColor; border-radius:999px; padding:2px 10px; cursor:pointer;
+}
+
 .board {
   display:flex; gap:12px; padding:16px; overflow-x:auto; align-items:stretch;
   /* Fill the viewport so the scrollbar sits at the bottom of the window, not

@@ -74,3 +74,8 @@ Things that bit us while building the factory. Newest last.
   an explicit `env` (minus the factory's own credentials) plus
   `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` takes that to 0 while the CLI keeps the
   credential it needs to authenticate.
+- **Zero gives up after ~60s and does not come back.** Once the client reports
+  `disconnected (Zero was unable to connect for 60 seconds)`, calling
+  `zero.connection.connect()` returns without error and without reconnecting —
+  `online` stays false. Only a reload recovers, which is why the offline bar
+  offers exactly that.
