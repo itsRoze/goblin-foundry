@@ -1,12 +1,16 @@
 import { hostname } from 'node:os';
 import { build } from './builder.ts';
 import * as db from './db.ts';
+import { sweepStalledRuns } from './reaper.ts';
 
 const ONCE = process.argv.includes('--once');
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 3000);
 const HEARTBEAT_MS = 20_000;
 
 async function tick(): Promise<boolean> {
+  // Close out anything a dead worker left running before taking new work.
+  await sweepStalledRuns(hostname(), process.pid).catch(e => console.error('reaper', e));
+
   const claim = await db.claim('ready_for_dev', hostname(), process.pid);
   if (!claim) return false;
 

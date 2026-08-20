@@ -103,6 +103,7 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
 
   const options: Options = {
     cwd: p.cwd,
+    env: phaseEnv(),
     model: p.model,
     effort: p.effort,
     maxTurns: p.maxTurns,
@@ -186,6 +187,27 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
   });
 
   return { sessionId, ok, structured, text, terminalReason, usage };
+}
+
+/**
+ * The factory's own secrets have no business inside a worktree. The subprocess
+ * still needs its Anthropic credential — that is how it authenticates — so the
+ * agent's *own* shell commands get those scrubbed instead, which is what
+ * CLAUDE_CODE_SUBPROCESS_ENV_SCRUB is for.
+ */
+const FACTORY_SECRETS = [
+  'FOUNDRY_TOKEN', 'VITE_FOUNDRY_TOKEN', 'PG_URL',
+  'ZERO_UPSTREAM_DB', 'ZERO_CVR_DB', 'ZERO_CHANGE_DB',
+  'ZERO_ADMIN_PASSWORD', 'ZERO_QUERY_API_KEY', 'ZERO_MUTATE_API_KEY',
+];
+
+export function phaseEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !FACTORY_SECRETS.includes(key)) env[key] = value;
+  }
+  env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB = '1';
+  return env;
 }
 
 /** "bash: pnpm test", "edit: src/index.ts" — a name a human can scan in a lane. */

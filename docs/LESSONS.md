@@ -69,3 +69,8 @@ Things that bit us while building the factory. Newest last.
 - **zero-cache binds two ports, 4849 and 4850.** A second instance dies with a raw
   `exit code 255` whose only clue is an `EADDRINUSE` line buried in JSON. `just ps`
   now shows what is up and `just zero` refuses with a sentence instead.
+- **The agent's shell inherits everything the worker has.** Measured, not assumed:
+  a throwaway phase running `env | grep -c` saw 4 of the factory's secrets. Passing
+  an explicit `env` (minus the factory's own credentials) plus
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` takes that to 0 while the CLI keeps the
+  credential it needs to authenticate.
