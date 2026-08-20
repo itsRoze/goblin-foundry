@@ -66,3 +66,6 @@ Things that bit us while building the factory. Newest last.
   loop with `envelope` still holding an *earlier* attempt whose gates had failed —
   and the run committed, opened a PR, and reported success. Track the green state
   explicitly rather than inferring it from loop exit.
+- **zero-cache binds two ports, 4849 and 4850.** A second instance dies with a raw
+  `exit code 255` whose only clue is an `EADDRINUSE` line buried in JSON. `just ps`
+  now shows what is up and `just zero` refuses with a sentence instead.

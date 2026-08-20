@@ -40,8 +40,15 @@ seed:
     pnpm --filter @goblin/schema seed
 
 # Run zero-cache (sync engine) against the goblin_zero publication.
+# Binds :4849 for clients and :4850 for its own change-streamer.
 zero:
-    ./packages/schema/node_modules/.bin/zero-cache
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if lsof -ti :4849 >/dev/null 2>&1 || lsof -ti :4850 >/dev/null 2>&1; then
+      echo "zero-cache is already running (:4849/:4850). Use it, or 'just stop' first." >&2
+      exit 1
+    fi
+    exec ./packages/schema/node_modules/.bin/zero-cache
 
 # Fresh database: nuke, up, migrate, seed.
 reset: nuke up migrate seed
@@ -66,8 +73,30 @@ work-once:
 
 # The API (SSE feed, designs, approvals).
 api:
-    pnpm --filter @goblin/api dev
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if lsof -ti :4848 >/dev/null 2>&1; then
+      echo "the api is already running on :4848. Use it, or 'just stop' first." >&2
+      exit 1
+    fi
+    exec pnpm --filter @goblin/api dev
 
 # The web UI.
 web:
     pnpm --filter @goblin/web dev
+
+# What is up, and on which port.
+ps:
+    #!/usr/bin/env bash
+    for svc in "postgres 6432" "api 4848" "zero-cache 4849" "web 5173"; do
+      set -- $svc
+      if lsof -ti :$2 >/dev/null 2>&1; then echo "  up    $1 ($2)"; else echo "  down  $1 ($2)"; fi
+    done
+    if pgrep -f "worker/src/index.ts" >/dev/null 2>&1; then echo "  up    worker"; else echo "  down  worker"; fi
+
+# Stop the dev processes (leaves Postgres running; use 'just down' for that).
+stop:
+    #!/usr/bin/env bash
+    for port in 4848 4849 4850 5173; do lsof -ti :$port | xargs -r kill 2>/dev/null || true; done
+    pkill -f "worker/src/index.ts" 2>/dev/null || true
+    echo "stopped api, zero-cache, web and worker"
