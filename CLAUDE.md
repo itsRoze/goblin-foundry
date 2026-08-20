@@ -37,10 +37,22 @@ Bring the whole thing up in four terminals: `just up` once, then `just zero`,
 
 ## The loop
 
-`/plan <ticket>` in your own terminal writes a design into the factory and moves
-the ticket to Design Review. Approve it in the web UI and the ticket lands in
-Ready for Dev; the worker claims it, builds it in a worktree, runs the gates, and
-moves it to In Review with a branch (and a PR once the project has a remote).
+Move a ticket to **Ready for Design** and the worker claims it: the planner reads
+the repo, asks its grill rounds as questions on the board (the run parks until you
+answer), runs the three-perspective pass, and saves a design — markdown for the
+builder, `review.html` for you — leaving the ticket in **Design Review**.
+`/plan <ticket>` in your own terminal still does the same thing by hand.
+
+Approve the design and the ticket lands in **Ready for Dev**; the worker builds it
+in a worktree, runs the gates, and moves it to **In Review** with a branch (and a
+PR once the project has a remote). There the reviewer runs one isolated subagent
+per policy lens, refutes what they find, and hands blocking findings back to the
+builder's own session — up to `review.maxFixLoops` — before the ticket reaches
+**Ready to Merge**.
+
+Anything waiting on you says so: an unanswered question keeps its run in
+`awaiting_input`, and annotations you leave on a design become the planner's next
+round rather than a question it asks twice.
 
 ## House rules
 
