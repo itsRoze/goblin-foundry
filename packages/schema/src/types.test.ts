@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { report, violations, type GateCheck } from '@goblin/schema';
+import { blockingFindings, report, violations, type GateCheck } from '@goblin/schema';
 
 const ok = (item: string, note = ''): GateCheck => ({ item, ok: true, note });
 const fail = (item: string, note = ''): GateCheck => ({ item, ok: false, note });
@@ -37,4 +37,25 @@ test('violations() returns nothing when every check passes', () => {
 test('violations() falls back to "item: failed" when the note is empty', () => {
   const r = report('my-gate', [fail('b')]);
   assert.deepEqual(violations(r), ['b: failed']);
+});
+
+test('blockingFindings keeps only what is unmet, important, and unrefuted', () => {
+  const base = {
+    lens: 'correctness', requirement: 'r', met: false, evidence: 'e',
+    severity: 'important' as const, refuted: false, refutation: '',
+  };
+  const env = {
+    status: 'success' as const, summary: '', artifacts: [], notes_for_next_agent: '',
+    lenses_run: ['correctness'], verdict: 'changes_requested' as const,
+    findings: [
+      base,
+      { ...base, met: true },
+      { ...base, refuted: true },
+      { ...base, severity: 'nit' as const },
+      { ...base, severity: 'pre-existing' as const },
+    ],
+  };
+  assert.equal(blockingFindings(env, 'important').length, 1);
+  // A project that blocks on nits gets the nit too, and nothing else changes.
+  assert.equal(blockingFindings(env, 'nit').length, 2);
 });

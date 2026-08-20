@@ -1,7 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import type { PlanOutput } from '@goblin/schema';
-import { design_complete, earsCriteria, review_readable, section, verdict_consistent } from './gates.ts';
+import type { Finding, PlanOutput, ReviewOutput } from '@goblin/schema';
+import {
+  design_complete, earsCriteria, lens_coverage, review_readable,
+  review_verdict_consistent, section, verdict_consistent,
+} from './gates.ts';
 
 const CTX = { worktree: '/tmp', base: '', testCommand: '' };
 
@@ -107,4 +110,56 @@ test('review_readable rejects a review document that was never written', async (
   const r = await review_readable(plan(GOOD, [], ''), CTX);
   assert.equal(r.passed, false);
   assert.equal(r.checks[0]!.note, '0 characters');
+});
+
+// ── Review gates ────────────────────────────────────────────────────────────
+
+function finding(over: Partial<Finding> = {}): Finding {
+  return {
+    lens: 'correctness', requirement: 'WHEN input is unicode, THE slug SHALL keep letters',
+    met: false, evidence: 'the regex strips every non-ascii character',
+    severity: 'important', refuted: false, refutation: '', ...over,
+  };
+}
+
+function review(over: Partial<ReviewOutput> = {}): ReviewOutput {
+  return {
+    status: 'success', summary: '', artifacts: [], notes_for_next_agent: '',
+    lenses_run: ['correctness', 'tests'], findings: [], verdict: 'approve', ...over,
+  };
+}
+
+const REVIEW_CTX = { worktree: '/tmp', base: '', testCommand: '', lenses: ['correctness', 'tests'], blockOn: 'important' as const };
+
+test('review_verdict_consistent passes an approve with nothing blocking', async () => {
+  const r = await review_verdict_consistent(review({ findings: [finding({ met: true })] }), REVIEW_CTX);
+  assert.equal(r.passed, true, JSON.stringify(r.checks));
+});
+
+test('review_verdict_consistent catches an approve that ignores its own finding', async () => {
+  const r = await review_verdict_consistent(review({ findings: [finding()] }), REVIEW_CTX);
+  assert.equal(r.passed, false);
+  assert.match(r.checks[0]!.note, /approve with 1 blocking/);
+});
+
+test('review_verdict_consistent lets a refuted finding through', async () => {
+  const refuted = finding({ refuted: true, refutation: 'the branch normalizes first' });
+  assert.equal((await review_verdict_consistent(review({ findings: [refuted] }), REVIEW_CTX)).passed, true);
+});
+
+test('review_verdict_consistent demands evidence for an unmet finding', async () => {
+  const r = await review_verdict_consistent(
+    review({ verdict: 'changes_requested', findings: [finding({ evidence: '  ' })] }), REVIEW_CTX);
+  assert.equal(r.passed, false);
+  assert.equal(r.checks.at(-1)!.note, 'unmet with no evidence');
+});
+
+test('lens_coverage names the lens that never ran', async () => {
+  const r = await lens_coverage(review({ lenses_run: ['correctness'] }), REVIEW_CTX);
+  assert.equal(r.passed, false);
+  assert.equal(r.checks.find(c => c.item === 'lens: tests')?.note, 'never ran');
+});
+
+test('lens_coverage passes when every policy lens reported', async () => {
+  assert.equal((await lens_coverage(review(), REVIEW_CTX)).passed, true);
 });
