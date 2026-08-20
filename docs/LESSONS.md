@@ -94,3 +94,13 @@ Things that bit us while building the factory. Newest last.
   phase that asked one question, parked while the answer arrived over the API,
   and read it back. Returning `{behavior: 'allow', updatedInput: {...input,
   answers}}` is how the answer reaches the agent — keyed by the question text.
+- **A wedged Zero client opens no socket at all, and everything server-side
+  looks perfect.** After switching the stack to a second worktree the board sat
+  on "connecting" forever: zero-cache logged no connection, the browser made no
+  request to :4849, and a raw `new WebSocket` to the same host opened fine — so
+  the client never reached the network. `/zero/query` answered every named query
+  correctly when called directly with `["transform", [...]]` and `X-Api-Key`,
+  which is the fastest way to rule the server out. The remaining cause is the
+  local IndexedDB phase, and the only fix is tab hygiene: close *every* tab on
+  the origin — including ones from an older dev server on the same port — and
+  open exactly one.
