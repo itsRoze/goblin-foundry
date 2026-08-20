@@ -22,8 +22,12 @@ Things that bit us while building the factory. Newest last.
   at it. `zero.query` is also `undefined` at runtime for the same reason.
 - **zero-cache authenticates to the query endpoint with `X-Api-Key`** (from
   `ZERO_QUERY_API_KEY`), not a bearer token — verified in `zero-cache/src/custom/fetch.ts`.
-- **Permissions still have to be deployed** (`zero-deploy-permissions`) or nothing
-  syncs, even though the CLI prints "Permissions are deprecated".
+- **Permissions are genuinely gone in Zero 1.9 — do not deploy them.** Deploying
+  `definePermissions` looked like part of the fix for "nothing syncs"; it was not.
+  Verified afterwards by setting `zero.permissions` to NULL: the board still
+  syncs. The only real cause was client-side ZQL being legacy. Authorization
+  belongs in the synced-query definitions and the API's write endpoints, which is
+  where it lives.
 - **An unguarded builder leaves its worktree immediately.** The first real run
   did `cat .env` within a minute: with
   `bypassPermissions` there is no boundary, and the agent treats the repo root as
