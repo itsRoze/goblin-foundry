@@ -1,5 +1,6 @@
 import { Zero } from '@rocicorp/zero';
 import { schema } from '@goblin/schema/zero';
+import { queries } from '@goblin/schema/queries';
 
 export const zero = new Zero({
   server: import.meta.env.VITE_ZERO_URL ?? 'http://localhost:4849',
@@ -9,4 +10,4 @@ export const zero = new Zero({
 });
 
 // dev handle for poking at sync from the console
-(globalThis as unknown as { zero: unknown }).zero = zero;
+Object.assign(globalThis as unknown as Record<string, unknown>, { zero, queries });

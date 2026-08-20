@@ -27,7 +27,7 @@ function useEvents(runId: string): Event[] {
 }
 
 export function Trace({ runId }: { runId: string }) {
-  const [runs] = useQuery(queries.run({ runId }));
+  const [runs] = useQuery(useMemo(() => queries.run({ runId }), [runId]));
   const run = runs[0];
   const events = useEvents(runId);
   const [selected, setSelected] = useState<string | null>(null);

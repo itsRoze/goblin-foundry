@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
 import { marked } from 'marked';
@@ -7,7 +7,8 @@ import { api } from '../api.ts';
 import { clock, usd } from '../format.ts';
 
 export function Ticket({ shortId }: { shortId: number }) {
-  const [tickets] = useQuery(queries.ticket({ shortId }));
+  // The request object must be stable: a fresh one every render re-subscribes forever.
+  const [tickets] = useQuery(useMemo(() => queries.ticket({ shortId }), [shortId]));
   const ticket = tickets[0];
   const [tab, setTab] = useState<'body' | 'design' | 'runs'>('body');
   const [busy, setBusy] = useState(false);

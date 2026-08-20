@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
 import { href } from '../router.ts';
@@ -6,8 +6,8 @@ import { api } from '../api.ts';
 import { usd } from '../format.ts';
 
 export function Board() {
-  const [statuses] = useQuery(queries.statuses());
-  const [tickets] = useQuery(queries.board());
+  const [statuses] = useQuery(useMemo(() => queries.statuses(), []));
+  const [tickets] = useQuery(useMemo(() => queries.board(), []));
   const [over, setOver] = useState<string | null>(null);
 
   // Empty terminal columns are noise on a board with two tickets.
