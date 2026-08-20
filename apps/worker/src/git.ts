@@ -1,0 +1,108 @@
+import { execFile } from 'node:child_process';
+import { mkdir, writeFile, appendFile, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+
+const run = promisify(execFile);
+
+export type Exec = { code: number; stdout: string; stderr: string };
+
+export async function sh(cmd: string, args: string[], cwd: string, timeoutMs = 10 * 60_000): Promise<Exec> {
+  try {
+    const { stdout, stderr } = await run(cmd, args, { cwd, timeout: timeoutMs, maxBuffer: 32 << 20 });
+    return { code: 0, stdout, stderr };
+  } catch (e) {
+    const err = e as { code?: number; stdout?: string; stderr?: string; message: string };
+    return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? err.message };
+  }
+}
+
+/** Run a shell command line (the project's own test/build commands). */
+export async function shell(line: string, cwd: string, timeoutMs = 10 * 60_000): Promise<Exec> {
+  return sh('/bin/sh', ['-lc', line], cwd, timeoutMs);
+}
+
+export async function git(repo: string, ...args: string[]): Promise<Exec> {
+  return sh('git', args, repo);
+}
+
+export type Worktree = { path: string; branch: string };
+
+/**
+ * One worktree per ticket, cut from the project's default branch.
+ * `-p` runs never clean up after themselves, so removal is our job.
+ */
+export async function addWorktree(repo: string, branch: string, base: string): Promise<Worktree> {
+  const path = join(repo, '.goblin', 'worktrees', branch.replace(/\//g, '-'));
+  await mkdir(join(repo, '.goblin', 'worktrees'), { recursive: true });
+  await excludeGoblinDir(repo);
+  await git(repo, 'worktree', 'add', '-b', branch, path, base);
+  return { path, branch };
+}
+
+export async function removeWorktree(repo: string, path: string) {
+  await git(repo, 'worktree', 'remove', '--force', path);
+}
+
+/** `.goblin/` holds worktrees and materialized designs — never committed. */
+async function excludeGoblinDir(repo: string) {
+  const excludeFile = join(repo, '.git', 'info', 'exclude');
+  const current = await readFile(excludeFile, 'utf8').catch(() => '');
+  if (!current.includes('.goblin/')) await appendFile(excludeFile, '\n.goblin/\n');
+}
+
+/**
+ * Designs are stored, never committed: the DB is authoritative and the worktree
+ * gets a git-ignored copy so the agent can read it with plain file tools.
+ */
+export async function materializeDesign(worktree: string, markdown: string): Promise<string> {
+  const dir = join(worktree, '.goblin');
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, 'design.md');
+  await writeFile(path, markdown, 'utf8');
+  return path;
+}
+
+export async function changedFiles(worktree: string, base: string): Promise<string[]> {
+  const tracked = await git(worktree, 'diff', '--name-only', base);
+  const untracked = await git(worktree, 'ls-files', '--others', '--exclude-standard');
+  return [...tracked.stdout.split('\n'), ...untracked.stdout.split('\n')]
+    .map(s => s.trim()).filter(Boolean);
+}
+
+export async function isClean(worktree: string): Promise<boolean> {
+  const { stdout } = await git(worktree, 'status', '--porcelain');
+  return stdout.trim() === '';
+}
+
+export type Trailers = {
+  ticket: string; run: string; phase: string; design: string | null;
+};
+
+export async function commitAll(worktree: string, message: string, t: Trailers): Promise<Exec> {
+  const trailers = [
+    `Factory-Ticket: ${t.ticket}`,
+    `Factory-Run: ${t.run}`,
+    `Factory-Phase: ${t.phase}`,
+    ...(t.design ? [`Factory-Design: ${t.design}`] : []),
+    'Co-Authored-By: Goblin Builder <builder@goblin.foundry>',
+  ].join('\n');
+  await git(worktree, 'add', '-A');
+  return git(worktree, 'commit', '-m', `${message}\n\n${trailers}`);
+}
+
+export async function hasRemote(repo: string): Promise<boolean> {
+  const { code, stdout } = await git(repo, 'remote');
+  return code === 0 && stdout.trim().length > 0;
+}
+
+export async function pushAndOpenPr(
+  worktree: string, branch: string, base: string, title: string, body: string,
+): Promise<{ ok: boolean; url: string; detail: string }> {
+  const push = await git(worktree, 'push', '-u', 'origin', branch);
+  if (push.code !== 0) return { ok: false, url: '', detail: push.stderr.slice(-800) };
+  const pr = await sh('gh', ['pr', 'create', '--base', base, '--head', branch,
+    '--title', title, '--body', body], worktree);
+  if (pr.code !== 0) return { ok: false, url: '', detail: pr.stderr.slice(-800) };
+  return { ok: true, url: pr.stdout.trim().split('\n').at(-1) ?? '', detail: pr.stdout.trim() };
+}
