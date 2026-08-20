@@ -61,3 +61,8 @@ Things that bit us while building the factory. Newest last.
   paste the token into `.env` — verified working by running a throwaway `query()`
   with `CLAUDE_CONFIG_DIR` pointed at an empty directory, which removes the
   keychain login as a fallback.
+- **A `continue` on the last loop iteration silently escapes the loop.** In the
+  builder's gate loop, an unparseable report on the final attempt fell out of the
+  loop with `envelope` still holding an *earlier* attempt whose gates had failed —
+  and the run committed, opened a PR, and reported success. Track the green state
+  explicitly rather than inferring it from loop exit.

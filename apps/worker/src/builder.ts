@@ -63,6 +63,7 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
     let prompt = firstPrompt(claim, designPath ? '.goblin/design.md' : null, schema);
     let resume: string | undefined;
     let envelope: BuildOutput | undefined;
+    let gatesGreen = false;
 
     const maxAttempts = (claim.policy.budgets.gateRetries ?? 2) + 1;
     for (; attempt <= maxAttempts; attempt++) {
@@ -104,7 +105,7 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
         });
         failed.push(...violations(gateReport));
       }
-      if (!failed.length) break;
+      if (!failed.length) { gatesGreen = true; break; }
 
       if (attempt === maxAttempts) {
         await db.event({ runId: claim.runId, phaseId, type: 'error', name: 'gates exhausted',
@@ -117,8 +118,12 @@ export async function build(claim: db.Claim): Promise<'success' | 'fail'> {
         + 'Fix these problems in the worktree, then re-emit ONLY the report JSON.';
     }
 
-    if (!envelope) {
-      await finish(claim, phaseId, 'fail', 'no_envelope', worktreePath);
+    // Running out of attempts on an unparseable report leaves `envelope` holding
+    // an earlier attempt whose gates failed — never treat that as success.
+    if (!envelope || !gatesGreen) {
+      await db.event({ runId: claim.runId, phaseId, type: 'error', name: 'attempts exhausted',
+                       payload: { attempts: attempt - 1, had_envelope: Boolean(envelope) } });
+      await finish(claim, phaseId, 'fail', envelope ? 'gates_failed' : 'no_envelope', worktreePath);
       return 'fail';
     }
 

@@ -35,10 +35,19 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
   text-transform:uppercase; color:var(--muted); }
 .topbar .spacer { margin-left:auto; }
 
-.board { display:flex; gap:12px; padding:16px; overflow-x:auto; align-items:flex-start; }
+.board {
+  display:flex; gap:12px; padding:16px; overflow-x:auto; align-items:stretch;
+  /* Fill the viewport so the scrollbar sits at the bottom of the window, not
+     stranded halfway down a short page. */
+  min-height:calc(100vh - 58px); scrollbar-color:var(--line) transparent;
+}
+.board::-webkit-scrollbar { height:10px; }
+.board::-webkit-scrollbar-track { background:transparent; }
+.board::-webkit-scrollbar-thumb { background:var(--line); border-radius:999px; }
+.board::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 .column {
   flex:0 0 268px; background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
-  padding:10px; min-height:120px;
+  padding:10px; align-self:flex-start; max-height:100%;
 }
 .column.over { outline:2px dashed var(--accent); outline-offset:-4px; }
 .column h2 { font-size:15px; display:flex; align-items:center; gap:8px; margin-bottom:8px; }
@@ -113,8 +122,8 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
 .checks li { padding:3px 0; border-top:1px solid var(--line); }
 
 @media (max-width: 760px) {
-  .board { flex-direction:column; padding:12px; }
-  .column { flex:1 1 auto; width:100%; min-height:0; }
+  .board { flex-direction:column; padding:12px; min-height:0; }
+  .column { flex:1 1 auto; width:100%; }
   /* On a phone you are reading, not dragging — empty columns are just scroll. */
   .column.empty { display:none; }
   .lane { grid-template-columns:110px 1fr; }
