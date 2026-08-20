@@ -248,6 +248,19 @@ export async function createDesign(
   return { id, version };
 }
 
+export type PriorDesign = {
+  id: string; version: number; status: string; markdown: string;
+  notes: { at: string; note: string }[];
+};
+
+/** The last design of any status, with the annotations you left on it. */
+export async function latestDesign(ticketId: string): Promise<PriorDesign | undefined> {
+  const [row] = await sql<PriorDesign[]>`
+    select id, version, status, markdown, notes from design
+    where ticket_id = ${ticketId} order by version desc limit 1`;
+  return row;
+}
+
 export async function setRunDesign(runId: string, designId: string) {
   await sql`update run set design_id = ${designId} where id = ${runId}`;
 }

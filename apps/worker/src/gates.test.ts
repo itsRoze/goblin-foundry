@@ -1,16 +1,28 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import type { PlanOutput } from '@goblin/schema';
-import { design_complete, earsCriteria, section, verdict_consistent } from './gates.ts';
+import { design_complete, earsCriteria, review_readable, section, verdict_consistent } from './gates.ts';
 
 const CTX = { worktree: '/tmp', base: '', testCommand: '' };
 
-function plan(markdown: string, open: string[] = []): PlanOutput {
+function plan(markdown: string, open: string[] = [], reviewHtml = REVIEW): PlanOutput {
   return {
     status: 'success', summary: '', artifacts: [], notes_for_next_agent: '',
-    design_markdown: markdown, open_questions: open,
+    design_markdown: markdown, review_html: reviewHtml, open_questions: open,
   };
 }
+
+const REVIEW = `<style>body{font:14px system-ui}</style>
+<h1>Questions reach the board</h1>
+<p>Today a run cannot ask you anything, so the planner cannot grill you at all.
+This change gives a parked run somewhere to put its question and gives you a
+form to answer it without leaving the ticket you are already looking at.</p>
+<h2>What changes for you</h2>
+<p>A card that is waiting says so, and the ticket page grows an answer form.</p>
+<h2>Mockup</h2>
+<div style="border:1px solid #ccc;padding:8px">Which store? [Postgres] [SQLite]</div>
+<h2>Decision log</h2>
+<ul><li>Poll for the answer rather than adding a second NOTIFY channel.</li></ul>`;
 
 const GOOD = `# Design: questions reach the board
 
@@ -77,4 +89,22 @@ test('verdict_consistent refuses a successful design that still has open questio
   const r = await verdict_consistent(plan(GOOD, ['Which store?']), CTX);
   assert.equal(r.passed, false);
   assert.match(r.checks[0]!.note, /Which store\?/);
+});
+
+test('review_readable accepts a self-contained document', async () => {
+  const r = await review_readable(plan(GOOD), CTX);
+  assert.equal(r.passed, true, JSON.stringify(r.checks));
+});
+
+test('review_readable rejects scripts and remote resources', async () => {
+  const scripted = await review_readable(plan(GOOD, [], `${REVIEW}<script>alert(1)</script>`), CTX);
+  assert.equal(scripted.checks.find(c => c.item === 'no scripts')?.ok, false);
+  const remote = await review_readable(plan(GOOD, [], `${REVIEW}<img src="https://example.com/a.png">`), CTX);
+  assert.equal(remote.checks.find(c => c.item === 'no external resources')?.ok, false);
+});
+
+test('review_readable rejects a review document that was never written', async () => {
+  const r = await review_readable(plan(GOOD, [], ''), CTX);
+  assert.equal(r.passed, false);
+  assert.equal(r.checks[0]!.note, '0 characters');
 });

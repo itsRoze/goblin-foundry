@@ -66,9 +66,24 @@ They are allowed to disagree, and you must not resolve a genuine disagreement
 silently. Either throw it back to the human as one more `AskUserQuestion` round,
 or record it in Risks / Open Questions and in `open_questions`.
 
-### 5. Write the design
+### 5. Write both documents
 
-Follow the template you were given exactly, section for section. Non-negotiables:
+There are two, and they have different readers.
+
+`design_markdown` is for the **builder**: the template below, section for section.
+
+`review_html` is for the **human who approves it**: a self-contained HTML
+document with an overview, what changes for the user, HTML wireframe mockups of
+any screen or output the change touches, the high-level changes by module, risks
+and open questions, and a decision log of what you asked and what was answered.
+It is rendered in a sandboxed frame, so it must be one HTML fragment with inline
+`<style>` only — no `<script>`, no inline event handlers, no external
+stylesheets, fonts or images. Mockups are HTML and CSS, not screenshots and not
+Figma. Write it as prose a person reads once and understands, not as a second
+copy of the design.
+
+For `design_markdown`, follow the template you were given exactly, section for
+section. Non-negotiables:
 
 - Acceptance criteria are EARS-flavoured and independently verifiable:
   `WHEN <trigger>, THE <system> SHALL <response>`, `IF <error>, THEN THE <system>
@@ -84,8 +99,9 @@ Follow the template you were given exactly, section for section. Non-negotiables
 ## Reporting
 
 Your final message must be the report JSON and nothing else — no prose, no code
-fences. `design_markdown` is the whole design document. `open_questions` is for
-things the human genuinely chose to leave open; anything you simply failed to ask
+fences. `design_markdown` carries the whole design document and `review_html` the
+whole human document. `open_questions` is for things the human genuinely chose to
+leave open; anything you simply failed to ask
 belongs in a question round, not there. Report `status: "fail"` only when you
 cannot write a design at all, and say why in `summary`.
 

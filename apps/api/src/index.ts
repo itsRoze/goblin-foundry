@@ -99,12 +99,29 @@ app.post('/api/designs/:id/approve', async c => {
   return c.json({ ok: true, design: design.id, ticket: ticket.id, status: 'ready_for_dev' });
 });
 
+const noteBody = z.object({ note: z.string().min(1), anchor: z.string().default('') });
+/** An annotation on the review document. Notes accumulate; sending it back is a
+    separate act, so you can read the whole thing before deciding. */
+app.post('/api/designs/:id/notes', async c => {
+  const parsed = noteBody.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
+  const [design] = await sql<{ id: string; notes: unknown[] }[]>`
+    select id, notes from design where id = ${c.req.param('id')}`;
+  if (!design) return c.json({ error: 'not found' }, 404);
+  const notes = [...(design.notes ?? []),
+                 { at: new Date().toISOString(), note: parsed.data.note, anchor: parsed.data.anchor }];
+  await sql`update design set notes = ${sql.json(notes as never)} where id = ${design.id}`;
+  return c.json({ ok: true, design: design.id, notes: notes.length });
+});
+
 app.post('/api/designs/:id/reject', async c => {
   const body = await c.req.json().catch(() => ({}));
   const [design] = await sql<{ id: string; ticket_id: string; notes: unknown[] }[]>`
     select id, ticket_id, notes from design where id = ${c.req.param('id')}`;
   if (!design) return c.json({ error: 'not found' }, 404);
-  const notes = [...(design.notes ?? []), { at: new Date().toISOString(), note: body.note ?? '' }];
+  const notes = body.note
+    ? [...(design.notes ?? []), { at: new Date().toISOString(), note: body.note }]
+    : (design.notes ?? []);
   await sql`update design set status = 'rejected', notes = ${sql.json(notes as never)}
             where id = ${design.id}`;
   const ticket = await getTicket(design.ticket_id);

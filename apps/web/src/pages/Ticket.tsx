@@ -6,13 +6,13 @@ import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { clock, usd } from '../format.ts';
 import { Questions } from '../components/Questions.tsx';
+import { Design } from '../components/Design.tsx';
 
 export function Ticket({ shortId }: { shortId: number }) {
   // The request object must be stable: a fresh one every render re-subscribes forever.
   const [tickets] = useQuery(useMemo(() => queries.ticket({ shortId }), [shortId]));
   const ticket = tickets[0];
   const [tab, setTab] = useState<'body' | 'design' | 'runs'>('body');
-  const [busy, setBusy] = useState(false);
 
   if (!ticket) return <div className="page">Loading FAC-{shortId}…</div>;
   const design = ticket.designs[0];
@@ -48,31 +48,9 @@ export function Ticket({ shortId }: { shortId: number }) {
       )}
 
       {tab === 'design' && (
-        !design ? <div className="panel">No design yet. Run <code>/plan {ticket.shortId}</code> in your terminal.</div> : (
-          <div className="panel">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <strong>v{design.version}</strong>
-              <span className={`pill ${design.status === 'approved' ? 'ok' : design.status === 'rejected' ? 'bad' : 'human'}`}>
-                {design.status}
-              </span>
-              <span className="spacer" style={{ marginLeft: 'auto' }} />
-              {design.status === 'in_review' && (
-                <>
-                  <button className="btn ghost" disabled={busy} onClick={async () => {
-                    const note = prompt('What needs to change?') ?? '';
-                    setBusy(true);
-                    try { await api.rejectDesign(design.id, note); } finally { setBusy(false); }
-                  }}>Request changes</button>
-                  <button className="btn" disabled={busy} onClick={async () => {
-                    setBusy(true);
-                    try { await api.approveDesign(design.id); } finally { setBusy(false); }
-                  }}>Approve</button>
-                </>
-              )}
-            </div>
-            <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(design.markdown) as string }} />
-          </div>
-        )
+        !design
+          ? <div className="panel">No design yet. Move the ticket to Ready for Design, or run <code>/plan {ticket.shortId}</code> in your terminal.</div>
+          : <Design design={design} />
       )}
 
       {tab === 'runs' && (

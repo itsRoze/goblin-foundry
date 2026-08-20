@@ -130,6 +130,23 @@ export const design_complete: Gate<PlanOutput> = async env => {
 };
 
 /**
+ * The human's copy of the design has to be readable in a sandboxed frame: no
+ * scripts to run, no external resources to fetch, and enough of it to be worth
+ * opening.
+ */
+export const review_readable: Gate<PlanOutput> = async env => {
+  const html = env.review_html ?? '';
+  const scripts = html.match(/<script\b|\son\w+\s*=|javascript:/gi) ?? [];
+  const remote = html.match(/(?:src|href)\s*=\s*["']?(?:https?:)?\/\//gi) ?? [];
+  return report('review_readable', [
+    { item: 'review document present', ok: html.trim().length > 500, note: `${html.trim().length} characters` },
+    { item: 'sections a human reads', ok: /<h[12]\b/i.test(html), note: /<h[12]\b/i.test(html) ? 'headings present' : 'no headings' },
+    { item: 'no scripts', ok: scripts.length === 0, note: scripts.length ? `${scripts.length}: ${scripts.slice(0, 3).join(', ')}` : 'none' },
+    { item: 'no external resources', ok: remote.length === 0, note: remote.length ? `${remote.length} remote src/href` : 'none' },
+  ]);
+};
+
+/**
  * The envelope has to agree with itself: a design reported as done cannot also
  * be waiting on an answer.
  */

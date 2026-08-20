@@ -15,6 +15,8 @@ export const api = {
   moveTicket: (ticketId: string, kind: string) => post(`/api/tickets/${ticketId}/status`, { kind }),
   approveDesign: (designId: string) => post(`/api/designs/${designId}/approve`),
   rejectDesign: (designId: string, note: string) => post(`/api/designs/${designId}/reject`, { note }),
+  annotateDesign: (designId: string, note: string) =>
+    post(`/api/designs/${designId}/notes`, { note }),
   answerQuestion: (questionId: string, answer: string) =>
     post(`/api/questions/${questionId}/answer`, { answer }),
   eventStream: (runId: string, cursor = '0') =>

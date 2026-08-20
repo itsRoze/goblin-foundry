@@ -40,6 +40,8 @@ export type BuildOutput = z.infer<typeof buildOutput>;
 
 export const planOutput = envelopeBase.extend({
   design_markdown: z.string(),
+  /** The same design written for a human: overview, mockups, decisions. */
+  review_html: z.string().default(''),
   open_questions: z.array(z.string()).default([]),
 });
 export type PlanOutput = z.infer<typeof planOutput>;

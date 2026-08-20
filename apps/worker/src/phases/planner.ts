@@ -5,7 +5,7 @@ import {
   envelopeJsonSchema, planOutput, violations, type EnvelopeBase, type PlanOutput,
 } from '@goblin/schema';
 import * as db from '../db.ts';
-import { design_complete, verdict_consistent } from '../gates.ts';
+import { design_complete, review_readable, verdict_consistent } from '../gates.ts';
 import { runPhase } from '../phase.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
@@ -27,7 +27,7 @@ export const plannerPhase: PhaseSpec<PlanOutput> = {
   kind: 'agent',
   agentName: 'planner',
   envelope: 'PlanOutput',
-  gates: [design_complete, verdict_consistent],
+  gates: [design_complete, review_readable, verdict_consistent],
   modelFor: policy => ({
     model: policy.models.planner?.model ?? 'opus',
     effort: policy.models.planner?.effort ?? 'high',
@@ -41,9 +41,10 @@ async function runPlanner(
   const { claim, runId, phaseId } = ctx;
   const tier = claim.policy.models.planner;
 
-  const [systemPrompt, template] = await Promise.all([
+  const [systemPrompt, template, prior] = await Promise.all([
     readFile(join(promptsDir, 'planner.md'), 'utf8'),
     readFile(templatePath, 'utf8'),
+    db.latestDesign(claim.ticketId),
   ]);
   const schema = envelopeJsonSchema('PlanOutput');
   const phase = {
@@ -60,7 +61,7 @@ async function runPlanner(
   };
 
   let attempt = 1;
-  let prompt = firstPrompt(claim, template, schema);
+  let prompt = firstPrompt(claim, template, schema, prior);
   let resume: string | undefined;
   let envelope: PlanOutput | undefined;
   let gatesGreen = false;
@@ -85,7 +86,8 @@ async function runPlanner(
     await db.saveEnvelope(phaseId, 'planner', 'PlanOutput', envelope, true, attempt, null);
     await db.event({ runId, phaseId, type: 'handoff', name: 'PlanOutput',
                      payload: { summary: envelope.summary, open_questions: envelope.open_questions,
-                                design_chars: envelope.design_markdown.length } });
+                                design_chars: envelope.design_markdown.length,
+                                review_chars: envelope.review_html.length } });
 
     if (envelope.status === 'fail') {
       await db.event({ runId, phaseId, type: 'error', name: 'planner reported failure',
@@ -126,7 +128,9 @@ async function runPlanner(
   return { status: 'success', envelope };
 }
 
-function firstPrompt(claim: db.Claim, template: string, schema: Record<string, unknown>): string {
+function firstPrompt(
+  claim: db.Claim, template: string, schema: Record<string, unknown>, prior?: db.PriorDesign,
+): string {
   return [
     `## Ticket FAC-${claim.shortId}: ${claim.title}`,
     '',
@@ -136,10 +140,14 @@ function firstPrompt(claim: db.Claim, template: string, schema: Record<string, u
     '',
     `You are standing in \`${claim.repoPath}\`, the repository this ticket belongs to.`,
     'Read it before you ask me anything. You have no write tools, and you need none.',
-    claim.designMarkdown
-      ? '\n## The previous design\n\nA design already exists and was not accepted. You are writing the next'
-        + ' version: start from what it said and from what I disliked about it.\n\n'
-        + '```markdown\n' + claim.designMarkdown.slice(0, 20000) + '\n```'
+    prior
+      ? `\n## Design v${prior.version}, and what I said about it\n\n`
+        + 'You are writing the next version. Start from what it said, and treat my'
+        + ' annotations below as the round I already answered — do not ask them back to me.\n\n'
+        + (prior.notes.length
+            ? prior.notes.map(n => `- ${n.note}`).join('\n') + '\n\n'
+            : '_No annotations; it was sent back without notes._\n\n')
+        + '```markdown\n' + prior.markdown.slice(0, 20000) + '\n```'
       : '',
     '',
     '## Design template',

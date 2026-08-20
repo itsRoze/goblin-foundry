@@ -25,11 +25,13 @@ async function runSaveDesign(
     return { status: 'fail', envelope: null, reason: 'no_design_to_save' };
   }
 
-  const design = await db.createDesign(claim.ticketId, plan.design_markdown, null, 'planner');
+  const design = await db.createDesign(
+    claim.ticketId, plan.design_markdown, plan.review_html || null, 'planner');
   await db.setRunDesign(runId, design.id);
   await db.event({
     runId, phaseId, type: 'log', name: 'design saved',
-    payload: { design_id: design.id, version: design.version, chars: plan.design_markdown.length },
+    payload: { design_id: design.id, version: design.version,
+               chars: plan.design_markdown.length, review_chars: plan.review_html.length },
   });
 
   return {
