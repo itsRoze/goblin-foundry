@@ -1,7 +1,7 @@
 import { hostname } from 'node:os';
-import { build } from './builder.ts';
 import * as db from './db.ts';
 import { sweepStalledRuns } from './reaper.ts';
+import { runPipeline } from './sequencer.ts';
 
 const ONCE = process.argv.includes('--once');
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 3000);
@@ -17,7 +17,7 @@ async function tick(): Promise<boolean> {
   console.log(`claimed FAC-${claim.shortId} "${claim.title}" as ${claim.runId}`);
   const beat = setInterval(() => { void db.heartbeat(claim.runId).catch(() => {}); }, HEARTBEAT_MS);
   try {
-    const outcome = await build(claim);
+    const outcome = await runPipeline(claim);
     console.log(`FAC-${claim.shortId} → ${outcome}`);
   } finally {
     clearInterval(beat);

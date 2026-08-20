@@ -1,0 +1,86 @@
+import type { EnvelopeBase } from '@goblin/schema';
+import * as db from './db.ts';
+import { addWorktree, removeWorktree, type Worktree } from './git.ts';
+import {
+  keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
+  type PhaseAttempt, type PhaseContext, type PhaseSpec, type Pipeline,
+} from './pipeline.ts';
+import { TRIGGER_PIPELINES } from './pipelines.ts';
+
+async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
+  if (pipeline.worktree === 'none') return null;
+  if (pipeline.worktree === 'attached') throw new Error('attached worktrees are not implemented yet');
+  const worktree = await addWorktree(claim.repoPath, branch, claim.defaultBranch);
+  await db.setRunBranch(claim.runId, worktree.path, branch);
+  await db.event({ runId: claim.runId, type: 'log', name: 'worktree',
+                   payload: { path: worktree.path, branch, base: claim.defaultBranch, base_sha: worktree.baseSha } });
+  return worktree;
+}
+
+async function runOnePhase(
+  spec: PhaseSpec<any>, ctx: PhaseContext, handoff: EnvelopeBase | null,
+): Promise<PhaseAttempt<any>> {
+  try {
+    return await spec.run(ctx, handoff);
+  } catch (e) {
+    await db.event({ runId: ctx.runId, phaseId: ctx.phaseId, type: 'error', name: 'worker error',
+                     payload: { error: (e as Error).message, stack: (e as Error).stack?.slice(0, 2000) } });
+    return { status: 'fail', envelope: null, reason: 'worker_error' };
+  }
+}
+
+/**
+ * Runs a claimed ticket's pipeline end to end: obtains the worktree, walks the
+ * phases in order handing each the last one's envelope, moves the ticket and
+ * cleans up on success, or stops and leaves everything in place on failure.
+ */
+export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> {
+  const pipeline = pipelineFor(TRIGGER_PIPELINES, claim.trigger);
+  if (!pipeline) throw new Error(`no pipeline for trigger '${claim.trigger}'`);
+
+  const branch = `goblin/fac-${claim.shortId}`;
+  let worktree: Worktree | null;
+  try {
+    worktree = await acquireWorktree(pipeline, claim, branch);
+  } catch (e) {
+    await db.event({ runId: claim.runId, type: 'error', name: 'worker error',
+                     payload: { error: (e as Error).message, stack: (e as Error).stack?.slice(0, 2000) } });
+    await db.finishRun(claim.runId, 'fail', 'worktree_failed');
+    await db.clearDelegate(claim.ticketId);
+    return 'fail';
+  }
+
+  let handoff: EnvelopeBase | null = null;
+  let outcome: 'success' | 'fail' = 'success';
+  let terminalReason = 'completed';
+
+  for (const { spec, seq } of numberedPhases(pipeline)) {
+    const model = spec.modelFor?.(claim.policy);
+    const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
+                                          model?.model ?? null, model?.effort ?? null);
+    await db.event({ runId: claim.runId, phaseId, type: 'phase_start', name: spec.name,
+                     payload: { kind: spec.kind, ticket: `FAC-${claim.shortId}` } });
+
+    const ctx: PhaseContext = { claim, runId: claim.runId, phaseId, worktree };
+    const attempt = await runOnePhase(spec, ctx, handoff);
+
+    await db.updatePhase(phaseId, { status: attempt.status, error: attempt.status === 'fail' ? attempt.reason : null });
+    await db.event({ runId: claim.runId, phaseId, type: 'phase_end', name: spec.name,
+                     payload: { status: attempt.status, reason: attempt.status === 'fail' ? attempt.reason : undefined } });
+
+    if (attempt.status === 'fail') {
+      outcome = 'fail';
+      terminalReason = phaseTerminalReason(spec.name, attempt.reason);
+      await db.clearDelegate(claim.ticketId);
+      break;
+    }
+    handoff = attempt.envelope;
+  }
+
+  await db.finishRun(claim.runId, outcome, terminalReason);
+  // A failed run leaves the ticket in `building` with the failure attached: it
+  // needs you, and moving it back to the queue would just re-claim it forever.
+  if (outcome === 'success') await db.moveTicket(claim.ticketId, claim.projectId, pipeline.success, null);
+  if (worktree && !keepsWorktree(pipeline.worktree, outcome)) await removeWorktree(claim.repoPath, worktree.path);
+  return outcome;
+}
