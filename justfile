@@ -30,3 +30,18 @@ nuke:
 # psql into the factory database.
 psql:
     pnpm db:psql
+
+# Apply pending SQL migrations.
+migrate:
+    pnpm --filter @goblin/schema migrate
+
+# Seed the factory project, its statuses, and starter tickets (idempotent).
+seed:
+    pnpm --filter @goblin/schema seed
+
+# Run zero-cache (sync engine) against the goblin_zero publication.
+zero:
+    ./packages/schema/node_modules/.bin/zero-cache
+
+# Fresh database: nuke, up, migrate, seed.
+reset: nuke up migrate seed
