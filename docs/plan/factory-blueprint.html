@@ -1,0 +1,1065 @@
+<title>Goblin Foundry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --surface: #FFFFFF;
+    --surface-2: #EBEFF5;
+    --ink: #14213D;
+    --muted: #5B6578;
+    --line: #D6DCE6;
+    --accent: #1F4FD8;
+    --accent-soft: #E3EAFB;
+    --human: #B86E00;
+    --human-soft: #FFF1DA;
+    --ok: #1E8E5A;
+    --ok-soft: #DDF3E8;
+    --bad: #C8323C;
+    --bad-soft: #FBE1E3;
+    --agent: #6146D6;
+    --agent-soft: #ECE7FB;
+    --code-bg: #0F1623;
+    --code-ink: #DCE3EE;
+    --shadow: 0 1px 2px rgba(20,33,61,.06), 0 8px 24px -16px rgba(20,33,61,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1420;
+      --surface: #151D2C;
+      --surface-2: #1C2637;
+      --ink: #E3E9F2;
+      --muted: #9AA6B8;
+      --line: #2A3446;
+      --accent: #7DA6FF;
+      --accent-soft: #1B2A4A;
+      --human: #F0B453;
+      --human-soft: #3A2A10;
+      --ok: #4CC38A;
+      --ok-soft: #12301F;
+      --bad: #F26D6D;
+      --bad-soft: #3B1A1D;
+      --agent: #A794FF;
+      --agent-soft: #261F45;
+      --code-bg: #0A0F18;
+      --code-ink: #DCE3EE;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1420;
+    --surface: #151D2C;
+    --surface-2: #1C2637;
+    --ink: #E3E9F2;
+    --muted: #9AA6B8;
+    --line: #2A3446;
+    --accent: #7DA6FF;
+    --accent-soft: #1B2A4A;
+    --human: #F0B453;
+    --human-soft: #3A2A10;
+    --ok: #4CC38A;
+    --ok-soft: #12301F;
+    --bad: #F26D6D;
+    --bad-soft: #3B1A1D;
+    --agent: #A794FF;
+    --agent-soft: #261F45;
+    --code-bg: #0A0F18;
+    --code-ink: #DCE3EE;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+  a:hover, a:focus-visible { border-bottom-color: currentColor; outline: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* Header */
+  .masthead {
+    padding: 48px 0 28px;
+    border-bottom: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr; gap: 14px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  }
+  h1 {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 700; font-size: clamp(44px, 7vw, 72px); line-height: .95;
+    letter-spacing: -.01em; margin: 0; text-wrap: balance;
+  }
+  .lede { font-size: 19px; max-width: 62ch; color: var(--ink); margin: 4px 0 0; }
+  .facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .fact {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 8px 12px; font-size: 13.5px; display: flex; gap: 8px; align-items: baseline;
+  }
+  .fact b { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* Layout: TOC + main */
+  .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; margin-top: 32px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 24px; } .toc { position: static !important; } }
+  .toc { position: sticky; top: 24px; align-self: start; font-size: 13.5px; }
+  .toc .eyebrow { margin-bottom: 10px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
+  .toc li a { display: block; padding: 5px 0 5px 12px; color: var(--muted); border-bottom: none; margin-left: -2px; border-left: 2px solid transparent; }
+  .toc li a:hover { color: var(--ink); border-left-color: var(--accent); }
+  .toc li.m a { padding-left: 24px; font-size: 12.5px; }
+  main { max-width: 860px; min-width: 0; }
+
+  section { padding: 40px 0 8px; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: none; padding-top: 8px; }
+  h2 {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700;
+    font-size: 34px; line-height: 1.05; margin: 0 0 6px; letter-spacing: -.005em; text-wrap: balance;
+  }
+  h2 + .sub { color: var(--muted); font-size: 16px; margin: 0 0 22px; max-width: 66ch; }
+  h3 {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 22px; line-height: 1.15;
+    margin: 30px 0 8px; letter-spacing: .005em;
+  }
+  h4 { font-size: 15px; font-weight: 600; margin: 20px 0 6px; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; max-width: 72ch; }
+  li { margin: 4px 0; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 600; }
+  small, .small { font-size: 13.5px; color: var(--muted); }
+  code, kbd {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: .88em;
+    background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 12px 0 18px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  .cm { color: #8A97AD; }
+
+  /* Callouts */
+  .note {
+    border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface);
+    border-radius: 6px; padding: 12px 16px; margin: 14px 0 18px; max-width: 76ch; font-size: 15px;
+  }
+  .note.human { border-left-color: var(--human); }
+  .note.warn { border-left-color: var(--bad); }
+  .note .eyebrow { margin-bottom: 4px; }
+  .decision {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 16px 0 22px;
+  }
+  .decision .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow);
+  }
+  .card .eyebrow { margin-bottom: 6px; }
+  .card p { font-size: 14.5px; margin: 0; }
+  .card p + p { margin-top: 6px; }
+
+  /* Tables */
+  .tbl { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th {
+    font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 13.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* Pills */
+  .pill {
+    display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .02em;
+    padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); white-space: nowrap;
+  }
+  .pill.human { background: var(--human-soft); border-color: transparent; color: var(--human); }
+  .pill.agent { background: var(--agent-soft); border-color: transparent; color: var(--agent); }
+  .pill.code { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .pill.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+  .pill.bad { background: var(--bad-soft); border-color: transparent; color: var(--bad); }
+
+  /* Day-in-the-life */
+  .day { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 14px 0 8px; }
+  .day .card h4 { margin: 0 0 6px; font-family: "Barlow Condensed", sans-serif; font-size: 19px; font-weight: 600; }
+  .day .card ul { padding-left: 18px; font-size: 14px; margin: 0; }
+
+  /* Figures */
+  figure { margin: 18px 0 22px; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
+  figcaption { font-size: 13.5px; color: var(--muted); margin-top: 8px; max-width: 76ch; }
+  .fig-scroll { overflow-x: auto; }
+  .fig-scroll svg { min-width: 640px; }
+  svg text { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; fill: currentColor; }
+  svg text.mono { font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+  svg text.ttl { font-family: "Barlow Condensed", sans-serif; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+  svg text.lbl { font-size: 11px; fill: var(--muted); }
+  svg .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.2; }
+  svg .box.agent { fill: var(--agent-soft); stroke: var(--agent); }
+  svg .box.human { fill: var(--human-soft); stroke: var(--human); }
+  svg .box.code { fill: var(--accent-soft); stroke: var(--accent); }
+  svg .box.dashed { stroke-dasharray: 4 3; fill: none; stroke: var(--muted); }
+  svg .box.store { fill: var(--surface-2); }
+  svg .edge { fill: none; stroke: currentColor; stroke-width: 1.2; }
+  svg .edge.human { stroke: var(--human); }
+  svg .edge.agent { stroke: var(--agent); }
+  svg .edge.faint { stroke: var(--muted); stroke-dasharray: 3 3; }
+  svg .lane { fill: var(--surface-2); }
+
+  /* Milestones */
+  .ms { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px 18px; margin: 14px 0; box-shadow: var(--shadow); }
+  .ms header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; margin-bottom: 8px; }
+  .ms .m-id { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 26px; color: var(--accent); }
+  .ms .m-name { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 22px; }
+  .ms .m-when { color: var(--muted); font-size: 13.5px; margin-left: auto; }
+  .ms ul { font-size: 14.5px; }
+  .ms .done { border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 10px; font-size: 14.5px; }
+  .ms .done b { color: var(--ok); }
+
+  .steal td:first-child { white-space: nowrap; font-weight: 500; }
+  .foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14.5px; margin: 8px 0 16px; }
+  .kv dt { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 12.5px; }
+  .kv dd { margin: 0; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">The blueprint · v1.0 draft · 19 Aug 2026 · research + three rounds of answers · all questions resolved</div>
+    <h1>Goblin Foundry</h1>
+    <p class="lede"><strong>Goblin Foundry</strong> is your agentic software factory: a Linear-fast ticket system on Zero, a crew of Claude agents — goblins — that take a ticket from idea to <em>deployed</em>, and a foundry floor where you can watch every prompt, tool call, and dollar. You qualify the work in the evening; the goblins hammer through the night; you inspect the castings from your phone over coffee.</p>
+    <div class="facts">
+      <div class="fact"><b>Success</b><span>2 products shipped through the factory (App Store or web)</span></div>
+      <div class="fact"><b>Cadence</b><span>nights &amp; weekends; builds keep going after you sleep</span></div>
+      <div class="fact"><b>Runs on</b><span>your Mac now, an always-on box later</span></div>
+      <div class="fact"><b>Shape</b><span>personal tool, public on GitHub, not a product</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <div class="eyebrow">Contents</div>
+      <ol>
+        <li><a href="#pitch">The pitch</a></li>
+        <li><a href="#principles">Principles</a></li>
+        <li><a href="#model">Object model</a></li>
+        <li><a href="#status">Status machine</a></li>
+        <li><a href="#agents">The agents</a></li>
+        <li><a href="#arch">Architecture</a></li>
+        <li><a href="#obs">Observability</a></li>
+        <li><a href="#prov">Provenance</a></li>
+        <li><a href="#policy">Per-project policy</a></li>
+        <li><a href="#mobile">Phone &amp; overnight</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li class="m"><a href="#m0">M0 · Thin slice</a></li>
+        <li class="m"><a href="#m1">M1 · Design review + reviewer</a></li>
+        <li class="m"><a href="#m2">M2 · Deploy, librarian, phone</a></li>
+        <li class="m"><a href="#m3">M3 · Overnight autonomy</a></li>
+        <li class="m"><a href="#m4">M4 · Provenance + learning</a></li>
+        <li><a href="#risks">Risks &amp; open questions</a></li>
+        <li><a href="#steal">What to steal</a></li>
+        <li><a href="#sources">Sources</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <!-- ============================================================ -->
+      <section id="pitch">
+        <h2>The pitch</h2>
+        <p class="sub">What it feels like to use, before what it's made of.</p>
+        <p>You already have Claude Code, Linear — and <strong>smriti</strong>, your skill stack whose <code>/begin</code> flow and local board are a proto-factory: apps → projects → tickets in <code>factory.db</code>, run traces, three human gates, and a philosophy this plan adopts wholesale (<em>"the paper trail is stored, not linked… nothing is ever committed into your repo"</em>). What smriti can't do is what this factory adds: multiple agents on multiple tickets in parallel, a real status machine, per-project policy, full observability, and work that continues when your laptop is closed. The board decides what happens next; agents do bounded work under a per-app policy; everything they did is recorded so you can read it back. smriti's projects, tickets, and dependency edges import on day one — Subway Reader's 17 tickets come along.</p>
+
+        <div class="day">
+          <div class="card">
+            <h4>Evening · laptop</h4>
+            <ul>
+              <li>Write two tickets; accept one the scout proposed.</li>
+              <li>Get grilled by the planner on the big one; three perspectives argue; you settle it.</li>
+              <li>Read the design as an interactive doc with mockups, leave notes, approve.</li>
+              <li>Watch the first build's swim lanes for five minutes, then close the lid.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Night · unattended</h4>
+            <ul>
+              <li>Builder works in its own worktree under a dollar budget.</li>
+              <li>Reviewer runs the app's lenses; findings go back; up to three fix loops.</li>
+              <li>PR lands with gate evidence, screenshots, and a handoff note.</li>
+              <li>If policy allows: merge, deploy, verify. If not: waits for you.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Morning · phone</h4>
+            <ul>
+              <li>Status glance: 2 done, 1 waiting on a question, $23 spent.</li>
+              <li>Answer the question, approve a design, from the Claude app via MCP.</li>
+              <li>The librarian has already updated the wiki and changelog.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Decisions already made</h3>
+        <div class="decision">
+          <div class="card"><div class="eyebrow">Tickets</div><p>Build your own on <strong>Rocicorp Zero</strong>, starting from the zbugs schema. Not Linear.</p></div>
+          <div class="card"><div class="eyebrow">First milestone</div><p>A <strong>thin vertical slice</strong>: one ticket → planner → builder → PR, with live events.</p></div>
+          <div class="card"><div class="eyebrow">Human gates</div><p><strong>Approve design before build</strong>; everything else is <strong>per-project policy</strong> (serious / standard / vibe).</p></div>
+          <div class="card"><div class="eyebrow">Done means</div><p><strong>Merged and deployed to production.</strong> Deploy and verify are phases, not afterthoughts.</p></div>
+          <div class="card"><div class="eyebrow">Design</div><p>Markdown for agents; an <strong>interactive HTML review doc</strong> with mockups (HTML, not Figma) for you. Stored in the <strong>factory DB, never committed</strong> — the repo stays a garden of code.</p></div>
+          <div class="card"><div class="eyebrow">Phone</div><p>Status and approvals first, kick-off later. <strong>Factory MCP server</strong> so the Claude app is the mobile UI.</p></div>
+          <div class="card"><div class="eyebrow">Auth</div><p><strong>Claude Max subscription token</strong> by default; automatic failover to an API key when the plan window is exhausted.</p></div>
+          <div class="card"><div class="eyebrow">Statuses</div><p>Fixed <strong>kinds</strong> drive the agents; per-project <strong>names</strong> and enabled stages are yours (Linear's model).</p></div>
+          <div class="card"><div class="eyebrow">Docs</div><p>Code is the documentation. The repo keeps only CLAUDE.md/AGENTS.md; glossary, lessons, ADRs, and designs live in the <strong>factory DB</strong>, materialized into worktrees at run start.</p></div>
+          <div class="card"><div class="eyebrow">App #1</div><p><strong>Subway Reader</strong> — offline-first, e-ink-first RSS/read-later app. Android (Kotlin/Compose) on a Boox first; 17 tickets + DAG already exist in smriti's factory.db.</p></div>
+          <div class="card"><div class="eyebrow">Name</div><p><strong>Goblin Foundry.</strong> CLI <code>goblin</code> (<code>goblin plan 40</code>), repo <code>goblin-foundry</code>. Goblins work the night shift; the Foreman runs the floor.</p></div>
+          <div class="card"><div class="eyebrow">Lineage</div><p><strong>smriti</strong> is the predecessor: keep its taste (three gates, paper trail stored not linked, keyboard-first board), import its data, retire its board at parity.</p></div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="principles">
+        <h2>Principles</h2>
+        <p class="sub">The rules that decide the arguments later. Each one traces to something the research found other people learning the hard way.</p>
+        <ol>
+          <li><strong>The board is the orchestrator.</strong> Status transitions are the API between you and the agents. Humans and agents both move cards; the project's policy says which transitions need a human.</li>
+          <li><strong>A ticket is not a run.</strong> Ticket → Run → Phase → Event. Attempts, retries, cost, and evidence live on the run. Every system that survived converged here; Vibe Kanban's migration history shows the fix.</li>
+          <li><strong>Code owns sequencing; agents own one bounded phase.</strong> Deterministic worker code decides what runs next, retries, and acceptance. Each phase returns a typed envelope; gates verify its claims mechanically and record <em>evidence</em>, not just pass/fail. ("Agent proposes, code disposes" — disler.)</li>
+          <li><strong>Qualify early, review with evidence.</strong> One human decision up front (approve the design), an unattended run, then a review queue where each PR arrives with gate evidence, screenshots, and a handoff note — not just a diff. Review, not compute, is the ceiling; make review cheap.</li>
+          <li><strong>Comprehension is a feature.</strong> Designs are written for you (HTML, mockups, notes) as well as agents (markdown, EARS criteria). The librarian keeps a small, loadable wiki. Every commit links back to the conversation that produced it.</li>
+          <li><strong>Correction, not restart.</strong> A failed gate re-prompts the <em>same</em> session with the named violation. Retry budgets are policy ("3, then escalate"), never emergent.</li>
+          <li><strong>Per-project policy, not global config.</strong> Gates, review lenses, model tiers, budgets, deploy commands vary per app.</li>
+          <li><strong>Boring primitives you control.</strong> Git, Postgres, a CLI subprocess, markdown files. The category churns violently (Vibe Kanban, Crystal, Terragon, Height, Sweep all dead or pivoted in 12 months); the layers underneath don't.</li>
+          <li><strong>Cost and stalls are first-class.</strong> Every phase has a budget; every run has a heartbeat and a pid; spend and context occupancy are tracked as different numbers.</li>
+          <li><strong>Own the event schema.</strong> OTel and Langfuse are transport or side-exports, never the source of truth for the factory floor. The OTel GenAI conventions are still unstable.</li>
+        </ol>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="model">
+        <h2>Object model</h2>
+        <p class="sub">Your three nouns (Project, Ticket, Design) plus the process nouns that make observability and provenance fall out for free.</p>
+
+        <figure>
+          <div class="fig-scroll">
+          <svg viewBox="0 0 960 400" role="img" aria-label="Entity diagram: Project has many Tickets; a Ticket has Design versions, Runs, and Comments; a Run has Phases; a Phase has Events, an Envelope with gate results, and provenance links to commits and PRs.">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+              </marker>
+            </defs>
+            <!-- row 1 -->
+            <rect class="box" x="30" y="30" width="170" height="64" rx="6"/>
+            <text class="ttl" x="46" y="54">Project</text>
+            <text class="lbl" x="46" y="72">repo · policy · statuses (kinds→names)</text>
+            <text class="lbl" x="46" y="86">Project Design vN · conductor session</text>
+
+            <rect class="box" x="270" y="30" width="170" height="64" rx="6"/>
+            <text class="ttl" x="286" y="54">Ticket</text>
+            <text class="lbl" x="286" y="72">type · status · scope · criteria</text>
+            <text class="lbl" x="286" y="86">assignee (you) · delegate (agent)</text>
+
+            <rect class="box" x="510" y="30" width="170" height="64" rx="6"/>
+            <text class="ttl" x="526" y="54">Design  vN</text>
+            <text class="lbl" x="526" y="72">design.md (agents)</text>
+            <text class="lbl" x="526" y="86">review.html + notes (you)</text>
+
+            <rect class="box store" x="750" y="30" width="180" height="64" rx="6"/>
+            <text class="ttl" x="766" y="54">Provenance link</text>
+            <text class="lbl" x="766" y="72">commit · PR · deploy id</text>
+            <text class="lbl" x="766" y="86">↔ run · phase · design · transcript</text>
+
+            <!-- row 2 -->
+            <rect class="box" x="30" y="170" width="170" height="64" rx="6"/>
+            <text class="ttl" x="46" y="194">Comment / Question</text>
+            <text class="lbl" x="46" y="212">your notes · grill-me Q&amp;A</text>
+            <text class="lbl" x="46" y="226">answered → run resumes</text>
+
+            <rect class="box agent" x="270" y="170" width="170" height="64" rx="6"/>
+            <text class="ttl" x="286" y="194">Run</text>
+            <text class="lbl" x="286" y="212">one attempt · worktree · branch</text>
+            <text class="lbl" x="286" y="226">status · cost · heartbeat · pid</text>
+
+            <rect class="box agent" x="510" y="170" width="170" height="64" rx="6"/>
+            <text class="ttl" x="526" y="194">Phase</text>
+            <text class="lbl" x="526" y="212">the swim lane: planner, builder…</text>
+            <text class="lbl" x="526" y="226">session · model · attempt · cost</text>
+
+            <rect class="box agent" x="750" y="170" width="180" height="64" rx="6"/>
+            <text class="ttl" x="766" y="194">Event</text>
+            <text class="lbl" x="766" y="212">tool_call · message · gate · log</text>
+            <text class="lbl" x="766" y="226">append-only, time-spanned</text>
+
+            <!-- row 3 -->
+            <rect class="box code" x="510" y="300" width="170" height="64" rx="6"/>
+            <text class="ttl" x="526" y="324">Envelope + Gates</text>
+            <text class="lbl" x="526" y="342">typed output: status, artifacts,</text>
+            <text class="lbl" x="526" y="356">notes; checks {item, ok, note}</text>
+
+            <rect class="box store" x="270" y="300" width="170" height="64" rx="6"/>
+            <text class="ttl" x="286" y="324">Wiki (in repo)</text>
+            <text class="lbl" x="286" y="342">INDEX · CONTEXT.md · ADRs</text>
+            <text class="lbl" x="286" y="356">lessons.md · CHANGELOG</text>
+
+            <!-- edges row 1 -->
+            <line class="edge" x1="200" y1="62" x2="270" y2="62" marker-end="url(#arr)"/>
+            <text class="lbl" x="207" y="54">has many</text>
+            <line class="edge" x1="440" y1="62" x2="510" y2="62" marker-end="url(#arr)"/>
+            <text class="lbl" x="447" y="54">versions</text>
+            <line class="edge faint" x1="680" y1="62" x2="750" y2="62" marker-end="url(#arr)"/>
+            <text class="lbl" x="686" y="54">cited by</text>
+            <!-- ticket -> run -->
+            <line class="edge" x1="355" y1="94" x2="355" y2="170" marker-end="url(#arr)"/>
+            <text class="lbl" x="362" y="136">attempts</text>
+            <!-- ticket -> comment -->
+            <line class="edge" x1="290" y1="94" x2="120" y2="170" marker-end="url(#arr)"/>
+            <text class="lbl" x="150" y="130">notes, questions</text>
+            <!-- run -> phase -->
+            <line class="edge agent" x1="440" y1="202" x2="510" y2="202" marker-end="url(#arr)"/>
+            <text class="lbl" x="447" y="194">sequence</text>
+            <!-- phase -> event -->
+            <line class="edge agent" x1="680" y1="202" x2="750" y2="202" marker-end="url(#arr)"/>
+            <text class="lbl" x="691" y="194">stream</text>
+            <!-- phase -> envelope -->
+            <line class="edge" x1="595" y1="234" x2="595" y2="300" marker-end="url(#arr)"/>
+            <text class="lbl" x="602" y="272">returns / verified by</text>
+            <!-- phase -> provenance -->
+            <line class="edge faint" x1="640" y1="170" x2="800" y2="94" marker-end="url(#arr)"/>
+            <text class="lbl" x="700" y="122">commits, PR</text>
+            <!-- run -> wiki (librarian) -->
+            <line class="edge faint" x1="355" y1="234" x2="355" y2="300" marker-end="url(#arr)"/>
+            <text class="lbl" x="362" y="272">librarian writes</text>
+          </svg>
+          </div>
+          <figcaption>Artifacts on the top row, process below. Purple boxes are the observability spine; blue is the contract between agent and harness. Storing <code>run_id</code>/<code>phase_id</code> on every commit and artifact is what makes provenance a one-column feature.</figcaption>
+        </figure>
+
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Entity</th><th>What it is</th><th>Fields that matter</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Project</strong></td><td>An app/repo the factory works on</td><td>repo URL, default branch, wiki path, <code>policy</code> (gates, review lenses, model tiers, budgets, commands, protected paths, tool + data access), <code>statuses</code> (kind → name, order, enabled), <strong>conductor session id</strong></td></tr>
+            <tr><td><strong>Project Design</strong></td><td>The living high-level design of the whole app, owned by the Conductor</td><td>version, <code>docs/design/PROJECT.md</code> (vision, users, architecture, domain model, key decisions, roadmap); ticket designs are <em>deltas</em> against it (ADDED / MODIFIED / REMOVED)</td></tr>
+            <tr><td><strong>Ticket</strong></td><td>Unit of work</td><td>type (feature/bug/chore/proposal), title, body, status, priority, size hint, <code>scope {included, excluded}</code>, acceptance criteria, <strong>assignee</strong> (you) and <strong>delegate</strong> (agent) side by side, labels, edges (parent, <code>blocks</code> / blocked-by, <code>discovered-from</code>) — the Conductor's raw material</td></tr>
+            <tr><td><strong>Design</strong></td><td>Versioned implementation plan attached to a ticket</td><td>version, status, <code>design.md</code> (agent-facing: goals, non-goals, EARS criteria, test plan, notes for builder), <code>review.html</code> (you: overview, user flows, mockups, high-level changes, open questions), annotations, approved_by/at</td></tr>
+            <tr><td><strong>Run</strong></td><td>One attempt of the pipeline on a ticket</td><td>ticket, trigger, worktree, branch, status, <code>terminal_reason</code> (completed / max_turns / budget_exhausted / hook_stopped / api_error / stalled / canceled), cost totals, heartbeat, pid, started/ended</td></tr>
+            <tr><td><strong>Phase</strong></td><td>One agent, code, or human step in a run — literally the swim lane</td><td>kind (agent / code / human), name, agent, model, effort, session_id, attempt, status (queued / running / awaiting_input / success / fail), compiled-prompt ref, cost, tokens, duration</td></tr>
+            <tr><td><strong>Event</strong></td><td>Append-only trace row</td><td>phase, type, name, payload, parent, started_at, ended_at (only spanning types fill both)</td></tr>
+            <tr><td><strong>Envelope</strong></td><td>Typed phase output — the only seam between agents</td><td><code>status, summary, artifacts, notes_for_next_agent</code> + per-agent fields (PlanOutput, BuildOutput, ReviewOutput…)</td></tr>
+            <tr><td><strong>Gate result</strong></td><td>Mechanical check on an envelope's claims</td><td>gate, attempt, passed, <code>checks [{item, ok, note}]</code> — a green gate says <em>what</em> it verified</td></tr>
+            <tr><td><strong>Question</strong></td><td>An elicitation to a human (grill-me round, approval)</td><td>phase, prompt, options, recommended answer, answer, answered_at — the <em>only</em> thing that flips a run to <em>awaiting input</em> (Linear's rule)</td></tr>
+            <tr><td><strong>Provenance link</strong></td><td>Backlink from artifact to reasoning</td><td>commit sha / PR / deploy id ↔ run, phase, design version, transcript</td></tr>
+            <tr><td><strong>Wiki</strong></td><td>The project's context, kept in the repo</td><td>INDEX (≤200 lines), CONTEXT.md glossary, ADRs, lessons.md, CHANGELOG</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="status">
+        <h2>Status machine</h2>
+        <p class="sub">Statuses are the triggers. Amber transitions need you (subject to policy); purple states mean an agent is working.</p>
+
+        <figure>
+          <div class="fig-scroll">
+          <svg viewBox="0 0 1000 330" role="img" aria-label="Ticket status flow: Backlog, Ready for Design, Designing, Design Review (human gate), Ready for Dev, Building, In Review, Ready to Merge (human gate), Deploying, Done; any state can drop to Needs You.">
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+              </marker>
+              <marker id="arrH" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" style="fill: var(--human)"/>
+              </marker>
+              <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" style="fill: var(--agent)"/>
+              </marker>
+            </defs>
+
+            <!-- Row 1 -->
+            <rect class="box" x="20" y="40" width="150" height="46" rx="6"/>
+            <text class="ttl" x="95" y="68" text-anchor="middle">Backlog</text>
+            <text class="lbl" x="95" y="104" text-anchor="middle">you · intake · scout</text>
+
+            <rect class="box" x="210" y="40" width="150" height="46" rx="6"/>
+            <text class="ttl" x="285" y="68" text-anchor="middle">Ready for Design</text>
+            <text class="lbl" x="285" y="104" text-anchor="middle">you qualify it</text>
+
+            <rect class="box agent" x="400" y="40" width="150" height="46" rx="6"/>
+            <text class="ttl" x="475" y="68" text-anchor="middle">Designing</text>
+            <text class="lbl" x="475" y="104" text-anchor="middle">planner · grill-me rounds</text>
+
+            <rect class="box human" x="590" y="40" width="150" height="46" rx="6"/>
+            <text class="ttl" x="665" y="68" text-anchor="middle">Design Review</text>
+            <text class="lbl" x="665" y="104" text-anchor="middle">you approve (policy)</text>
+
+            <rect class="box" x="780" y="40" width="150" height="46" rx="6"/>
+            <text class="ttl" x="855" y="68" text-anchor="middle">Ready for Dev</text>
+            <text class="lbl" x="855" y="104" text-anchor="middle">auto, or straight from Backlog</text>
+
+            <!-- Row 1 edges -->
+            <line class="edge human" x1="170" y1="63" x2="210" y2="63" marker-end="url(#arrH)"/>
+            <line class="edge agent" x1="360" y1="63" x2="400" y2="63" marker-end="url(#arrA)"/>
+            <line class="edge agent" x1="550" y1="63" x2="590" y2="63" marker-end="url(#arrA)"/>
+            <line class="edge human" x1="740" y1="63" x2="780" y2="63" marker-end="url(#arrH)"/>
+            <!-- rejection loop: Design Review -> Designing -->
+            <path class="edge human" d="M640,40 C640,14 520,14 500,36" marker-end="url(#arrH)"/>
+            <text class="lbl" x="570" y="16" text-anchor="middle">notes → new version</text>
+
+            <!-- Row 1 -> Row 2 connector -->
+            <polyline class="edge" points="855,86 855,150 95,150 95,190" marker-end="url(#arr2)"/>
+            <text class="lbl" x="475" y="144" text-anchor="middle">builder picks it up (claim + lease)</text>
+
+            <!-- Row 2 -->
+            <rect class="box agent" x="20" y="190" width="150" height="46" rx="6"/>
+            <text class="ttl" x="95" y="218" text-anchor="middle">Building</text>
+            <text class="lbl" x="95" y="254" text-anchor="middle">builder · worktree · PR</text>
+
+            <rect class="box agent" x="210" y="190" width="150" height="46" rx="6"/>
+            <text class="ttl" x="285" y="218" text-anchor="middle">In Review</text>
+            <text class="lbl" x="285" y="254" text-anchor="middle">reviewer ⇄ builder, ≤3 loops</text>
+
+            <rect class="box human" x="400" y="190" width="150" height="46" rx="6"/>
+            <text class="ttl" x="475" y="218" text-anchor="middle">Ready to Merge</text>
+            <text class="lbl" x="475" y="254" text-anchor="middle">you approve, or auto (policy)</text>
+
+            <rect class="box agent" x="590" y="190" width="150" height="46" rx="6"/>
+            <text class="ttl" x="665" y="218" text-anchor="middle">Deploying</text>
+            <text class="lbl" x="665" y="254" text-anchor="middle">merge · deploy · verify</text>
+
+            <rect class="box" x="780" y="190" width="150" height="46" rx="6" style="stroke: var(--ok)"/>
+            <text class="ttl" x="855" y="218" text-anchor="middle">Done</text>
+            <text class="lbl" x="855" y="254" text-anchor="middle">= live in prod · librarian runs</text>
+
+            <!-- Row 2 edges -->
+            <line class="edge agent" x1="170" y1="213" x2="210" y2="213" marker-end="url(#arrA)"/>
+            <line class="edge agent" x1="360" y1="213" x2="400" y2="213" marker-end="url(#arrA)"/>
+            <line class="edge human" x1="550" y1="213" x2="590" y2="213" marker-end="url(#arrH)"/>
+            <line class="edge agent" x1="740" y1="213" x2="780" y2="213" marker-end="url(#arrA)"/>
+
+            <!-- Needs you -->
+            <rect class="box dashed" x="300" y="284" width="400" height="34" rx="6"/>
+            <text x="500" y="306" text-anchor="middle" style="fill: var(--muted)">Needs you · awaiting input · blocked · failed — reachable from any state; shows in the approvals inbox</text>
+          </svg>
+          </div>
+          <figcaption>Small tickets skip the design half (Backlog → Ready for Dev) when the planner's triage or the project policy says so. "Awaiting input" is an overlay derived from the last activity (a pending Question), not a column you drag to.</figcaption>
+        </figure>
+
+        <div class="note"><div class="eyebrow">Configurable, the Linear way</div>These are status <strong>kinds</strong> — canonical, hard-coded, and what agents trigger on. Each project maps kinds to its own <strong>names</strong>, colors, and order, and policy can disable stages (no design, no deploy). A genuinely new stage is a factory code change on purpose: it arrives with an agent or a gate. Labels and a human "hold" cover the long tail. Schema from day one: <code>statuses(project_id, kind, name, color, order, enabled)</code>.</div>
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Status kind</th><th>Moved in by</th><th>What happens</th><th>Leaves when</th></tr></thead>
+          <tbody>
+            <tr><td>Backlog</td><td><span class="pill human">you</span> <span class="pill code">intake</span> <span class="pill agent">scout</span></td><td>Nothing. Proposals from the scout and bug reports from intake land here for you to accept.</td><td>You qualify it (→ Ready for Design) or mark it small (→ Ready for Dev).</td></tr>
+            <tr><td>Ready for Design</td><td><span class="pill human">you</span></td><td>The <em>qualification</em> gate — the one human decision the pipeline can't skip.</td><td>Planner claims it.</td></tr>
+            <tr><td>Designing</td><td><span class="pill agent">planner</span></td><td>Fact-finding, grill-me rounds (Questions), three-perspective pass, design.md + review.html.</td><td>Design vN written; no <code>[NEEDS CLARIFICATION]</code> left.</td></tr>
+            <tr><td>Design Review</td><td><span class="pill agent">planner</span></td><td>You read the HTML doc, leave notes, approve — or reject with notes → new version. Policy may auto-approve after N hours (Jules pattern) with a "planning critic" pass.</td><td>Approved.</td></tr>
+            <tr><td>Ready for Dev</td><td><span class="pill code">policy</span> <span class="pill human">you</span></td><td>Queue. Builder claims with a lease; stale leases are reclaimed.</td><td>Builder claims it.</td></tr>
+            <tr><td>Building</td><td><span class="pill agent">builder</span></td><td>Worktree, TDD loop, project checks, self-review, PR with evidence + handoff note. Gates: tests_pass, diff_matches_claims, writes-within-scope, protected files untouched.</td><td>Envelope valid and gates green.</td></tr>
+            <tr><td>In Review</td><td><span class="pill agent">reviewer</span></td><td>Isolated lens subagents → refutation pass → findings side by side. Blocking findings resume the builder's session. Max loops from policy, then → Needs you.</td><td>No blocking findings.</td></tr>
+            <tr><td>Ready to Merge</td><td><span class="pill code">policy</span></td><td>Human PR approval if policy says so; otherwise auto.</td><td>Approved / auto.</td></tr>
+            <tr><td>Deploying</td><td><span class="pill agent">deployer</span></td><td>Merge, run the project's deploy command, run verify (health URL, smoke, screenshot). Failure → Needs you with evidence.</td><td>Verify passes.</td></tr>
+            <tr><td>Done</td><td><span class="pill code">deployer</span></td><td>Live in prod. Librarian runs (wiki, ADR, lessons, changelog). Metrics snapshot written.</td><td>—</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="agents">
+        <h2>The agents</h2>
+        <p class="sub">Each agent is one bounded phase: a skill plus subagents, invoked by the worker with a pinned model, tool allowlist, and dollar budget, returning a typed envelope that gates verify.</p>
+
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Agent</th><th>Fires when</th><th>Reads</th><th>Produces (envelope)</th><th>Gates</th><th>Default tier</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Conductor</strong> <span class="pill human">talks to you</span></td><td>always on: one resumable session per project; woken by you or by events (Done, design approved, intake)</td><td>Project Design, wiki, all tickets + edges, run history, metrics</td><td>ticket DAG from a roadmap (sizes, blocks/blocked-by, parallel lanes), standups, Project Design vN, proposed ticket changes when a shipped ticket changes the app's shape</td><td>proposals applied only if policy allows unattended changes</td><td>Opus · high · factory MCP tools</td></tr>
+            <tr><td><strong>Planner</strong></td><td>Ready for Design (or <code>/plan FAC-12</code> from your terminal)</td><td>ticket, wiki, codebase (read-only), your answers</td><td>Design vN (design.md + review.html), Questions, ADR candidates → Design Review</td><td>design_complete, no NEEDS CLARIFICATION, EARS criteria present, ≤ token budget, verdict_consistent</td><td>Opus · high · read tools + Agent · ~$6</td></tr>
+            <tr><td><strong>Builder</strong></td><td>Ready for Dev</td><td>design.md, wiki, repo</td><td>branch, commits, PR; <strong>Verify</strong> evidence (screenshots, recordings, criteria walked); BuildOutput {changed_files, evidence, deviations, handoff} → In Review</td><td>tests_pass, typecheck, diff_matches_claims, writes ⊆ scope, protected paths untouched, criteria_verified, DoD checklist</td><td>Sonnet or Opus per policy · xhigh · edit + Bash allowlist · ~$12</td></tr>
+            <tr><td><strong>Reviewer</strong></td><td>In Review</td><td>diff, design.md, wiki</td><td>ReviewOutput per lens {findings [{requirement, met, evidence, severity}], blocking}, refuted list, verdict → Ready to Merge or back to builder</td><td>verdict_consistent, lens coverage per policy</td><td>Opus · read-only · one subagent per lens + one refuter · ~$8</td></tr>
+            <tr><td><strong>Deployer</strong></td><td>Ready to Merge (approved/auto)</td><td>PR, project commands</td><td>merge, deploy, verify evidence (URL, health, screenshot) → Done or Needs you</td><td>ci_green, verify_passes</td><td>Mostly code phase; small agent for diagnosis</td></tr>
+            <tr><td><strong>Librarian</strong></td><td>Done</td><td>ticket trail: design, handoff, findings, resolution</td><td>wiki updates (CONTEXT.md, ADR, lessons.md, CHANGELOG), index pruning</td><td>index ≤ 200 lines, links valid</td><td>Haiku/Sonnet · low · ~$1</td></tr>
+            <tr><td><strong>Scout</strong></td><td>cron / every N tickets</td><td>wiki, repo, review-finding history, cost metrics</td><td>proposed tickets with rationale (status Backlog, type proposal)</td><td>none — you accept or reject</td><td>Sonnet · read-only</td></tr>
+            <tr><td><strong>Intake</strong> <span class="pill code">code</span></td><td>webhook / in-app bug report</td><td>payload, screenshots, logs</td><td>Ticket type=bug in Backlog, deduped</td><td>—</td><td>no model</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>Conductor — the long-running session that runs the project</h3>
+        <p>The worker's <em>orchestrator</em> is deterministic code that sequences phases inside a run. The <strong>Conductor</strong> is a different kind of thing: a conversational agent, one per project, that sequences <em>tickets</em> and owns the <strong>Project Design</strong>. In the factory metaphor it's the Foreman.</p>
+        <ul>
+          <li><strong>Roadmap → tickets.</strong> Breaks a milestone into a DAG of tracer-bullet tickets (<code>to-tickets</code>), sizes them, sets blocks/blocked-by, and picks what can run in parallel given <code>max_concurrent_runs</code> and file-overlap risk. Ready work is a projection over the graph (Beads' pattern), not a heuristic.</li>
+          <li><strong>Standup on demand.</strong> "What's blocked, what's ready, what should run tonight, what did last night cost."</li>
+          <li><strong>Design propagation.</strong> When a shipped ticket changes the app's shape, it updates the Project Design (new version), adjusts or opens affected tickets, and flags conflicts with in-flight designs. Ticket designs are deltas against the project design; the reviewer's spec↔code lens checks both.</li>
+          <li><strong>Triage.</strong> Intake bugs and scout proposals land with it first.</li>
+          <li><strong>Where you talk to it:</strong> web UI, terminal, or phone (through the MCP server) — same session, resumed by id.</li>
+        </ul>
+        <div class="note human"><div class="eyebrow">Guardrail</div>The Conductor <em>proposes</em> ticket and design changes. Policy says whether it may apply them unattended (vibe: yes; serious: you approve). It never runs a build itself — it moves cards, and the board does the rest.</div>
+
+        <h3>Planner — the grill-me interview, three perspectives, two documents</h3>
+        <p>This is one of the two genuinely novel pieces (the research found essentially no prior art for an adversarial, multi-perspective planning interview). Structure, borrowed from AI Hero's <code>grilling</code> primitive and BMAD's persona "party mode":</p>
+        <ol>
+          <li><strong>Triage.</strong> Full design if 2+ of: approach uncertain, touches modules that don't obviously compose, expensive to reverse, acceptance criteria not obvious from the title. Otherwise a mini design, or straight to build.</li>
+          <li><strong>Fact-finding.</strong> A subagent reads the wiki, ADRs, and similar features first — "finding facts is your job, never the user's."</li>
+          <li><strong>Grill rounds.</strong> Map the request as a decision tree; ask the whole <em>frontier</em> (questions whose prerequisites are settled) in one numbered round, each with a recommended answer; recompute; repeat until the frontier is empty and you confirm shared understanding.</li>
+          <li><strong>Three-perspective pass.</strong> Product / Engineering / UX subagents each critique the draft. They're allowed to disagree; unresolved disagreements become open questions thrown back to you, not silently resolved.</li>
+          <li><strong>Two outputs.</strong> <code>design.md</code> for the builder (goals, non-goals, EARS acceptance criteria, test plan, "notes for builder" by name and shape, never file paths). <code>review.html</code> for you: overview, what changes for the user, mockups (HTML wireframes first; Figma via MCP later), high-level changes by module, risks and open questions, decision log. Your annotations become the next grill round → design v2.</li>
+        </ol>
+        <div class="note human"><div class="eyebrow">Human gate</div>The design approval is the qualification gate. Everything downstream is designed to run unattended from here, so the design has to carry the intent: scope boundaries, criteria, and what the builder may decide alone.</div>
+
+        <h3>Reviewer — lenses, isolation, refutation</h3>
+        <p>The second novel piece: nobody structures multi-lens review as separate, isolated, scored passes. Each lens is its own subagent that sees only the diff, the design, and its brief — never other lenses' findings or the builder's reasoning. Findings are reported side by side, never merged into one ranking ("reporting them separately stops one axis from masking the other"). A refuter subagent then tries to disprove each finding; what doesn't survive is dropped or downgraded.</p>
+        <ul>
+          <li><strong>Lenses:</strong> correctness/spec-fidelity (criteria ↔ diff, line by line), security (trace input to sink or say you can't), performance (name the trigger condition or it isn't a finding), tests (every criterion has a test; flag tautological and implementation-coupled tests), maintainability/standards (repo standards first, then a fixed smell baseline), UX (only for user-facing changes). Projects pick their subset in policy.</li>
+          <li><strong>Severity:</strong> important / nit / pre-existing. Only <em>important</em> blocks by default.</li>
+          <li><strong>Fix loop:</strong> blocking findings resume the builder's session (correction, not restart). Policy sets the cap — default 3 — then the ticket goes to Needs you with the findings attached.</li>
+          <li>Claude Code's <code>/code-review</code> can be a lens implementation (it runs headlessly); ultrareview needs claude.ai auth.</li>
+        </ul>
+
+        <h3>Builder — definition of done, enforced by hooks</h3>
+        <ul>
+          <li>Own worktree and branch; nothing outside declared scope; protected paths enforced by post-hoc diff (the harness rolls back a breach and re-prompts).</li>
+          <li>Red before green per slice; every acceptance criterion has a test; full typecheck + test + build + lint at the end.</li>
+          <li><strong>Verify lane.</strong> Run the app and walk the acceptance criteria before self-review, attaching evidence (Cursor's "demo artifacts" pattern): web via Playwright / Chrome DevTools MCP with screenshots; <strong>Android via the emulator</strong> (<code>gradle</code> managed devices or <code>adb</code> install/launch/<code>screencap</code>, Maestro for UI flows, e-ink sanity = high-contrast screenshots at Boox resolution) — this is Subway Reader's path; iOS later via <code>xcrun simctl</code> + <code>xcodebuild test</code> (an iOS worker must be a Mac).</li>
+          <li><strong>Ephemeral data.</strong> Every run gets its own database — a Postgres DB cloned from a fixtures template per worktree (or a Supabase branch), connection string injected into the worktree's <code>.env</code> by the worker, torn down with the worktree. Prod credentials never reach a builder; the policy's <code>access</code> block says who gets what.</li>
+          <li>Self-review in a fresh subagent that sees only the diff and design; then a 1–2k-token handoff note: what, evidence (commands + output, screenshots), deviations, decisions made alone, open questions.</li>
+          <li>Ambiguity rule: decide-and-log when reversible and one-sentence-describable; stop and ask when it changes the approach, expands scope, or after two failed self-corrections.</li>
+          <li>Enforced by a Stop hook / gates, not by asking nicely — with a circuit breaker so a mis-specified check can't loop forever.</li>
+        </ul>
+
+        <h3>Librarian — a wiki small enough to load</h3>
+        <p>Four artifacts, one routing table, one index. Commands and conventions → <code>CLAUDE.md</code>; "why" behind hard-to-reverse decisions → <code>docs/adr/</code>; domain terms → <code>CONTEXT.md</code>; repeated mistakes → <code>lessons.md</code>; user-visible changes → <code>CHANGELOG.md</code>. One index file every agent loads (cap ~200 lines / 25 KB, the same budget Claude Code uses for its own memory); everything else read on demand. No vector search until the wiki outgrows ~200k tokens. Most tickets produce a changelog line and nothing else — that's fine.</p>
+
+        <h4>Where the wiki lives</h4>
+        <p>Your rule: <strong>code is the documentation; doc files exist only for context code can't explain; nothing else pollutes the garden.</strong> So the repo keeps exactly two kinds of files: <code>CLAUDE.md</code>/<code>AGENTS.md</code> (commands, conventions — the things tooling already reads) and, optionally, ADRs when a decision is genuinely inexplicable from code. Everything else — glossary, lessons.md, changelog drafts, design docs, the index — lives in the <strong>factory DB</strong>, exactly like smriti's document store. The worker materializes the relevant slice into each worktree at run start (git-ignored path) so agents still read it with cheap file tools; the DB is authoritative once the worktree is gone. The librarian writes to the DB and touches the repo only for CLAUDE.md updates. Cross-project knowledge is a factory-level wiki in the same store, loaded by every planner and the Conductor.</p>
+
+        <h3>Deployer and Scout</h3>
+        <p><strong>Deployer</strong> exists because you defined Done as "live in prod." Mostly code: merge, run <code>policy.commands.deploy</code>, run <code>policy.commands.verify</code>, attach evidence. For iOS, "Done" needs its own definition (submitted to TestFlight / App Review with a verified build) since Apple's review isn't yours to automate. <strong>Scout</strong> is your "agent that proposes ticket ideas": periodic, read-only, feeds on lessons.md, review-finding history, and cost metrics, and files proposals you accept or reject in the Backlog.</p>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="arch">
+        <h2>Architecture</h2>
+        <p class="sub">TypeScript throughout. Zero syncs the stable, interactive data; a direct SSE feed carries the live firehose; one worker runs Claude Agent SDK sessions, one subprocess per phase, one worktree per ticket.</p>
+
+        <figure>
+          <div class="fig-scroll">
+          <svg viewBox="0 0 1000 560" role="img" aria-label="Architecture: web UI syncs with zero-cache which replicates Postgres; phone and terminal talk to factory-api via MCP; factory-api streams SSE live events to the web UI; a worker runs Claude Agent SDK sessions per phase in git worktrees, writes events, cost, and transcripts to Postgres, opens PRs on GitHub, and deploys.">
+            <defs>
+              <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+              </marker>
+            </defs>
+            <!-- Row A: clients -->
+            <rect class="box" x="40" y="30" width="200" height="56" rx="6"/>
+            <text class="ttl" x="56" y="53">Web UI (laptop)</text>
+            <text class="lbl" x="56" y="72">React + Zero client · board · trace</text>
+
+            <rect class="box" x="270" y="30" width="250" height="56" rx="6"/>
+            <text class="ttl" x="286" y="53">Phone</text>
+            <text class="lbl" x="286" y="72">Claude app via MCP · mobile web</text>
+
+            <rect class="box" x="550" y="30" width="260" height="56" rx="6"/>
+            <text class="ttl" x="566" y="53">Claude Code terminal</text>
+            <text class="lbl" x="566" y="72">/plan · /build skills write back</text>
+
+            <!-- Row B -->
+            <rect class="box" x="40" y="170" width="200" height="64" rx="6"/>
+            <text class="ttl" x="56" y="194">zero-cache</text>
+            <text class="lbl" x="56" y="212">sync engine · ZQL · mutators</text>
+
+            <rect class="box code" x="270" y="170" width="540" height="64" rx="6"/>
+            <text class="ttl" x="286" y="194">factory-api (Node)</text>
+            <text class="lbl" x="286" y="212">SSE live feed · MCP server · intake webhooks · approvals · policy engine · scheduler</text>
+
+            <!-- Row C -->
+            <rect class="box store" x="40" y="320" width="360" height="72" rx="6"/>
+            <text class="ttl" x="56" y="344">Postgres</text>
+            <text class="lbl" x="56" y="362">projects · tickets · designs · runs · phases · events</text>
+            <text class="lbl" x="56" y="378">gates · questions · transcripts · compiled prompts</text>
+
+            <rect class="box agent" x="460" y="320" width="350" height="72" rx="6"/>
+            <text class="ttl" x="476" y="344">worker (Claude Agent SDK)</text>
+            <text class="lbl" x="476" y="362">one query() per phase → claude subprocess · worktree per ticket</text>
+            <text class="lbl" x="476" y="378">hooks → tool events · modelUsage → cost · OTel bodies → prompts</text>
+
+            <!-- Row D -->
+            <rect class="box" x="460" y="470" width="165" height="56" rx="6"/>
+            <text class="ttl" x="476" y="493">GitHub</text>
+            <text class="lbl" x="476" y="512">branch · PR · CI status</text>
+
+            <rect class="box" x="645" y="470" width="165" height="56" rx="6"/>
+            <text class="ttl" x="661" y="493">Deploy target</text>
+            <text class="lbl" x="661" y="512">Vercel · Fly · TestFlight</text>
+
+            <!-- Edges -->
+            <!-- Web UI <-> zero-cache -->
+            <line class="edge" x1="140" y1="86" x2="140" y2="170" marker-start="url(#arr3)" marker-end="url(#arr3)"/>
+            <text class="lbl" x="148" y="132">sync: queries + mutators</text>
+            <!-- api -> Web UI SSE (elbow) -->
+            <polyline class="edge agent" points="300,170 300,128 225,128 225,86" marker-end="url(#arr3)"/>
+            <text class="lbl" x="308" y="124">SSE: live run events</text>
+            <!-- Phone -> api -->
+            <line class="edge" x1="420" y1="86" x2="420" y2="170" marker-end="url(#arr3)"/>
+            <text class="lbl" x="428" y="132">MCP: status · approve · answer · plan</text>
+            <!-- Terminal -> api -->
+            <line class="edge" x1="700" y1="86" x2="700" y2="170" marker-end="url(#arr3)"/>
+            <text class="lbl" x="708" y="132">designs, status</text>
+            <!-- zero-cache <-> Postgres -->
+            <line class="edge" x1="140" y1="234" x2="140" y2="320" marker-start="url(#arr3)" marker-end="url(#arr3)"/>
+            <text class="lbl" x="148" y="282">logical replication</text>
+            <!-- api <-> Postgres -->
+            <line class="edge" x1="330" y1="234" x2="330" y2="320" marker-start="url(#arr3)" marker-end="url(#arr3)"/>
+            <text class="lbl" x="338" y="282">read / write</text>
+            <!-- api <-> worker -->
+            <line class="edge agent" x1="640" y1="234" x2="640" y2="320" marker-start="url(#arr3)" marker-end="url(#arr3)"/>
+            <text class="lbl" x="648" y="282">LISTEN/NOTIFY: events, approvals, claims</text>
+            <!-- worker <-> Postgres -->
+            <line class="edge" x1="460" y1="356" x2="400" y2="356" marker-start="url(#arr3)" marker-end="url(#arr3)"/>
+            <text class="lbl" x="430" y="412" text-anchor="middle">poll trigger statuses ↔ write events, cost, transcripts</text>
+            <!-- worker -> GitHub -->
+            <line class="edge" x1="542" y1="392" x2="542" y2="470" marker-end="url(#arr3)"/>
+            <text class="lbl" x="550" y="436">commits · PR</text>
+            <!-- worker -> Deploy -->
+            <line class="edge" x1="727" y1="392" x2="727" y2="470" marker-end="url(#arr3)"/>
+            <text class="lbl" x="735" y="436">deploy · verify</text>
+          </svg>
+          </div>
+          <figcaption>Two data paths on purpose. Zero carries projects, tickets, designs, run and phase summaries, and a capped tail of recent events — everything you click on. The high-frequency stream during a run (tool calls, partial text) goes worker → Postgres → NOTIFY → SSE → browser, bypassing sync-engine replication; when the run settles, summaries are in Zero and the full event log is in Postgres for the paged trace view.</figcaption>
+        </figure>
+
+        <h3>Repo layout</h3>
+<pre><code>factory/
+  apps/web         Vite + React + Zero client — board, ticket, design review, run trace, approvals inbox, cost
+  apps/api         Node (Hono) — SSE feed, MCP server, intake webhooks, approvals, policy engine, scheduler
+  apps/worker      Node — claims tickets (lease + heartbeat), runs phases via Agent SDK, gates, worktrees, deploy
+  packages/schema  Zero schema + zod types: envelopes, events, policy, questions
+  packages/skills  SKILL.md + subagents for planner / builder / reviewer / librarian / scout
+                   (adapted from mattpocock/skills) — installable into target repos as a plugin
+  packages/mcp     Factory MCP tools: list_tickets, get_run, approve_design, answer_question,
+                   create_ticket, plan_ticket, kick_off
+  infra/           docker-compose: postgres (wal_level=logical), zero-cache, otel body dir</code></pre>
+
+        <h3>Why these choices</h3>
+        <ul>
+          <li><strong>Agent SDK in a worker, not a spawned CLI.</strong> The SDK <em>is</em> the CLI (one <code>query()</code> = one <code>claude</code> subprocess) but gives you typed messages, in-process hooks, <code>canUseTool</code> for approvals and <code>AskUserQuestion</code>, <code>sessionStore</code> to mirror transcripts into Postgres, and <code>interrupt()</code>. Skip Managed Agents (no worktrees, hooks, or prompt capture) and Agent Teams (don't run headlessly).</li>
+          <li><strong>One <code>query()</code> per phase.</strong> Clean per-phase cost, model, effort, tool allowlist, <code>maxTurns</code>, <code>maxBudgetUsd</code>, and a JSON-schema <code>outputFormat</code> for the envelope. Resume the same session for corrections; fork for speculative retries.</li>
+          <li><strong>Zero from zbugs.</strong> Rocicorp's demo <em>is</em> a Linear clone: schema, filtered list query, <kbd>j</kbd>/<kbd>k</kbd> navigation, reactions, and the mutator pattern transfer directly. Zero is 1.9 (1.0 shipped June 2026), self-host only, no offline writes — acceptable for a personal tool on one box.</li>
+          <li><strong>Postgres does triple duty:</strong> Zero's upstream, the event log, and the job queue (<code>SELECT … FOR UPDATE SKIP LOCKED</code> + leases). No Redis until it hurts.</li>
+          <li><strong>Worktrees, not containers,</strong> for local isolation — the field converged there. Containers only when work leaves your machine.</li>
+          <li><strong>Auth: your Max subscription first.</strong> <code>claude setup-token</code> mints a one-year OAuth token that headless sessions accept for model requests. Anthropic's restriction targets third parties offering claude.ai login in <em>their</em> products; personal automation on your own seat isn't addressed either way. Plan windows (5-hour + weekly) can drain overnight, so the worker reads plan usage and <strong>fails over to an API key</strong> per phase — auth is just env on each <code>query()</code>. Subscription sessions also get the 1-hour prompt-cache TTL for free.</li>
+          <li><strong>Harness-neutral spine, Claude-first adapter.</strong> Phases record <code>coding_agent</code>; events use a normalized schema (Vibe Kanban's <code>NormalizedEntry</code> idea). Build the Claude adapter without the abstraction; write the second (Codex CLI is the obvious one — you have it) when it's real. Model routing (Bedrock/Vertex/gateway) keeps the harness; a chat router like OpenRouter is for cheap non-agentic calls (planning critic, dedupe, classification) behind one <code>llm()</code> helper, and later a non-Claude refuter in review.</li>
+        </ul>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="obs">
+        <h2>Observability</h2>
+        <p class="sub">"If you can't measure your agents, you can't improve them." The factory floor: swim lanes per phase, every compiled prompt, every tool call, every dollar — plus the counters that tell you whether a prompt change helped.</p>
+
+        <h3>Where each fact comes from</h3>
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Data</th><th>Authoritative source</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td>Timeline, assistant text, tool_use blocks, subagent tree</td><td>SDK message stream</td><td>only place with <code>parent_tool_use_id</code>, <code>uuid</code>, streamed partials</td></tr>
+            <tr><td>Per-tool duration, gating decisions</td><td><code>PreToolUse</code> / <code>PostToolUse</code> hooks</td><td><code>PostToolUse.duration_ms</code> is the only first-class per-tool duration; hooks can deny/defer</td></tr>
+            <tr><td>Cost and tokens per phase, incl. subagents</td><td><code>result.modelUsage</code></td><td><code>usage</code> excludes subagents; both are estimates — reconcile against the usage API</td></tr>
+            <tr><td>Compiled / effective prompt</td><td>OTel <code>claude_code.api_request_body</code> with <code>OTEL_LOG_RAW_API_BODIES=file:…</code></td><td>or make it deterministic: <code>systemPrompt: {preset, append, excludeDynamicSections}</code></td></tr>
+            <tr><td>Durable, replayable transcript</td><td><code>sessionStore</code> adapter → Postgres</td><td>don't parse <code>~/.claude/projects/*.jsonl</code>; format is internal</td></tr>
+            <tr><td>Join keys</td><td colspan="2"><code>session_id</code> (phase) · <code>prompt_id</code> = OTel <code>prompt.id</code> (turn) · <code>tool_use_id</code> (call) · <code>parent_tool_use_id</code> / <code>agent_id</code> (subagent)</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>Event schema (spine)</h3>
+        <p>Adapted from disler's seven-table schema; column names lean on OTel GenAI vocabulary so exporting later is a rename, not a rewrite.</p>
+<pre><code>runs      (run_id PK, ticket_id, project_id, trigger, worktree, branch, status, terminal_reason,
+           cost_usd, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+           heartbeat_at, pid, started_at, ended_at)
+phases    (phase_id PK, run_id, seq, kind agent|code|human, name, agent, model, effort, session_id,
+           attempt, retries, status queued|running|awaiting_input|success|fail, error,
+           compiled_prompt_ref, cost_usd, tokens…, started_at, ended_at)
+events    (event_id PK, run_id, phase_id, parent_id, type, name, payload jsonb, tokens,
+           started_at, ended_at)            <span class="cm">-- only spanning types (tool_call) fill ended_at</span>
+envelopes (envelope_id PK, phase_id, agent, output_type, payload jsonb, valid, attempt, created_at)
+gates     (gate_id PK, phase_id, attempt, gate, passed, checks jsonb [{item, ok, note}], created_at)
+questions (question_id PK, phase_id, prompt, options jsonb, recommended, answer, asked_at, answered_at)
+prompts   (prompt_id PK, phase_id, session_id, body_ref, sha256, system_prompt_sha, lineage jsonb)
+transcripts (id PK, session_id, seq, entry jsonb, uuid)   <span class="cm">-- sessionStore mirror</span>
+
+<span class="cm">-- event types</span>
+phase_start · agent_start · message · tool_call · question · answer · gate_pass · gate_fail
+· handoff · log · error · agent_end · phase_end
+
+<span class="cm">-- the whole live transport (disler's trick): live tail and history are the same query</span>
+SELECT … FROM events WHERE run_id = $1 AND event_id &gt; $cursor ORDER BY event_id LIMIT 500;</code></pre>
+
+        <h3>Views on the factory floor</h3>
+        <ul>
+          <li><strong>Board</strong> — statuses as columns; cards show delegate, run status, cost so far, "needs you" badge.</li>
+          <li><strong>Ticket</strong> — body, design versions (tabs: review doc / markdown), runs, questions, provenance links, comments.</li>
+          <li><strong>Run trace</strong> — swim lanes per phase (human / planner / builder / reviewer / code gates), tool calls laid out on a time axis, click a lane for its compiled prompt, envelope, gate evidence, cost breakdown. Live while running, identical afterwards.</li>
+          <li><strong>Approvals inbox</strong> — every open Question and gate across projects, answerable in one place (and via MCP from your phone).</li>
+          <li><strong>Cost</strong> — per ticket, phase, model; cache-hit rate; budget burn; spend vs. context occupancy.</li>
+          <li><strong>Metrics</strong> — per-run counters below, sliced by project, ticket type, prompt version.</li>
+        </ul>
+
+        <h3>Counters that tell you whether a change helped</h3>
+        <p><span class="pill">success / terminal_reason</span> <span class="pill">cost per phase</span> <span class="pill">rework loops</span> <span class="pill">human interventions</span> <span class="pill">questions asked</span> <span class="pill">gate pass rate per gate</span> <span class="pill">review findings by lens × severity</span> <span class="pill">refutation rate</span> <span class="pill">tool error rate</span> <span class="pill">cache hit rate</span> <span class="pill">time to Done</span> <span class="pill">tokens per changed line</span></p>
+
+        <h3>Prompt lineage — the third novel piece</h3>
+        <p>Nobody answers "this exact prompt was assembled from CLAUDE.md v7 + these skills + this design v3 + this ticket body." Record it per phase as <code>prompts.lineage</code>: shas of the wiki index, CLAUDE.md, each SKILL.md, the design version, the ticket body, the system-prompt append, plus model/effort. Then a prompt change is an experiment you can compare on the counters above, and a bad run can be replayed.</p>
+        <div class="note"><div class="eyebrow">Hybrid</div>Own the event log and the UI. Optionally dual-export OTel to a self-hosted Langfuse or Phoenix for deep trace debugging and eval datasets — later, and only if the built-in trace view isn't enough.</div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="prov">
+        <h2>Provenance — snapshotting what produced the code</h2>
+        <p class="sub">Your "new Git" instinct, made practical: git keeps versioning code; the factory versions everything upstream of the code and links the two both ways.</p>
+        <p>The minimal scheme that gets you "click any line, see the conversation, design, and review that produced it":</p>
+        <ol>
+          <li><strong>Trailers on every agent commit:</strong> <code>Factory-Ticket: FAC-12</code>, <code>Factory-Run: run_…</code>, <code>Factory-Phase: builder/2</code>, <code>Factory-Design: v3</code>, plus <code>Co-Authored-By</code>. Grep-able forever, survives rebases better than notes.</li>
+          <li><strong>A provenance block in every PR body:</strong> links to the run trace, design version, review findings, handoff note, and cost. Cursor and Copilot both found this is the single biggest review-cost win.</li>
+          <li><strong>Designs are stored, not committed</strong> (your call, and smriti's rule): design versions live in the factory DB; the worker materializes the active design into the worktree at run start (git-ignored path) so agents read it with file tools, and the DB wins when the worktree is gone. The reviewer's spec↔code drift lens reads the design via the factory, not the repo. Commit trailers carry the design version, so the snapshot link survives without polluting the garden.</li>
+          <li><strong>The database keeps the rest:</strong> full transcripts (sessionStore), compiled prompts + lineage, questions and answers, review findings, design versions with your annotations — all keyed by run/phase.</li>
+          <li><strong>Reverse index:</strong> <code>git blame</code> → sha → trailer → run → the whole trail. Optionally mirror a run-summary JSON into <code>git notes</code> so it travels with the repo.</li>
+        </ol>
+        <h3>Where Delta and Cursor Origin fit</h3>
+        <p><strong>Zed Delta</strong> is the closest thing to what you described: DeltaDB captures "the conversation and the worktree together, in real time" — every edit and conversation turn <em>between</em> commits, with comments anchorable to code or chat. But it's explicitly a companion to git ("works with the git repository you already have"), it's in <strong>private beta</strong> as of this month, and there's no public API, license, or pricing yet — its only integration is Delta calling <em>into</em> Claude Code, not tools writing into DeltaDB. <strong>Cursor Origin</strong> turns out to be Cursor's new git-hosting platform (announced two days ago, on a storage engine called Continuity): push-level provenance for repos, not conversation capture.</p>
+        <p>So: build the scheme above now on Postgres + trailers — it's what Amp does today with its <code>Amp-Thread</code> trailer, and what Copilot does by linking commits to session logs — and treat Delta as a possible <em>transcript store</em> behind step 4 once it has an API. Nothing in the linking scheme has to change; only where transcripts live. Worth an experiment in M4, not a dependency.</p>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="policy">
+        <h2>Per-project policy</h2>
+        <p class="sub">The thing you asked for: different apps, different rigor. One file per project, three presets, everything overridable.</p>
+<pre><code><span class="cm"># factory.policy.yaml — lives in the target repo; the factory reads it on every run</span>
+preset: standard                 <span class="cm"># serious | standard | vibe</span>
+gates:
+  design_approval: required      <span class="cm"># required | auto_after: 12h | skip</span>
+  pr_approval: skip              <span class="cm"># required | skip</span>
+  auto_merge: true               <span class="cm"># when review passes and CI is green</span>
+  deploy: auto                   <span class="cm"># auto | manual</span>
+review:
+  lenses: [correctness, security, tests, maintainability]
+  max_fix_loops: 3
+  block_on: important
+models:
+  planner:   {model: opus,   effort: high,  budget_usd: 6}
+  builder:   {model: sonnet, effort: xhigh, budget_usd: 12, max_turns: 80}
+  reviewer:  {model: opus,   effort: high,  budget_usd: 8}
+  librarian: {model: haiku,  effort: low,   budget_usd: 1}
+design:
+  mockups: html                  <span class="cm"># html | figma (only if the design system lives in Figma)</span>
+  storage: factory-db            <span class="cm"># designs are stored, not committed (smriti's rule)</span>
+tools:
+  builder_bash: ["pnpm test*", "pnpm typecheck", "pnpm lint", "pnpm build", "git *", "gh pr *", "xcrun simctl *", "xcodebuild test *"]
+  protected_paths: [".github/**", "factory.policy.yaml", "docs/adr/**"]
+qa:
+  web: playwright                <span class="cm"># playwright | chrome-devtools | none</span>
+  android: emulator              <span class="cm"># emulator (gradle managed devices / adb + maestro) | none</span>
+  ios: none                      <span class="cm"># simulator (xcrun simctl + xcodebuild test) — for the KMP phase</span>
+  database: template             <span class="cm"># template (clone fixtures DB per run) | supabase-branch | none</span>
+access:                          <span class="cm"># who may touch what</span>
+  builder:   [test_db_rw, browser, simulator]
+  reviewer:  [test_db_ro, browser]
+  planner:   []
+  deployer:  [prod_deploy]
+  conductor: [tickets_rw, project_design_rw]   <span class="cm"># applies unattended only on vibe</span>
+commands:
+  test: pnpm test
+  typecheck: pnpm typecheck
+  build: pnpm build
+  deploy: vercel --prod
+  verify: curl -fsS https://app.example.com/health
+budgets:
+  per_ticket_usd: 40
+  stall_timeout_min: 30
+  max_concurrent_runs: 2
+notify: [push]</code></pre>
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Preset</th><th>Gates</th><th>Review</th><th>Models</th><th>Use for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>serious</strong></td><td>design approval + PR approval; manual deploy</td><td>all six lenses; block on important; 3 loops</td><td>Opus builder</td><td>the app that makes money</td></tr>
+            <tr><td><strong>standard</strong></td><td>design approval; auto-merge on green; auto deploy</td><td>four lenses; 3 loops</td><td>Sonnet builder, Opus planner/reviewer</td><td>most projects</td></tr>
+            <tr><td><strong>vibe</strong></td><td>none (design auto-approves after 1h with a critic pass)</td><td>correctness + tests; 2 loops</td><td>Sonnet everywhere</td><td>the vibe-coded app</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p>Borrowed enforcement ideas: <em>autonomy ladder that aborts before acting</em> when a run would exceed its level (Factory.ai); <em>deny-rules as a role definition</em> ("the deployer cannot modify application logic") — easier to trust than a to-do list (Charlie); <em>writes boundary + protected files</em> checked by post-hoc diff with rollback (disler, written after a builder edited its own grader).</p>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="mobile">
+        <h2>Phone &amp; overnight</h2>
+        <p class="sub">Continuity is the requirement: see status and approve from bed; builds keep going after you close the lid.</p>
+        <h3>Phone</h3>
+        <ul>
+          <li><strong>Responsive web first</strong> — the board, approvals inbox, and ticket page must work on a phone from M0; the trace view can be desktop-only for a while.</li>
+          <li><strong>Factory MCP server</strong> (M2) — <code>list_tickets</code>, <code>get_run</code>, <code>approve_design</code>, <code>answer_question</code>, <code>create_ticket</code>, <code>kick_off</code>, <code>plan_ticket</code>. Connect it to the Claude app and your phone becomes a conversational console: "what's blocking FAC-12?", "approve it", or a full grill-me session on the couch with results written back to the ticket. Needs a reachable HTTPS endpoint (Tailscale Funnel or Cloudflare Tunnel from the Mac; trivial once on a box).</li>
+          <li><strong>Claude Code Remote Control</strong> for driving a live desktop session from the phone — covers "continue development on the fly" for interactive planning before the MCP path exists.</li>
+          <li><strong>Push notifications</strong> for Needs-you events (ntfy or similar), deep-linking to the approvals inbox.</li>
+        </ul>
+        <h3>Overnight</h3>
+        <ul>
+          <li>M0–M2: worker on the Mac; <code>caffeinate</code> while runs are active; the scheduler pauses new claims when the machine will sleep.</li>
+          <li>M3: move <code>api</code> + <code>worker</code> + Postgres + zero-cache to an always-on box (Mac mini at home is ideal — iOS builds need macOS anyway; or Fly.io / exe.dev-style host for web-only projects). The interfaces are the same; only <code>cwd</code> and secrets move.</li>
+          <li>Budgets are what make overnight safe: per-phase <code>maxBudgetUsd</code>, per-ticket cap, stall timeout with heartbeat, and a hard cap on concurrent runs. Failure escalates to Needs you with evidence, never retries forever.</li>
+        </ul>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="roadmap">
+        <h2>Roadmap</h2>
+        <p class="sub">Five milestones, each ending in something you'd actually use. Weekend estimates assume nights-and-weekends pace and heavy use of Claude Code to build the factory itself.</p>
+
+        <article class="ms" id="m0">
+          <header><span class="m-id">M0</span><span class="m-name">Thin vertical slice</span><span class="m-when">weekends 1–2</span></header>
+          <p>One ticket goes Backlog → Ready for Design → (planner in your terminal) → Design Review → approve on the web → Ready for Dev → builder in a worktree → PR, while you watch a live run trace.</p>
+          <ul>
+            <li>Scaffold the monorepo; docker-compose Postgres (<code>wal_level=logical</code>) + zero-cache; Zero schema from a zbugs subset (project, ticket, comment, label) plus run/phase/event tables.</li>
+            <li>Web: board (statuses as columns), ticket page (body, design tab, runs tab), run trace (lanes + event feed over SSE), approve button. Keep it usable on a phone.</li>
+            <li>Worker: claim tickets in trigger statuses with a lease; run the <em>builder</em> phase via the Agent SDK in a worktree; hooks → events; <code>modelUsage</code> → cost; envelope + two gates (<code>tests_pass</code>, <code>diff_matches_claims</code>); open the PR with <code>gh</code>.</li>
+            <li>Planner v0 as a <code>/plan FAC-12</code> skill in Claude Code (grilling + design template); it writes design.md to the DB via the API and commits it under <code>docs/designs/</code>; moves the ticket.</li>
+            <li>Policy v0: hard-coded <em>standard</em> preset for one project. Dogfood target: the factory repo itself, or App #1's repo.</li>
+          </ul>
+          <div class="done"><b>Done when</b> you approve a design on the web UI at night and wake up to a PR with evidence, having watched (or replayed) every tool call and the cost.</div>
+        </article>
+
+        <article class="ms" id="m1">
+          <header><span class="m-id">M1</span><span class="m-name">Design review + reviewer loop</span><span class="m-when">weekends 3–4</span></header>
+          <ul>
+            <li>Planner runs as a worker phase (not just terminal): Questions surface in the UI; grill rounds answered there; three-perspective pass.</li>
+            <li><code>review.html</code> generation — the human doc with HTML mockups; inline annotations feed the next round → design v2; approval gate wired to policy.</li>
+            <li>Reviewer with three lenses + refutation; findings side by side; fix loop resumes the builder session; Ready to Merge; PR approval gate.</li>
+            <li>Approvals inbox; push notifications for Needs-you.</li>
+            <li>Verify lane in the builder: Playwright (web) and the Android emulator (Subway Reader) attaching evidence to the PR; per-run template database.</li>
+            <li><strong>Import from smriti's factory.db</strong>: repositories → projects, projects → project designs, tickets + <code>ticket_deps</code> → tickets with blocks/blocked-by. Subway Reader arrives with its 17-ticket DAG intact.</li>
+            <li>Conductor v0: a resumable per-project session with the factory MCP tools that sequences the DAG and keeps the Project Design (in the DB); you talk to it in the terminal.</li>
+            <li>Cost per ticket/phase; stall detection (heartbeat, pid table); provenance trailers on commits + PR block.</li>
+          </ul>
+          <div class="done"><b>Done when</b> a real Subway Reader ticket (start with #40, the Gradle/Compose scaffold that puts an APK on the Boox) ships through plan → build → review → merge with you approving exactly twice — and the Conductor sequenced it.</div>
+        </article>
+
+        <article class="ms" id="m2">
+          <header><span class="m-id">M2</span><span class="m-name">Deploy, librarian, policy, phone</span><span class="m-when">weekends 5–7</span></header>
+          <ul>
+            <li>Deployer phase: merge, deploy command, verify with evidence. Done = live — for Subway Reader that's <code>adb install</code> / sideload to the Boox (Play Store later); for web apps, the usual deploy + health check.</li>
+            <li>Librarian phase + wiki scaffold in target repos (INDEX, CONTEXT.md, ADRs, lessons.md, CHANGELOG); index budget enforced.</li>
+            <li><code>factory.policy.yaml</code> per project with the three presets; onboard a second project with a different preset.</li>
+            <li>Factory MCP server + tunnel; connect the Claude app; plan a ticket — and talk to the Conductor — from your phone.</li>
+            <li>Conductor v1: event-driven design propagation (a shipped ticket updates the Project Design and affected tickets, per policy).</li>
+            <li>Remaining reviewer lenses; per-project lens selection.</li>
+          </ul>
+          <div class="done"><b>Done when</b> you approve a design from your phone in the morning and it's live in prod by evening, with the wiki updated.</div>
+        </article>
+
+        <article class="ms" id="m3">
+          <header><span class="m-id">M3</span><span class="m-name">Overnight autonomy</span><span class="m-when">weekends 8–9</span></header>
+          <ul>
+            <li>Queue + concurrency (N runs), per-ticket budgets, retry policy, escalation to Needs you; scheduler respects sleep.</li>
+            <li>Move api + worker to an always-on box (Mac mini or cloud for web-only projects); secrets and tunnels.</li>
+            <li>Bug intake: webhook (Sentry / in-app "report") → deduped tickets with attachments.</li>
+            <li>Optional OTel export to Langfuse/Phoenix for deep traces.</li>
+          </ul>
+          <div class="done"><b>Done when</b> you queue three tickets before bed and review three PRs after coffee.</div>
+        </article>
+
+        <article class="ms" id="m4">
+          <header><span class="m-id">M4</span><span class="m-name">Provenance, learning, scout</span><span class="m-when">ongoing</span></header>
+          <ul>
+            <li>Prompt lineage capture; run replay; compare counters across prompt versions.</li>
+            <li>Scout agent proposing tickets from lessons.md, review-finding history, and metrics.</li>
+            <li>Spec ↔ code drift check as a reviewer lens using committed designs.</li>
+            <li>Delta (Zed) experiment if the API supports third-party writes — see Provenance.</li>
+            <li>Publish the repo; write the README as if for someone else's factory.</li>
+          </ul>
+          <div class="done"><b>Done when</b> for any line of shipped code you can click back to the conversation, design version, and review that produced it — and the second product has shipped.</div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="risks">
+        <h2>Risks &amp; open questions</h2>
+        <p class="sub">Known unknowns, each with a mitigation or a question for you (with my recommendation).</p>
+        <div class="tbl">
+        <table>
+          <thead><tr><th>Risk</th><th>Why it matters</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Zero is young</td><td>1.0 shipped June 2026; the query/mutator/permissions API changed shape recently; docs and blog posts lag</td><td>Small schema, follow zbugs patterns exactly, pin the version</td></tr>
+            <tr><td>Event firehose</td><td>Thousands of rows per run through sync replication is unproven</td><td>SSE for the live path; summaries + capped tail in Zero; measure in M0</td></tr>
+            <tr><td>Auth for automation</td><td>Subscription tokens work headlessly and are already paid for, but plan windows can drain overnight and Anthropic's terms don't explicitly address personal automation</td><td>Subscription token by default with per-phase failover to an API key; watch plan usage; re-read the terms before publishing the repo</td></tr>
+            <tr><td>Review is the bottleneck</td><td>Practitioners cap at 4–8 concurrent worktrees on <em>review</em>, not compute</td><td>2 concurrent runs by default; invest early in evidence-rich PRs and the approvals inbox</td></tr>
+            <tr><td>Overnight on a laptop</td><td>Sleep kills runs</td><td><code>caffeinate</code> now; always-on box in M3</td></tr>
+            <tr><td>Mobile "Done"</td><td>Subway Reader is Android-first: "live" = sideloaded APK on the Boox, Play Store later; the eventual iOS phase adds App Review (not yours to automate) and needs a Mac</td><td>Per-platform Done in policy: Android = verified APK delivered; iOS later = TestFlight/App Review submitted; Xcode phase keeps a Mac in the loop</td></tr>
+            <tr><td>Trust</td><td>SDK sessions execute a repo's <code>.claude/settings.json</code> hooks and <code>.mcp.json</code> servers without a dialog</td><td>Only your repos; <code>settingSources: ["project"]</code> only for trusted branches</td></tr>
+            <tr><td>Cost drift</td><td>Multi-agent runs use many times the tokens of chat</td><td>Budgets in policy, cache-hit rate on the dashboard, nightly reconcile against the usage API</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <h3>Answered (19 Aug)</h3>
+        <ol>
+          <li><strong>Dogfood:</strong> the factory builds itself from M1; <strong>Subway Reader</strong> is App #1 (imported from smriti with its ticket DAG; entry ticket: the Gradle scaffold that puts an APK on the Boox).</li>
+          <li><strong>Platforms:</strong> Android first (it's what Subway Reader is); web unchanged; iOS when the KMP phase starts.</li>
+          <li><strong>Notifications:</strong> ntfy for M1; the Claude app once MCP is live.</li>
+          <li><strong>Mockups:</strong> HTML wireframes (a 6-screen e-ink mockup set for Subway Reader already exists as an artifact).</li>
+          <li><strong>Designs:</strong> stored in the factory DB, never committed — code is the documentation; the repo keeps only CLAUDE.md/AGENTS.md (+ rare ADRs).</li>
+          <li><strong>The name: Goblin Foundry.</strong> Repo <code>goblin-foundry</code>, CLI <code>goblin</code>, package scope <code>@goblin/</code>. The Conductor is the Foreman.</li>
+        </ol>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="steal">
+        <h2>What to steal, from whom</h2>
+        <p class="sub">The research's short list — verified, and each mapped to a place in this plan.</p>
+        <div class="tbl steal">
+        <table>
+          <thead><tr><th>Source</th><th>Take</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/disler/super-simple-software-factory">disler / SSSF</a></td><td>phase → envelope → gate → correction quartet; the events table + cursor poll; gate evidence <code>{item, ok, note}</code>; <code>processes</code> table for hung runs; writes boundary + protected files; compiled prompts saved before execution. (It runs <code>pi</code>, not Claude Code, and deliberately has no tickets, worktrees, or HITL.)</td></tr>
+            <tr><td><a href="https://github.com/mattpocock/skills">mattpocock / skills</a></td><td>the <code>grilling</code> loop (frontier, rounds, recommended answers), <code>to-spec</code>, <code>implement</code>, two-axis <code>code-review</code>, <code>triage</code> state machine + AGENT-BRIEF, <code>handoff</code>, <code>writing-for-agents</code></td></tr>
+            <tr><td><a href="https://github.com/rocicorp/mono/tree/main/apps/zbugs">rocicorp / zbugs</a></td><td>schema, filtered list query, keyboard nav, mutator wrapping pattern, deployment</td></tr>
+            <tr><td><a href="https://github.com/BloopAI/vibe-kanban">Vibe Kanban</a></td><td><code>NormalizedEntry</code> / <code>ActionType</code> event normalization; the workspace/session split (Apache-2.0, sunsetting — free to mine)</td></tr>
+            <tr><td><a href="https://github.com/gastownhall/beads">Beads</a></td><td><code>discovered-from</code> edge; ready-work projection; atomic claim + lease + heartbeat</td></tr>
+            <tr><td><a href="https://github.com/coleam00/Archon">Archon v0.9</a></td><td>resumable approval nodes inside a DAG; per-node worktree isolation; trigger rules</td></tr>
+            <tr><td><a href="https://linear.app/developers/agents">Linear Agents API</a></td><td>session statuses <code>{pending, active, awaitingInput, complete, error, stale}</code>; activity types; delegate ≠ assignee; status derived from last activity</td></tr>
+            <tr><td>Kiro · spec-kit · BMAD</td><td>EARS acceptance criteria; <code>[NEEDS CLARIFICATION]</code> markers; three named personas + party mode; ~1300-token spec budget</td></tr>
+            <tr><td>Jules · 1Password · Codegen · Factory.ai</td><td>auto-approve timer + planning critic; label-as-trigger; "3 retries then escalate"; autonomy ladder that aborts before acting</td></tr>
+            <tr><td><a href="https://code.claude.com/docs/en/agent-sdk/overview">Claude Code / Agent SDK docs</a></td><td>hooks as gates (exit 2 / deny / defer), <code>sessionStore</code>, <code>modelUsage</code>, OTel raw bodies, worktrees, headless <code>/code-review</code>, auto-memory index pattern</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <section id="sources">
+        <h2>Sources</h2>
+        <p class="sub">Seven research reports produced for this plan (kept in the session scratchpad; ask and I'll publish any of them).</p>
+        <dl class="kv">
+          <dt>01</dt><dd>disler/super-simple-software-factory + hooks-observability deep dive (1.6k lines)</dd>
+          <dt>02</dt><dd>Landscape: ~60 agentic-factory / orchestration / tracker systems, patterns, gaps, data models (2.1k lines)</dd>
+          <dt>03</dt><dd>Rocicorp Zero, zbugs, local-first alternatives</dd>
+          <dt>04</dt><dd>Claude Agent SDK / CLI / Managed Agents; hooks, OTel, sessionStore, HITL; recommended architecture</dd>
+          <dt>05</dt><dd>Observability practices, OTel GenAI status, platforms, metrics, minimal schema</dd>
+          <dt>06</dt><dd>Methodology: grill-me, spec-driven dev, review lenses, builder DoD, librarian workflow — with templates</dd>
+          <dt>07</dt><dd>Provenance: Zed Delta / DeltaDB, Cursor Origin, commit ↔ conversation linking prior art (Amp trailers, Copilot session links, git notes, OpenSpec)</dd>
+        </dl>
+        <p class="small">Key external references: <a href="https://zero.rocicorp.dev/docs">Zero docs</a> · <a href="https://code.claude.com/docs/en/agent-sdk/overview">Agent SDK</a> · <a href="https://code.claude.com/docs/en/monitoring-usage">Claude Code monitoring</a> · <a href="https://www.aihero.dev/skills-grill-me">grill me</a> · <a href="https://kiro.dev/docs/specs">Kiro specs / EARS</a> · <a href="https://github.com/github/spec-kit">spec-kit</a> · <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD</a> · <a href="https://metr.org/blog/2026-02-24-uplift-update/">METR uplift update</a> · <a href="https://1password.com/blog/agent-driven-design-system">1Password agent-driven design system</a></p>
+      </section>
+
+      <div class="foot">Goblin Foundry · blueprint v1.0 draft · 19 Aug 2026. Named. v0.3: Subway Reader (Android/Boox) confirmed as App #1, designs stored in the factory DB not the repo (smriti's "paper trail is stored, not linked"), smriti named as predecessor with a data-import path, Android emulator added to the Verify lane, ntfy + HTML mockups locked, name narrowed to the foundry family.</div>
+    </main>
+  </div>
+</div>

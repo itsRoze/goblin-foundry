@@ -1,0 +1,21 @@
+{
+  "name": "goblin-foundry",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:nuke": "docker compose -f infra/docker-compose.yml down -v",
+    "db:psql": "docker compose -f infra/docker-compose.yml exec -e PGPASSWORD=goblin postgres psql -U goblin -d factory",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "tsx": "^4.20.6",
+    "@types/node": "^22.18.0"
+  }
+}

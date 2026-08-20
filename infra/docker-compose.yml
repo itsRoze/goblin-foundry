@@ -1,0 +1,33 @@
+# Goblin Foundry — local infrastructure.
+# Postgres does triple duty: Zero's upstream, the event log, and the job queue.
+# zero-cache is NOT in here: it needs the compiled Zero schema from packages/schema,
+# so it runs from the workspace (`just zero`) instead. See docs/DECISIONS.md.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: goblin-postgres
+    restart: unless-stopped
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c hot_standby=on
+      -c hot_standby_feedback=on
+    environment:
+      POSTGRES_USER: goblin
+      POSTGRES_PASSWORD: goblin
+      POSTGRES_DB: factory
+    ports:
+      - "6432:5432"
+    volumes:
+      - goblin-pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goblin -d factory"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  goblin-pgdata:
