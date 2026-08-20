@@ -21,6 +21,15 @@ type Probe = { status: string; db: string } | { unreachable: true } | { broken: 
 export function useHealth(intervalMs = 10_000): Health {
   const connection = useConnectionState();
   const [probe, setProbe] = useState<Probe | null>(null);
+  // "Connecting" is only healthy for a moment. A client wedged on a blocked
+  // IndexedDB never reaches `disconnected`, so watching only for that state
+  // reports green while nothing syncs at all.
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    if (connection.name === 'connected') { setStuck(false); return; }
+    const timer = setTimeout(() => setStuck(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [connection.name]);
 
   useEffect(() => {
     let live = true;
@@ -62,6 +71,14 @@ export function useHealth(intervalMs = 10_000): Health {
     return {
       ok: false, label: 'not syncing',
       detail: `zero-cache is not connected (${reason})`,
+      recover: () => location.reload(),
+      recoverLabel: 'reload',
+    };
+  }
+  if (stuck && connection.name === 'connecting') {
+    return {
+      ok: false, label: 'not syncing',
+      detail: 'the sync client has been connecting for a while — if it never settles, close every tab on this origin and open one fresh',
       recover: () => location.reload(),
       recoverLabel: 'reload',
     };

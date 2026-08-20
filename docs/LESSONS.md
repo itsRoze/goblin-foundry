@@ -79,3 +79,10 @@ Things that bit us while building the factory. Newest last.
   `zero.connection.connect()` returns without error and without reconnecting —
   `online` stays false. Only a reload recovers, which is why the offline bar
   offers exactly that.
+- **Never clear Zero's IndexedDB while a tab is open.** Chrome defers the delete
+  until every connection closes, so each surviving tab blocks the others and the
+  client stalls in its local-read phase — the console shows
+  `Connection attempt timed out … reading deleted clients`, and zero-cache logs
+  *nothing*, because no socket is ever opened. Close every tab on the origin,
+  then open one. Diagnosing this from the server costs an hour: the replica, the
+  CVR and the API all look perfectly healthy, because they are.
