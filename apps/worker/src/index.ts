@@ -1,5 +1,8 @@
 import { hostname } from 'node:os';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as db from './db.ts';
+import { shortRevision } from './git.ts';
 import { sweepStalledRuns } from './reaper.ts';
 import { runPipeline } from './sequencer.ts';
 
@@ -29,7 +32,8 @@ let stopping = false;
 process.on('SIGINT', () => { stopping = true; });
 process.on('SIGTERM', () => { stopping = true; });
 
-console.log(`goblin worker awake${ONCE ? ' (single claim)' : ''}`);
+const revision = await shortRevision(dirname(fileURLToPath(import.meta.url)));
+console.log(`goblin worker awake${ONCE ? ' (single claim)' : ''} (rev ${revision})`);
 do {
   const worked = await tick();
   if (ONCE) break;

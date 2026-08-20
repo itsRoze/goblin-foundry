@@ -26,6 +26,12 @@ export async function git(repo: string, ...args: string[]): Promise<Exec> {
   return sh('git', args, repo);
 }
 
+/** Short git revision of `cwd`'s checkout, or 'unknown' if it can't be read. */
+export async function shortRevision(cwd: string): Promise<string> {
+  const { code, stdout } = await git(cwd, 'rev-parse', '--short', 'HEAD');
+  return code === 0 ? stdout.trim() : 'unknown';
+}
+
 export type Worktree = { path: string; branch: string; baseSha: string };
 
 /**
