@@ -237,7 +237,7 @@
 
 <div class="wrap">
   <header class="masthead">
-    <div class="eyebrow">The blueprint · v1.0 draft · 19 Aug 2026 · research + three rounds of answers · all questions resolved</div>
+    <div class="eyebrow">The blueprint · v1.1 · 20 Aug 2026 · M0 shipped — the factory has built its own tickets</div>
     <h1>Goblin Foundry</h1>
     <p class="lede"><strong>Goblin Foundry</strong> is your agentic software factory: a Linear-fast ticket system on Zero, a crew of Claude agents — goblins — that take a ticket from idea to <em>deployed</em>, and a foundry floor where you can watch every prompt, tool call, and dollar. You qualify the work in the evening; the goblins hammer through the night; you inspect the castings from your phone over coffee.</p>
     <div class="facts">
@@ -926,7 +926,7 @@ notify: [push]</code></pre>
         <p class="sub">Five milestones, each ending in something you'd actually use. Weekend estimates assume nights-and-weekends pace and heavy use of Claude Code to build the factory itself.</p>
 
         <article class="ms" id="m0">
-          <header><span class="m-id">M0</span><span class="m-name">Thin vertical slice</span><span class="m-when">weekends 1–2</span></header>
+          <header><span class="m-id">M0</span><span class="m-name">Thin vertical slice</span><span class="pill ok">SHIPPED 20 Aug 2026</span><span class="m-when">built in ~2 days</span></header>
           <p>One ticket goes Backlog → Ready for Design → (planner in your terminal) → Design Review → approve on the web → Ready for Dev → builder in a worktree → PR, while you watch a live run trace.</p>
           <ul>
             <li>Scaffold the monorepo; docker-compose Postgres (<code>wal_level=logical</code>) + zero-cache; Zero schema from a zbugs subset (project, ticket, comment, label) plus run/phase/event tables.</li>
@@ -935,7 +935,7 @@ notify: [push]</code></pre>
             <li>Planner v0 as a <code>/plan FAC-12</code> skill in Claude Code (grilling + design template); it writes design.md to the DB via the API and commits it under <code>docs/designs/</code>; moves the ticket.</li>
             <li>Policy v0: hard-coded <em>standard</em> preset for one project. Dogfood target: the factory repo itself, or App #1's repo.</li>
           </ul>
-          <div class="done"><b>Done when</b> you approve a design on the web UI at night and wake up to a PR with evidence, having watched (or replayed) every tool call and the cost.</div>
+          <div class="done"><b>Shipped.</b> 26 commits on <code>m0/thin-slice</code>; the pipeline then built three of the factory's own tickets to Done (gate-helper tests, j/k board navigation, multi-phase sequencer — the last two merged as PRs #1–#2 from <code>goblin/fac-*</code> branches), with per-run cost recorded ($0.74–$5.21). Pulled forward from later milestones: provenance trailers on agent commits, a stalled-run reaper with "3 retries then escalate," a multi-phase sequencer, secret-scrubbed agent subprocesses, and a PreToolUse worktree guard — added after the first unguarded run <code>cat</code>'d <code>.env</code> within a minute. Deviations from plan, with reasons, live in <code>docs/DECISIONS.md</code>; scars in <code>docs/LESSONS.md</code> (Zero 1.9's legacy-ZQL trap being the expensive one). Backlog already holds the first M1 tickets: planner-as-phase, questions-to-the-board, a design-quality gate.</div>
         </article>
 
         <article class="ms" id="m1">
@@ -1059,7 +1059,7 @@ notify: [push]</code></pre>
         <p class="small">Key external references: <a href="https://zero.rocicorp.dev/docs">Zero docs</a> · <a href="https://code.claude.com/docs/en/agent-sdk/overview">Agent SDK</a> · <a href="https://code.claude.com/docs/en/monitoring-usage">Claude Code monitoring</a> · <a href="https://www.aihero.dev/skills-grill-me">grill me</a> · <a href="https://kiro.dev/docs/specs">Kiro specs / EARS</a> · <a href="https://github.com/github/spec-kit">spec-kit</a> · <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD</a> · <a href="https://metr.org/blog/2026-02-24-uplift-update/">METR uplift update</a> · <a href="https://1password.com/blog/agent-driven-design-system">1Password agent-driven design system</a></p>
       </section>
 
-      <div class="foot">Goblin Foundry · blueprint v1.0 draft · 19 Aug 2026. Named. v0.3: Subway Reader (Android/Boox) confirmed as App #1, designs stored in the factory DB not the repo (smriti's "paper trail is stored, not linked"), smriti named as predecessor with a data-import path, Android emulator added to the Verify lane, ntfy + HTML mockups locked, name narrowed to the foundry family.</div>
+      <div class="foot">Goblin Foundry · blueprint v1.1 · 20 Aug 2026. M0 shipped; M1 is next: planner as a phase, questions on the board, the reviewer loop, smriti import, and Subway Reader. v0.3: Subway Reader (Android/Boox) confirmed as App #1, designs stored in the factory DB not the repo (smriti's "paper trail is stored, not linked"), smriti named as predecessor with a data-import path, Android emulator added to the Verify lane, ntfy + HTML mockups locked, name narrowed to the foundry family.</div>
     </main>
   </div>
 </div>
