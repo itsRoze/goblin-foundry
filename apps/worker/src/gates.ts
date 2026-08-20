@@ -1,13 +1,15 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { report, type BuildOutput, type GateCheck, type GateReport } from '@goblin/schema';
+import { report, type BuildOutput, type EnvelopeBase, type GateCheck, type GateReport } from '@goblin/schema';
 import { changedFiles, shell } from './git.ts';
 
 /**
  * Gates verify claims, never predictions: they run after the fact, against the
- * envelope's own declarations, and a green gate says what it verified.
+ * envelope's own declarations, and a green gate says what it verified. Each
+ * phase declares its own gates — a builder gate reads BuildOutput fields a
+ * reviewer gate would not have.
  */
-export type Gate = (env: BuildOutput, ctx: GateContext) => Promise<GateReport>;
+export type Gate<E extends EnvelopeBase = BuildOutput> = (env: E, ctx: GateContext) => Promise<GateReport>;
 export type GateContext = { worktree: string; base: string; testCommand: string };
 
 export const tests_pass: Gate = async (_env, ctx) => {
@@ -48,5 +50,3 @@ export const diff_matches_claims: Gate = async (env, ctx) => {
   }
   return report('diff_matches_claims', checks);
 };
-
-export const GATES: Gate[] = [tests_pass, diff_matches_claims];

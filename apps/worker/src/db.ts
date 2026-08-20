@@ -6,7 +6,7 @@ export const sql: Sql = connect();
 export type Claim = {
   runId: string; ticketId: string; projectId: string; shortId: number;
   title: string; body: string; repoPath: string; defaultBranch: string;
-  policy: Policy; designId: string | null; designMarkdown: string | null;
+  policy: Policy; designId: string | null; designMarkdown: string | null; trigger: string;
 };
 
 const LEASE_MS = 2 * 60_000;
@@ -58,7 +58,7 @@ export async function claim(kind: string, host: string, pid: number): Promise<Cl
       runId, ticketId: row.ticket_id, projectId: row.project_id, shortId: row.short_id,
       title: row.title, body: row.body, repoPath: row.repo_path,
       defaultBranch: row.default_branch, policy: row.policy,
-      designId: row.design_id, designMarkdown: row.design_markdown,
+      designId: row.design_id, designMarkdown: row.design_markdown, trigger: kind,
     };
   });
 }
