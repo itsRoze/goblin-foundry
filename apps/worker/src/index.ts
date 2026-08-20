@@ -1,5 +1,6 @@
 import { hostname } from 'node:os';
 import * as db from './db.ts';
+import { TRIGGER_PIPELINES } from './pipelines.ts';
 import { sweepStalledRuns } from './reaper.ts';
 import { runPipeline } from './sequencer.ts';
 
@@ -11,10 +12,16 @@ async function tick(): Promise<boolean> {
   // Close out anything a dead worker left running before taking new work.
   await sweepStalledRuns(hostname(), process.pid).catch(e => console.error('reaper', e));
 
-  const claim = await db.claim('ready_for_dev', hostname(), process.pid);
+  // Trigger statuses in declaration order: a design waiting to be written is
+  // worth starting before the next build, because you are the one it waits for.
+  let claim: db.Claim | undefined;
+  for (const [trigger, pipeline] of Object.entries(TRIGGER_PIPELINES)) {
+    claim = await db.claim(trigger, hostname(), process.pid, pipeline!.working, pipeline!.delegate);
+    if (claim) break;
+  }
   if (!claim) return false;
 
-  console.log(`claimed FAC-${claim.shortId} "${claim.title}" as ${claim.runId}`);
+  console.log(`claimed FAC-${claim.shortId} "${claim.title}" from ${claim.trigger} as ${claim.runId}`);
   const beat = setInterval(() => { void db.heartbeat(claim.runId).catch(() => {}); }, HEARTBEAT_MS);
   try {
     const outcome = await runPipeline(claim);

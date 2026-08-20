@@ -16,7 +16,10 @@ function fakeSpec(name: string): PhaseSpec {
 }
 
 function fakePipeline(...names: string[]): Pipeline {
-  return { phases: names.map(fakeSpec), success: 'in_review', worktree: 'fresh' };
+  return {
+    phases: names.map(fakeSpec), working: 'building', delegate: 'builder',
+    success: 'in_review', worktree: 'fresh',
+  };
 }
 
 test('pipelineFor() finds the pipeline registered for a trigger status kind', () => {

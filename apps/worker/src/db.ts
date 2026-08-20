@@ -15,7 +15,9 @@ const LEASE_MS = 2 * 60_000;
  * Atomically take one ticket sitting in a trigger status and open a run for it.
  * `FOR UPDATE SKIP LOCKED` plus a lease is what lets a second worker exist later.
  */
-export async function claim(kind: string, host: string, pid: number): Promise<Claim | undefined> {
+export async function claim(
+  kind: string, host: string, pid: number, working: string, delegate: string,
+): Promise<Claim | undefined> {
   return sql.begin(async tx => {
     const [row] = await tx<{
       ticket_id: string; project_id: string; short_id: number; title: string; body: string;
@@ -48,10 +50,12 @@ export async function claim(kind: string, host: string, pid: number): Promise<Cl
                               lease_expires_at, heartbeat_at, pid, host)
              values (${runId}, ${row.ticket_id}, ${row.project_id}, ${row.design_id}, ${kind},
                      'running', now() + ${`${LEASE_MS} milliseconds`}::interval, now(), ${pid}, ${host})`;
-    const [building] = await tx<{ id: string }[]>`
-      select id from status where project_id = ${row.project_id} and kind = 'building'`;
-    if (building) {
-      await tx`update ticket set status_id = ${building.id}, delegate = 'builder', updated_at = now()
+    // The ticket moves to the pipeline's working status — designing for the
+    // planner, building for the builder — so nothing else claims it meanwhile.
+    const [inProgress] = await tx<{ id: string }[]>`
+      select id from status where project_id = ${row.project_id} and kind = ${working}`;
+    if (inProgress) {
+      await tx`update ticket set status_id = ${inProgress.id}, delegate = ${delegate}, updated_at = now()
                where id = ${row.ticket_id}`;
     }
     return {
@@ -225,4 +229,25 @@ export async function setAwaitingInput(runId: string, phaseId: string, waiting: 
   const status = waiting ? 'awaiting_input' : 'running';
   await sql`update run set status = ${status} where id = ${runId} and status in ('running','awaiting_input')`;
   await sql`update phase set status = ${status} where id = ${phaseId} and status in ('running','awaiting_input')`;
+}
+
+// ── Designs: stored, never committed ─────────────────────────────────────────
+
+/** The next version for this ticket, superseding any draft still in review. */
+export async function createDesign(
+  ticketId: string, markdown: string, reviewHtml: string | null, createdBy: string,
+): Promise<{ id: string; version: number }> {
+  const [row] = await sql<{ max: number | null }[]>`
+    select max(version) as max from design where ticket_id = ${ticketId}`;
+  const version = (row?.max ?? 0) + 1;
+  const id = newId('dsg');
+  await sql`update design set status = 'superseded'
+            where ticket_id = ${ticketId} and status in ('draft','in_review')`;
+  await sql`insert into design (id, ticket_id, version, status, markdown, review_html, created_by)
+            values (${id}, ${ticketId}, ${version}, 'in_review', ${markdown}, ${reviewHtml}, ${createdBy})`;
+  return { id, version };
+}
+
+export async function setRunDesign(runId: string, designId: string) {
+  await sql`update run set design_id = ${designId} where id = ${runId}`;
 }

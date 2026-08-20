@@ -14,17 +14,19 @@ const MAX_STALL_REQUEUES = 3;
 
 type Stalled = {
   id: string; ticket_id: string; project_id: string; worktree: string | null;
-  host: string | null; pid: number | null; idle_min: number; stall_min: number;
+  trigger: string; host: string | null; pid: number | null; idle_min: number; stall_min: number;
 };
 
 export async function sweepStalledRuns(host: string, pid: number): Promise<number> {
   const stalled = await sql<Stalled[]>`
-    select r.id, r.ticket_id, r.project_id, r.worktree, r.host, r.pid,
+    select r.id, r.ticket_id, r.project_id, r.worktree, r.trigger, r.host, r.pid,
            round(extract(epoch from (now() - r.heartbeat_at)) / 60) as idle_min,
            coalesce((p.policy->'budgets'->>'stallTimeoutMin')::int, 30) as stall_min
     from run r
     join project p on p.id = r.project_id
-    where r.status = 'running'
+    -- A run parked on a question still heartbeats, so it is only swept here
+    -- once the worker driving it is genuinely gone.
+    where r.status in ('running','awaiting_input')
       and r.heartbeat_at is not null
       and r.heartbeat_at < now() - make_interval(
             mins => coalesce((p.policy->'budgets'->>'stallTimeoutMin')::int, 30))
@@ -54,8 +56,9 @@ export async function sweepStalledRuns(host: string, pid: number): Promise<numbe
       where ticket_id = ${run.ticket_id} and status = 'fail'`;
     const count = failures?.count ?? 0;
     if (count < MAX_STALL_REQUEUES) {
+      // Back to the status it was claimed from, whatever that was.
       const [ready] = await sql<{ id: string }[]>`
-        select id from status where project_id = ${run.project_id} and kind = 'ready_for_dev'`;
+        select id from status where project_id = ${run.project_id} and kind = ${run.trigger}`;
       if (ready) {
         await sql`update ticket set status_id = ${ready.id}, delegate = null, updated_at = now()
                   where id = ${run.ticket_id}`;

@@ -34,11 +34,14 @@ export type PhaseSpec<E extends EnvelopeBase = EnvelopeBase> = {
 };
 
 /**
- * An ordered list of phases, the status kind a ticket moves to once every
- * phase succeeds, and how the run obtains its worktree.
+ * An ordered list of phases, the status kind a ticket sits in while they run,
+ * the kind it moves to once every phase succeeds, and how the run obtains its
+ * worktree. `delegate` is the goblin the board shows on the card meanwhile.
  */
 export type Pipeline = {
   phases: PhaseSpec<any>[];
+  working: StatusKind;
+  delegate: string;
   success: StatusKind;
   worktree: WorktreeMode;
 };
