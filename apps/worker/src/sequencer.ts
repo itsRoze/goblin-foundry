@@ -1,6 +1,6 @@
 import type { EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
-import { addWorktree, removeWorktree, type Worktree } from './git.ts';
+import { addWorktree, attachWorktree, removeWorktree, type Worktree } from './git.ts';
 import {
   keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
   type PhaseAttempt, type PhaseContext, type PhaseSpec, type Pipeline,
@@ -9,8 +9,9 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 
 async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
   if (pipeline.worktree === 'none') return null;
-  if (pipeline.worktree === 'attached') throw new Error('attached worktrees are not implemented yet');
-  const worktree = await addWorktree(claim.repoPath, branch, claim.defaultBranch);
+  const worktree = pipeline.worktree === 'attached'
+    ? await attachWorktree(claim.repoPath, branch, claim.defaultBranch)
+    : await addWorktree(claim.repoPath, branch, claim.defaultBranch);
   await db.setRunBranch(claim.runId, worktree.path, branch);
   await db.event({ runId: claim.runId, type: 'log', name: 'worktree',
                    payload: { path: worktree.path, branch, base: claim.defaultBranch, base_sha: worktree.baseSha } });

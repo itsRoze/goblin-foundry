@@ -46,7 +46,36 @@ export const planOutput = envelopeBase.extend({
 });
 export type PlanOutput = z.infer<typeof planOutput>;
 
-export const ENVELOPES = { GenericOutput: envelopeBase, BuildOutput: buildOutput, PlanOutput: planOutput };
+/** One lens's verdict on one requirement — never merged into a single ranking. */
+export const finding = z.object({
+  lens: z.string(),
+  requirement: z.string(),
+  met: z.boolean(),
+  evidence: z.string().default(''),
+  severity: z.enum(['important', 'nit', 'pre-existing']).default('nit'),
+  refuted: z.boolean().default(false),
+  refutation: z.string().default(''),
+});
+export type Finding = z.infer<typeof finding>;
+
+export const reviewOutput = envelopeBase.extend({
+  lenses_run: z.array(z.string()).default([]),
+  findings: z.array(finding).default([]),
+  verdict: z.enum(['approve', 'changes_requested']),
+});
+export type ReviewOutput = z.infer<typeof reviewOutput>;
+
+/** What still blocks after refutation: unmet, important, and not refuted. */
+export function blockingFindings(env: ReviewOutput, blockOn: 'important' | 'nit'): Finding[] {
+  return env.findings.filter(f =>
+    !f.met && !f.refuted &&
+    (f.severity === 'important' || (blockOn === 'nit' && f.severity === 'nit')));
+}
+
+export const ENVELOPES = {
+  GenericOutput: envelopeBase, BuildOutput: buildOutput,
+  PlanOutput: planOutput, ReviewOutput: reviewOutput,
+};
 export type EnvelopeName = keyof typeof ENVELOPES;
 
 /** Draft-07 JSON Schema for the Agent SDK's `outputFormat`. */

@@ -48,6 +48,32 @@ export async function addWorktree(repo: string, branch: string, base: string): P
   return { path, branch, baseSha: sha.stdout.trim() };
 }
 
+/**
+ * A worktree on a branch that already exists — what the reviewer needs, since
+ * the build that produced the branch removed its worktree on the way out. The
+ * branch is never reset here: its commits are the thing under review.
+ */
+export async function attachWorktree(repo: string, branch: string, base: string): Promise<Worktree> {
+  const path = join(repo, '.goblin', 'worktrees', branch.replace(/\//g, '-'));
+  await mkdir(join(repo, '.goblin', 'worktrees'), { recursive: true });
+  await excludeGoblinDir(repo);
+  const exists = await git(repo, 'rev-parse', '--verify', `refs/heads/${branch}`);
+  if (exists.code !== 0) throw new Error(`branch ${branch} does not exist in ${repo}`);
+  const listed = await git(repo, 'worktree', 'list', '--porcelain');
+  if (!listed.stdout.includes(`worktree ${path}\n`)) {
+    await git(repo, 'worktree', 'prune');
+    const add = await git(repo, 'worktree', 'add', path, branch);
+    if (add.code !== 0) throw new Error(`git worktree add failed: ${add.stderr.trim()}`);
+  }
+  // The diff under review is the branch's own work: everything since it left
+  // the base branch, not everything the base branch has done since.
+  const merged = await git(path, 'merge-base', 'HEAD', base);
+  const baseSha = merged.code === 0 && merged.stdout.trim()
+    ? merged.stdout.trim()
+    : (await git(path, 'rev-parse', 'HEAD')).stdout.trim();
+  return { path, branch, baseSha };
+}
+
 export async function removeWorktree(repo: string, path: string) {
   await git(repo, 'worktree', 'remove', '--force', path);
 }
@@ -109,6 +135,11 @@ export async function commitAll(worktree: string, message: string, t: Trailers, 
 export async function hasCommitsSince(worktree: string, baseSha: string): Promise<boolean> {
   const { stdout } = await git(worktree, 'rev-list', '--count', `${baseSha}..HEAD`);
   return Number(stdout.trim()) > 0;
+}
+
+/** Pushes the branch as it stands; the pull request already exists. */
+export async function pushBranch(worktree: string, branch: string): Promise<Exec> {
+  return git(worktree, 'push', 'origin', branch);
 }
 
 export async function hasRemote(repo: string): Promise<boolean> {

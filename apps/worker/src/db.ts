@@ -36,6 +36,12 @@ export async function claim(
         order by version desc limit 1
       ) d on true
       where s.kind = ${kind}
+        -- A pipeline whose ticket stays in its trigger status (review) would
+        -- otherwise be re-claimed forever after a failure. Moving the card at
+        -- all bumps updated_at, which is how you say "try again".
+        and not exists (
+          select 1 from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
+            and r2.status = 'fail' and r2.ended_at > t.updated_at)
         and not exists (
           select 1 from run r where r.ticket_id = t.id
             and r.status in ('running','queued','awaiting_input')
@@ -263,4 +269,23 @@ export async function latestDesign(ticketId: string): Promise<PriorDesign | unde
 
 export async function setRunDesign(runId: string, designId: string) {
   await sql`update run set design_id = ${designId} where id = ${runId}`;
+}
+
+// ── Resuming an earlier agent ────────────────────────────────────────────────
+
+/** The builder session that produced this ticket's branch, if it still exists. */
+export async function lastBuilderSession(ticketId: string): Promise<string | null> {
+  const [row] = await sql<{ session_id: string | null }[]>`
+    select p.session_id from phase p
+    join run r on r.id = p.run_id
+    where r.ticket_id = ${ticketId} and p.agent = 'builder' and p.session_id is not null
+    order by p.started_at desc limit 1`;
+  return row?.session_id ?? null;
+}
+
+/** The next free phase number in a run — for phases a phase decides to open. */
+export async function nextPhaseSeq(runId: string): Promise<number> {
+  const [row] = await sql<{ max: number | null }[]>`
+    select max(seq) as max from phase where run_id = ${runId}`;
+  return (row?.max ?? 0) + 1;
 }

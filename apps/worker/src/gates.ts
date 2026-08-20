@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  report, type BuildOutput, type EnvelopeBase, type GateCheck, type GateReport, type PlanOutput,
+  blockingFindings, report,
+  type BuildOutput, type EnvelopeBase, type GateCheck, type GateReport,
+  type PlanOutput, type ReviewOutput,
 } from '@goblin/schema';
 import { changedFiles, shell } from './git.ts';
 
@@ -12,7 +14,12 @@ import { changedFiles, shell } from './git.ts';
  * reviewer gate would not have.
  */
 export type Gate<E extends EnvelopeBase = BuildOutput> = (env: E, ctx: GateContext) => Promise<GateReport>;
-export type GateContext = { worktree: string; base: string; testCommand: string };
+export type GateContext = {
+  worktree: string; base: string; testCommand: string;
+  /** Review gates only: the lenses this project's policy asks for. */
+  lenses?: string[];
+  blockOn?: 'important' | 'nit';
+};
 
 export const tests_pass: Gate = async (_env, ctx) => {
   if (!ctx.testCommand) {
@@ -157,4 +164,42 @@ export const verdict_consistent: Gate<PlanOutput> = async env => {
     ok: env.status !== 'success' || open.length === 0,
     note: open.length ? `${open.length} open: ${open.slice(0, 3).join(' | ')}` : 'none',
   }]);
+};
+
+// ── Review gates: the verdict has to match the findings ──────────────────────
+
+/**
+ * A review that says "approve" while a blocking finding stands is the one
+ * failure a reviewer must never make, so it is checked rather than trusted.
+ */
+export const review_verdict_consistent: Gate<ReviewOutput> = async (env, ctx) => {
+  const blocking = blockingFindings(env, ctx.blockOn ?? 'important');
+  const checks: GateCheck[] = [{
+    item: 'verdict matches the findings',
+    ok: (env.verdict === 'approve') === (blocking.length === 0),
+    note: `verdict ${env.verdict} with ${blocking.length} blocking finding(s)`,
+  }];
+  for (const f of env.findings) {
+    checks.push({
+      item: `evidence: ${f.lens} — ${f.requirement.slice(0, 60)}`,
+      ok: f.met || f.evidence.trim().length > 0,
+      note: f.met ? 'met' : f.evidence.trim() ? f.evidence.slice(0, 120) : 'unmet with no evidence',
+    });
+  }
+  return report('review_verdict_consistent', checks);
+};
+
+/** Every lens the policy asks for has to have actually looked. */
+export const lens_coverage: Gate<ReviewOutput> = async (env, ctx) => {
+  const wanted = ctx.lenses ?? [];
+  const ran = new Set(env.lenses_run.map(l => l.toLowerCase()));
+  const checks = wanted.map(lens => ({
+    item: `lens: ${lens}`,
+    ok: ran.has(lens.toLowerCase()),
+    note: ran.has(lens.toLowerCase())
+      ? `${env.findings.filter(f => f.lens.toLowerCase() === lens.toLowerCase()).length} finding(s)`
+      : 'never ran',
+  }));
+  if (!checks.length) checks.push({ item: 'lenses', ok: true, note: 'policy asks for none' });
+  return report('lens_coverage', checks);
 };
