@@ -104,3 +104,11 @@ Things that bit us while building the factory. Newest last.
   local IndexedDB phase, and the only fix is tab hygiene: close *every* tab on
   the origin — including ones from an older dev server on the same port — and
   open exactly one.
+- **The worktree guard read `/**` as a path and denied the tool call.** A
+  reviewer running `node -e` with a JSDoc comment in it — and its refuter
+  subagents — were denied twice, after which the agent gave up and wrote its
+  findings as prose instead of the report JSON, so the phase failed on an
+  invalid envelope with a perfectly good review inside it. The token scan now
+  requires a path to start with a real character, and denials are worth watching
+  for exactly this reason: a false positive does not look like a guard problem
+  from the outside, it looks like an agent that cannot follow instructions.

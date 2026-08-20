@@ -33,6 +33,9 @@ export function checkTool(tool: string, input: unknown, worktree: string, protec
     for (const token of command.match(/(?:^|[\s='"`])(\/[^\s'"`;|&)]+)/g) ?? []) {
       const path = token.trim().replace(/^["'=`]/, '');
       if (!isAbsolute(path)) continue;
+      // `/**` in a comment or a glob is not a path, and denying it stops an
+      // agent mid-sentence for writing JSDoc. A path names something.
+      if (!/^\/[A-Za-z0-9._~+-]/.test(path)) continue;
       if (within(resolve(path), root)) continue;
       if (ALLOWED_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) continue;
       return { reason: `command reaches ${path}, outside the worktree ${root}` };
