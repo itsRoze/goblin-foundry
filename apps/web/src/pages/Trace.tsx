@@ -54,7 +54,7 @@ export function Trace({ runId }: { runId: string }) {
         <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>{run.status}</span>
         {run.terminalReason && <span className="pill">{run.terminalReason}</span>}
         <span className="pill">{run.branch ?? 'no branch'}</span>
-        <span className="pill">{usd(run.costUsd)}</span>
+        <span className="pill" title="Client-side estimate at API list prices. On a subscription, runs draw down plan windows, not dollars.">{usd(run.costUsd)} est.</span>
         <span className="pill">{duration((run.endedAt ?? Date.now()) - run.startedAt)}</span>
         <span className="pill">{events.length} events</span>
       </div>
@@ -99,7 +99,7 @@ export function Trace({ runId }: { runId: string }) {
           <dl className="kv">
             <dt>model</dt><dd>{phase.model ?? '—'} {phase.effort ? `· ${phase.effort}` : ''}</dd>
             <dt>session</dt><dd className="mono">{phase.sessionId ?? '—'}</dd>
-            <dt>cost</dt><dd>{usd(phase.costUsd)} · {phase.inputTokens} in / {phase.outputTokens} out / {phase.cacheReadTokens} cached</dd>
+            <dt>cost (est.)</dt><dd>{usd(phase.costUsd)} · {phase.inputTokens} in / {phase.outputTokens} out / {phase.cacheReadTokens} cached</dd>
             <dt>turns</dt><dd>{phase.numTurns}</dd>
             {phase.error && <><dt>error</dt><dd style={{ color: 'var(--bad)' }}>{phase.error}</dd></>}
           </dl>
