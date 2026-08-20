@@ -192,3 +192,7 @@ export async function loadTranscript(sessionId: string, subpath: string) {
     where session_id = ${sessionId} and subpath = ${subpath} order by id`;
   return rows.length ? rows.map(r => r.entry) : null;
 }
+
+export async function clearDelegate(ticketId: string) {
+  await sql`update ticket set delegate = null, updated_at = now() where id = ${ticketId}`;
+}

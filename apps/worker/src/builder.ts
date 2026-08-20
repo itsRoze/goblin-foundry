@@ -160,9 +160,10 @@ async function finish(
   await db.updatePhase(phaseId, { status: status === 'success' ? 'success' : 'fail', error: status === 'fail' ? reason : null });
   await db.event({ runId: claim.runId, phaseId, type: 'phase_end', name: 'builder', payload: { status, reason } });
   await db.finishRun(claim.runId, status, reason);
-  await db.moveTicket(claim.ticketId, claim.projectId,
-    status === 'success' ? 'in_review' : 'ready_for_dev',
-    status === 'success' ? 'reviewer' : null);
+  // A failed run leaves the ticket in `building` with the failure attached: it
+  // needs you, and moving it back to the queue would just re-claim it forever.
+  if (status === 'success') await db.moveTicket(claim.ticketId, claim.projectId, 'in_review', null);
+  else await db.clearDelegate(claim.ticketId);
   // `-p` runs never clean up their worktrees; keep failures around to inspect.
   if (status === 'success' && worktree) await removeWorktree(claim.repoPath, worktree);
 }

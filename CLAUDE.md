@@ -19,12 +19,28 @@ Research behind it is in `docs/research/`. Milestone scope is `docs/prompts/m0-k
 
 ## Commands
 
-    just up          start Postgres (docker) and wait for it
-    just down        stop Postgres · just nuke  stop and delete all data
-    just psql        psql into the factory database
-    pnpm install     install workspace deps
-    pnpm typecheck   typecheck every package
-    pnpm test        run every package's tests
+    just up             start Postgres (docker) and wait for it
+    just migrate        apply pending SQL migrations · just seed  seed the factory project
+    just reset          nuke + up + migrate + seed
+    just zero           run zero-cache (must run from the repo root)
+    just api            the API: SSE feed, designs, approvals, /zero/query
+    just web            the web UI on :5173
+    just work           the worker: claim ready_for_dev tickets and build them
+    just work-once      claim and build exactly one ticket, then exit
+    just install-skills link packages/skills into .claude/skills so /plan works here
+    just psql           psql into the factory database
+    pnpm typecheck      typecheck every package
+    pnpm test           run every package's tests
+
+Bring the whole thing up in four terminals: `just up` once, then `just zero`,
+`just api`, `just web`, and `just work` when you want the goblins awake.
+
+## The loop
+
+`/plan <ticket>` in your own terminal writes a design into the factory and moves
+the ticket to Design Review. Approve it in the web UI and the ticket lands in
+Ready for Dev; the worker claims it, builds it in a worktree, runs the gates, and
+moves it to In Review with a branch (and a PR once the project has a remote).
 
 ## House rules
 
