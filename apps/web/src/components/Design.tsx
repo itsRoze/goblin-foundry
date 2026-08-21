@@ -88,7 +88,7 @@ export function Design({ design, onDecided }: {
         )}
       </div>
 
-      {error && <div className="ask-error">{error}</div>}
+      {error && !sendingBack && <div className="ask-error">{error}</div>}
 
       {view === 'review' && review
         ? <iframe className="review" title={`Design v${design.version}`} sandbox="" srcDoc={sandboxedReviewDoc(review)} />
