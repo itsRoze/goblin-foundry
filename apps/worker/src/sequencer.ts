@@ -28,7 +28,7 @@ async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: stri
   // and pay to rebuild it; the retry continues from where the last one stopped.
   const resuming = pipeline.worktree === 'attached'
     || (pipeline.worktree === 'fresh' && await hasBranchWork(claim.repoPath, branch, claim.defaultBranch));
-  const worktree = resuming
+  let worktree = resuming
     ? await attachWorktree(claim.repoPath, branch, claim.defaultBranch)
     : await addWorktree(claim.repoPath, branch, claim.defaultBranch);
   if (resuming && pipeline.worktree === 'fresh') {
@@ -43,9 +43,14 @@ async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: stri
     const caught = await mergeBaseInto(worktree.path, claim.defaultBranch);
     await db.event({
       runId: claim.runId, type: caught.ok ? 'log' : 'error', name: 'catch up with base',
-      payload: { base: claim.defaultBranch, merged: caught.merged, conflicts: caught.conflicts },
+      payload: { base: claim.defaultBranch, merged: caught.merged, conflicts: caught.conflicts,
+                 base_sha: caught.baseSha ?? worktree.baseSha },
     });
     if (!caught.ok) throw new BaseConflict(caught.conflicts);
+    // The diff gates measure against this commit. Catching up moves it: without
+    // this, everything the base added since reads as an undeclared change by
+    // the agent, and a correct fix is failed for work it never did.
+    if (caught.baseSha) worktree = { ...worktree, baseSha: caught.baseSha };
   }
   await db.setRunBranch(claim.runId, worktree.path, branch);
   await db.event({ runId: claim.runId, type: 'log', name: 'worktree',

@@ -114,11 +114,16 @@ export async function attachWorktree(repo: string, branch: string, base: string)
  */
 export async function mergeBaseInto(
   worktree: string, base: string,
-): Promise<{ ok: boolean; merged: boolean; conflicts: string[] }> {
+): Promise<{ ok: boolean; merged: boolean; conflicts: string[]; baseSha?: string }> {
   const behind = await git(worktree, 'rev-list', '--count', `HEAD..${base}`);
   if (Number(behind.stdout.trim() || 0) === 0) return { ok: true, merged: false, conflicts: [] };
   const merge = await git(worktree, 'merge', '--no-edit', base);
-  if (merge.code === 0) return { ok: true, merged: true, conflicts: [] };
+  if (merge.code === 0) {
+    // The base is now an ancestor, so it is the commit the diff gates should
+    // measure this branch's own work against.
+    const sha = await git(worktree, 'rev-parse', base);
+    return { ok: true, merged: true, conflicts: [], baseSha: sha.stdout.trim() };
+  }
   const conflicted = await git(worktree, 'diff', '--name-only', '--diff-filter=U');
   await git(worktree, 'merge', '--abort');
   return {

@@ -188,3 +188,10 @@ Things that bit us while building the factory. Newest last.
 - **A worktree needs its own install after a dependency change.** Merging a
   branch that added a package leaves the worktree's node_modules behind, and
   typecheck fails on a module that is genuinely in package.json.
+- **Catching a branch up with its base makes the diff gates fail the agent for
+  the base's work.** `diff_matches_claims` measures the worktree against the
+  base commit pinned when the worktree was created; merging the base in moves
+  every file the base changed into that diff, where it reads as an undeclared
+  change the agent never mentioned. A correct review fix — tests green — was
+  failed for `.gitattributes` and nine files it had never opened, and the run
+  died at $17.87. Catching up must move the pinned base commit with it.
