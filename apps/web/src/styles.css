@@ -34,6 +34,14 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
 .topbar .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.09em;
   text-transform:uppercase; color:var(--muted); }
 .topbar .spacer { margin-left:auto; }
+.topbar .inbox-link {
+  display:inline-flex; align-items:center; gap:6px; color:var(--ink); font-weight:500;
+  padding:4px 2px; min-height:44px;
+}
+.topbar .inbox-link .badge {
+  font-family:"IBM Plex Mono",monospace; font-size:11px; color:#fff; background:var(--accent);
+  border-radius:999px; padding:1px 7px; line-height:1.5;
+}
 
 /* The board being empty and the backend being gone look identical otherwise. */
 .offline {
@@ -175,3 +183,85 @@ code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
 .annotation { display:flex; gap:10px; align-items:baseline; padding:4px 0; }
 .annotation .when { font-size:11px; color:var(--muted); margin-left:auto; }
 .muted { color:var(--muted); font-size:13px; padding:2px 0 6px; }
+
+/* The inbox: everything waiting on you, across every project. */
+.inbox-section { margin-bottom: 22px; }
+.inbox-section h3 {
+  display:flex; align-items:center; gap:8px; font-size:12.5px; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--muted); margin:0 0 8px;
+}
+.inbox-section h3 .count {
+  font-family:"IBM Plex Mono",monospace; color:var(--ink); background:var(--surface-2);
+  border-radius:999px; padding:1px 8px; font-size:11px;
+}
+.inbox-section-head {
+  display:flex; width:100%; align-items:center; justify-content:space-between; gap:8px;
+  background:none; border:none; padding:8px 0; cursor:pointer; text-align:left; min-height:44px;
+}
+.inbox-row {
+  display:block; width:100%; text-align:left; background:var(--surface); color:inherit;
+  border:1px solid var(--line); border-radius:8px; padding:11px 13px; margin-bottom:8px;
+  cursor:pointer; box-shadow:var(--shadow); min-height:44px;
+}
+.inbox-row.stale { opacity:.65; }
+.inbox-row-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.inbox-row-top .age { color:var(--muted); font-size:11.5px; margin-left:auto; }
+.inbox-row .title { font-weight:500; margin:5px 0 3px; }
+.inbox-row-sub { font-size:13px; color:var(--muted); }
+.inbox-row-foot { display:flex; gap:10px; align-items:center; margin-top:7px; font-size:12px; flex-wrap:wrap; }
+
+.inbox-row.handled { cursor:default; opacity:.7; font-size:13px; }
+
+.inbox-expanded { position:relative; margin-top:8px; }
+.inbox-expanded-top { display:flex; align-items:center; gap:12px; margin:16px 0 10px; min-height:44px; }
+
+/* A note sheet: a bottom sheet on a phone, a centered modal on desktop —
+   never the browser's own prompt(). */
+.sheet-backdrop {
+  position:fixed; inset:0; z-index:40; background:rgba(20,33,61,.45);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.sheet {
+  width:100%; max-width:520px; background:var(--surface); border-radius:14px 14px 0 0;
+  padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:10px;
+}
+.sheet textarea {
+  width:100%; min-height:90px; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
+  background:var(--surface); color:var(--ink); font:inherit; font-size:14px; resize:vertical;
+}
+@media (min-width: 640px) {
+  .sheet-backdrop { align-items:center; }
+  .sheet { border-radius:12px; }
+}
+
+/*
+ * Below the breakpoint, the expanded item is sized against the *dynamic*
+ * viewport minus its own two bars (100dvh, not a fixed vh fraction) so a tall
+ * review document does not produce a second scrollbar fighting the page's.
+ * The flex body is the ONE scrolling region for text content; when it holds
+ * an iframe (.has-frame) the body itself stops scrolling and the iframe's own
+ * document becomes that one region instead — never both at once.
+ */
+@media (max-width: 720px) {
+  .inbox-expanded {
+    position:fixed; inset:0; z-index:30; background:var(--bg);
+    display:flex; flex-direction:column; height:100dvh;
+  }
+  .inbox-expanded-top {
+    flex:0 0 auto; background:var(--bg); padding:10px 14px; margin:0;
+    border-bottom:1px solid var(--line);
+  }
+  .inbox-expanded-body {
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  }
+  .inbox-expanded-body.has-frame {
+    overflow:hidden; padding:0; display:flex; flex-direction:column;
+  }
+  .inbox-expanded-body.has-frame .panel {
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+    border-radius:0; border:none; overflow:hidden;
+  }
+  .inbox-expanded-body.has-frame .review { flex:1 1 auto; min-height:0; height:auto; }
+  .inbox-expanded-body.has-frame .md { flex:1 1 auto; min-height:0; overflow-y:auto; }
+}

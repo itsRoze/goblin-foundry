@@ -5,21 +5,24 @@ export type Route =
   | { name: 'board' }
   | { name: 'ticket'; key: string; shortId: number }
   | { name: 'ticket-legacy'; shortId: number }
-  | { name: 'run'; runId: string };
+  | { name: 'run'; runId: string }
+  | { name: 'inbox'; itemId?: string };
 
 export function parse(hash: string): Route {
-  const path = hash.replace(/^#/, '');
-  const canonical = /^\/([A-Za-z][A-Za-z0-9]*-\d+)$/.exec(path);
-  if (canonical) {
-    const ref = parseRef(canonical[1]!);
-    if (ref) return { name: 'ticket', key: ref.key, shortId: ref.shortId };
-  }
+  const path = hash.replace(/^#\//, '');
   // The pre-ref-migration link shape: resolves only when exactly one project
   // has that number, and rewrites itself to canonical form when it does.
-  const legacy = /^\/t\/(\d+)$/.exec(path);
+  const legacy = /^t\/(\d+)$/.exec(path);
   if (legacy) return { name: 'ticket-legacy', shortId: Number(legacy[1]) };
-  const run = /^\/r\/(.+)$/.exec(path);
+  const run = /^r\/(.+)$/.exec(path);
   if (run) return { name: 'run', runId: run[1]! };
+  // A deep link's item id is already prefixed by kind (round:/approval:/stuck:),
+  // so one route carries it and the inbox infers the kind from the prefix.
+  const inbox = /^inbox(?:\/(.+))?$/.exec(path);
+  if (inbox) return { name: 'inbox', itemId: inbox[1] };
+  // parseRef() is the ref grammar's one definition — no second regex here.
+  const ref = parseRef(path);
+  if (ref) return { name: 'ticket', key: ref.key, shortId: ref.shortId };
   return { name: 'board' };
 }
 
@@ -37,4 +40,6 @@ export const href = {
   board: '#/',
   ticket: (key: string, shortId: number) => `#/${formatRef(key, shortId)}`,
   run: (runId: string) => `#/r/${runId}`,
+  inbox: '#/inbox',
+  inboxItem: (itemId: string) => `#/inbox/${itemId}`,
 };

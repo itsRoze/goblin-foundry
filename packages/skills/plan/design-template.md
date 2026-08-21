@@ -1,7 +1,7 @@
 # Design: <ticket title>
 
 **Status:** ready-for-development
-**Ticket:** FAC-<n>
+**Ticket:** <ref> <!-- the ticket's own project key and number, e.g. FAC-10 -->
 
 ## Problem Statement
 

@@ -10,7 +10,7 @@ export const queries = defineQueries({
   statuses: defineQuery(() => b.status.where('enabled', true).orderBy('sortOrder', 'asc')),
 
   board: defineQuery(() =>
-    b.ticket.related('project')
+    b.ticket.related('project').related('status')
       .related('runs', r => r.orderBy('startedAt', 'desc').limit(1)
         .related('questions', q => q.where('answeredAt', 'IS', null)))),
 
@@ -30,10 +30,30 @@ export const queries = defineQueries({
       .limit(5);
   }),
 
-  /** Everything waiting on you: unanswered questions, newest first. */
+  /**
+   * The inbox's rounds: every unanswered question, with its phase (for the
+   * asking agent's name), its run and, through the run, its ticket and the
+   * ticket's project.
+   */
   openQuestions: defineQuery(() =>
     b.question.where('answeredAt', 'IS', null).orderBy('askedAt', 'desc')
-      .related('run', r => r.related('ticket'))),
+      .related('phase')
+      .related('run', r => r.related('ticket', t => t.related('project')))),
+
+  /** The inbox's approvals: every design still awaiting a decision. */
+  pendingApprovals: defineQuery(() =>
+    b.design.where('status', 'in_review').orderBy('createdAt', 'desc')
+      .related('ticket', t => t.related('project'))),
+
+  /**
+   * The inbox's stuck candidates: every ticket with its status, its project,
+   * and its single most recent run — rooted at the ticket with a one-run
+   * limit, the same shape as `board`, so a ticket restarted after a canceled
+   * run is judged on the run that replaced it, never the one it replaced.
+   */
+  stuckCandidates: defineQuery(() =>
+    b.ticket.related('project').related('status')
+      .related('runs', r => r.orderBy('startedAt', 'desc').limit(1))),
 
   run: defineQuery(z.object({ runId: z.string() }), ({ args }) =>
     b.run.where('id', args.runId)
