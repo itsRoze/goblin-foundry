@@ -52,8 +52,8 @@ function LegacyTicket({ shortId }: { shortId: number }) {
 export function App() {
   const route = useRoute();
   const health = useHealth();
-  const sections = useInboxSections();
-  const count = inboxCount(sections);
+  const { sections, loading } = useInboxSections();
+  const count = loading ? 0 : inboxCount(sections);
   return (
     <>
       <header className="topbar">

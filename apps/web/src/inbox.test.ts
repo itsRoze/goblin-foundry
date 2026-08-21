@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TRIGGER_STAGES } from '@goblin/schema';
 import {
-  approvalsFrom, inboxCount, isStale, roundsFrom, sectionize, stuckFrom,
+  approvalsFrom, groupByPhase, inboxCount, isStale, roundsFrom, sectionize, stuckFrom,
   type QuestionRow, type StuckTicketRow,
 } from './inbox.ts';
 
@@ -19,6 +19,16 @@ function question(over: Partial<QuestionRow> & { phaseId: string; askedAt: numbe
     ...over,
   };
 }
+
+// ── groupByPhase() ───────────────────────────────────────────────────────────
+
+test('groupByPhase() is the one grouping rule — same phase together, different phases apart', () => {
+  const groups = groupByPhase([
+    { phaseId: 'ph_1', v: 'a' }, { phaseId: 'ph_2', v: 'b' }, { phaseId: 'ph_1', v: 'c' },
+  ]);
+  assert.equal(groups.length, 2);
+  assert.deepEqual(groups.find(g => g[0]!.phaseId === 'ph_1')!.map(x => x.v), ['a', 'c']);
+});
 
 // ── Round grouping ─────────────────────────────────────────────────────────
 
@@ -93,6 +103,22 @@ test('isStale() is false while the run is running or awaiting input', () => {
   }
 });
 
+// ── Approvals ────────────────────────────────────────────────────────────
+
+test('approvalsFrom() drops a design whose ticket or project has not synced yet', () => {
+  const approvals = approvalsFrom([
+    { id: 'd1', version: 1, status: 'in_review', markdown: 'x', createdAt: 1, ticket: null },
+  ]);
+  assert.equal(approvals.length, 0);
+});
+
+test('approvalsFrom() carries the notes array through, not just a count', () => {
+  const [approval] = approvalsFrom([
+    { id: 'd1', version: 2, status: 'in_review', markdown: 'x', createdAt: 1, notes: [{ note: 'a' }, { note: 'b' }], ticket: ticket() },
+  ]);
+  assert.equal(approval!.notes.length, 2);
+});
+
 // ── Stuck predicate ─────────────────────────────────────────────────────────
 
 const proj = { id: 'proj_1', key: 'FAC' };
@@ -135,10 +161,16 @@ test('stuckFrom() does not flag a ticket the reaper already requeued', () => {
   assert.equal(stuck.length, 0);
 });
 
-test('stuckFrom() judges a restarted ticket on its newest run only, not an older canceled one', () => {
+test('stuckFrom() judges a restarted ticket on its newest run only, never an older canceled one — even when both are present in .runs', () => {
+  // .runs[0] is what the ticket-rooted, one-run-limit query hands back (newest
+  // first); an older canceled run at .runs[1] proves stuckFrom looks only at
+  // the head of the array and never falls through to an earlier entry.
   const stuck = stuckFrom([stuckTicket({
     status: { kind: 'designing' },
-    runs: [{ id: 'run_2', status: 'running', trigger: 'ready_for_design', costUsd: 1, startedAt: 5 }],
+    runs: [
+      { id: 'run_2', status: 'running', trigger: 'ready_for_design', costUsd: 1, startedAt: 5 },
+      { id: 'run_1', status: 'canceled', trigger: 'ready_for_design', costUsd: 1, startedAt: 1, endedAt: 2 },
+    ],
   })], TRIGGER_STAGES);
   assert.equal(stuck.length, 0);
 });
@@ -165,6 +197,38 @@ test('stuckFrom() names the status a ticket returns to as the project names it',
   assert.equal(stuck[0]!.returnsToName, 'Ready for Design');
 });
 
+// ── sectionize(): the fixed order each section is shown in ─────────────────────
+
+test('sectionize() orders Blocking a run longest-parked first — a parked run costs money every minute', () => {
+  const rounds = roundsFrom([
+    question({ phaseId: 'ph_new', askedAt: 500 }),
+    question({ phaseId: 'ph_old', askedAt: 100 }),
+    question({ phaseId: 'ph_mid', askedAt: 300 }),
+  ]);
+  const sections = sectionize(rounds, [], []);
+  assert.deepEqual(sections.blocking.map(r => r.phaseId), ['ph_old', 'ph_mid', 'ph_new']);
+});
+
+test('sectionize() orders Waiting newest-submitted first', () => {
+  const approvals = approvalsFrom([
+    { id: 'd_old', version: 1, status: 'in_review', markdown: '', createdAt: 100, ticket: ticket() },
+    { id: 'd_new', version: 1, status: 'in_review', markdown: '', createdAt: 300, ticket: ticket() },
+    { id: 'd_mid', version: 1, status: 'in_review', markdown: '', createdAt: 200, ticket: ticket() },
+  ]);
+  const sections = sectionize([], approvals, []);
+  assert.deepEqual(sections.waiting.map(a => a.designId), ['d_new', 'd_mid', 'd_old']);
+});
+
+test('sectionize() orders Stuck newest-failure first', () => {
+  const stuck = stuckFrom([
+    stuckTicket({ id: 'tk_old', runs: [{ id: 'r', status: 'fail', trigger: 'ready_for_design', costUsd: 1, startedAt: 1, endedAt: 100 }] }),
+    stuckTicket({ id: 'tk_new', runs: [{ id: 'r', status: 'fail', trigger: 'ready_for_design', costUsd: 1, startedAt: 1, endedAt: 300 }] }),
+    stuckTicket({ id: 'tk_mid', runs: [{ id: 'r', status: 'fail', trigger: 'ready_for_design', costUsd: 1, startedAt: 1, endedAt: 200 }] }),
+  ], TRIGGER_STAGES);
+  const sections = sectionize([], [], stuck);
+  assert.deepEqual(sections.stuck.map(s => s.ticketId), ['tk_new', 'tk_mid', 'tk_old']);
+});
+
 // ── The shared count ─────────────────────────────────────────────────────────
 
 test('inboxCount() counts rounds, approvals and stuck, and excludes stale', () => {
@@ -172,7 +236,7 @@ test('inboxCount() counts rounds, approvals and stuck, and excludes stale', () =
     question({ phaseId: 'ph_live', askedAt: 1, run: { id: 'r1', status: 'awaiting_input', costUsd: 0, ticket: ticket() } }),
     question({ phaseId: 'ph_dead', askedAt: 2, run: { id: 'r2', status: 'fail', costUsd: 0, ticket: ticket() } }),
   ]);
-  const approvals = approvalsFrom([{ id: 'd1', version: 1, markdown: '', createdAt: 1, ticket: ticket() }]);
+  const approvals = approvalsFrom([{ id: 'd1', version: 1, status: 'in_review', markdown: '', createdAt: 1, ticket: ticket() }]);
   const stuck = stuckFrom([stuckTicket({})], TRIGGER_STAGES);
 
   const sections = sectionize(rounds, approvals, stuck);

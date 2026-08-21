@@ -1,29 +1,53 @@
-import { useState } from 'react';
-import { marked } from 'marked';
+import { useMemo, useState } from 'react';
 import { href } from '../router.ts';
 import { ago, usd } from '../format.ts';
+import { api } from '../api.ts';
 import { useInboxSections } from '../useInbox.ts';
-import type { Approval, Round, Stuck } from '../inbox.ts';
+import { isStale, type Approval, type Round, type Stuck } from '../inbox.ts';
+import { Questions, type QuestionCard } from '../components/Questions.tsx';
+import { Design, type DesignRecord } from '../components/Design.tsx';
 
 type Item = Round | Approval | Stuck;
+type Handled = { id: string; label: string };
 
 /**
- * Everything waiting on the operator, across every project, in one list. This
- * slice is read-only: rows expand to show the thing they are, but answering a
- * round, approving a design and retrying a stuck ticket ship as the inbox's
- * next slice — see docs/design's sequencing.
+ * Everything waiting on the operator, across every project, in one list.
+ * Sections are pure display of apps/web/src/inbox.ts's derivation; every
+ * action goes through the shared Questions/Design components or the stuck
+ * item's own retry/backlog controls, each one request per apps/api/src/db.ts's
+ * one-transaction endpoints.
  */
 export function Inbox({ itemId }: { itemId?: string }) {
-  const sections = useInboxSections();
+  const { sections, loading } = useInboxSections();
   const [staleOpen, setStaleOpen] = useState(false);
+  const [handled, setHandled] = useState<Handled[]>([]);
+  const handledIds = useMemo(() => new Set(handled.map(h => h.id)), [handled]);
 
-  const all: Item[] = [...sections.blocking, ...sections.waiting, ...sections.stuck, ...sections.stale];
-  const expanded = itemId ? all.find(i => i.id === itemId) : undefined;
-  const missing = Boolean(itemId) && !expanded;
-  const total = sections.blocking.length + sections.waiting.length + sections.stuck.length + sections.stale.length;
-
-  const open = (id: string) => { location.hash = href.inboxItem(id); };
   const close = () => { location.hash = href.inbox; };
+  const markHandled = (id: string, label: string) => {
+    setHandled(h => [{ id, label }, ...h]);
+    close();
+  };
+
+  if (loading) {
+    return (
+      <div className="page inbox">
+        <h2 style={{ fontSize: 28, margin: '2px 0 8px' }}>Inbox</h2>
+        <div className="panel muted">Loading…</div>
+      </div>
+    );
+  }
+
+  const blocking = sections.blocking.filter(r => !handledIds.has(r.id));
+  const waiting = sections.waiting.filter(a => !handledIds.has(a.id));
+  const stuck = sections.stuck.filter(s => !handledIds.has(s.id));
+  const stale = sections.stale.filter(r => !handledIds.has(r.id));
+  const total = blocking.length + waiting.length + stuck.length + stale.length;
+
+  const all: Item[] = [...blocking, ...waiting, ...stuck, ...stale];
+  const expanded = itemId ? all.find(i => i.id === itemId) : undefined;
+  const missing = Boolean(itemId) && !expanded && !handledIds.has(itemId!);
+  const open = (id: string) => { location.hash = href.inboxItem(id); };
 
   return (
     <div className="page inbox">
@@ -31,41 +55,50 @@ export function Inbox({ itemId }: { itemId?: string }) {
 
       {missing && <div className="panel muted" style={{ marginBottom: 12 }}>That item is no longer waiting.</div>}
 
-      {total === 0 ? (
+      {total === 0 && !handled.length ? (
         <div className="panel">
           <p>Nothing needs you.</p>
           <a className="btn ghost" href={href.board}>Back to the board</a>
         </div>
       ) : (
         <>
-          {sections.blocking.length > 0 && (
+          {blocking.length > 0 && (
             <section className="inbox-section">
-              <h3>Blocking a run <span className="count">{sections.blocking.length}</span></h3>
-              {sections.blocking.map(r => <RoundRow key={r.id} round={r} onOpen={open} />)}
+              <h3>Blocking a run <span className="count">{blocking.length}</span></h3>
+              {blocking.map(r => <RoundRow key={r.id} round={r} onOpen={open} />)}
             </section>
           )}
 
-          {sections.waiting.length > 0 && (
+          {waiting.length > 0 && (
             <section className="inbox-section">
-              <h3>Waiting <span className="count">{sections.waiting.length}</span></h3>
-              {sections.waiting.map(a => <ApprovalRow key={a.id} approval={a} onOpen={open} />)}
+              <h3>Waiting <span className="count">{waiting.length}</span></h3>
+              {waiting.map(a => <ApprovalRow key={a.id} approval={a} onOpen={open} />)}
             </section>
           )}
 
-          {sections.stuck.length > 0 && (
+          {stuck.length > 0 && (
             <section className="inbox-section">
-              <h3>Stuck <span className="count">{sections.stuck.length}</span></h3>
-              {sections.stuck.map(s => <StuckRow key={s.id} stuck={s} onOpen={open} />)}
+              <h3>Stuck <span className="count">{stuck.length}</span></h3>
+              {stuck.map(s => <StuckRow key={s.id} stuck={s} onOpen={open} />)}
             </section>
           )}
 
-          {sections.stale.length > 0 && (
+          {stale.length > 0 && (
             <section className="inbox-section">
               <button className="inbox-section-head" onClick={() => setStaleOpen(o => !o)}>
-                <h3>Stale <span className="count">{sections.stale.length}</span></h3>
+                <h3>Stale <span className="count">{stale.length}</span></h3>
                 <span className="mono muted">{staleOpen ? 'hide' : 'show'}</span>
               </button>
-              {staleOpen && sections.stale.map(r => <RoundRow key={r.id} round={r} stale onOpen={open} />)}
+              {staleOpen && stale.map(r => <RoundRow key={r.id} round={r} stale onOpen={open} />)}
+            </section>
+          )}
+
+          {handled.length > 0 && (
+            <section className="inbox-section">
+              <h3>Handled just now <span className="count">{handled.length}</span></h3>
+              {handled.map(h => (
+                <div key={h.id} className="inbox-row handled">{h.label}</div>
+              ))}
             </section>
           )}
         </>
@@ -78,10 +111,11 @@ export function Inbox({ itemId }: { itemId?: string }) {
             <span className="mono">{expanded.ticketRef}</span>
             <span className="spacer" />
           </div>
-          <div className="inbox-expanded-body">
-            {expanded.kind === 'round' && <RoundDetail round={expanded} />}
-            {expanded.kind === 'approval' && <ApprovalDetail approval={expanded} />}
-            {expanded.kind === 'stuck' && <StuckDetail stuck={expanded} />}
+          <div className={`inbox-expanded-body${expanded.kind === 'approval' ? ' has-frame' : ''}`}>
+            {expanded.kind === 'round' && !isStale(expanded) && <RoundDetail round={expanded} onHandled={markHandled} />}
+            {expanded.kind === 'round' && isStale(expanded) && <StaleRoundDetail round={expanded} onHandled={markHandled} />}
+            {expanded.kind === 'approval' && <ApprovalDetail approval={expanded} onHandled={markHandled} />}
+            {expanded.kind === 'stuck' && <StuckDetail stuck={expanded} onHandled={markHandled} />}
           </div>
         </div>
       )}
@@ -130,9 +164,9 @@ function ApprovalRow({ approval, onOpen }: { approval: Approval; onOpen: (id: st
       </div>
       <div className="title">{approval.ticketTitle}</div>
       <div className="inbox-row-sub">{excerpt(approval.reviewHtml || approval.markdown)}</div>
-      {approval.notesCount > 0 && (
+      {approval.notes.length > 0 && (
         <div className="inbox-row-foot">
-          <span className="mono">{approval.notesCount} note{approval.notesCount === 1 ? '' : 's'}</span>
+          <span className="mono">{approval.notes.length} note{approval.notes.length === 1 ? '' : 's'}</span>
         </div>
       )}
     </button>
@@ -156,46 +190,110 @@ function StuckRow({ stuck, onOpen }: { stuck: Stuck; onOpen: (id: string) => voi
   );
 }
 
-function RoundDetail({ round }: { round: Round }) {
+function toQuestionCards(round: Round): QuestionCard[] {
+  return round.questions.map(q => ({
+    id: q.id,
+    phaseId: q.phaseId,
+    header: q.header,
+    prompt: q.prompt ?? '',
+    options: q.options ?? [],
+    multiSelect: q.multiSelect ?? false,
+    askedAt: q.askedAt,
+    answeredAt: q.answeredAt ?? null,
+  }));
+}
+
+function RoundDetail({ round, onHandled }: { round: Round; onHandled: (id: string, label: string) => void }) {
   return (
-    <div className="panel asks">
+    <Questions
+      questions={toQuestionCards(round)}
+      title={`${round.agent || 'A goblin'} needs you`}
+      onSent={(count, sentExcerpt) =>
+        onHandled(round.id, `${round.ticketRef} · answered ${count} · "${sentExcerpt.slice(0, 40)}"`)}
+    />
+  );
+}
+
+function StaleRoundDetail({ round, onHandled }: { round: Round; onHandled: (id: string, label: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const dismiss = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.dismissRound(round.phaseId);
+      onHandled(round.id, `${round.ticketRef} · dismissed`);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="panel asks stale">
       <div className="asks-head">
-        <span className="pill human">awaiting input</span>
-        <strong>{round.agent || 'A goblin'} needs you</strong>
-        <span className="mono round-count">0/{round.questions.length} answered</span>
+        <span className="pill bad">run ended</span>
+        <strong>Answering this round would reach nobody</strong>
       </div>
       {round.questions.map(q => (
         <div className="ask" key={q.id}>
           {q.header && <div className="ask-header mono">{q.header}</div>}
           <div className="ask-prompt">{q.prompt}</div>
-          {q.options && q.options.length > 0 && (
-            <ul className="checks">
-              {q.options.map(o => <li key={o.label}>{o.label}{o.description ? ` — ${o.description}` : ''}</li>)}
-            </ul>
-          )}
         </div>
       ))}
-      <div className="muted" style={{ marginTop: 10 }}>Answering ships in the next slice — read-only for now.</div>
-    </div>
-  );
-}
-
-function ApprovalDetail({ approval }: { approval: Approval }) {
-  return (
-    <div className="panel">
-      <div className="design-head">
-        <strong>v{approval.version}</strong>
-        <span className="pill human">in review</span>
+      {error && <div className="ask-error">{error}</div>}
+      <div className="asks-foot">
+        <button className="btn ghost" disabled={busy} onClick={() => void dismiss()}>Dismiss</button>
       </div>
-      {approval.reviewHtml
-        ? <iframe className="review" title={`Design v${approval.version}`} sandbox="" srcDoc={approval.reviewHtml} />
-        : <div className="md" dangerouslySetInnerHTML={{ __html: marked.parse(approval.markdown) as string }} />}
-      <div className="muted" style={{ marginTop: 10 }}>Approve and send back ship in the next slice — read-only for now.</div>
     </div>
   );
 }
 
-function StuckDetail({ stuck }: { stuck: Stuck }) {
+function toDesignRecord(approval: Approval): DesignRecord {
+  return {
+    id: approval.designId, version: approval.version, status: approval.status,
+    markdown: approval.markdown, reviewHtml: approval.reviewHtml, notes: approval.notes,
+  };
+}
+
+function ApprovalDetail({ approval, onHandled }: { approval: Approval; onHandled: (id: string, label: string) => void }) {
+  return (
+    <Design
+      design={toDesignRecord(approval)}
+      onDecided={(outcome, note) => onHandled(
+        approval.id,
+        outcome === 'approved'
+          ? `${approval.ticketRef} · approved v${approval.version}`
+          : `${approval.ticketRef} · sent back · "${note.slice(0, 40)}"`,
+      )}
+    />
+  );
+}
+
+function StuckDetail({ stuck, onHandled }: { stuck: Stuck; onHandled: (id: string, label: string) => void }) {
+  const [confirming, setConfirming] = useState<'retry' | 'backlog' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const act = async (action: 'retry' | 'backlog') => {
+    setBusy(true);
+    setError('');
+    try {
+      if (action === 'retry') {
+        const res = await api.retryTicket(stuck.ticketId) as { requeued: boolean };
+        onHandled(stuck.id, `${stuck.ticketRef} · ${res.requeued ? 're-queued' : `sent back to ${stuck.returnsToName}`}`);
+      } else {
+        await api.backlogTicket(stuck.ticketId);
+        onHandled(stuck.id, `${stuck.ticketRef} · sent to backlog`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+      setConfirming(null);
+    }
+  };
+
   return (
     <div className="panel">
       <dl className="kv">
@@ -204,7 +302,29 @@ function StuckDetail({ stuck }: { stuck: Stuck }) {
         <dt>Returns to</dt><dd>{stuck.returnsToName}</dd>
       </dl>
       <a className="btn ghost" href={href.run(stuck.runId)}>View run trace</a>
-      <div className="muted" style={{ marginTop: 10 }}>Retry and send to backlog ship in the next slice — read-only for now.</div>
+
+      {error && <div className="ask-error" style={{ marginTop: 10 }}>{error}</div>}
+
+      <div className="asks-foot" style={{ justifyContent: 'flex-start', marginTop: 14, borderTop: 'none', paddingTop: 0 }}>
+        {confirming === 'retry' ? (
+          <>
+            <span className="muted">Start a new run? · last run {usd(stuck.costUsd)}</span>
+            <button className="btn" disabled={busy} onClick={() => void act('retry')}>Confirm</button>
+            <button className="btn ghost" disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+          </>
+        ) : confirming === 'backlog' ? (
+          <>
+            <span className="muted">Send to backlog and stop retrying?</span>
+            <button className="btn" disabled={busy} onClick={() => void act('backlog')}>Confirm</button>
+            <button className="btn ghost" disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <button className="btn" disabled={busy} onClick={() => setConfirming('retry')}>Retry</button>
+            <button className="btn ghost" disabled={busy} onClick={() => setConfirming('backlog')}>Send to backlog</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

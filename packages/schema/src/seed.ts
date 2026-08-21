@@ -1,6 +1,5 @@
 import { connect } from './sql.ts';
 import { newId } from './ids.ts';
-import { deriveProjectKey } from './ref.ts';
 import { STANDARD_PRESET, STATUS_KINDS } from './types.ts';
 
 const NAMES: Record<string, [string, string]> = {
@@ -24,11 +23,12 @@ if (existing) {
   console.log(`project already seeded: ${existing.id}`);
 } else {
   const projectId = newId('prj');
-  const derivedKey = deriveProjectKey('goblin-foundry');
   // The factory's own tickets have been FAC- since day one; deriveProjectKey()
-  // alone would give 'GF', so the derived key is overridden here the same way
-  // the migration overrides it for the row that already exists in older DBs.
-  const key = derivedKey === 'GF' ? 'FAC' : derivedKey;
+  // alone would give 'GF' (deriveProjectKey.test.ts covers that derivation),
+  // so the override here is the literal migration overrides for the row that
+  // already exists in older DBs — unconditional, not contingent on whatever
+  // deriveProjectKey happens to return.
+  const key = 'FAC';
   await sql`insert into project (id, slug, key, name, repo_path, repo_remote, default_branch, policy) values (
     ${projectId}, 'goblin-foundry', ${key}, 'Goblin Foundry', '/Users/roze/dev/factory',
     null, 'main', ${sql.json(STANDARD_PRESET as never)})`;

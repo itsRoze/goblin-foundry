@@ -8,7 +8,10 @@ import { schema } from '@goblin/schema/zero';
 import { queries } from '@goblin/schema/queries';
 import { handleQueryRequest } from '@rocicorp/zero/server';
 import { mustGetQuery } from '@rocicorp/zero';
-import { sql, findTicket, getTicket, moveTicket, createDesign, eventsAfter } from './db.ts';
+import {
+  sql, findTicket, getTicket, moveTicket, createDesign, eventsAfter,
+  answerRound, dismissRound, retryStuckTicket,
+} from './db.ts';
 import { onEvent } from './notify.ts';
 
 const VERSION = '0.0.0';
@@ -91,13 +94,16 @@ app.get('/api/designs/:id', async c => {
 });
 
 app.post('/api/designs/:id/approve', async c => {
-  const [design] = await sql<{ id: string; ticket_id: string }[]>`
-    select id, ticket_id from design where id = ${c.req.param('id')}`;
+  const [design] = await sql<{ id: string; ticket_id: string; status: string }[]>`
+    select id, ticket_id, status from design where id = ${c.req.param('id')}`;
   if (!design) return c.json({ error: 'not found' }, 404);
+  if (design.status !== 'in_review') return c.json({ error: 'this design has already been decided' }, 409);
   const ticket = await getTicket(design.ticket_id);
   if (!ticket) return c.json({ error: 'ticket gone' }, 404);
-  await sql`update design set status = 'approved', approved_by = 'roze', approved_at = now()
-            where id = ${design.id}`;
+  const [approved] = await sql<{ id: string }[]>`
+    update design set status = 'approved', approved_by = 'roze', approved_at = now()
+    where id = ${design.id} and status = 'in_review' returning id`;
+  if (!approved) return c.json({ error: 'this design has already been decided' }, 409);
   await moveTicket(ticket.id, ticket.project_id, 'ready_for_dev');
   return c.json({ ok: true, design: design.id, ticket: ticket.id, status: 'ready_for_dev' });
 });
@@ -117,16 +123,21 @@ app.post('/api/designs/:id/notes', async c => {
   return c.json({ ok: true, design: design.id, notes: notes.length });
 });
 
+const rejectBody = z.object({ note: z.string().min(1, 'a reason is required') });
+/** Sending a design back always needs a reason — it becomes the next planner
+    round's settled answers, and an empty one would waste the round. */
 app.post('/api/designs/:id/reject', async c => {
-  const body = await c.req.json().catch(() => ({}));
-  const [design] = await sql<{ id: string; ticket_id: string; notes: unknown[] }[]>`
-    select id, ticket_id, notes from design where id = ${c.req.param('id')}`;
+  const parsed = rejectBody.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'a reason is required' }, 400);
+  const [design] = await sql<{ id: string; ticket_id: string; notes: unknown[]; status: string }[]>`
+    select id, ticket_id, notes, status from design where id = ${c.req.param('id')}`;
   if (!design) return c.json({ error: 'not found' }, 404);
-  const notes = body.note
-    ? [...(design.notes ?? []), { at: new Date().toISOString(), note: body.note }]
-    : (design.notes ?? []);
-  await sql`update design set status = 'rejected', notes = ${sql.json(notes as never)}
-            where id = ${design.id}`;
+  if (design.status !== 'in_review') return c.json({ error: 'this design has already been decided' }, 409);
+  const notes = [...(design.notes ?? []), { at: new Date().toISOString(), note: parsed.data.note }];
+  const [rejected] = await sql<{ id: string }[]>`
+    update design set status = 'rejected', notes = ${sql.json(notes as never)}
+    where id = ${design.id} and status = 'in_review' returning id`;
+  if (!rejected) return c.json({ error: 'this design has already been decided' }, 409);
   const ticket = await getTicket(design.ticket_id);
   if (ticket) await moveTicket(ticket.id, ticket.project_id, 'ready_for_design');
   return c.json({ ok: true, design: design.id, status: 'ready_for_design' });
@@ -156,6 +167,47 @@ app.post('/api/questions/:id/answer', async c => {
     returning id`;
   if (!rows.length) return c.json({ error: 'not found or already answered' }, 404);
   return c.json({ ok: true, question: rows[0]!.id });
+});
+
+const roundAnswerBody = z.object({
+  answers: z.array(z.object({ questionId: z.string(), answer: z.string() })).min(1),
+  answered_by: z.string().default('roze'),
+});
+/** Every answer in a round, in one transaction — the parked worker's poll then
+    sees a complete set, not a partial one it might act on early. */
+app.post('/api/rounds/:phaseId/answer', async c => {
+  const parsed = roundAnswerBody.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
+  const result = await answerRound(parsed.data.answers, parsed.data.answered_by);
+  if (!result.ok) return c.json(result.body, result.status);
+  return c.json({ ok: true, answered: result.answered });
+});
+
+const dismissBody = z.object({ dismissed_by: z.string().default('roze') });
+app.post('/api/rounds/:phaseId/dismiss', async c => {
+  const parsed = dismissBody.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
+  const result = await dismissRound(c.req.param('phaseId'), parsed.data.dismissed_by);
+  if (!result.ok) return c.json(result.body, result.status);
+  return c.json({ ok: true, closed: result.closed });
+});
+
+/** Puts a stuck ticket back in the status its run was claimed from. */
+app.post('/api/tickets/:ref/retry', async c => {
+  const found = await findTicket(c.req.param('ref'));
+  if (!found.ok) return c.json(found.body, found.status);
+  const result = await retryStuckTicket(found.ticket.id, 'trigger');
+  if (!result.ok) return c.json(result.body, result.status);
+  return c.json({ ok: true, status: result.status, requeued: result.requeued });
+});
+
+/** Same transaction as retry, landing in Backlog instead — for a failure retry can't fix. */
+app.post('/api/tickets/:ref/backlog', async c => {
+  const found = await findTicket(c.req.param('ref'));
+  if (!found.ok) return c.json(found.body, found.status);
+  const result = await retryStuckTicket(found.ticket.id, 'backlog');
+  if (!result.ok) return c.json(result.body, result.status);
+  return c.json({ ok: true, status: result.status });
 });
 
 app.get('/api/runs/:id', async c => {

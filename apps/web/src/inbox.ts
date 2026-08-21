@@ -19,6 +19,7 @@ export type QuestionRow = {
   header: string;
   prompt?: string;
   options?: readonly { label: string; description: string }[];
+  multiSelect?: boolean;
   askedAt: number;
   answeredAt?: number | null;
   phase?: { agent?: string | null } | null;
@@ -33,6 +34,19 @@ export type QuestionRow = {
     } | null;
   } | null;
 };
+
+/**
+ * A round is the set of open questions sharing a phase — a phase writes its
+ * questions and then blocks until all of them are answered, so at most one
+ * round can be open per phase at a time. This is the one place that grouping
+ * happens; apps/web/src/components/Questions.tsx reuses it rather than
+ * bucketing by asked-at, which can split one round or merge two.
+ */
+export function groupByPhase<T extends { phaseId: string }>(items: readonly T[]): T[][] {
+  const byPhase = new Map<string, T[]>();
+  for (const item of items) byPhase.set(item.phaseId, [...(byPhase.get(item.phaseId) ?? []), item]);
+  return [...byPhase.values()];
+}
 
 export type Round = {
   kind: 'round';
@@ -50,25 +64,19 @@ export type Round = {
   costUsd: number;
 };
 
-/** A round is the set of open questions sharing a phase — at most one open round per phase. */
+/** Every unanswered question, grouped into rounds by groupByPhase(). */
 export function roundsFrom(questions: readonly QuestionRow[]): Round[] {
-  const byPhase = new Map<string, QuestionRow[]>();
-  for (const q of questions) {
-    if (q.answeredAt) continue;
-    if (!q.run?.ticket?.project) continue;
-    byPhase.set(q.phaseId, [...(byPhase.get(q.phaseId) ?? []), q]);
-  }
-  const rounds: Round[] = [];
-  for (const [phaseId, qs] of byPhase) {
+  const open = questions.filter(q => !q.answeredAt && q.run?.ticket?.project);
+  return groupByPhase(open).map(qs => {
     const sorted = [...qs].sort((a, b) => a.askedAt - b.askedAt || a.id.localeCompare(b.id));
     const first = sorted[0]!;
     const run = first.run!;
     const ticket = run.ticket!;
     const project = ticket.project!;
-    rounds.push({
-      kind: 'round',
-      id: `round:${phaseId}`,
-      phaseId,
+    return {
+      kind: 'round' as const,
+      id: `round:${first.phaseId}`,
+      phaseId: first.phaseId,
       runId: run.id,
       runStatus: run.status,
       ticketRef: formatRef(project.key, ticket.shortId),
@@ -79,9 +87,8 @@ export function roundsFrom(questions: readonly QuestionRow[]): Round[] {
       firstUnanswered: sorted[0]!,
       parkedAtMs: Math.min(...sorted.map(q => q.askedAt)),
       costUsd: run.costUsd,
-    });
-  }
-  return rounds;
+    };
+  });
 }
 
 /** A stale round's run has already ended — answering it would reach nobody. */
@@ -94,6 +101,7 @@ export function isStale(round: Round): boolean {
 export type ApprovalDesignRow = {
   id: string;
   version: number;
+  status: string;
   reviewHtml?: string | null;
   markdown: string;
   notes?: readonly unknown[] | null;
@@ -110,13 +118,14 @@ export type Approval = {
   id: string;
   designId: string;
   version: number;
+  status: string;
   ticketRef: string;
   ticketTitle: string;
   projectKey: string;
   submittedAtMs: number;
   reviewHtml: string;
   markdown: string;
-  notesCount: number;
+  notes: readonly unknown[];
 };
 
 /** Every design still awaiting a decision — the query already scopes to `in_review`. */
@@ -129,13 +138,14 @@ export function approvalsFrom(designs: readonly ApprovalDesignRow[]): Approval[]
       id: `approval:${d.id}`,
       designId: d.id,
       version: d.version,
+      status: d.status,
       ticketRef: formatRef(d.ticket.project.key, d.ticket.shortId),
       ticketTitle: d.ticket.title,
       projectKey: d.ticket.project.key,
       submittedAtMs: d.createdAt,
       reviewHtml: d.reviewHtml ?? '',
       markdown: d.markdown,
-      notesCount: d.notes?.length ?? 0,
+      notes: d.notes ?? [],
     });
   }
   return out;
