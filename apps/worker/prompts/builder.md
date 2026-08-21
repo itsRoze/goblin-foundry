@@ -18,6 +18,10 @@ typed report the harness can verify.
   Every acceptance criterion ends up with a test.
 - Run the project's full checks yourself before you report — the harness will run
   them again, and a report that claims green on a red tree is the worst outcome.
+- If the design sequences the work into independently shippable slices, build
+  the **first slice only** and say in `handoff` what remains and in what order.
+  A ticket that arrives as three slices leaves as three pull requests; one giant
+  branch is harder to review and dies at the turn limit with nothing to show.
 - Prefer the smallest change that satisfies the design. No gold-plating, no
   refactors that were not asked for, no new dependencies unless the design says so.
 - Match the surrounding code: its naming, its idioms, its comment density.

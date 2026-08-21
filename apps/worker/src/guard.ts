@@ -9,7 +9,7 @@ import { isAbsolute, resolve } from 'node:path';
 export type Breach = { reason: string } | null;
 
 /** Absolute paths an agent legitimately touches outside its worktree. */
-const ALLOWED_PREFIXES = ['/tmp', '/private/tmp', '/var/folders', '/usr', '/bin', '/sbin', '/opt', '/dev/null', '/Library'];
+const ALLOWED_PREFIXES = ['/tmp', '/private/tmp', '/var/folders', '/usr', '/bin', '/sbin', '/opt', '/dev', '/Library'];
 
 const GIT_ESCAPES = [/\bgit\s+-C\b/, /--git-dir\b/, /--work-tree\b/, /\bGIT_DIR=/, /\bGIT_WORK_TREE=/];
 

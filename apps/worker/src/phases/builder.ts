@@ -5,6 +5,7 @@ import {
   buildOutput, envelopeJsonSchema, violations, type BuildOutput, type EnvelopeBase,
 } from '@goblin/schema';
 import * as db from '../db.ts';
+import { asHalt, worthWrappingUp } from '../halt.ts';
 import { diff_matches_claims, tests_pass } from '../gates.ts';
 import { materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
@@ -69,11 +70,28 @@ async function runBuilder(
   let resume: string | undefined;
   let envelope: BuildOutput | undefined;
   let gatesGreen = false;
+  let wrappedUp = false;
 
   const maxAttempts = (claim.policy.budgets.gateRetries ?? 2) + 1;
   for (; attempt <= maxAttempts; attempt++) {
     await db.updatePhase(phaseId, { attempt });
-    const result = await runPhase(phase, prompt, resume);
+    let result;
+    try {
+      result = await runPhase(phase, prompt, resume);
+    } catch (e) {
+      const halt = asHalt(e);
+      // The turns or the money ran out with real work in the worktree. One more
+      // turn to hear what it did beats discarding the session unreported.
+      if (!halt || wrappedUp || !worthWrappingUp(halt.reason)) throw e;
+      wrappedUp = true;
+      await db.event({ runId, phaseId, type: 'log', name: 'wrapping up',
+                       payload: { reason: halt.reason, attempt } });
+      prompt = `You hit the harness limit (${halt.reason}). Stop working now.`
+        + ' Do not start anything new. Report ONLY the report JSON describing what you'
+        + ' actually changed, with what remains in `handoff`.';
+      attempt -= 1;
+      continue;
+    }
     resume = result.sessionId;
 
     const parsed = buildOutput.safeParse(result.structured ?? tryJson(result.text));

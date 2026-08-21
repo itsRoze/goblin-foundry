@@ -140,3 +140,12 @@ Things that bit us while building the factory. Newest last.
   and the "stopped" one keeps writing events to a run you have already closed
   out. Hard-kill by pid when you need the run itself to end, and check
   `pgrep -f goblin-worker` returns nothing before starting another.
+- **Hitting the turn limit threw away thirteen minutes of finished work.** A
+  builder on a three-slice ticket ran out of turns with twelve files edited, a
+  migration written and a new module tested — and because the limit surfaces as
+  a thrown error, the phase died with no envelope, no cost recorded, and a
+  worktree the next attempt would have wiped (`worktree add -B` resets the
+  branch). A limit that leaves work on disk now buys one more turn in the same
+  session: stop, report what you changed, say what remains. The other half of
+  the fix is upstream — a design that names independently shippable slices
+  should leave as one pull request per slice, not one branch that dies at turn 80.
