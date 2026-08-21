@@ -1,6 +1,8 @@
 import { formatRef, type EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
-import { addWorktree, attachWorktree, hasBranchWork, removeWorktree, type Worktree } from './git.ts';
+import {
+  addWorktree, attachWorktree, hasBranchWork, removeWorktree, syncBase, type Worktree,
+} from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
 import {
   keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
@@ -10,6 +12,9 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 
 async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
   if (pipeline.worktree === 'none') return null;
+  const synced = await syncBase(claim.repoPath, claim.defaultBranch);
+  await db.event({ runId: claim.runId, type: 'log', name: 'base branch',
+                   payload: { base: claim.defaultBranch, result: synced } });
   // A branch that already carries commits is an earlier attempt that ran out of
   // turns or budget with real work on it. Cutting it fresh would throw that away
   // and pay to rebuild it; the retry continues from where the last one stopped.
