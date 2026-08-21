@@ -156,11 +156,13 @@ export const STANDARD_PRESET: Policy = {
   review: { lenses: ['correctness', 'security', 'tests', 'maintainability'], maxFixLoops: 3, blockOn: 'important' },
   models: {
     // Measured, not guessed: a three-round interview with the perspective
-    // subagents ran out of money at $6 with the design half-written.
-    planner: { model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 60 },
-    builder: { model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 80 },
-    reviewer: { model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 40 },
-    librarian: { model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 20 },
+    // subagents ran out of money at $6 with the design half-written. Turns are
+    // deliberately loose — the dollar budget is the leash, and a turn cap tight
+    // enough to bind stops correct work rather than runaway work.
+    planner: { model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
+    builder: { model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
+    reviewer: { model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
+    librarian: { model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 60 },
   },
   design: { mockups: 'html', storage: 'factory-db' },
   tools: {
