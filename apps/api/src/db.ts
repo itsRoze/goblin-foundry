@@ -1,5 +1,5 @@
 import { connect, type Sql } from '@goblin/schema/sql';
-import { newId, parseRef, type StatusKind } from '@goblin/schema';
+import { newId, formatRef, parseRef, resolveRef, type StatusKind } from '@goblin/schema';
 
 export const sql: Sql = connect();
 
@@ -10,31 +10,46 @@ export type TicketRow = {
   project_slug: string; repo_path: string; default_branch: string; policy: unknown;
 };
 
+const TICKET_COLUMNS = sql`
+  t.*, p.key as project_key, s.kind as status_kind, s.name as status_name,
+  p.slug as project_slug, p.repo_path, p.default_branch, p.policy`;
+
 /** A bare short id more than one project has: the caller has to ask, not guess. */
 export class AmbiguousTicketRefError extends Error {
   constructor(public readonly candidates: TicketRow[]) {
-    super(`ticket number matches more than one project: ${candidates.map(r => `${r.project_key}-${r.short_id}`).join(', ')}`);
+    super(`ticket number matches more than one project: ${candidates.map(r => formatRef(r.project_key, r.short_id)).join(', ')}`);
   }
 }
 
 /** Look a ticket up by id, by canonical ref (`FAC-12`), or by a bare short id
-    — which resolves only when exactly one project has it. */
+    — which resolves only when exactly one project has it. `resolveRef` is the
+    one place that ambiguity is decided; this only fetches its candidates. */
 export async function getTicket(ref: string): Promise<TicketRow | undefined> {
   const parsed = parseRef(ref);
-  const bare = Number(ref.replace(/^#/, ''));
+  const bare = /^#?(\d+)$/.exec(ref.trim());
+
+  if (!parsed && !bare) {
+    // Not a ref at all — the only other shape a caller passes is an internal id.
+    const [row] = await sql<TicketRow[]>`
+      select ${TICKET_COLUMNS} from ticket t
+      join status s on s.id = t.status_id
+      join project p on p.id = t.project_id
+      where t.id = ${ref}`;
+    return row;
+  }
+
   const rows = await sql<TicketRow[]>`
-    select t.*, p.key as project_key, s.kind as status_kind, s.name as status_name,
-           p.slug as project_slug, p.repo_path, p.default_branch, p.policy
-    from ticket t
+    select ${TICKET_COLUMNS} from ticket t
     join status s on s.id = t.status_id
     join project p on p.id = t.project_id
-    where t.id = ${ref}
-      ${parsed ? sql`or (upper(p.key) = ${parsed.key} and t.short_id = ${parsed.shortId})` : sql``}
-      ${!parsed && Number.isFinite(bare) ? sql`or t.short_id = ${bare}` : sql``}`;
-  if (rows.length <= 1) return rows[0];
-  // A canonical ref and an id are unique by construction; only a bare short
-  // id shared by more than one project can land here.
-  throw new AmbiguousTicketRefError(rows);
+    where ${parsed
+      ? sql`upper(p.key) = ${parsed.key} and t.short_id = ${parsed.shortId}`
+      : sql`t.short_id = ${Number(bare![1])}`}`;
+
+  const resolution = resolveRef(ref, rows.map(row => ({ key: row.project_key, shortId: row.short_id, row })));
+  if (resolution.status === 'unique') return resolution.candidate.row;
+  if (resolution.status === 'ambiguous') throw new AmbiguousTicketRefError(resolution.candidates.map(c => c.row));
+  return undefined;
 }
 
 export type TicketLookup =

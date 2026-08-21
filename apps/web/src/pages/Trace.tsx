@@ -49,11 +49,11 @@ export function Trace({ runId }: { runId: string }) {
     <div className="page" style={{ maxWidth: 1100 }}>
       <div className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>{run.id}</div>
       <h2 style={{ fontSize: 26, margin: '2px 0 8px' }}>
-        {run.ticket
-          ? <a href={href.ticket(run.ticket.project!.key, run.ticket.shortId)}>
-              {formatRef(run.ticket.project!.key, run.ticket.shortId)} · {run.ticket.title}
+        {run.ticket?.project
+          ? <a href={href.ticket(run.ticket.project.key, run.ticket.shortId)}>
+              {formatRef(run.ticket.project.key, run.ticket.shortId)} · {run.ticket.title}
             </a>
-          : 'Run'}
+          : run.ticket?.title ?? 'Run'}
       </h2>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>{run.status}</span>

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
-import { formatRef } from '@goblin/schema';
+import { formatRef, TRIGGER_STAGES } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { usd } from '../format.ts';
+import { stuckFrom } from '../inbox.ts';
 import { navigationOrder, nextFocusedId, prevFocusedId, reconcileFocus, isNavKeyIgnored } from '../boardNav.ts';
 
 export function Board() {
@@ -13,6 +14,12 @@ export function Board() {
   const [over, setOver] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const cardRefs = useRef(new Map<string, HTMLAnchorElement>());
+
+  // The same determination the inbox uses, so a card never disagrees with its own row there.
+  const stuckIds = useMemo(
+    () => new Set(stuckFrom(tickets, TRIGGER_STAGES, statuses).map(s => s.ticketId)),
+    [tickets, statuses],
+  );
 
   // Empty terminal columns are noise on a board with two tickets.
   const shown = useMemo(
@@ -65,6 +72,10 @@ export function Board() {
             </h2>
             {cards.map(ticket => {
               const run = ticket.runs[0];
+              // The project relation syncs alongside the ticket but is not
+              // guaranteed to have arrived on the same tick; skip the card
+              // rather than throw on a row Zero hasn't finished replicating.
+              if (!ticket.project) return null;
               return (
                 <a
                   key={ticket.id}
@@ -73,11 +84,11 @@ export function Board() {
                     else cardRefs.current.delete(ticket.id);
                   }}
                   className={`card${focusedId === ticket.id ? ' focused' : ''}`}
-                  href={href.ticket(ticket.project!.key, ticket.shortId)}
+                  href={href.ticket(ticket.project.key, ticket.shortId)}
                   draggable
                   onDragStart={e => e.dataTransfer.setData('text/plain', ticket.id)}
                 >
-                  <div className="id">{formatRef(ticket.project!.key, ticket.shortId)}</div>
+                  <div className="id">{formatRef(ticket.project.key, ticket.shortId)}</div>
                   <div className="title">{ticket.title}</div>
                   <div className="meta">
                     <span className="pill">{ticket.type}</span>
@@ -89,6 +100,7 @@ export function Board() {
                     )}
                     {run?.questions.length ? <span className="pill human">answer me</span> : null}
                     {status.kind === 'design_review' && <span className="pill human">needs you</span>}
+                    {stuckIds.has(ticket.id) && <span className="pill bad">stuck</span>}
                   </div>
                 </a>
               );

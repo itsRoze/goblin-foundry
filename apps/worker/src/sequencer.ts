@@ -42,7 +42,7 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
   const pipeline = pipelineFor(TRIGGER_PIPELINES, claim.trigger);
   if (!pipeline) throw new Error(`no pipeline for trigger '${claim.trigger}'`);
 
-  const branch = `goblin/${claim.projectKey.toLowerCase()}-${claim.shortId}`;
+  const branch = `goblin/${formatRef(claim.projectKey, claim.shortId).toLowerCase()}`;
   let worktree: Worktree | null;
   try {
     worktree = await acquireWorktree(pipeline, claim, branch);

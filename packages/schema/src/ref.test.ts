@@ -48,6 +48,18 @@ test('deriveProjectKey() ignores case when checking taken keys', () => {
   assert.equal(deriveProjectKey('goblin-foundry', ['gf']), 'GF2');
 });
 
+test('deriveProjectKey() prefixes a digit-leading base so the key still starts with a letter', () => {
+  assert.equal(deriveProjectKey('3d-printer'), 'P3P');
+  assert.equal(deriveProjectKey('3dprinter'), 'P3DP');
+});
+
+test('deriveProjectKey() output always round-trips through formatRef()/parseRef(), including a digit-leading slug', () => {
+  for (const slug of ['goblin-foundry', 'factory', 'ab', '3d-printer', '3dprinter', 'problem-solver-app']) {
+    const key = deriveProjectKey(slug);
+    assert.deepEqual(parseRef(formatRef(key, 1)), { key, shortId: 1 }, `key derived from "${slug}"`);
+  }
+});
+
 test('resolveRef() resolves a canonical ref to the one matching candidate', () => {
   const candidates = [{ key: 'FAC', shortId: 10 }, { key: 'PRB', shortId: 10 }];
   assert.deepEqual(resolveRef('FAC-10', candidates), { status: 'unique', candidate: candidates[0] });

@@ -26,6 +26,12 @@ begin
       base := upper(left(coalesce(words[1], 'prj'), 3));
     end if;
 
+    -- Mirrors ref.ts's deriveProjectKey(): a slug starting with a digit must
+    -- not derive a key a ref can't be parsed back out of.
+    if base !~ '^[A-Za-z]' then
+      base := 'P' || base;
+    end if;
+
     candidate := base;
     n := 2;
     while exists (select 1 from project where key = candidate) loop

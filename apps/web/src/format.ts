@@ -9,3 +9,12 @@ export function duration(ms: number): string {
   const m = Math.floor(ms / 60_000);
   return `${m}m ${Math.round((ms % 60_000) / 1000)}s`;
 }
+
+/** How long ago `sinceMs` was, in the coarse unit a triage row reads at a glance. */
+export function ago(sinceMs: number, nowMs: number): string {
+  const ms = Math.max(0, nowMs - sinceMs);
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h`;
+  return `${Math.round(ms / 86_400_000)}d`;
+}

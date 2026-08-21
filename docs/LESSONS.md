@@ -149,3 +149,19 @@ Things that bit us while building the factory. Newest last.
   session: stop, report what you changed, say what remains. The other half of
   the fix is upstream — a design that names independently shippable slices
   should leave as one pull request per slice, not one branch that dies at turn 80.
+- **`useQuery`'s second return value is not optional to ignore.** `[rows] =
+  useQuery(q)` compiles fine and looks complete, but Zero delivers rows
+  incrementally — `rows` can pass through `length === 1` on its way to
+  `length === 2` before the result settles. A legacy-ref chooser that decided
+  ambiguity off `rows.length` alone could auto-navigate to the first candidate
+  to arrive and destroy the history entry before the second one landed. The
+  fix is `const [rows, result] = useQuery(q)` and gating any decision on
+  `result.type === 'complete'`.
+- **A key derived from a slug can start with a digit, and a ref grammar that
+  requires a leading letter cannot round-trip it.** `deriveProjectKey('3d-printer')`
+  produced `'3P'`; `parseRef(formatRef('3P', 1))` returned `null`, so a project
+  with a numeric-leading slug would derive a key the app could format but never
+  parse back out of its own URLs. Verified by writing the round-trip as a
+  property test (`deriveProjectKey` → `formatRef` → `parseRef` for a table of
+  slugs) rather than trusting the hand-picked examples in the original tests,
+  none of which happened to start with a digit.

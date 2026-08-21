@@ -24,9 +24,13 @@ export function parseRef(ref: string): { key: string; shortId: number } | null {
  */
 export function deriveProjectKey(slug: string, taken: Iterable<string> = []): string {
   const words = slug.split(/[^a-zA-Z0-9]+/).filter(Boolean);
-  const base = words.length > 1
+  let base = words.length > 1
     ? words.slice(0, 4).map(w => w[0]!).join('').toUpperCase()
     : (words[0] ?? 'PRJ').slice(0, 3).toUpperCase() || 'PRJ';
+  // A ref's grammar (REF_RE) requires a leading letter; a slug that starts
+  // with a digit ("3d-printer") would otherwise derive a key parseRef can
+  // never parse back out of a ref it formatted itself.
+  if (!/^[A-Za-z]/.test(base)) base = `P${base}`;
 
   const takenSet = new Set([...taken].map(k => k.toUpperCase()));
   if (!takenSet.has(base)) return base;
