@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
+import { formatRef } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { clock, duration, usd } from '../format.ts';
@@ -48,7 +49,11 @@ export function Trace({ runId }: { runId: string }) {
     <div className="page" style={{ maxWidth: 1100 }}>
       <div className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>{run.id}</div>
       <h2 style={{ fontSize: 26, margin: '2px 0 8px' }}>
-        {run.ticket ? <a href={href.ticket(run.ticket.shortId)}>FAC-{run.ticket.shortId} · {run.ticket.title}</a> : 'Run'}
+        {run.ticket
+          ? <a href={href.ticket(run.ticket.project!.key, run.ticket.shortId)}>
+              {formatRef(run.ticket.project!.key, run.ticket.shortId)} · {run.ticket.title}
+            </a>
+          : 'Run'}
       </h2>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>{run.status}</span>

@@ -4,7 +4,7 @@ import { newId, type EventType, type GateReport, type Policy } from '@goblin/sch
 export const sql: Sql = connect();
 
 export type Claim = {
-  runId: string; ticketId: string; projectId: string; shortId: number;
+  runId: string; ticketId: string; projectId: string; projectKey: string; shortId: number;
   title: string; body: string; repoPath: string; defaultBranch: string;
   policy: Policy; designId: string | null; designMarkdown: string | null; trigger: string;
 };
@@ -20,11 +20,11 @@ export async function claim(
 ): Promise<Claim | undefined> {
   return sql.begin(async tx => {
     const [row] = await tx<{
-      ticket_id: string; project_id: string; short_id: number; title: string; body: string;
+      ticket_id: string; project_id: string; project_key: string; short_id: number; title: string; body: string;
       repo_path: string; default_branch: string; policy: Policy;
       design_id: string | null; design_markdown: string | null;
     }[]>`
-      select t.id as ticket_id, t.project_id, t.short_id, t.title, t.body,
+      select t.id as ticket_id, t.project_id, p.key as project_key, t.short_id, t.title, t.body,
              p.repo_path, p.default_branch, p.policy,
              d.id as design_id, d.markdown as design_markdown
       from ticket t
@@ -65,7 +65,7 @@ export async function claim(
                where id = ${row.ticket_id}`;
     }
     return {
-      runId, ticketId: row.ticket_id, projectId: row.project_id, shortId: row.short_id,
+      runId, ticketId: row.ticket_id, projectId: row.project_id, projectKey: row.project_key, shortId: row.short_id,
       title: row.title, body: row.body, repoPath: row.repo_path,
       defaultBranch: row.default_branch, policy: row.policy,
       designId: row.design_id, designMarkdown: row.design_markdown, trigger: kind,

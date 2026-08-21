@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
+import { formatRef, parseRef } from '@goblin/schema';
 
 export type Route =
   | { name: 'board' }
-  | { name: 'ticket'; shortId: number }
+  | { name: 'ticket'; key: string; shortId: number }
+  | { name: 'ticket-legacy'; shortId: number }
   | { name: 'run'; runId: string };
 
-function parse(hash: string): Route {
+export function parse(hash: string): Route {
   const path = hash.replace(/^#/, '');
-  const ticket = /^\/t\/(\d+)$/.exec(path);
-  if (ticket) return { name: 'ticket', shortId: Number(ticket[1]) };
+  const canonical = /^\/([A-Za-z][A-Za-z0-9]*-\d+)$/.exec(path);
+  if (canonical) {
+    const ref = parseRef(canonical[1]!);
+    if (ref) return { name: 'ticket', key: ref.key, shortId: ref.shortId };
+  }
+  // The pre-ref-migration link shape: resolves only when exactly one project
+  // has that number, and rewrites itself to canonical form when it does.
+  const legacy = /^\/t\/(\d+)$/.exec(path);
+  if (legacy) return { name: 'ticket-legacy', shortId: Number(legacy[1]) };
   const run = /^\/r\/(.+)$/.exec(path);
   if (run) return { name: 'run', runId: run[1]! };
   return { name: 'board' };
@@ -26,6 +35,6 @@ export function useRoute(): Route {
 
 export const href = {
   board: '#/',
-  ticket: (shortId: number) => `#/t/${shortId}`,
+  ticket: (key: string, shortId: number) => `#/${formatRef(key, shortId)}`,
   run: (runId: string) => `#/r/${runId}`,
 };

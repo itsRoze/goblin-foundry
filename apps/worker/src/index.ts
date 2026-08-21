@@ -1,4 +1,5 @@
 import { hostname } from 'node:os';
+import { formatRef } from '@goblin/schema';
 import * as db from './db.ts';
 import { TRIGGER_PIPELINES } from './pipelines.ts';
 import { sweepStalledRuns } from './reaper.ts';
@@ -26,11 +27,12 @@ async function tick(): Promise<boolean> {
   }
   if (!claim) return false;
 
-  console.log(`claimed FAC-${claim.shortId} "${claim.title}" from ${claim.trigger} as ${claim.runId}`);
+  const ref = formatRef(claim.projectKey, claim.shortId);
+  console.log(`claimed ${ref} "${claim.title}" from ${claim.trigger} as ${claim.runId}`);
   const beat = setInterval(() => { void db.heartbeat(claim.runId).catch(() => {}); }, HEARTBEAT_MS);
   try {
     const outcome = await runPipeline(claim);
-    console.log(`FAC-${claim.shortId} → ${outcome}`);
+    console.log(`${ref} → ${outcome}`);
   } finally {
     clearInterval(beat);
   }

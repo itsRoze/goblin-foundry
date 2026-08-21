@@ -1,4 +1,4 @@
-import type { EnvelopeBase } from '@goblin/schema';
+import { formatRef, type EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
 import { addWorktree, attachWorktree, removeWorktree, type Worktree } from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
@@ -42,7 +42,7 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
   const pipeline = pipelineFor(TRIGGER_PIPELINES, claim.trigger);
   if (!pipeline) throw new Error(`no pipeline for trigger '${claim.trigger}'`);
 
-  const branch = `goblin/fac-${claim.shortId}`;
+  const branch = `goblin/${claim.projectKey.toLowerCase()}-${claim.shortId}`;
   let worktree: Worktree | null;
   try {
     worktree = await acquireWorktree(pipeline, claim, branch);
@@ -75,7 +75,7 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
     const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
                                           model?.model ?? null, model?.effort ?? null);
     await db.event({ runId: claim.runId, phaseId, type: 'phase_start', name: spec.name,
-                     payload: { kind: spec.kind, ticket: `FAC-${claim.shortId}` } });
+                     payload: { kind: spec.kind, ticket: formatRef(claim.projectKey, claim.shortId) } });
 
     const ctx: PhaseContext = { claim, runId: claim.runId, phaseId, worktree };
     const attempt = await runOnePhase(spec, ctx, handoff);

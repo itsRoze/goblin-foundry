@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
+import { formatRef } from '@goblin/schema';
 import { marked } from 'marked';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
@@ -8,13 +9,14 @@ import { clock, usd } from '../format.ts';
 import { Questions } from '../components/Questions.tsx';
 import { Design } from '../components/Design.tsx';
 
-export function Ticket({ shortId }: { shortId: number }) {
+export function Ticket({ projectKey, shortId }: { projectKey: string; shortId: number }) {
   // The request object must be stable: a fresh one every render re-subscribes forever.
-  const [tickets] = useQuery(useMemo(() => queries.ticket({ shortId }), [shortId]));
+  const [tickets] = useQuery(useMemo(() => queries.ticket({ shortId, key: projectKey }), [shortId, projectKey]));
   const ticket = tickets[0];
   const [tab, setTab] = useState<'body' | 'design' | 'runs'>('body');
+  const ref = formatRef(projectKey, shortId);
 
-  if (!ticket) return <div className="page">Loading FAC-{shortId}…</div>;
+  if (!ticket) return <div className="page">Loading {ref}…</div>;
   const design = ticket.designs[0];
   const status = ticket.status;
   // A parked phase is waiting on these, so they sit above the tabs, not inside one.
@@ -22,7 +24,7 @@ export function Ticket({ shortId }: { shortId: number }) {
 
   return (
     <div className="page">
-      <div className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>FAC-{ticket.shortId}</div>
+      <div className="mono" style={{ color: 'var(--muted)', fontSize: 12 }}>{ref}</div>
       <h2 style={{ fontSize: 28, margin: '2px 0 8px' }}>{ticket.title}</h2>
       <div className="meta" style={{ display: 'flex', gap: 6 }}>
         {status && <span className="pill" style={{ color: status.color }}>{status.name}</span>}
@@ -49,7 +51,7 @@ export function Ticket({ shortId }: { shortId: number }) {
 
       {tab === 'design' && (
         !design
-          ? <div className="panel">No design yet. Move the ticket to Ready for Design, or run <code>/plan {ticket.shortId}</code> in your terminal.</div>
+          ? <div className="panel">No design yet. Move the ticket to Ready for Design, or run <code>/plan {ref}</code> in your terminal.</div>
           : <Design design={design} />
       )}
 

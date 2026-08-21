@@ -1,27 +1,56 @@
 import { connect, type Sql } from '@goblin/schema/sql';
-import { newId, type StatusKind } from '@goblin/schema';
+import { newId, parseRef, type StatusKind } from '@goblin/schema';
 
 export const sql: Sql = connect();
 
 export type TicketRow = {
-  id: string; project_id: string; short_id: number; title: string; body: string;
+  id: string; project_id: string; project_key: string; short_id: number; title: string; body: string;
   type: string; status_id: string; status_kind: StatusKind; status_name: string;
   priority: number; assignee: string | null; delegate: string | null;
   project_slug: string; repo_path: string; default_branch: string; policy: unknown;
 };
 
-/** Look a ticket up by id, by `#12`, or by bare short id. */
+/** A bare short id more than one project has: the caller has to ask, not guess. */
+export class AmbiguousTicketRefError extends Error {
+  constructor(public readonly candidates: TicketRow[]) {
+    super(`ticket number matches more than one project: ${candidates.map(r => `${r.project_key}-${r.short_id}`).join(', ')}`);
+  }
+}
+
+/** Look a ticket up by id, by canonical ref (`FAC-12`), or by a bare short id
+    — which resolves only when exactly one project has it. */
 export async function getTicket(ref: string): Promise<TicketRow | undefined> {
-  const short = Number(ref.replace(/^#/, ''));
+  const parsed = parseRef(ref);
+  const bare = Number(ref.replace(/^#/, ''));
   const rows = await sql<TicketRow[]>`
-    select t.*, s.kind as status_kind, s.name as status_name,
+    select t.*, p.key as project_key, s.kind as status_kind, s.name as status_name,
            p.slug as project_slug, p.repo_path, p.default_branch, p.policy
     from ticket t
     join status s on s.id = t.status_id
     join project p on p.id = t.project_id
-    where t.id = ${ref} ${Number.isFinite(short) ? sql`or t.short_id = ${short}` : sql``}
-    limit 1`;
-  return rows[0];
+    where t.id = ${ref}
+      ${parsed ? sql`or (upper(p.key) = ${parsed.key} and t.short_id = ${parsed.shortId})` : sql``}
+      ${!parsed && Number.isFinite(bare) ? sql`or t.short_id = ${bare}` : sql``}`;
+  if (rows.length <= 1) return rows[0];
+  // A canonical ref and an id are unique by construction; only a bare short
+  // id shared by more than one project can land here.
+  throw new AmbiguousTicketRefError(rows);
+}
+
+export type TicketLookup =
+  | { ok: true; ticket: TicketRow }
+  | { ok: false; status: 404 | 409; body: { error: string } };
+
+/** The Hono-facing wrapper: turns the ambiguity error into a response body
+    instead of a thrown exception every route would have to catch itself. */
+export async function findTicket(ref: string): Promise<TicketLookup> {
+  try {
+    const ticket = await getTicket(ref);
+    return ticket ? { ok: true, ticket } : { ok: false, status: 404, body: { error: 'not found' } };
+  } catch (e) {
+    if (e instanceof AmbiguousTicketRefError) return { ok: false, status: 409, body: { error: e.message } };
+    throw e;
+  }
 }
 
 export async function statusIdFor(projectId: string, kind: StatusKind): Promise<string> {
