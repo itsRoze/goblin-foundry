@@ -156,3 +156,10 @@ Things that bit us while building the factory. Newest last.
   earlier attempt that ran out of turns — so the run now attaches to it and the
   builder's opening prompt lists what is already there, told to continue rather
   than start again.
+- **Measure your denials before trusting your guard.** Of 29 recorded
+  `permission_breach` events, 19 were false: JavaScript regex literals, glob
+  characters and quoted relative paths, all read as absolute filesystem paths by
+  a heuristic that only asked "does it start with a slash". The true positives —
+  a `cat` of the factory's `.env`, reads of the parent repo, `git -C`
+  redirection — are worth keeping, which is the argument for fixing the
+  heuristic rather than loosening the boundary.

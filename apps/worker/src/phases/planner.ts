@@ -19,7 +19,9 @@ const templatePath = join(here, '..', '..', '..', '..', 'packages', 'skills', 'p
  * The planner reads and asks; it never writes. `Agent` is here for the
  * three-perspective pass, `AskUserQuestion` for the grill rounds.
  */
-const PLANNER_TOOLS = ['Read', 'Glob', 'Grep', 'Agent', 'AskUserQuestion', 'TodoWrite'];
+const PLANNER_TOOLS = [
+  'Read', 'Glob', 'Grep', 'Agent', 'AskUserQuestion', 'TodoWrite', 'WebSearch', 'WebFetch',
+];
 
 /** Interrogates you, then writes the design the builder will work from. */
 export const plannerPhase: PhaseSpec<PlanOutput> = {

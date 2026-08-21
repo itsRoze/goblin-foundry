@@ -13,8 +13,14 @@ import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
 
+/**
+ * A capable agent, not a caged one. The boundary is where it may write — the
+ * worktree — not what it may know: an agent that cannot read the docs for the
+ * framework it is using guesses instead, and guesses cost more than requests.
+ */
 const BUILDER_TOOLS = [
   'Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent',
+  'WebSearch', 'WebFetch',
 ];
 
 /** Implements the ticket in its worktree and reports a BuildOutput envelope. */

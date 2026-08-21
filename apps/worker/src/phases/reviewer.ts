@@ -15,7 +15,9 @@ import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
 
-const REVIEWER_TOOLS = ['Read', 'Glob', 'Grep', 'Bash', 'Agent', 'TodoWrite'];
+const REVIEWER_TOOLS = [
+  'Read', 'Glob', 'Grep', 'Bash', 'Agent', 'TodoWrite', 'WebSearch', 'WebFetch',
+];
 /** The lenses that have a brief in the reviewer's prompt today. */
 const SUPPORTED_LENSES = ['correctness', 'tests', 'maintainability', 'security', 'performance'];
 
@@ -196,7 +198,8 @@ async function runBuilderFix(
     effort: (tier?.effort ?? 'xhigh') as 'xhigh',
     maxTurns: tier?.maxTurns ?? 80,
     maxBudgetUsd: tier?.budgetUsd ?? 12,
-    allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent'],
+    allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent',
+                   'WebSearch', 'WebFetch'],
     protectedPaths: claim.policy.tools.protectedPaths ?? [],
     systemPrompt, jsonSchema: schema,
   };
