@@ -134,3 +134,9 @@ Things that bit us while building the factory. Newest last.
   `process.title = 'goblin-worker'` now, and `just ps` / `just stop` match on
   that. The rule underneath: never conclude a process is dead from a pattern you
   have not proven matches it when it is alive.
+- **SIGTERM does not stop a run, only the next claim.** The worker's stop flag is
+  checked between ticks, so `just stop` (or a plain `pkill`) leaves the phase in
+  flight — a second worker started straight afterwards runs alongside the first,
+  and the "stopped" one keeps writing events to a run you have already closed
+  out. Hard-kill by pid when you need the run itself to end, and check
+  `pgrep -f goblin-worker` returns nothing before starting another.
