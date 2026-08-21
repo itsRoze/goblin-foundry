@@ -33,6 +33,7 @@ export const reviewerPhase: PhaseSpec<ReviewOutput> = {
   envelope: 'ReviewOutput',
   gates: [review_verdict_consistent, lens_coverage],
   modelFor: policy => ({
+    harness: policy.models.reviewer?.harness ?? 'claude-code',
     model: policy.models.reviewer?.model ?? 'opus',
     effort: policy.models.reviewer?.effort ?? 'high',
   }),
@@ -63,6 +64,7 @@ async function runReviewer(
   const tier = claim.policy.models.reviewer;
   const phase = {
     runId, phaseId, agent: 'reviewer', cwd: worktree.path,
+    harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'opus',
     effort: (tier?.effort ?? 'high') as 'high',
     maxTurns: tier?.maxTurns ?? 40,
@@ -194,6 +196,7 @@ async function runBuilderFix(
   const schema = envelopeJsonSchema('BuildOutput');
   const phase = {
     runId, phaseId, agent: 'builder', cwd: worktree!.path,
+    harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'sonnet',
     effort: (tier?.effort ?? 'xhigh') as 'xhigh',
     maxTurns: tier?.maxTurns ?? 80,

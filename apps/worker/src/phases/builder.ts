@@ -31,6 +31,7 @@ export const builderPhase: PhaseSpec<BuildOutput> = {
   envelope: 'BuildOutput',
   gates: [tests_pass, diff_matches_claims],
   modelFor: policy => ({
+    harness: policy.models.builder?.harness ?? 'claude-code',
     model: policy.models.builder?.model ?? 'sonnet',
     effort: policy.models.builder?.effort ?? 'xhigh',
   }),
@@ -58,7 +59,8 @@ async function runBuilder(
   const systemPrompt = await readFile(join(promptsDir, 'builder.md'), 'utf8');
   const schema = envelopeJsonSchema('BuildOutput');
   const phase = {
-    runId, phaseId, agent: 'builder', cwd: worktree.path, model,
+    runId, phaseId, agent: 'builder', cwd: worktree.path,
+    harness: claim.policy.models.builder?.harness ?? 'claude-code', model,
     effort, maxTurns: claim.policy.models.builder?.maxTurns ?? 80,
     maxBudgetUsd: claim.policy.models.builder?.budgetUsd ?? 12,
     allowedTools: BUILDER_TOOLS, protectedPaths: claim.policy.tools.protectedPaths ?? [],

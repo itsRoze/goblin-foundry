@@ -103,7 +103,17 @@ export function violations(r: GateReport): string[] {
 
 // ── Per-project policy (M0: typed object, hard-coded preset) ────────────────
 
+/** Which runner executes a phase, and therefore which provider it can reach. */
+export const HARNESSES = ['claude-code', 'pi'] as const;
+export type Harness = (typeof HARNESSES)[number];
+
 export const phasePolicy = z.object({
+  /**
+   * `claude-code` reads `model` as a Claude alias (`opus`); `pi` reads it as
+   * `provider/model` (`opencode-go/kimi-k3`), which is how a phase says which
+   * lane it runs in without a second field to keep in sync.
+   */
+  harness: z.enum(HARNESSES).default('claude-code'),
   model: z.string(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
   budgetUsd: z.number(),
@@ -159,10 +169,12 @@ export const STANDARD_PRESET: Policy = {
     // subagents ran out of money at $6 with the design half-written. Turns are
     // deliberately loose — the dollar budget is the leash, and a turn cap tight
     // enough to bind stops correct work rather than runaway work.
-    planner: { model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
-    builder: { model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
-    reviewer: { model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
-    librarian: { model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 60 },
+    planner: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
+    builder: { harness: 'claude-code', model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
+    reviewer: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
+    // The cheap lane: pi against OpenCode Go, where a plan window is not the
+    // scarce resource. This is the A/B's control group.
+    librarian: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'low', budgetUsd: 1, maxTurns: 60 },
   },
   design: { mockups: 'html', storage: 'factory-db' },
   tools: {

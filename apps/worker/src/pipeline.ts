@@ -29,7 +29,7 @@ export type PhaseSpec<E extends EnvelopeBase = EnvelopeBase> = {
   envelope: EnvelopeName;
   gates: Gate<E>[];
   /** Agent phases only: which model tier in policy this phase draws from. */
-  modelFor?: (policy: Policy) => { model: string; effort: string };
+  modelFor?: (policy: Policy) => { model: string; effort: string; harness?: string };
   run: (ctx: PhaseContext, handoff: EnvelopeBase | null) => Promise<PhaseAttempt<E>>;
 };
 

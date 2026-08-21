@@ -107,11 +107,13 @@ export async function addRunCost(runId: string, u: Usage) {
 export async function startPhase(
   runId: string, seq: number, kind: 'agent' | 'code' | 'human', name: string,
   agent: string | null, model: string | null, effort: string | null,
+  harness: string = 'claude-code',
 ) {
   const id = newId('phs');
-  await sql`insert into phase (id, run_id, seq, kind, name, agent, model, effort, status, started_at)
+  await sql`insert into phase (id, run_id, seq, kind, name, agent, model, effort, harness,
+                               status, started_at)
             values (${id}, ${runId}, ${seq}, ${kind}, ${name}, ${agent}, ${model}, ${effort},
-                    'running', now())`;
+                    ${harness}, 'running', now())`;
   return id;
 }
 

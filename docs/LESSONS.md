@@ -163,3 +163,15 @@ Things that bit us while building the factory. Newest last.
   a `cat` of the factory's `.env`, reads of the parent repo, `git -C`
   redirection — are worth keeping, which is the argument for fixing the
   heuristic rather than loosening the boundary.
+- **pi has no structured-output mode, and does not need one here.** The Claude
+  runner asks the SDK for `outputFormat: json_schema`; pi returns text, so the
+  envelope comes from the JSON-in-final-message fallback both runners already
+  carry. A probe phase on `opencode-go/kimi-k3` returned a valid envelope, one
+  tool call and a real cost line ($0.0106, 2 turns) on the first attempt —
+  the useful part is that the same `PhaseResult` came back, so nothing
+  downstream of the runner could tell which harness answered.
+- **`ModelRuntime.create()` finds `OPENCODE_API_KEY` on its own**, and one key
+  authenticates two providers: `opencode` (Zen — Claude, GPT, Gemini,
+  pay-as-you-go) and `opencode-go` (the $10 window — Kimi, DeepSeek, GLM, Qwen,
+  MiniMax, Grok). Which one a phase reaches is the provider half of its model
+  ref, so the failover lane and the cheap lane are the same credential.

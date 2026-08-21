@@ -87,7 +87,8 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
     }
     const model = spec.modelFor?.(claim.policy);
     const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
-                                          model?.model ?? null, model?.effort ?? null);
+                                        model?.model ?? null, model?.effort ?? null,
+                                        model?.harness ?? 'claude-code');
     await db.event({ runId: claim.runId, phaseId, type: 'phase_start', name: spec.name,
                      payload: { kind: spec.kind, ticket: formatRef(claim.projectKey, claim.shortId) } });
 

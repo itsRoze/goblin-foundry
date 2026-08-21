@@ -1,8 +1,10 @@
 import {
   query, type CanUseTool, type HookCallback, type Options, type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
+import type { Harness } from '@goblin/schema';
 import * as db from './db.ts';
 import { checkTool } from './guard.ts';
+import { runPiPhase } from './harness/pi.ts';
 import { parseAsk } from './ask.ts';
 import { asHalt } from './halt.ts';
 import { askHuman } from './questions.ts';
@@ -11,6 +13,8 @@ export type PhaseRun = {
   runId: string;
   phaseId: string;
   agent: string;
+  /** Which runner executes this phase. Defaults to the Claude Agent SDK. */
+  harness?: Harness;
   cwd: string;
   model: string;
   effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -44,6 +48,13 @@ const ZERO_USAGE: db.Usage = {
  * Pass `resume` to correct a phase inside the same session instead of restarting it.
  */
 export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Promise<PhaseResult> {
+  // A phase is a contract, not a vendor. Everything downstream — envelopes,
+  // gates, events, cost — is identical whichever runner answers.
+  if (p.harness === 'pi') return runPiPhase(p, prompt, resume);
+  return runClaudeCodePhase(p, prompt, resume);
+}
+
+async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string): Promise<PhaseResult> {
   const started = new Date();
   await db.event({
     runId: p.runId, phaseId: p.phaseId, type: 'agent_start', name: p.agent,

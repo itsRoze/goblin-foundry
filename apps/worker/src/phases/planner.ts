@@ -31,6 +31,7 @@ export const plannerPhase: PhaseSpec<PlanOutput> = {
   envelope: 'PlanOutput',
   gates: [design_complete, review_readable, verdict_consistent],
   modelFor: policy => ({
+    harness: policy.models.planner?.harness ?? 'claude-code',
     model: policy.models.planner?.model ?? 'opus',
     effort: policy.models.planner?.effort ?? 'high',
   }),
@@ -52,6 +53,7 @@ async function runPlanner(
   const schema = envelopeJsonSchema('PlanOutput');
   const phase = {
     runId, phaseId, agent: 'planner', cwd: claim.repoPath,
+    harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'opus',
     effort: (tier?.effort ?? 'high') as 'high',
     maxTurns: tier?.maxTurns ?? 60,
