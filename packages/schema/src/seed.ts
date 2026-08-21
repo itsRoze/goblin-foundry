@@ -23,8 +23,10 @@ if (existing) {
   console.log(`project already seeded: ${existing.id}`);
 } else {
   const projectId = newId('prj');
-  await sql`insert into project (id, slug, name, repo_path, repo_remote, default_branch, policy) values (
-    ${projectId}, 'goblin-foundry', 'Goblin Foundry', '/Users/roze/dev/factory',
+  // 'goblin-foundry' derives 'GF'; the factory's own tickets have been FAC-
+  // since day one, so the key is overridden rather than derived here too.
+  await sql`insert into project (id, slug, key, name, repo_path, repo_remote, default_branch, policy) values (
+    ${projectId}, 'goblin-foundry', 'FAC', 'Goblin Foundry', '/Users/roze/dev/factory',
     null, 'main', ${sql.json(STANDARD_PRESET as never)})`;
 
   const statusIds: Record<string, string> = {};

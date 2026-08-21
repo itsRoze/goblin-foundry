@@ -11,6 +11,7 @@ import type { StatusKind } from './types.ts';
 const project = table('project').columns({
   id: string(),
   slug: string(),
+  key: string(),
   name: string(),
   repoPath: string().from('repo_path'),
   repoRemote: string().from('repo_remote').optional(),

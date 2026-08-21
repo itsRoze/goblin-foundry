@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
+import { formatRef } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { usd } from '../format.ts';
@@ -72,11 +73,11 @@ export function Board() {
                     else cardRefs.current.delete(ticket.id);
                   }}
                   className={`card${focusedId === ticket.id ? ' focused' : ''}`}
-                  href={href.ticket(ticket.shortId)}
+                  href={href.ticket(ticket.project!.key, ticket.shortId)}
                   draggable
                   onDragStart={e => e.dataTransfer.setData('text/plain', ticket.id)}
                 >
-                  <div className="id">FAC-{ticket.shortId}</div>
+                  <div className="id">{formatRef(ticket.project!.key, ticket.shortId)}</div>
                   <div className="title">{ticket.title}</div>
                   <div className="meta">
                     <span className="pill">{ticket.type}</span>

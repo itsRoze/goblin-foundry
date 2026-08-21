@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  blockingFindings, buildOutput, envelopeJsonSchema, reviewOutput, violations,
+  blockingFindings, buildOutput, envelopeJsonSchema, formatRef, reviewOutput, violations,
   type BuildOutput, type EnvelopeBase, type Finding, type ReviewOutput,
 } from '@goblin/schema';
 import * as db from '../db.ts';
@@ -256,7 +256,7 @@ function firstPrompt(
   schema: Record<string, unknown>,
 ): string {
   return [
-    `## Ticket FAC-${claim.shortId}: ${claim.title}`,
+    `## Ticket ${formatRef(claim.projectKey, claim.shortId)}: ${claim.title}`,
     '',
     claim.body || '(no description)',
     '',

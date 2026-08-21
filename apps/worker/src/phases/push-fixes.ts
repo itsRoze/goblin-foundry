@@ -1,4 +1,4 @@
-import type { BuildOutput, EnvelopeBase, ReviewOutput } from '@goblin/schema';
+import { formatRef, type BuildOutput, type EnvelopeBase, type ReviewOutput } from '@goblin/schema';
 import * as db from '../db.ts';
 import { commitAll, hasCommitsSince, hasRemote, isClean, pushBranch } from '../git.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
@@ -38,10 +38,11 @@ async function runPushFixes(
   if (dirty) {
     // Not folded back to the base commit: the branch's earlier commits are the
     // build under review, and a fix is a commit of its own on top of them.
+    const ref = formatRef(claim.projectKey, claim.shortId);
     const commit = await commitAll(
       worktree.path,
-      `FAC-${claim.shortId}: address review findings`,
-      { ticket: `FAC-${claim.shortId}`, run: runId, phase: 'builder_fix', design: claim.designId },
+      `${ref}: address review findings`,
+      { ticket: ref, run: runId, phase: 'builder_fix', design: claim.designId },
     );
     await db.event({ runId, phaseId, type: 'log', name: 'fix commit',
                      payload: { code: commit.code, out: commit.stdout.slice(-500) } });

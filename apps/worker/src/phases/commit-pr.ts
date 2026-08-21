@@ -1,4 +1,4 @@
-import type { BuildOutput, EnvelopeBase } from '@goblin/schema';
+import { formatRef, type BuildOutput, type EnvelopeBase } from '@goblin/schema';
 import * as db from '../db.ts';
 import {
   commitAll, hasCommitsSince, hasRemote, isClean, pushAndOpenPr,
@@ -28,11 +28,12 @@ async function runCommitAndPr(
   // commit message and the narrative this phase folds into the PR body.
   const build = handoff as BuildOutput | null;
 
+  const ref = formatRef(claim.projectKey, claim.shortId);
   if (!(await isClean(worktree.path)) || await hasCommitsSince(worktree.path, worktree.baseSha)) {
     const commit = await commitAll(
       worktree.path,
-      build?.commit_message || `FAC-${claim.shortId}: ${claim.title}`,
-      { ticket: `FAC-${claim.shortId}`, run: runId, phase: 'commit_and_pr/1', design: claim.designId },
+      build?.commit_message || `${ref}: ${claim.title}`,
+      { ticket: ref, run: runId, phase: 'commit_and_pr/1', design: claim.designId },
       worktree.baseSha,
     );
     await db.event({ runId, phaseId, type: 'log', name: 'commit',
@@ -44,7 +45,7 @@ async function runCommitAndPr(
   let summary: string;
   if (await hasRemote(claim.repoPath)) {
     const pr = await pushAndOpenPr(worktree.path, worktree.branch, claim.defaultBranch,
-      `FAC-${claim.shortId}: ${claim.title}`, prBody);
+      `${ref}: ${claim.title}`, prBody);
     await db.event({ runId, phaseId, type: pr.ok ? 'log' : 'error',
                      name: pr.ok ? 'pull request' : 'pr failed', payload: { url: pr.url, detail: pr.detail } });
     if (pr.ok) { artifacts.push(pr.url); summary = `pull request opened: ${pr.url}`; }
@@ -61,9 +62,10 @@ async function runCommitAndPr(
 }
 
 function prBodyFor(claim: db.Claim, build: BuildOutput | null): string {
-  if (!build) return `## FAC-${claim.shortId}: ${claim.title}\n`;
+  const ref = formatRef(claim.projectKey, claim.shortId);
+  if (!build) return `## ${ref}: ${claim.title}\n`;
   return [
-    `## FAC-${claim.shortId}: ${claim.title}`,
+    `## ${ref}: ${claim.title}`,
     '', build.summary, '',
     '### Evidence',
     ...build.evidence.map(e => `- **${e.what}** — \`${e.command}\`\n  \n  \`\`\`\n  ${e.output.slice(0, 600)}\n  \`\`\``),

@@ -8,7 +8,7 @@ import { schema } from '@goblin/schema/zero';
 import { queries } from '@goblin/schema/queries';
 import { handleQueryRequest } from '@rocicorp/zero/server';
 import { mustGetQuery } from '@rocicorp/zero';
-import { sql, getTicket, moveTicket, createDesign, eventsAfter } from './db.ts';
+import { sql, findTicket, getTicket, moveTicket, createDesign, eventsAfter } from './db.ts';
 import { onEvent } from './notify.ts';
 
 const VERSION = '0.0.0';
@@ -46,8 +46,9 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.get('/api/tickets/:ref', async c => {
-  const ticket = await getTicket(c.req.param('ref'));
-  if (!ticket) return c.json({ error: 'not found' }, 404);
+  const found = await findTicket(c.req.param('ref'));
+  if (!found.ok) return c.json(found.body, found.status);
+  const ticket = found.ticket;
   const designs = await sql`select id, version, status, created_at, approved_at
     from design where ticket_id = ${ticket.id} order by version desc`;
   const runs = await sql`select id, status, branch, cost_usd, started_at, ended_at
@@ -57,8 +58,9 @@ app.get('/api/tickets/:ref', async c => {
 
 const statusBody = z.object({ kind: statusKind });
 app.post('/api/tickets/:ref/status', async c => {
-  const ticket = await getTicket(c.req.param('ref'));
-  if (!ticket) return c.json({ error: 'not found' }, 404);
+  const found = await findTicket(c.req.param('ref'));
+  if (!found.ok) return c.json(found.body, found.status);
+  const ticket = found.ticket;
   const parsed = statusBody.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
   await moveTicket(ticket.id, ticket.project_id, parsed.data.kind);
@@ -72,8 +74,9 @@ const designBody = z.object({
 });
 /** Designs are stored, never committed. This is where a planner run lands. */
 app.post('/api/tickets/:ref/designs', async c => {
-  const ticket = await getTicket(c.req.param('ref'));
-  if (!ticket) return c.json({ error: 'not found' }, 404);
+  const found = await findTicket(c.req.param('ref'));
+  if (!found.ok) return c.json(found.body, found.status);
+  const ticket = found.ticket;
   const parsed = designBody.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.message }, 400);
   const { markdown, review_html, created_by } = parsed.data;

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  envelopeJsonSchema, planOutput, violations, type EnvelopeBase, type PlanOutput,
+  envelopeJsonSchema, formatRef, planOutput, violations, type EnvelopeBase, type PlanOutput,
 } from '@goblin/schema';
 import * as db from '../db.ts';
 import { design_complete, review_readable, verdict_consistent } from '../gates.ts';
@@ -136,7 +136,7 @@ function firstPrompt(
   answered: { header: string; prompt: string; answer: string }[] = [],
 ): string {
   return [
-    `## Ticket FAC-${claim.shortId}: ${claim.title}`,
+    `## Ticket ${formatRef(claim.projectKey, claim.shortId)}: ${claim.title}`,
     '',
     claim.body || '(no description)',
     '',
