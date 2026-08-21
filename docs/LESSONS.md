@@ -112,3 +112,16 @@ Things that bit us while building the factory. Newest last.
   requires a path to start with a real character, and denials are worth watching
   for exactly this reason: a false positive does not look like a guard problem
   from the outside, it looks like an agent that cannot follow instructions.
+- **Running out of money looked exactly like a crash.** A planner run three grill
+  rounds deep died with `planner:worker_error` and no cost recorded, and a
+  reviewer died the same way when the plan window closed — the SDK reports both
+  as a thrown error result, and a generic catch turns "you have no budget left"
+  into "something went wrong". They are named now (`budget_exhausted`,
+  `usage_limit`) and never retried, since another attempt learns the same thing
+  at the same price. The measured numbers: a three-round interview with the
+  perspective subagents does not fit in $6, and a reviewer left to fuzz freely
+  spent $14 on a ten-line function across attempts that each got their own cap.
+- **An interview is the expensive artifact, not the design.** When that planner
+  run died it took twelve answered questions with it, and a fresh run would have
+  asked all twelve again. Every answer the human has ever given on a ticket is
+  now part of the next planner's opening prompt, marked settled.

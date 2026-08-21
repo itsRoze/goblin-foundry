@@ -155,9 +155,11 @@ export const STANDARD_PRESET: Policy = {
   gates: { designApproval: 'required', prApproval: 'skip', autoMerge: true, deploy: 'auto' },
   review: { lenses: ['correctness', 'security', 'tests', 'maintainability'], maxFixLoops: 3, blockOn: 'important' },
   models: {
-    planner: { model: 'opus', effort: 'high', budgetUsd: 6, maxTurns: 60 },
+    // Measured, not guessed: a three-round interview with the perspective
+    // subagents ran out of money at $6 with the design half-written.
+    planner: { model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 60 },
     builder: { model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 80 },
-    reviewer: { model: 'opus', effort: 'high', budgetUsd: 8, maxTurns: 40 },
+    reviewer: { model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 40 },
     librarian: { model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 20 },
   },
   design: { mockups: 'html', storage: 'factory-db' },

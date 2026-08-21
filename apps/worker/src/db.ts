@@ -289,3 +289,20 @@ export async function nextPhaseSeq(runId: string): Promise<number> {
     select max(seq) as max from phase where run_id = ${runId}`;
   return (row?.max ?? 0) + 1;
 }
+
+/** Everything you have already been asked about this ticket, and said. */
+export async function answeredQuestions(ticketId: string): Promise<
+  { header: string; prompt: string; answer: string }[]
+> {
+  return sql<{ header: string; prompt: string; answer: string }[]>`
+    select q.header, q.prompt, q.answer from question q
+    join run r on r.id = q.run_id
+    where r.ticket_id = ${ticketId} and q.answer is not null
+    order by q.asked_at, q.seq`;
+}
+
+/** What this run has spent so far — the per-ticket budget is checked against it. */
+export async function runCost(runId: string): Promise<number> {
+  const [row] = await sql<{ cost_usd: number }[]>`select cost_usd from run where id = ${runId}`;
+  return row?.cost_usd ?? 0;
+}

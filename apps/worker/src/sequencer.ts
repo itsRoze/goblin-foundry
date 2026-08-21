@@ -1,6 +1,7 @@
 import type { EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
 import { addWorktree, attachWorktree, removeWorktree, type Worktree } from './git.ts';
+import { asHalt, overBudget } from './halt.ts';
 import {
   keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
   type PhaseAttempt, type PhaseContext, type PhaseSpec, type Pipeline,
@@ -24,6 +25,8 @@ async function runOnePhase(
   try {
     return await spec.run(ctx, handoff);
   } catch (e) {
+    const halt = asHalt(e);
+    if (halt) return { status: 'fail', envelope: null, reason: halt.reason };
     await db.event({ runId: ctx.runId, phaseId: ctx.phaseId, type: 'error', name: 'worker error',
                      payload: { error: (e as Error).message, stack: (e as Error).stack?.slice(0, 2000) } });
     return { status: 'fail', envelope: null, reason: 'worker_error' };
@@ -56,6 +59,18 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
   let terminalReason = 'completed';
 
   for (const { spec, seq } of numberedPhases(pipeline)) {
+    // The per-ticket cap is the one budget that spans phases; a run that has
+    // spent it stops here rather than opening another agent.
+    const spent = await db.runCost(claim.runId);
+    if (overBudget(spent, claim.policy.budgets.perTicketUsd ?? 0)) {
+      await db.event({ runId: claim.runId, type: 'error', name: 'budget_exhausted',
+                       payload: { spent_usd: spent, cap_usd: claim.policy.budgets.perTicketUsd,
+                                  next_phase: spec.name } });
+      outcome = 'fail';
+      terminalReason = 'budget_exhausted';
+      await db.clearDelegate(claim.ticketId);
+      break;
+    }
     const model = spec.modelFor?.(claim.policy);
     const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
                                           model?.model ?? null, model?.effort ?? null);

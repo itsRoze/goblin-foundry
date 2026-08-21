@@ -41,10 +41,11 @@ async function runPlanner(
   const { claim, runId, phaseId } = ctx;
   const tier = claim.policy.models.planner;
 
-  const [systemPrompt, template, prior] = await Promise.all([
+  const [systemPrompt, template, prior, answered] = await Promise.all([
     readFile(join(promptsDir, 'planner.md'), 'utf8'),
     readFile(templatePath, 'utf8'),
     db.latestDesign(claim.ticketId),
+    db.answeredQuestions(claim.ticketId),
   ]);
   const schema = envelopeJsonSchema('PlanOutput');
   const phase = {
@@ -61,7 +62,7 @@ async function runPlanner(
   };
 
   let attempt = 1;
-  let prompt = firstPrompt(claim, template, schema, prior);
+  let prompt = firstPrompt(claim, template, schema, prior, answered);
   let resume: string | undefined;
   let envelope: PlanOutput | undefined;
   let gatesGreen = false;
@@ -130,6 +131,7 @@ async function runPlanner(
 
 function firstPrompt(
   claim: db.Claim, template: string, schema: Record<string, unknown>, prior?: db.PriorDesign,
+  answered: { header: string; prompt: string; answer: string }[] = [],
 ): string {
   return [
     `## Ticket FAC-${claim.shortId}: ${claim.title}`,
@@ -148,6 +150,12 @@ function firstPrompt(
             ? prior.notes.map(n => `- ${n.note}`).join('\n') + '\n\n'
             : '_No annotations; it was sent back without notes._\n\n')
         + '```markdown\n' + prior.markdown.slice(0, 20000) + '\n```'
+      : '',
+    // A run that died mid-interview must not cost the human the interview.
+    answered.length
+      ? '\n## What you have already asked me, and what I said\n\n'
+        + 'These are settled. Do not ask them again; ask only what is still open.\n\n'
+        + answered.map(q => `**${q.header || 'Q'}** — ${q.prompt}\n> ${q.answer}`).join('\n\n')
       : '',
     '',
     '## Design template',

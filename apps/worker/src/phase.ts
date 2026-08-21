@@ -4,6 +4,7 @@ import {
 import * as db from './db.ts';
 import { checkTool } from './guard.ts';
 import { parseAsk } from './ask.ts';
+import { asHalt } from './halt.ts';
 import { askHuman } from './questions.ts';
 
 export type PhaseRun = {
@@ -155,6 +156,7 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
   let terminalReason = 'unknown';
   let usage = { ...ZERO_USAGE };
 
+  try {
   for await (const message of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
     if (message.type === 'system' && message.subtype === 'init') {
       sessionId = message.session_id;
@@ -194,6 +196,17 @@ export async function runPhase(p: PhaseRun, prompt: string, resume?: string): Pr
       }
       if (!usage.costUsd) usage.costUsd = message.total_cost_usd ?? 0;
     }
+  }
+  } catch (e) {
+    // The money running out or the plan window closing is not a crash and not
+    // worth another attempt: it ends the phase with a reason you can read.
+    const halt = asHalt(e);
+    await db.event({
+      runId: p.runId, phaseId: p.phaseId, type: 'error', name: halt ? halt.reason : 'agent error',
+      payload: { error: (e as Error).message?.slice(0, 1000) ?? String(e), agent: p.agent },
+    }).catch(() => {});
+    if (halt) throw halt;
+    throw e;
   }
 
   await db.updatePhase(p.phaseId, { usage });

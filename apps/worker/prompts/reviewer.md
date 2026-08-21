@@ -39,6 +39,12 @@ The briefs:
 - **performance** — name the trigger condition — the input size, the call rate,
   the loop — or it is not a finding.
 
+Your evidence comes from the diff, the repository, and the project's own checks —
+read the code, run the tests, try the specific input a criterion names. It does
+not come from an open-ended investigation: if you are on your tenth exploratory
+script, you have left the review and started a research project, and the ticket
+is still waiting.
+
 Each finding names the requirement or standard it comes from, whether it is met,
 the evidence (the code, the missing test, the path traced), and a severity:
 `important` blocks, `nit` does not, `pre-existing` was already true before this
