@@ -1,6 +1,6 @@
 import type { EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
-import { addWorktree, attachWorktree, removeWorktree, type Worktree } from './git.ts';
+import { addWorktree, attachWorktree, hasBranchWork, removeWorktree, type Worktree } from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
 import {
   keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
@@ -10,9 +10,18 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 
 async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
   if (pipeline.worktree === 'none') return null;
-  const worktree = pipeline.worktree === 'attached'
+  // A branch that already carries commits is an earlier attempt that ran out of
+  // turns or budget with real work on it. Cutting it fresh would throw that away
+  // and pay to rebuild it; the retry continues from where the last one stopped.
+  const resuming = pipeline.worktree === 'attached'
+    || (pipeline.worktree === 'fresh' && await hasBranchWork(claim.repoPath, branch, claim.defaultBranch));
+  const worktree = resuming
     ? await attachWorktree(claim.repoPath, branch, claim.defaultBranch)
     : await addWorktree(claim.repoPath, branch, claim.defaultBranch);
+  if (resuming && pipeline.worktree === 'fresh') {
+    await db.event({ runId: claim.runId, type: 'log', name: 'resuming branch',
+                     payload: { branch, note: 'an earlier attempt left commits here' } });
+  }
   await db.setRunBranch(claim.runId, worktree.path, branch);
   await db.event({ runId: claim.runId, type: 'log', name: 'worktree',
                    payload: { path: worktree.path, branch, base: claim.defaultBranch, base_sha: worktree.baseSha } });

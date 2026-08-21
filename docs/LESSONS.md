@@ -149,3 +149,10 @@ Things that bit us while building the factory. Newest last.
   session: stop, report what you changed, say what remains. The other half of
   the fix is upstream — a design that names independently shippable slices
   should leave as one pull request per slice, not one branch that dies at turn 80.
+- **A retry that re-cuts the branch pays to rebuild what it already had.** The
+  same slice of FAC-10 was written three times: each attempt hit a limit, and
+  the next one cut `goblin/fac-10` fresh from base (`worktree add -B`), erasing
+  it. A ticket branch carrying commits beyond base is not stale — it is an
+  earlier attempt that ran out of turns — so the run now attaches to it and the
+  builder's opening prompt lists what is already there, told to continue rather
+  than start again.

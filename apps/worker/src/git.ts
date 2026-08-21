@@ -32,6 +32,13 @@ export type Worktree = { path: string; branch: string; baseSha: string };
  * One worktree per ticket, cut from the project's default branch.
  * `-p` runs never clean up after themselves, so removal is our job.
  */
+export async function hasBranchWork(repo: string, branch: string, base: string): Promise<boolean> {
+  const exists = await git(repo, 'rev-parse', '--verify', `refs/heads/${branch}`);
+  if (exists.code !== 0) return false;
+  const { stdout } = await git(repo, 'rev-list', '--count', `${base}..refs/heads/${branch}`);
+  return Number(stdout.trim()) > 0;
+}
+
 export async function addWorktree(repo: string, branch: string, base: string): Promise<Worktree> {
   const path = join(repo, '.goblin', 'worktrees', branch.replace(/\//g, '-'));
   await mkdir(join(repo, '.goblin', 'worktrees'), { recursive: true });
