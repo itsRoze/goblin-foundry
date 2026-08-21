@@ -7,14 +7,20 @@ import {
 import * as db from '../db.ts';
 import { asHalt, worthWrappingUp } from '../halt.ts';
 import { diff_matches_claims, tests_pass } from '../gates.ts';
-import { materializeDesign } from '../git.ts';
+import { changedFiles, materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
 
+/**
+ * A capable agent, not a caged one. The boundary is where it may write — the
+ * worktree — not what it may know: an agent that cannot read the docs for the
+ * framework it is using guesses instead, and guesses cost more than requests.
+ */
 const BUILDER_TOOLS = [
   'Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent',
+  'WebSearch', 'WebFetch',
 ];
 
 /** Implements the ticket in its worktree and reports a BuildOutput envelope. */
@@ -25,6 +31,7 @@ export const builderPhase: PhaseSpec<BuildOutput> = {
   envelope: 'BuildOutput',
   gates: [tests_pass, diff_matches_claims],
   modelFor: policy => ({
+    harness: policy.models.builder?.harness ?? 'claude-code',
     model: policy.models.builder?.model ?? 'sonnet',
     effort: policy.models.builder?.effort ?? 'xhigh',
   }),
@@ -52,7 +59,8 @@ async function runBuilder(
   const systemPrompt = await readFile(join(promptsDir, 'builder.md'), 'utf8');
   const schema = envelopeJsonSchema('BuildOutput');
   const phase = {
-    runId, phaseId, agent: 'builder', cwd: worktree.path, model,
+    runId, phaseId, agent: 'builder', cwd: worktree.path,
+    harness: claim.policy.models.builder?.harness ?? 'claude-code', model,
     effort, maxTurns: claim.policy.models.builder?.maxTurns ?? 80,
     maxBudgetUsd: claim.policy.models.builder?.budgetUsd ?? 12,
     allowedTools: BUILDER_TOOLS, protectedPaths: claim.policy.tools.protectedPaths ?? [],
@@ -65,8 +73,12 @@ async function runBuilder(
     testCommand: claim.policy.commands.test ?? '',
   };
 
+  // What an earlier attempt already left here, so this one continues instead of
+  // starting the same slice for the third time.
+  const existing = await changedFiles(worktree.path, worktree.baseSha);
+
   let attempt = 1;
-  let prompt = firstPrompt(claim, designPath ? '.goblin/design.md' : null, schema);
+  let prompt = firstPrompt(claim, designPath ? '.goblin/design.md' : null, schema, existing);
   let resume: string | undefined;
   let envelope: BuildOutput | undefined;
   let gatesGreen = false;
@@ -150,7 +162,9 @@ async function runBuilder(
   return { status: 'success', envelope };
 }
 
-function firstPrompt(claim: db.Claim, designPath: string | null, schema: Record<string, unknown>): string {
+function firstPrompt(
+  claim: db.Claim, designPath: string | null, schema: Record<string, unknown>, existing: string[] = [],
+): string {
   return [
     `## Ticket ${formatRef(claim.projectKey, claim.shortId)}: ${claim.title}`,
     '',
@@ -159,6 +173,13 @@ function firstPrompt(claim: db.Claim, designPath: string | null, schema: Record<
     designPath
       ? `## Design\n\nThe approved design is at \`${designPath}\` in this worktree. Read it before you start. It is git-ignored — never commit it.`
       : '## Design\n\nThere is no design for this ticket. Implement the ticket body directly, and keep the change minimal.',
+    '',
+    existing.length
+      ? `## Work already on this branch\n\nAn earlier attempt stopped at a harness limit and left these changes:\n`
+        + existing.slice(0, 40).map(f => `- ${f}`).join('\n')
+        + '\n\nRead them before you touch anything. Continue that work — do not start it again,'
+        + ' and do not revert it because you did not write it.'
+      : '',
     '',
     '## Task',
     '',

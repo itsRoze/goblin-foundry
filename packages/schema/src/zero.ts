@@ -112,6 +112,7 @@ const phase = table('phase').columns({
   kind: enumeration<'agent' | 'code' | 'human'>(),
   name: string(),
   agent: string().optional(),
+  harness: string(),
   model: string().optional(),
   effort: string().optional(),
   sessionId: string().from('session_id').optional(),

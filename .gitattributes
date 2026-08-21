@@ -1,0 +1,6 @@
+# Append-only logs: two branches adding lines at the end are not in conflict,
+# they are both right. Union keeps both sides instead of asking a human to
+# re-type them. Order within a merge is not meaningful here — every entry is
+# dated and the file is read as a list, not as prose.
+docs/DECISIONS.md merge=union
+docs/LESSONS.md   merge=union

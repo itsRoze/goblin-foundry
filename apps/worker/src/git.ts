@@ -32,6 +32,34 @@ export type Worktree = { path: string; branch: string; baseSha: string };
  * One worktree per ticket, cut from the project's default branch.
  * `-p` runs never clean up after themselves, so removal is our job.
  */
+/**
+ * Catch the base branch up before cutting anything from it. The factory builds
+ * from the local branch, so a merge that happened on GitHub is invisible here
+ * until someone pulls — and a run that starts from a stale base rebuilds work
+ * that already shipped. Fast-forward only: a base that has diverged is a human's
+ * problem, not something a run should paper over.
+ */
+export async function syncBase(repo: string, base: string): Promise<string> {
+  if (!(await hasRemote(repo))) return 'no remote';
+  const fetched = await git(repo, 'fetch', 'origin', base);
+  if (fetched.code !== 0) return `fetch failed: ${fetched.stderr.trim().slice(-200)}`;
+  const behind = await git(repo, 'rev-list', '--count', `${base}..origin/${base}`);
+  if (Number(behind.stdout.trim() || 0) === 0) return 'already current';
+  // The base may be checked out in a worktree of its own, so update the ref
+  // rather than assuming this repository can pull it.
+  const ff = await git(repo, 'fetch', 'origin', `${base}:${base}`);
+  return ff.code === 0
+    ? `fast-forwarded ${behind.stdout.trim()} commit(s)`
+    : `could not fast-forward: ${ff.stderr.trim().slice(-200)}`;
+}
+
+export async function hasBranchWork(repo: string, branch: string, base: string): Promise<boolean> {
+  const exists = await git(repo, 'rev-parse', '--verify', `refs/heads/${branch}`);
+  if (exists.code !== 0) return false;
+  const { stdout } = await git(repo, 'rev-list', '--count', `${base}..refs/heads/${branch}`);
+  return Number(stdout.trim()) > 0;
+}
+
 export async function addWorktree(repo: string, branch: string, base: string): Promise<Worktree> {
   const path = join(repo, '.goblin', 'worktrees', branch.replace(/\//g, '-'));
   await mkdir(join(repo, '.goblin', 'worktrees'), { recursive: true });

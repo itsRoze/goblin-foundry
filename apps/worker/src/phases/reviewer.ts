@@ -15,7 +15,9 @@ import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
 
-const REVIEWER_TOOLS = ['Read', 'Glob', 'Grep', 'Bash', 'Agent', 'TodoWrite'];
+const REVIEWER_TOOLS = [
+  'Read', 'Glob', 'Grep', 'Bash', 'Agent', 'TodoWrite', 'WebSearch', 'WebFetch',
+];
 /** The lenses that have a brief in the reviewer's prompt today. */
 const SUPPORTED_LENSES = ['correctness', 'tests', 'maintainability', 'security', 'performance'];
 
@@ -31,6 +33,7 @@ export const reviewerPhase: PhaseSpec<ReviewOutput> = {
   envelope: 'ReviewOutput',
   gates: [review_verdict_consistent, lens_coverage],
   modelFor: policy => ({
+    harness: policy.models.reviewer?.harness ?? 'claude-code',
     model: policy.models.reviewer?.model ?? 'opus',
     effort: policy.models.reviewer?.effort ?? 'high',
   }),
@@ -61,6 +64,7 @@ async function runReviewer(
   const tier = claim.policy.models.reviewer;
   const phase = {
     runId, phaseId, agent: 'reviewer', cwd: worktree.path,
+    harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'opus',
     effort: (tier?.effort ?? 'high') as 'high',
     maxTurns: tier?.maxTurns ?? 40,
@@ -192,11 +196,13 @@ async function runBuilderFix(
   const schema = envelopeJsonSchema('BuildOutput');
   const phase = {
     runId, phaseId, agent: 'builder', cwd: worktree!.path,
+    harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'sonnet',
     effort: (tier?.effort ?? 'xhigh') as 'xhigh',
     maxTurns: tier?.maxTurns ?? 80,
     maxBudgetUsd: tier?.budgetUsd ?? 12,
-    allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent'],
+    allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent',
+                   'WebSearch', 'WebFetch'],
     protectedPaths: claim.policy.tools.protectedPaths ?? [],
     systemPrompt, jsonSchema: schema,
   };

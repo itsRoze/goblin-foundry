@@ -1,6 +1,8 @@
 import { formatRef, type EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
-import { addWorktree, attachWorktree, removeWorktree, type Worktree } from './git.ts';
+import {
+  addWorktree, attachWorktree, hasBranchWork, removeWorktree, syncBase, type Worktree,
+} from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
 import {
   keepsWorktree, numberedPhases, phaseTerminalReason, pipelineFor,
@@ -10,9 +12,21 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 
 async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
   if (pipeline.worktree === 'none') return null;
-  const worktree = pipeline.worktree === 'attached'
+  const synced = await syncBase(claim.repoPath, claim.defaultBranch);
+  await db.event({ runId: claim.runId, type: 'log', name: 'base branch',
+                   payload: { base: claim.defaultBranch, result: synced } });
+  // A branch that already carries commits is an earlier attempt that ran out of
+  // turns or budget with real work on it. Cutting it fresh would throw that away
+  // and pay to rebuild it; the retry continues from where the last one stopped.
+  const resuming = pipeline.worktree === 'attached'
+    || (pipeline.worktree === 'fresh' && await hasBranchWork(claim.repoPath, branch, claim.defaultBranch));
+  const worktree = resuming
     ? await attachWorktree(claim.repoPath, branch, claim.defaultBranch)
     : await addWorktree(claim.repoPath, branch, claim.defaultBranch);
+  if (resuming && pipeline.worktree === 'fresh') {
+    await db.event({ runId: claim.runId, type: 'log', name: 'resuming branch',
+                     payload: { branch, note: 'an earlier attempt left commits here' } });
+  }
   await db.setRunBranch(claim.runId, worktree.path, branch);
   await db.event({ runId: claim.runId, type: 'log', name: 'worktree',
                    payload: { path: worktree.path, branch, base: claim.defaultBranch, base_sha: worktree.baseSha } });
@@ -73,7 +87,8 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
     }
     const model = spec.modelFor?.(claim.policy);
     const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
-                                          model?.model ?? null, model?.effort ?? null);
+                                        model?.model ?? null, model?.effort ?? null,
+                                        model?.harness ?? 'claude-code');
     await db.event({ runId: claim.runId, phaseId, type: 'phase_start', name: spec.name,
                      payload: { kind: spec.kind, ticket: formatRef(claim.projectKey, claim.shortId) } });
 

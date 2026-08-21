@@ -1,0 +1,185 @@
+import {
+  createAgentSession, ModelRuntime, SessionManager,
+} from '@earendil-works/pi-coding-agent';
+import * as db from '../db.ts';
+import { checkTool } from '../guard.ts';
+import { asHalt } from '../halt.ts';
+import type { PhaseResult, PhaseRun } from '../phase.ts';
+
+/**
+ * The second harness.
+ *
+ * A phase is a contract, not a vendor: a prompt in, a typed envelope out, tool
+ * calls and cost on the way. `pi` runs that contract in-process against any
+ * provider it can authenticate — OpenCode Go by default — which is what makes
+ * an expensive Claude plan window optional rather than load-bearing.
+ *
+ * The M1 slice is deliberately thin: session, prompt, events, usage. The guard
+ * runs here as a wrapper rather than as a pi extension (M2), and there is no
+ * structured-output mode, so the envelope is parsed out of the final text the
+ * same way the Claude runner's fallback does.
+ */
+
+/** `opencode-go/kimi-k3` — how a phase names a model it wants. */
+export function parseModelRef(ref: string): { provider: string; model: string } | null {
+  const slash = ref.indexOf('/');
+  if (slash <= 0 || slash === ref.length - 1) return null;
+  return { provider: ref.slice(0, slash), model: ref.slice(slash + 1) };
+}
+
+/** pi's built-in tool names, mapped from the names the phases already use. */
+const TOOL_NAMES: Record<string, string> = {
+  Read: 'read', Glob: 'find', Grep: 'grep', Bash: 'bash',
+  Write: 'write', Edit: 'edit', LS: 'ls',
+};
+
+export function piTools(allowed: string[]): string[] {
+  return [...new Set(allowed.map(t => TOOL_NAMES[t]).filter((t): t is string => Boolean(t)))];
+}
+
+type Usage = { input?: number; output?: number; cacheRead?: number; cacheWrite?: number;
+               cost?: { total?: number } };
+
+/**
+ * Runs one phase through pi. Same signature as the Claude runner, same events,
+ * same PhaseResult — the sequencer cannot tell which one it called.
+ */
+export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): Promise<PhaseResult> {
+  const started = new Date();
+  const ref = parseModelRef(p.model) ?? { provider: 'opencode-go', model: p.model };
+
+  await db.event({
+    runId: p.runId, phaseId: p.phaseId, type: 'agent_start', name: p.agent,
+    payload: {
+      harness: 'pi', provider: ref.provider, model: ref.model, effort: p.effort,
+      resumed: resume ?? null, tools: p.allowedTools, budget_usd: p.maxBudgetUsd,
+    },
+    startedAt: started,
+  });
+
+  const modelRuntime = await ModelRuntime.create();
+  const model = modelRuntime.getModel(ref.provider, ref.model);
+  if (!model) {
+    const known = (await modelRuntime.getAvailable()).slice(0, 8)
+      .map(m => `${m.provider}/${m.id}`).join(', ');
+    throw new Error(`pi has no model ${ref.provider}/${ref.model} (available: ${known || 'none'})`);
+  }
+
+  const { session } = await createAgentSession({
+    cwd: p.cwd,
+    model,
+    thinkingLevel: p.effort === 'xhigh' || p.effort === 'max' ? 'high' : p.effort,
+    tools: piTools(p.allowedTools),
+    sessionManager: SessionManager.inMemory(),
+  });
+
+  // pi has no system-prompt option at construction; the agent's state carries it.
+  session.agent.state.systemPrompt = `${session.agent.state.systemPrompt ?? ''}\n\n${p.systemPrompt}`.trim();
+
+  const usage = { costUsd: 0, inputTokens: 0, outputTokens: 0,
+                  cacheReadTokens: 0, cacheWriteTokens: 0, numTurns: 0 };
+  const open = new Map<string, { eventId: string; startedAt: Date }>();
+  let text = '';
+  let denied = 0;
+
+  const unsubscribe = session.subscribe(event => {
+    void (async () => {
+      try {
+        if (event.type === 'tool_execution_start') {
+          const breach = checkTool(toolLabel(event.toolName), event.args, p.cwd, p.protectedPaths);
+          const startedAt = new Date();
+          const eventId = await db.event({
+            runId: p.runId, phaseId: p.phaseId, type: breach ? 'error' : 'tool_call',
+            name: breach ? 'permission_breach' : `${event.toolName}${describe(event.args)}`,
+            payload: { harness: 'pi', tool: event.toolName, input: truncate(event.args),
+                       ...(breach ? { reason: breach.reason } : {}) },
+            startedAt,
+          });
+          if (breach) denied += 1;
+          else open.set(String(event.toolCallId ?? eventId), { eventId, startedAt });
+        } else if (event.type === 'tool_execution_end') {
+          const span = open.get(String(event.toolCallId ?? ''));
+          if (!span) return;
+          open.delete(String(event.toolCallId ?? ''));
+          await db.endToolEvent(span.eventId, {
+            tool: event.toolName, ok: !event.isError, result: truncate(event.result),
+            duration_ms: Date.now() - span.startedAt.getTime(),
+          }, new Date());
+        } else if (event.type === 'turn_end') {
+          usage.numTurns += 1;
+          const message = event.message as { content?: unknown[]; usage?: Usage };
+          const u = message?.usage;
+          if (u) {
+            usage.inputTokens += u.input ?? 0;
+            usage.outputTokens += u.output ?? 0;
+            usage.cacheReadTokens += u.cacheRead ?? 0;
+            usage.cacheWriteTokens += u.cacheWrite ?? 0;
+            usage.costUsd += u.cost?.total ?? 0;
+          }
+          for (const block of (message?.content ?? []) as { type?: string; text?: string }[]) {
+            if (block.type === 'text' && block.text?.trim()) {
+              text = block.text;
+              await db.event({ runId: p.runId, phaseId: p.phaseId, type: 'message',
+                               name: 'assistant', payload: { harness: 'pi', text: block.text.slice(0, 4000) } });
+            }
+          }
+        }
+      } catch (e) { console.error('pi event', e); }
+    })();
+  });
+
+  let terminalReason = 'completed';
+  let ok = true;
+  try {
+    await db.updatePhase(p.phaseId, { sessionId: session.sessionId });
+    await session.prompt(prompt);
+    await session.agent.waitForIdle();
+  } catch (e) {
+    ok = false;
+    const halt = asHalt(e);
+    terminalReason = halt?.reason ?? 'error';
+    await db.event({ runId: p.runId, phaseId: p.phaseId, type: 'error',
+                     name: terminalReason, payload: { harness: 'pi', error: String((e as Error).message ?? e).slice(0, 1000) } });
+    if (halt) { unsubscribe(); session.dispose(); throw halt; }
+  } finally {
+    unsubscribe();
+  }
+
+  const error = session.agent.state.errorMessage;
+  if (error) { ok = false; terminalReason = 'agent_error'; }
+
+  await db.updatePhase(p.phaseId, { usage });
+  await db.addRunCost(p.runId, usage);
+  await db.event({
+    runId: p.runId, phaseId: p.phaseId, type: 'agent_end', name: p.agent,
+    tokens: usage.inputTokens + usage.outputTokens,
+    payload: { harness: 'pi', terminal_reason: terminalReason, cost_usd: usage.costUsd,
+               usage, denied_tools: denied, session_id: session.sessionId, error: error ?? null },
+  });
+
+  const sessionId = session.sessionId;
+  session.dispose();
+  // pi has no structured-output mode: the envelope is whatever JSON the agent
+  // ended with, which is the same fallback the Claude runner already carries.
+  return { sessionId, ok, structured: undefined, text, terminalReason, usage };
+}
+
+function toolLabel(name: string): string {
+  const entry = Object.entries(TOOL_NAMES).find(([, pi]) => pi === name);
+  return entry?.[0] ?? name;
+}
+
+function describe(args: unknown): string {
+  const a = (args ?? {}) as Record<string, unknown>;
+  const detail = typeof a.command === 'string' ? a.command
+    : typeof a.path === 'string' ? a.path
+    : typeof a.file_path === 'string' ? a.file_path
+    : typeof a.pattern === 'string' ? a.pattern : '';
+  return detail ? `: ${detail.slice(0, 100)}` : '';
+}
+
+function truncate(value: unknown, max = 4000): unknown {
+  const json = JSON.stringify(value ?? null);
+  if (json === undefined) return null;
+  return json.length <= max ? JSON.parse(json) : { truncated: true, preview: json.slice(0, max) };
+}

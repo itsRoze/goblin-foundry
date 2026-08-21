@@ -165,3 +165,29 @@ Things that bit us while building the factory. Newest last.
   property test (`deriveProjectKey` → `formatRef` → `parseRef` for a table of
   slugs) rather than trusting the hand-picked examples in the original tests,
   none of which happened to start with a digit.
+- **A retry that re-cuts the branch pays to rebuild what it already had.** The
+  same slice of FAC-10 was written three times: each attempt hit a limit, and
+  the next one cut `goblin/fac-10` fresh from base (`worktree add -B`), erasing
+  it. A ticket branch carrying commits beyond base is not stale — it is an
+  earlier attempt that ran out of turns — so the run now attaches to it and the
+  builder's opening prompt lists what is already there, told to continue rather
+  than start again.
+- **Measure your denials before trusting your guard.** Of 29 recorded
+  `permission_breach` events, 19 were false: JavaScript regex literals, glob
+  characters and quoted relative paths, all read as absolute filesystem paths by
+  a heuristic that only asked "does it start with a slash". The true positives —
+  a `cat` of the factory's `.env`, reads of the parent repo, `git -C`
+  redirection — are worth keeping, which is the argument for fixing the
+  heuristic rather than loosening the boundary.
+- **pi has no structured-output mode, and does not need one here.** The Claude
+  runner asks the SDK for `outputFormat: json_schema`; pi returns text, so the
+  envelope comes from the JSON-in-final-message fallback both runners already
+  carry. A probe phase on `opencode-go/kimi-k3` returned a valid envelope, one
+  tool call and a real cost line ($0.0106, 2 turns) on the first attempt —
+  the useful part is that the same `PhaseResult` came back, so nothing
+  downstream of the runner could tell which harness answered.
+- **`ModelRuntime.create()` finds `OPENCODE_API_KEY` on its own**, and one key
+  authenticates two providers: `opencode` (Zen — Claude, GPT, Gemini,
+  pay-as-you-go) and `opencode-go` (the $10 window — Kimi, DeepSeek, GLM, Qwen,
+  MiniMax, Grok). Which one a phase reaches is the provider half of its model
+  ref, so the failover lane and the cheap lane are the same credential.
