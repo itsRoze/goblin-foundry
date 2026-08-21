@@ -4,6 +4,11 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 import { sweepStalledRuns } from './reaper.ts';
 import { runPipeline } from './sequencer.ts';
 
+// The api and the worker are both `tsx src/index.ts`, so anything matching on
+// the command line finds the wrong one. A name of its own is what `just ps`
+// and `just stop` look for.
+process.title = 'goblin-worker';
+
 const ONCE = process.argv.includes('--once');
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 3000);
 const HEARTBEAT_MS = 20_000;

@@ -92,11 +92,11 @@ ps:
       set -- $svc
       if lsof -ti :$2 >/dev/null 2>&1; then echo "  up    $1 ($2)"; else echo "  down  $1 ($2)"; fi
     done
-    if pgrep -f "worker/src/index.ts" >/dev/null 2>&1; then echo "  up    worker"; else echo "  down  worker"; fi
+    if pgrep -f "goblin-worker" >/dev/null 2>&1; then echo "  up    worker"; else echo "  down  worker"; fi
 
 # Stop the dev processes (leaves Postgres running; use 'just down' for that).
 stop:
     #!/usr/bin/env bash
     for port in 4848 4849 4850 5173; do lsof -ti :$port | xargs -r kill 2>/dev/null || true; done
-    pkill -f "worker/src/index.ts" 2>/dev/null || true
+    pkill -f "goblin-worker" 2>/dev/null || true
     echo "stopped api, zero-cache, web and worker"

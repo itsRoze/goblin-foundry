@@ -125,3 +125,12 @@ Things that bit us while building the factory. Newest last.
   run died it took twelve answered questions with it, and a fresh run would have
   asked all twelve again. Every answer the human has ever given on a ticket is
   now part of the next planner's opening prompt, marked settled.
+- **`just ps` said the worker was down while it was running, and I killed a live
+  run on the strength of it.** The api and the worker are both
+  `tsx --env-file=../../.env src/index.ts` started from their own package
+  directory, so `pgrep -f "worker/src/index.ts"` matches neither and
+  `pgrep -f "tsx.*src/index.ts"` matches both — the first reads as "worker down",
+  the second takes the api out with it. The worker sets
+  `process.title = 'goblin-worker'` now, and `just ps` / `just stop` match on
+  that. The rule underneath: never conclude a process is dead from a pattern you
+  have not proven matches it when it is alive.
