@@ -4,7 +4,7 @@ You are continuing **Goblin Foundry** (`/Users/roze/dev/factory`). M0 shipped on
 
 ## Read first
 1. `CLAUDE.md` — layout, commands, house rules. Follow it.
-2. `docs/plan/factory-blueprint.html` (v1.1) — the spec. Focus: The agents (Planner, Reviewer, Conductor), Status machine, Per-project policy, Roadmap → M1.
+2. `docs/plan/factory-blueprint.html` (v1.3) — the spec. Focus: The agents (Planner, Reviewer, Conductor), Status machine, Per-project policy, Roadmap → M1 (which now includes the pi thin slice).
 3. `docs/DECISIONS.md` and `docs/LESSONS.md` — what the M0 build decided and what bit it. Do not re-learn these lessons (especially: Zero 1.9 synced queries only, the PreToolUse guard, secret scrubbing, the gate-loop `continue` bug).
 4. `git log --oneline` on `m0/thin-slice` for what exists; the schema in `packages/schema/sql/` + `src/types.ts` before touching data.
 5. Skim `docs/research/06-methodology.md` Part B §7–8 (planner perspectives, reviewer lenses) when building those agents.
@@ -16,7 +16,7 @@ Memory: `~/.claude/projects/-Users-roze-dev-factory/memory/MEMORY.md` and the li
 - Statuses, designs, runs, phases, events, gates, envelopes, questions tables exist. Events bypass Zero (SSE); UI reads are named synced queries served at `/zero/query`.
 - The worker: lease + heartbeat claims, worktrees with a PreToolUse guard, multi-phase sequencer, gates with evidence, correction-in-session, stalled-run reaper (3 failures → human), provenance trailers, secret-scrubbed subprocess env.
 - `/plan` runs in the user's terminal (skill), writes designs to the DB (never committed), moves tickets to Design Review.
-- Backlog already contains M1 seed tickets: `tkt_plan` (planner as a phase), `tkt_qs` (questions to the board / answers to the agent), `tkt_pgate` (a design has to earn Design Review), `tkt_6ru5y8svbb` (healthz — two SIGTERM'd runs, fine to retry).
+- Backlog already contains M1 seed tickets: `tkt_plan` (planner as a phase), `tkt_qs` (questions to the board / answers to the agent), `tkt_pgate` (a design has to earn Design Review), `tkt_6ru5y8svbb` (healthz — two SIGTERM'd runs, fine to retry), `tkt_piharness` (#16 — the pi adapter, pulled forward from M2, see scope item 10).
 
 ## How to work in M1 — dogfood first
 **Default to running work through the factory itself**: write a ticket, `/plan` it, approve, let the worker build it, review the PR. Fall back to hand-building only when the change is to the very machinery a run depends on (chicken-and-egg) — and say so in `docs/DECISIONS.md`. Every M1 feature below should become one or more tickets on the board.
@@ -31,11 +31,12 @@ Memory: `~/.claude/projects/-Users-roze-dev-factory/memory/MEMORY.md` and the li
 7. **smriti import**: one-shot script — `~/.smriti/factory.db` (`repositories`, `projects`, `tickets`, `ticket_deps`, `documents`) → factory projects/tickets/deps/designs. Subway Reader arrives with its 17-ticket DAG. Idempotent; dry-run flag; report what it skipped.
 8. **Onboard Subway Reader** (`~/dev/subway-reader`, empty git init): seed its project + policy (standard; Android QA), then run its entry ticket — #40, the Gradle/Compose scaffold that puts an APK on the Boox — through the full loop. Builder verify = `gradle` build + Android emulator evidence (adb screencap) where feasible; on-device install stays manual for now.
 9. **Conductor v0** (stretch, or slip to M2): a resumable per-project session with tools to read the board and propose ticket/dependency changes; terminal-only is fine.
+10. **pi harness adapter — thin slice** (`tkt_piharness` #16, pulled forward from M2): a `harness` field on the phase (`claude-code | pi`) and a `PiPhaseRunner` ([earendil-works/pi](https://github.com/earendil-works/pi), SDK/JSON mode) behind the unchanged phase contract — envelope in/out, events, gates. Default provider: **OpenCode Go** (`OPENCODE_API_KEY` — pi ships the `opencode` provider natively; $10/mo, $12 per 5-hour window, Kimi K3 / DeepSeek V4 / GLM / Qwen). Start the A/B: cheap phases + vibe-policy builders on Go, planner and refuter on Claude; cost/phase, tokens, turns, and gate pass rate per harness on the dashboard. *Why now: Max-plan 5-hour limits keep halting development; Go moves the bulk burn to a $10 lane with no OAuth ToS risk.* The guard-as-pi-extension and JSONL session mirror stay in M2.
 
-**Done when:** a real Subway Reader ticket ships through plan → questions → approve → build → review → merge with the user approving exactly twice (design, PR), notified by ntfy on their phone — and the M1 machinery itself was mostly built by the factory.
+**Done when:** a real Subway Reader ticket ships through plan → questions → approve → build → review → merge with the user approving exactly twice (design, PR), notified by ntfy on their phone — the M1 machinery itself was mostly built by the factory, and at least one phase ran through pi on OpenCode Go with its cost on the dashboard.
 
 ## Out of scope for M1
-Deployer, librarian, scout, MCP server, mobile web polish, cloud hosting, OTel export, prompt lineage, Codex adapter.
+Deployer, librarian, scout, MCP server, mobile web polish, cloud hosting, OTel export, prompt lineage, Codex adapter, and pi's deep half (guard as a pi TS extension, JSONL session mirror, Codex-as-refuter — M2).
 
 ## Working agreements
 Unchanged from M0 (see `docs/prompts/m0-kickoff.md` §Working agreements), plus:
