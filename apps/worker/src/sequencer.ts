@@ -1,7 +1,8 @@
 import { formatRef, type EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
 import {
-  addWorktree, attachWorktree, hasBranchWork, removeWorktree, syncBase, type Worktree,
+  addWorktree, attachWorktree, hasBranchWork, mergeBaseInto, removeWorktree, syncBase,
+  type Worktree,
 } from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
 import {
@@ -9,6 +10,13 @@ import {
   type PhaseAttempt, type PhaseContext, type PhaseSpec, type Pipeline,
 } from './pipeline.ts';
 import { TRIGGER_PIPELINES } from './pipelines.ts';
+
+/** The base moved under a branch and the two disagree: a human's call. */
+class BaseConflict extends Error {
+  constructor(readonly conflicts: string[]) {
+    super(`branch conflicts with its base in: ${conflicts.join(', ')}`);
+  }
+}
 
 async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: string): Promise<Worktree | null> {
   if (pipeline.worktree === 'none') return null;
@@ -26,6 +34,18 @@ async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: stri
   if (resuming && pipeline.worktree === 'fresh') {
     await db.event({ runId: claim.runId, type: 'log', name: 'resuming branch',
                      payload: { branch, note: 'an earlier attempt left commits here' } });
+  }
+  // A branch that has been away while the base moved is reviewed and merged
+  // against a repository that no longer exists. Catch it up here, where a
+  // conflict is a run that stops with a reason, rather than on the pull
+  // request, where it is a human resolving by hand.
+  if (resuming) {
+    const caught = await mergeBaseInto(worktree.path, claim.defaultBranch);
+    await db.event({
+      runId: claim.runId, type: caught.ok ? 'log' : 'error', name: 'catch up with base',
+      payload: { base: claim.defaultBranch, merged: caught.merged, conflicts: caught.conflicts },
+    });
+    if (!caught.ok) throw new BaseConflict(caught.conflicts);
   }
   await db.setRunBranch(claim.runId, worktree.path, branch);
   await db.event({ runId: claim.runId, type: 'log', name: 'worktree',
@@ -61,9 +81,12 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
   try {
     worktree = await acquireWorktree(pipeline, claim, branch);
   } catch (e) {
-    await db.event({ runId: claim.runId, type: 'error', name: 'worker error',
-                     payload: { error: (e as Error).message, stack: (e as Error).stack?.slice(0, 2000) } });
-    await db.finishRun(claim.runId, 'fail', 'worktree_failed');
+    const conflict = e instanceof BaseConflict;
+    if (!conflict) {
+      await db.event({ runId: claim.runId, type: 'error', name: 'worker error',
+                       payload: { error: (e as Error).message, stack: (e as Error).stack?.slice(0, 2000) } });
+    }
+    await db.finishRun(claim.runId, 'fail', conflict ? 'base_conflict' : 'worktree_failed');
     await db.clearDelegate(claim.ticketId);
     return 'fail';
   }

@@ -163,3 +163,12 @@ test('lens_coverage names the lens that never ran', async () => {
 test('lens_coverage passes when every policy lens reported', async () => {
   assert.equal((await lens_coverage(review(), REVIEW_CTX)).passed, true);
 });
+
+// ── A push that was refused is not a push ───────────────────────────────────
+
+test('pushRejected recognises the refusals that mean the branch moved', async () => {
+  const { pushRejected } = await import('./git.ts');
+  assert.equal(pushRejected(' ! [rejected]        goblin/fac-10 -> goblin/fac-10 (non-fast-forward)'), true);
+  assert.equal(pushRejected('Updates were rejected because the remote contains work; fetch first'), true);
+  assert.equal(pushRejected('fatal: could not read Username for https://github.com'), false);
+});

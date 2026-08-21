@@ -1,6 +1,8 @@
 import { formatRef, type BuildOutput, type EnvelopeBase, type ReviewOutput } from '@goblin/schema';
 import * as db from '../db.ts';
-import { commitAll, hasCommitsSince, hasRemote, isClean, pushBranch } from '../git.ts';
+import {
+  commitAll, hasCommitsSince, hasRemote, isClean, pushBranch, pushRejected,
+} from '../git.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 /**
@@ -54,9 +56,13 @@ async function runPushFixes(
     await db.event({ runId, phaseId, type: push.code === 0 ? 'log' : 'error',
                      name: push.code === 0 ? 'pushed' : 'push failed',
                      payload: { branch: worktree.branch, detail: (push.stderr || push.stdout).slice(-500) } });
-    summary = push.code === 0
-      ? `fixes pushed to ${worktree.branch}`
-      : `fixes committed but push failed: ${push.stderr.slice(-200)}`;
+    if (push.code !== 0) {
+      return {
+        status: 'fail', envelope: null,
+        reason: pushRejected(push.stderr) ? 'push_rejected' : 'push_failed',
+      };
+    }
+    summary = `fixes pushed to ${worktree.branch}`;
   }
 
   return {

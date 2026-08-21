@@ -1,7 +1,7 @@
 import { formatRef, type BuildOutput, type EnvelopeBase } from '@goblin/schema';
 import * as db from '../db.ts';
 import {
-  commitAll, hasCommitsSince, hasRemote, isClean, pushAndOpenPr,
+  commitAll, hasCommitsSince, hasRemote, isClean, pushAndOpenPr, pushRejected,
 } from '../git.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 

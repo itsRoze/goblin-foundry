@@ -175,3 +175,16 @@ Things that bit us while building the factory. Newest last.
   pay-as-you-go) and `opencode-go` (the $10 window — Kimi, DeepSeek, GLM, Qwen,
   MiniMax, Grok). Which one a phase reaches is the provider half of its model
   ref, so the failover lane and the cheap lane are the same credential.
+- **A rejected push finished the run as a success.** FAC-10's second slice built,
+  committed, failed to push (the remote branch still held an unmerged review-fix
+  commit), and the phase reported success anyway — so the board showed the work
+  shipped while no pull request existed at all. A push that never reached the
+  remote now fails the run with `push_rejected`.
+- **Append-only logs conflict on every long-lived branch.** `docs/DECISIONS.md`
+  and `docs/LESSONS.md` both grow at the end, so any branch alive for more than
+  an afternoon collides with the trunk in exactly the place where both sides are
+  right. `.gitattributes` marks them `merge=union`; that is what union merge is
+  for, and no agent or human should be retyping log lines.
+- **A worktree needs its own install after a dependency change.** Merging a
+  branch that added a package leaves the worktree's node_modules behind, and
+  typecheck fails on a module that is genuinely in package.json.

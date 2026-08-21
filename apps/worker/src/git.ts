@@ -102,6 +102,31 @@ export async function attachWorktree(repo: string, branch: string, base: string)
   return { path, branch, baseSha };
 }
 
+/**
+ * Bring a branch up to date with its base before working on it. A branch that
+ * left the base days ago is reviewed, merged and shipped against a repository
+ * that has moved: the conflict surfaces on the pull request, where no agent is
+ * watching and the human has to resolve by hand.
+ *
+ * A conflict here is not something to paper over — the merge is aborted and the
+ * conflicted paths are reported, so the run fails with a reason rather than
+ * building on a half-merged tree.
+ */
+export async function mergeBaseInto(
+  worktree: string, base: string,
+): Promise<{ ok: boolean; merged: boolean; conflicts: string[] }> {
+  const behind = await git(worktree, 'rev-list', '--count', `HEAD..${base}`);
+  if (Number(behind.stdout.trim() || 0) === 0) return { ok: true, merged: false, conflicts: [] };
+  const merge = await git(worktree, 'merge', '--no-edit', base);
+  if (merge.code === 0) return { ok: true, merged: true, conflicts: [] };
+  const conflicted = await git(worktree, 'diff', '--name-only', '--diff-filter=U');
+  await git(worktree, 'merge', '--abort');
+  return {
+    ok: false, merged: false,
+    conflicts: conflicted.stdout.split('\n').map(s => s.trim()).filter(Boolean),
+  };
+}
+
 export async function removeWorktree(repo: string, path: string) {
   await git(repo, 'worktree', 'remove', '--force', path);
 }
@@ -163,6 +188,11 @@ export async function commitAll(worktree: string, message: string, t: Trailers, 
 export async function hasCommitsSince(worktree: string, baseSha: string): Promise<boolean> {
   const { stdout } = await git(worktree, 'rev-list', '--count', `${baseSha}..HEAD`);
   return Number(stdout.trim()) > 0;
+}
+
+/** git says this with a hint about fast-forwards; it means the branch moved. */
+export function pushRejected(detail: string): boolean {
+  return /\[rejected\]|non-fast-forward|fetch first|behind its remote/i.test(detail);
 }
 
 /** Pushes the branch as it stands; the pull request already exists. */
