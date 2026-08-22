@@ -37,8 +37,12 @@ export function checkTool(tool: string, input: unknown, worktree: string, protec
   const i = (input ?? {}) as Record<string, unknown>;
   const root = resolve(worktree);
 
-  if (typeof i.file_path === 'string') {
-    const target = resolve(root, i.file_path);
+  // Claude Code's tools say `file_path`; pi's say `path`. A guard that knows
+  // only one of them waves the other harness straight through.
+  const filePath = typeof i.file_path === 'string' ? i.file_path
+    : typeof i.path === 'string' ? i.path : null;
+  if (filePath !== null) {
+    const target = resolve(root, filePath);
     // Scratch space is scratch space whichever tool reaches for it: Bash could
     // already write /tmp, and a tool allowlist that disagrees with itself just
     // teaches an agent to shell out.

@@ -1,7 +1,23 @@
 import { connect, type Sql } from '@goblin/schema/sql';
 import { newId, type EventType, type GateReport, type Policy } from '@goblin/schema';
 
-export const sql: Sql = connect();
+/**
+ * Connects on first use, not on import.
+ *
+ * A module that touches the database used to open a connection the moment it
+ * was imported, which meant importing anything near it — a pure helper, a tool
+ * guard, a parser — needed a live Postgres. Three test files had to be split
+ * apart to work around that. The handle is a proxy so every call site keeps
+ * using it as a tagged template.
+ */
+let client: Sql | undefined;
+const connection = (): Sql => (client ??= connect());
+
+export const sql: Sql = new Proxy((() => undefined) as unknown as Sql, {
+  apply: (_target, _thisArg, args: unknown[]) =>
+    (connection() as unknown as (...a: unknown[]) => unknown)(...args),
+  get: (_target, prop) => (connection() as unknown as Record<string | symbol, unknown>)[prop],
+});
 
 export type Claim = {
   runId: string; ticketId: string; projectId: string; projectKey: string; shortId: number;

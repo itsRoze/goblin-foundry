@@ -211,3 +211,14 @@ Things that bit us while building the factory. Newest last.
   change the agent never mentioned. A correct review fix — tests green — was
   failed for `.gitattributes` and nine files it had never opened, and the run
   died at $17.87. Catching up must move the pinned base commit with it.
+- **A guard that knows one harness's field names waves the other one through.**
+  Claude Code's file tools say `file_path`; pi's say `path`. The guard read only
+  the first, so every file operation a pi agent made — including a write to a
+  protected path — passed unchecked, while looking guarded from the outside.
+  Found by unit-testing the pi extension rather than by watching a run, which is
+  the only way this class of hole shows up: nothing fails, nothing is denied,
+  and the trace looks clean.
+- **A module that connects to Postgres at import cannot be unit-tested, and
+  neither can anything importing it.** Three test files had been split apart to
+  route around it before the pi guard made it a fourth. The worker's `sql`
+  handle is now a proxy that connects on first use.

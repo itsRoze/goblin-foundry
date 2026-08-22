@@ -1,5 +1,6 @@
 import {
-  createAgentSession, ModelRuntime, SessionManager,
+  createAgentSession, DefaultResourceLoader, getAgentDir, ModelRuntime, SessionManager,
+  SettingsManager, type ExtensionAPI,
 } from '@earendil-works/pi-coding-agent';
 import * as db from '../db.ts';
 import { checkTool } from '../guard.ts';
@@ -14,10 +15,11 @@ import type { PhaseResult, PhaseRun } from '../phase.ts';
  * provider it can authenticate — OpenCode Go by default — which is what makes
  * an expensive Claude plan window optional rather than load-bearing.
  *
- * The M1 slice is deliberately thin: session, prompt, events, usage. The guard
- * runs here as a wrapper rather than as a pi extension (M2), and there is no
+ * The M1 slice is deliberately thin: session, prompt, events, usage. There is no
  * structured-output mode, so the envelope is parsed out of the final text the
- * same way the Claude runner's fallback does.
+ * same way the Claude runner's fallback does. The worktree boundary is real
+ * here — pi's `tool_call` hook can block, so the same `checkTool` that guards a
+ * Claude phase denies a pi one before the tool runs, not after.
  */
 
 /** `opencode-go/kimi-k3` — how a phase names a model it wants. */
@@ -41,6 +43,28 @@ type Usage = { input?: number; output?: number; cacheRead?: number; cacheWrite?:
                cost?: { total?: number } };
 
 /**
+ * The worktree boundary, as pi enforces it. `tool_call` fires before the tool
+ * runs and can block, which is the same contract the Claude runner gets from a
+ * PreToolUse hook — so one `checkTool` covers both harnesses and a denial is
+ * recorded identically in the trace.
+ */
+export function guardExtension(
+  p: PhaseRun, onBreach: (tool: string, input: unknown, reason: string) => void,
+) {
+  return {
+    name: 'goblin-guard',
+    factory: (pi: ExtensionAPI) => {
+      pi.on('tool_call', event => {
+        const breach = checkTool(toolLabel(event.toolName), event.input, p.cwd, p.protectedPaths);
+        if (!breach) return;
+        onBreach(event.toolName, event.input, breach.reason);
+        return { block: true, reason: `${breach.reason}. Stay inside your worktree.` };
+      });
+    },
+  };
+}
+
+/**
  * Runs one phase through pi. Same signature as the Claude runner, same events,
  * same PhaseResult — the sequencer cannot tell which one it called.
  */
@@ -57,6 +81,7 @@ export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): 
     startedAt: started,
   });
 
+  let denied = 0;
   const modelRuntime = await ModelRuntime.create();
   const model = modelRuntime.getModel(ref.provider, ref.model);
   if (!model) {
@@ -65,11 +90,31 @@ export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): 
     throw new Error(`pi has no model ${ref.provider}/${ref.model} (available: ${known || 'none'})`);
   }
 
+  const guard = guardExtension(p, (tool, input, reason) => {
+    denied += 1;
+    void db.event({
+      runId: p.runId, phaseId: p.phaseId, type: 'error', name: 'permission_breach',
+      payload: { harness: 'pi', tool, input: truncate(input), reason },
+    }).catch(() => {});
+  });
+  const resourceLoader = new DefaultResourceLoader({
+    cwd: p.cwd,
+    agentDir: getAgentDir(),
+    settingsManager: SettingsManager.create(p.cwd, getAgentDir()),
+    extensionFactories: [guard],
+    // A run means the same thing on any machine: no project extensions, skills
+    // or prompt templates the repository happens to carry.
+    noSkills: true,
+    noPromptTemplates: true,
+  });
+  await resourceLoader.reload();
+
   const { session } = await createAgentSession({
     cwd: p.cwd,
     model,
     thinkingLevel: p.effort === 'xhigh' || p.effort === 'max' ? 'high' : p.effort,
     tools: piTools(p.allowedTools),
+    resourceLoader,
     sessionManager: SessionManager.inMemory(),
   });
 
@@ -80,23 +125,21 @@ export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): 
                   cacheReadTokens: 0, cacheWriteTokens: 0, numTurns: 0 };
   const open = new Map<string, { eventId: string; startedAt: Date }>();
   let text = '';
-  let denied = 0;
 
   const unsubscribe = session.subscribe(event => {
     void (async () => {
       try {
         if (event.type === 'tool_execution_start') {
-          const breach = checkTool(toolLabel(event.toolName), event.args, p.cwd, p.protectedPaths);
+          // Denials are the guard extension's business; this only records what
+          // actually ran, so a blocked call is not counted twice.
           const startedAt = new Date();
           const eventId = await db.event({
-            runId: p.runId, phaseId: p.phaseId, type: breach ? 'error' : 'tool_call',
-            name: breach ? 'permission_breach' : `${event.toolName}${describe(event.args)}`,
-            payload: { harness: 'pi', tool: event.toolName, input: truncate(event.args),
-                       ...(breach ? { reason: breach.reason } : {}) },
+            runId: p.runId, phaseId: p.phaseId, type: 'tool_call',
+            name: `${event.toolName}${describe(event.args)}`,
+            payload: { harness: 'pi', tool: event.toolName, input: truncate(event.args) },
             startedAt,
           });
-          if (breach) denied += 1;
-          else open.set(String(event.toolCallId ?? eventId), { eventId, startedAt });
+          open.set(String(event.toolCallId ?? eventId), { eventId, startedAt });
         } else if (event.type === 'tool_execution_end') {
           const span = open.get(String(event.toolCallId ?? ''));
           if (!span) return;
