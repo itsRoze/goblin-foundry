@@ -68,6 +68,12 @@ const ticketLabel = table('ticketLabel').from('ticket_label').columns({
   labelId: string().from('label_id'),
 }).primaryKey('ticketId', 'labelId');
 
+const ticketDep = table('ticketDep').from('ticket_dep').columns({
+  blockerId: string().from('blocker_id'),
+  blockedId: string().from('blocked_id'),
+  createdAt: number().from('created_at'),
+}).primaryKey('blockerId', 'blockedId');
+
 const design = table('design').columns({
   id: string(),
   ticketId: string().from('ticket_id'),
@@ -185,6 +191,14 @@ const ticketRel = relationships(ticket, ({ one, many }) => ({
     { sourceField: ['id'], destSchema: ticketLabel, destField: ['ticketId'] },
     { sourceField: ['labelId'], destSchema: label, destField: ['id'] },
   ),
+  blockedBy: many(
+    { sourceField: ['id'], destSchema: ticketDep, destField: ['blockedId'] },
+    { sourceField: ['blockerId'], destSchema: ticket, destField: ['id'] },
+  ),
+  blocks: many(
+    { sourceField: ['id'], destSchema: ticketDep, destField: ['blockerId'] },
+    { sourceField: ['blockedId'], destSchema: ticket, destField: ['id'] },
+  ),
 }));
 
 const runRel = relationships(run, ({ one, many }) => ({
@@ -215,7 +229,7 @@ const statusRel = relationships(status, ({ many }) => ({
 }));
 
 export const schema = createSchema({
-  tables: [project, status, ticket, comment, label, ticketLabel, design, run, phase, envelope, gate, question],
+  tables: [project, status, ticket, comment, label, ticketLabel, ticketDep, design, run, phase, envelope, gate, question],
   relationships: [projectRel, ticketRel, runRel, phaseRel, designRel, statusRel, questionRel],
 });
 

@@ -222,3 +222,5 @@ Things that bit us while building the factory. Newest last.
   neither can anything importing it.** Three test files had been split apart to
   route around it before the pi guard made it a fourth. The worker's `sql`
   handle is now a proxy that connects on first use.
+- **Node's built-in `node:sqlite` prints an experimental warning and works fine read-only.** Importing it for the smriti importer avoided adding a dependency, but the warning is noise in the report — worth suppressing or noting so the first run does not look broken.
+- **Adding a table to a Zero publication does not need a replica reset when DDL event triggers are installed.** Verified by applying the migration while zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The client still needs a reload to get the new schema.

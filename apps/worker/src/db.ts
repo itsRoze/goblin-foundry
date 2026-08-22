@@ -22,7 +22,8 @@ export const sql: Sql = new Proxy((() => undefined) as unknown as Sql, {
 export type Claim = {
   runId: string; ticketId: string; projectId: string; projectKey: string; shortId: number;
   title: string; body: string; repoPath: string; defaultBranch: string;
-  policy: Policy; designId: string | null; designMarkdown: string | null; trigger: string;
+  policy: Policy; designId: string | null; designMarkdown: string | null;
+  projectDesignMarkdown: string | null; trigger: string;
 };
 
 const LEASE_MS = 2 * 60_000;
@@ -38,11 +39,12 @@ export async function claim(
     const [row] = await tx<{
       ticket_id: string; project_id: string; project_key: string; short_id: number; title: string; body: string;
       repo_path: string; default_branch: string; policy: Policy;
-      design_id: string | null; design_markdown: string | null;
+      design_id: string | null; design_markdown: string | null; project_design_markdown: string | null;
     }[]>`
       select t.id as ticket_id, t.project_id, p.key as project_key, t.short_id, t.title, t.body,
              p.repo_path, p.default_branch, p.policy,
-             d.id as design_id, d.markdown as design_markdown
+             d.id as design_id, d.markdown as design_markdown,
+             pd.markdown as project_design_markdown
       from ticket t
       join status s on s.id = t.status_id
       join project p on p.id = t.project_id
@@ -51,6 +53,11 @@ export async function claim(
         where ticket_id = t.id and status = 'approved'
         order by version desc limit 1
       ) d on true
+      left join lateral (
+        select markdown from project_design
+        where project_id = p.id
+        order by version desc limit 1
+      ) pd on true
       where s.kind = ${kind}
         -- A pipeline whose ticket stays in its trigger status (review) would
         -- otherwise be re-claimed forever after a failure. Moving the card at
@@ -62,6 +69,12 @@ export async function claim(
           select 1 from run r where r.ticket_id = t.id
             and r.status in ('running','queued','awaiting_input')
             and (r.lease_expires_at is null or r.lease_expires_at > now()))
+        and not exists (
+          select 1 from ticket_dep td
+          join ticket bt on bt.id = td.blocker_id
+          join status bs on bs.id = bt.status_id
+          where td.blocked_id = t.id
+            and bs.kind not in ('done','canceled'))
       order by t.priority, t.short_id
       limit 1
       for update of t skip locked`;
@@ -84,7 +97,8 @@ export async function claim(
       runId, ticketId: row.ticket_id, projectId: row.project_id, projectKey: row.project_key, shortId: row.short_id,
       title: row.title, body: row.body, repoPath: row.repo_path,
       defaultBranch: row.default_branch, policy: row.policy,
-      designId: row.design_id, designMarkdown: row.design_markdown, trigger: kind,
+      designId: row.design_id, designMarkdown: row.design_markdown,
+      projectDesignMarkdown: row.project_design_markdown, trigger: kind,
     };
   });
 }

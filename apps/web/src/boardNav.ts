@@ -1,5 +1,8 @@
-export interface NavStatus {
-  id: string;
+import type { StatusKind } from '@goblin/schema';
+
+export interface NavColumn {
+  kind: StatusKind;
+  statusIds: string[];
 }
 
 export interface NavTicket {
@@ -7,10 +10,10 @@ export interface NavTicket {
   statusId: string;
 }
 
-/** Flattens the board's rendering order (status order, then per-status list order)
+/** Flattens the board's rendering order (column order, then per-column list order)
     into a single sequence of ticket ids, so j/k walk the board in reading order. */
-export function navigationOrder(statuses: NavStatus[], tickets: NavTicket[]): string[] {
-  return statuses.flatMap(status => tickets.filter(t => t.statusId === status.id).map(t => t.id));
+export function navigationOrder(columns: NavColumn[], tickets: NavTicket[]): string[] {
+  return columns.flatMap(column => tickets.filter(t => column.statusIds.includes(t.statusId)).map(t => t.id));
 }
 
 export function nextFocusedId(order: string[], focusedId: string | null): string | null {

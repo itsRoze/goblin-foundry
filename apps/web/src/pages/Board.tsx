@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@rocicorp/zero/react';
 import { queries } from '@goblin/schema/queries';
-import { formatRef, TRIGGER_STAGES } from '@goblin/schema';
+import { formatRef, unfinishedBlockers, TRIGGER_STAGES } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
 import { usd } from '../format.ts';
 import { stuckFrom } from '../inbox.ts';
 import { navigationOrder, nextFocusedId, prevFocusedId, reconcileFocus, isNavKeyIgnored } from '../boardNav.ts';
+import { boardColumns } from '../boardColumns.ts';
 
 export function Board() {
   const [statuses] = useQuery(useMemo(() => queries.statuses(), []));
@@ -14,6 +15,8 @@ export function Board() {
   const [over, setOver] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const cardRefs = useRef(new Map<string, HTMLAnchorElement>());
+
+  const columns = useMemo(() => boardColumns(statuses), [statuses]);
 
   // The same determination the inbox uses, so a card never disagrees with its own row there.
   const stuckIds = useMemo(
@@ -23,8 +26,8 @@ export function Board() {
 
   // Empty terminal columns are noise on a board with two tickets.
   const shown = useMemo(
-    () => statuses.filter(s => !['canceled'].includes(s.kind) || tickets.some(t => t.statusId === s.id)),
-    [statuses, tickets],
+    () => columns.filter(c => c.kind !== 'canceled' || tickets.some(t => c.statusIds.includes(t.statusId))),
+    [columns, tickets],
   );
 
   const order = useMemo(() => navigationOrder(shown, tickets), [shown, tickets]);
@@ -50,24 +53,24 @@ export function Board() {
 
   return (
     <div className="board">
-      {shown.map(status => {
-        const cards = tickets.filter(t => t.statusId === status.id);
+      {shown.map(column => {
+        const cards = tickets.filter(t => column.statusIds.includes(t.statusId));
         return (
           <section
-            key={status.id}
-            className={`column${over === status.id ? ' over' : ''}${cards.length ? '' : ' empty'}`}
-            onDragOver={e => { e.preventDefault(); setOver(status.id); }}
-            onDragLeave={() => setOver(o => (o === status.id ? null : o))}
+            key={column.kind}
+            className={`column${over === column.kind ? ' over' : ''}${cards.length ? '' : ' empty'}`}
+            onDragOver={e => { e.preventDefault(); setOver(column.kind); }}
+            onDragLeave={() => setOver(o => (o === column.kind ? null : o))}
             onDrop={async e => {
               e.preventDefault();
               setOver(null);
               const ticketId = e.dataTransfer.getData('text/plain');
-              if (ticketId) await api.moveTicket(ticketId, status.kind);
+              if (ticketId) await api.moveTicket(ticketId, column.kind);
             }}
           >
             <h2>
-              <span className="dot" style={{ background: status.color }} />
-              {status.name}
+              <span className="dot" style={{ background: column.color }} />
+              {column.name}
               <span className="count">{cards.length}</span>
             </h2>
             {cards.map(ticket => {
@@ -76,6 +79,7 @@ export function Board() {
               // guaranteed to have arrived on the same tick; skip the card
               // rather than throw on a row Zero hasn't finished replicating.
               if (!ticket.project) return null;
+              const blockers = unfinishedBlockers(ticket.blockedBy ?? []).filter(b => b.project);
               return (
                 <a
                   key={ticket.id}
@@ -99,8 +103,13 @@ export function Board() {
                       </span>
                     )}
                     {run?.questions.length ? <span className="pill human">answer me</span> : null}
-                    {status.kind === 'design_review' && <span className="pill human">needs you</span>}
+                    {column.kind === 'design_review' && <span className="pill human">needs you</span>}
                     {stuckIds.has(ticket.id) && <span className="pill bad">stuck</span>}
+                    {blockers.length > 0 && (
+                      <span className="pill bad" title={`blocked by ${blockers.map(b => formatRef(b.project!.key, b.shortId)).join(', ')}`}>
+                        blocked by {blockers.map(b => formatRef(b.project!.key, b.shortId)).join(', ')}
+                      </span>
+                    )}
                   </div>
                 </a>
               );
