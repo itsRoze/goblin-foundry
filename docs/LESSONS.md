@@ -241,3 +241,12 @@ Things that bit us while building the factory. Newest last.
   must never be written by the machine; a specific guard needs a general
   breaker behind it (run *rate*, which catches loops nobody predicted); and a
   failure that took no time at all should be followed by a wait.
+- **Secret scrubbing and `bypassPermissions` became mutually exclusive.** The
+  CLI now refuses bypass while `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set
+  ("permission mode forced to default — allowed_non_write_users hardening"), and
+  a default-mode phase with nothing answering permission prompts exits with code
+  1 — which surfaced as `reviewer:worker_error` with no cost recorded. Phases run
+  in default mode with `canUseTool` answering now; the PreToolUse hook is still
+  the real boundary, since bare `allowedTools` entries auto-approve before the
+  callback is consulted. Worth re-reading whenever the CLI updates: this changed
+  under a running factory, not in a release anyone here chose.
