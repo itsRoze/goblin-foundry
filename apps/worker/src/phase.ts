@@ -119,15 +119,30 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
     return {};
   };
 
-  // AskUserQuestion is the one tool whose result comes from a human. The CLI
-  // routes it through canUseTool, which may stay pending indefinitely: the
-  // questions go to the board and the answers come back as the tool's input.
-  const onAsk: CanUseTool = async (toolName, input) => {
-    if (toolName !== 'AskUserQuestion') return { behavior: 'allow', updatedInput: input };
-    const questions = parseAsk(input);
-    if (!questions.length) return { behavior: 'deny', message: 'AskUserQuestion needs at least one question.' };
-    const answers = await askHuman({ runId: p.runId, phaseId: p.phaseId }, questions);
-    return { behavior: 'allow', updatedInput: { ...input, answers } };
+  /**
+   * The permission surface. The CLI refuses `bypassPermissions` while the
+   * subprocess env scrub is on — the secret scrubbing and blanket bypass are
+   * mutually exclusive now — so the phase runs in default mode and this
+   * callback is what answers. It asks the same `checkTool` the PreToolUse hook
+   * asks, which keeps one boundary rather than two that can disagree.
+   *
+   * AskUserQuestion is the exception: its result comes from a human, so the
+   * callback parks here while the question sits on the board.
+   */
+  const decide: CanUseTool = async (toolName, input) => {
+    if (toolName === 'AskUserQuestion' && p.askHuman) {
+      const questions = parseAsk(input);
+      if (!questions.length) return { behavior: 'deny', message: 'AskUserQuestion needs at least one question.' };
+      const answers = await askHuman({ runId: p.runId, phaseId: p.phaseId }, questions);
+      return { behavior: 'allow', updatedInput: { ...input, answers } };
+    }
+    const breach = checkTool(toolName, input, p.cwd, p.protectedPaths);
+    if (!breach) return { behavior: 'allow', updatedInput: input };
+    await db.event({
+      runId: p.runId, phaseId: p.phaseId, type: 'error', name: 'permission_breach',
+      payload: { tool: toolName, input: truncate(input), reason: breach.reason, surface: 'canUseTool' },
+    }).catch(() => {});
+    return { behavior: 'deny', message: `${breach.reason}. Stay inside your worktree.` };
   };
 
   const options: Options = {
@@ -138,7 +153,9 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
     maxTurns: p.maxTurns,
     maxBudgetUsd: p.maxBudgetUsd,
     allowedTools: p.allowedTools,
-    permissionMode: 'bypassPermissions',
+    // Not bypassPermissions: the CLI forces default mode while the env scrub is
+    // on, and a mode nobody answers exits the process. `canUseTool` answers.
+    permissionMode: 'default',
     settingSources: [],
     systemPrompt: {
       type: 'preset', preset: 'claude_code',
@@ -155,7 +172,7 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
         db.appendTranscript(key.projectKey, key.sessionId, key.subpath ?? '', entries),
       load: async key => (await db.loadTranscript(key.sessionId, key.subpath ?? '')) as never,
     },
-    ...(p.askHuman ? { canUseTool: onAsk } : {}),
+    canUseTool: decide,
     ...(p.jsonSchema ? { outputFormat: { type: 'json_schema', schema: p.jsonSchema } } : {}),
     ...(resume ? { resume } : {}),
   };
