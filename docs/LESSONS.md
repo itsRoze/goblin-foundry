@@ -229,3 +229,15 @@ Things that bit us while building the factory. Newest last.
   happens when a design is sent back, not when it is approved. Approval notes
   now reach the builder's opening prompt as instructions that outrank the
   design, and the reviewer judges against them too.
+- **A failing run re-armed its own claim, 12,357 times.** The guard that stops a
+  ticket being re-claimed after a failure compared failures against the ticket's
+  `updated_at` — and the failure path calls `clearDelegate`, which set
+  `updated_at = now()`. So every failure reset the guard that was supposed to
+  stop it, and the review pipeline spun at 1.4 runs a second for two hours
+  against a branch that genuinely conflicted with its base. It cost nothing only
+  because `base_conflict` fails before any agent starts; the same loop around a
+  phase that reaches a model would have emptied the budget in minutes.
+  Three lessons, all now enforced: a column that means "a human touched this"
+  must never be written by the machine; a specific guard needs a general
+  breaker behind it (run *rate*, which catches loops nobody predicted); and a
+  failure that took no time at all should be followed by a wait.

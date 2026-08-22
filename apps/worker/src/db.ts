@@ -55,11 +55,18 @@ export async function claim(
       ) d on true
       where s.kind = ${kind}
         -- A pipeline whose ticket stays in its trigger status (review) would
-        -- otherwise be re-claimed forever after a failure. Moving the card at
-        -- all bumps updated_at, which is how you say "try again".
+        -- otherwise be re-claimed forever after a failure. Three attempts since
+        -- you last touched the card, then it waits for you — the same "3 retries
+        -- then escalate" the stall reaper uses. Moving the card bumps
+        -- updated_at, which is how you say "try again".
+        and (
+          select count(*) from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
+            and r2.status = 'fail' and r2.ended_at > t.updated_at) < 3
+        -- A ticket that just failed gets a minute to itself. Whatever defeats
+        -- the attempt guard above still cannot spin: a loop needs speed.
         and not exists (
-          select 1 from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
-            and r2.status = 'fail' and r2.ended_at > t.updated_at)
+          select 1 from run r4 where r4.ticket_id = t.id and r4.status = 'fail'
+            and r4.ended_at > now() - interval '60 seconds')
         and not exists (
           select 1 from run r where r.ticket_id = t.id
             and r.status in ('running','queued','awaiting_input')
@@ -90,6 +97,14 @@ export async function claim(
       designNotes: row.design_notes ?? [], trigger: kind,
     };
   });
+}
+
+/** Runs started in the last N minutes, across every ticket — the breaker's input. */
+export async function recentRunCount(windowMin: number): Promise<number> {
+  const [row] = await sql<{ count: number }[]>`
+    select count(*)::int as count from run
+    where started_at > now() - make_interval(mins => ${windowMin})`;
+  return row?.count ?? 0;
 }
 
 export async function heartbeat(runId: string) {
@@ -224,8 +239,13 @@ export async function loadTranscript(sessionId: string, subpath: string) {
   return rows.length ? rows.map(r => r.entry) : null;
 }
 
+/**
+ * A finished run takes its goblin's name off the card. It deliberately does not
+ * touch `updated_at`: that column is how a human says "try again", and a failing
+ * run that bumps it re-arms its own claim. One that did looped 12,357 times.
+ */
 export async function clearDelegate(ticketId: string) {
-  await sql`update ticket set delegate = null, updated_at = now() where id = ${ticketId}`;
+  await sql`update ticket set delegate = null where id = ${ticketId}`;
 }
 
 // ── Questions: the seam where a run waits for you ────────────────────────────

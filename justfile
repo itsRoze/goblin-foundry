@@ -63,9 +63,42 @@ install-skills:
         echo "linked /$name"; \
     done
 
-# Run the worker: claim tickets in ready_for_dev and build them.
+# Run the worker: claim tickets in a trigger status and take them through.
 work:
-    pnpm --filter @goblin/worker start
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if pgrep -f "goblin-worker" >/dev/null 2>&1; then
+      echo "a worker is already running (pgrep -f goblin-worker). Use 'just stop-work' first." >&2
+      exit 1
+    fi
+    exec pnpm --filter @goblin/worker start
+
+# Stop the worker, waiting for any run in flight to finish.
+stop-work:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pids=$(pgrep -f "goblin-worker" || true)
+    if [ -z "$pids" ]; then echo "no worker running"; exit 0; fi
+    live=$(pnpm --silent --filter @goblin/schema exec tsx -e "
+      import {connect} from './src/sql.ts';
+      const sql = connect();
+      const rows = await sql\`select id, ticket_id from run where status in ('running','awaiting_input')\`;
+      console.log(rows.map(r => r.id + ' on ' + r.ticket_id).join(', '));
+      await sql.end();" 2>/dev/null || true)
+    if [ -n "$live" ]; then
+      echo "waiting for the run in flight: $live"
+      echo "(ctrl-c and 'just kill-work' if you need it dead now — the run will be left stalled)"
+    fi
+    kill $pids
+    while pgrep -f "goblin-worker" >/dev/null 2>&1; do sleep 2; done
+    echo "worker stopped"
+
+# Kill the worker now, run in flight or not. The run is left for the reaper.
+kill-work:
+    @pkill -9 -f "goblin-worker" 2>/dev/null && echo "worker killed" || echo "no worker running"
+
+# Stop the worker (waiting for its run) and start a fresh one.
+restart-work: stop-work work
 
 # Claim and build exactly one ticket, then exit.
 work-once:
