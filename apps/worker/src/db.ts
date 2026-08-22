@@ -71,6 +71,11 @@ export async function claim(
         and (
           select count(*) from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
             and r2.status = 'fail' and r2.ended_at > t.updated_at) < 3
+        -- A ticket that just failed gets a minute to itself. Whatever defeats
+        -- the attempt guard above still cannot spin: a loop needs speed.
+        and not exists (
+          select 1 from run r4 where r4.ticket_id = t.id and r4.status = 'fail'
+            and r4.ended_at > now() - interval '60 seconds')
         and not exists (
           select 1 from run r where r.ticket_id = t.id
             and r.status in ('running','queued','awaiting_input')
@@ -108,6 +113,14 @@ export async function claim(
       designNotes: row.design_notes ?? [], trigger: kind,
     };
   });
+}
+
+/** Runs started in the last N minutes, across every ticket — the breaker's input. */
+export async function recentRunCount(windowMin: number): Promise<number> {
+  const [row] = await sql<{ count: number }[]>`
+    select count(*)::int as count from run
+    where started_at > now() - make_interval(mins => ${windowMin})`;
+  return row?.count ?? 0;
 }
 
 export async function heartbeat(runId: string) {
