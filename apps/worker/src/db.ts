@@ -22,7 +22,9 @@ export const sql: Sql = new Proxy((() => undefined) as unknown as Sql, {
 export type Claim = {
   runId: string; ticketId: string; projectId: string; projectKey: string; shortId: number;
   title: string; body: string; repoPath: string; defaultBranch: string;
-  policy: Policy; designId: string | null; designMarkdown: string | null; trigger: string;
+  policy: Policy; designId: string | null; designMarkdown: string | null;
+  /** What you wrote on the design before approving it — the builder reads these. */
+  designNotes: { note?: string }[]; trigger: string;
 };
 
 const LEASE_MS = 2 * 60_000;
@@ -38,16 +40,16 @@ export async function claim(
     const [row] = await tx<{
       ticket_id: string; project_id: string; project_key: string; short_id: number; title: string; body: string;
       repo_path: string; default_branch: string; policy: Policy;
-      design_id: string | null; design_markdown: string | null;
+      design_id: string | null; design_markdown: string | null; design_notes: { note?: string }[] | null;
     }[]>`
       select t.id as ticket_id, t.project_id, p.key as project_key, t.short_id, t.title, t.body,
              p.repo_path, p.default_branch, p.policy,
-             d.id as design_id, d.markdown as design_markdown
+             d.id as design_id, d.markdown as design_markdown, d.notes as design_notes
       from ticket t
       join status s on s.id = t.status_id
       join project p on p.id = t.project_id
       left join lateral (
-        select id, markdown from design
+        select id, markdown, notes from design
         where ticket_id = t.id and status = 'approved'
         order by version desc limit 1
       ) d on true
@@ -84,7 +86,8 @@ export async function claim(
       runId, ticketId: row.ticket_id, projectId: row.project_id, projectKey: row.project_key, shortId: row.short_id,
       title: row.title, body: row.body, repoPath: row.repo_path,
       defaultBranch: row.default_branch, policy: row.policy,
-      designId: row.design_id, designMarkdown: row.design_markdown, trigger: kind,
+      designId: row.design_id, designMarkdown: row.design_markdown,
+      designNotes: row.design_notes ?? [], trigger: kind,
     };
   });
 }

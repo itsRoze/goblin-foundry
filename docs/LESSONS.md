@@ -222,3 +222,10 @@ Things that bit us while building the factory. Newest last.
   neither can anything importing it.** Three test files had been split apart to
   route around it before the pi guard made it a fourth. The worker's `sql`
   handle is now a proxy that connects on first use.
+- **A note left on a design that was then approved went nowhere.** The UI puts
+  an annotation box beside an Approve button, the note is stored on the design,
+  and the claim query selected only `markdown` — so the builder never saw it and
+  nothing said so. Notes were only ever read by a *new planner run*, which
+  happens when a design is sent back, not when it is approved. Approval notes
+  now reach the builder's opening prompt as instructions that outrank the
+  design, and the reviewer judges against them too.
