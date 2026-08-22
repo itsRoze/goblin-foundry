@@ -23,7 +23,9 @@ export type Claim = {
   runId: string; ticketId: string; projectId: string; projectKey: string; shortId: number;
   title: string; body: string; repoPath: string; defaultBranch: string;
   policy: Policy; designId: string | null; designMarkdown: string | null;
-  projectDesignMarkdown: string | null; trigger: string;
+  projectDesignMarkdown: string | null;
+  /** What you wrote on the design before approving it — the builder reads these. */
+  designNotes: { note?: string }[]; trigger: string;
 };
 
 const LEASE_MS = 2 * 60_000;
@@ -39,17 +41,19 @@ export async function claim(
     const [row] = await tx<{
       ticket_id: string; project_id: string; project_key: string; short_id: number; title: string; body: string;
       repo_path: string; default_branch: string; policy: Policy;
-      design_id: string | null; design_markdown: string | null; project_design_markdown: string | null;
+      design_id: string | null; design_markdown: string | null;
+      design_notes: { note?: string }[] | null; project_design_markdown: string | null;
     }[]>`
       select t.id as ticket_id, t.project_id, p.key as project_key, t.short_id, t.title, t.body,
              p.repo_path, p.default_branch, p.policy,
-             d.id as design_id, d.markdown as design_markdown,
+             d.id as design_id, d.markdown as design_markdown, d.notes as design_notes,
              pd.markdown as project_design_markdown
+>>>>>>> m1
       from ticket t
       join status s on s.id = t.status_id
       join project p on p.id = t.project_id
       left join lateral (
-        select id, markdown from design
+        select id, markdown, notes from design
         where ticket_id = t.id and status = 'approved'
         order by version desc limit 1
       ) d on true
@@ -60,11 +64,13 @@ export async function claim(
       ) pd on true
       where s.kind = ${kind}
         -- A pipeline whose ticket stays in its trigger status (review) would
-        -- otherwise be re-claimed forever after a failure. Moving the card at
-        -- all bumps updated_at, which is how you say "try again".
-        and not exists (
-          select 1 from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
-            and r2.status = 'fail' and r2.ended_at > t.updated_at)
+        -- otherwise be re-claimed forever after a failure. Three attempts since
+        -- you last touched the card, then it waits for you — the same "3 retries
+        -- then escalate" the stall reaper uses. Moving the card bumps
+        -- updated_at, which is how you say "try again".
+        and (
+          select count(*) from run r2 where r2.ticket_id = t.id and r2.trigger = ${kind}
+            and r2.status = 'fail' and r2.ended_at > t.updated_at) < 3
         and not exists (
           select 1 from run r where r.ticket_id = t.id
             and r.status in ('running','queued','awaiting_input')
@@ -98,7 +104,8 @@ export async function claim(
       title: row.title, body: row.body, repoPath: row.repo_path,
       defaultBranch: row.default_branch, policy: row.policy,
       designId: row.design_id, designMarkdown: row.design_markdown,
-      projectDesignMarkdown: row.project_design_markdown, trigger: kind,
+      projectDesignMarkdown: row.project_design_markdown,
+      designNotes: row.design_notes ?? [], trigger: kind,
     };
   });
 }
@@ -235,8 +242,13 @@ export async function loadTranscript(sessionId: string, subpath: string) {
   return rows.length ? rows.map(r => r.entry) : null;
 }
 
+/**
+ * A finished run takes its goblin's name off the card. It deliberately does not
+ * touch `updated_at`: that column is how a human says "try again", and a failing
+ * run that bumps it re-arms its own claim. One that did looped 12,357 times.
+ */
 export async function clearDelegate(ticketId: string) {
-  await sql`update ticket set delegate = null, updated_at = now() where id = ${ticketId}`;
+  await sql`update ticket set delegate = null where id = ${ticketId}`;
 }
 
 // ── Questions: the seam where a run waits for you ────────────────────────────

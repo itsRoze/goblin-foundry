@@ -165,6 +165,8 @@ async function runBuilder(
 function firstPrompt(
   claim: db.Claim, designPath: string | null, schema: Record<string, unknown>, existing: string[] = [],
 ): string {
+  const notes = (claim.designNotes ?? [])
+    .map(n => (n?.note ?? '').trim()).filter(Boolean);
   return [
     `## Ticket ${formatRef(claim.projectKey, claim.shortId)}: ${claim.title}`,
     '',
@@ -173,6 +175,14 @@ function firstPrompt(
     designPath
       ? `## Design\n\nThe approved design is at \`${designPath}\` in this worktree. Read it before you start. It is git-ignored — never commit it.`
       : '## Design\n\nThere is no design for this ticket. Implement the ticket body directly, and keep the change minimal.',
+    // Notes left on a design that was then approved are the human's last word
+    // on it: not a rejection, but not decoration either.
+    notes.length
+      ? '\n## What I said when I approved the design\n\n'
+        + notes.map(n => `- ${n}`).join('\n')
+        + '\n\nThese are instructions, not commentary. Where one conflicts with the design, the note wins,'
+        + ' and say so in `deviations`.'
+      : '',
     '',
     existing.length
       ? `## Work already on this branch\n\nAn earlier attempt stopped at a harness limit and left these changes:\n`

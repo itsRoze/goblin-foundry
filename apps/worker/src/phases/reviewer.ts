@@ -270,6 +270,10 @@ function firstPrompt(
     designPath
       ? `The approved design is at \`${designPath}\` — git-ignored, and the specification.`
       : 'There is no design for this ticket; the ticket body is the specification.',
+    (claim.designNotes ?? []).length
+      ? '\nThe human added these when approving the design; they carry the same weight as the design itself:\n'
+        + (claim.designNotes ?? []).map(n => `- ${(n?.note ?? '').trim()}`).filter(s => s !== '- ').join('\n')
+      : '',
     '',
     '## Lenses',
     '',

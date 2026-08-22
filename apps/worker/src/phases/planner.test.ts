@@ -7,7 +7,7 @@ const baseClaim: Claim = {
   runId: 'run_1', ticketId: 'tkt_1', projectId: 'prj_1', projectKey: 'TST', shortId: 1,
   title: 'A ticket', body: 'Do the thing.', repoPath: '/tmp/repo', defaultBranch: 'main',
   policy: { preset: 'standard' } as unknown as Claim['policy'],
-  designId: null, designMarkdown: null, projectDesignMarkdown: null, trigger: 'ready_for_design',
+  designId: null, designMarkdown: null, designNotes: [], projectDesignMarkdown: null, trigger: 'ready_for_design',
 };
 
 const schema = { type: 'object' };

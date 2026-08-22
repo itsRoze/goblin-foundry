@@ -224,3 +224,10 @@ Things that bit us while building the factory. Newest last.
   handle is now a proxy that connects on first use.
 - **Node's built-in `node:sqlite` prints an experimental warning and works fine read-only.** Importing it for the smriti importer avoided adding a dependency, but the warning is noise in the report — worth suppressing or noting so the first run does not look broken.
 - **Adding a table to a Zero publication does not need a replica reset when DDL event triggers are installed.** Verified by applying the migration while zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The client still needs a reload to get the new schema.
+- **A note left on a design that was then approved went nowhere.** The UI puts
+  an annotation box beside an Approve button, the note is stored on the design,
+  and the claim query selected only `markdown` — so the builder never saw it and
+  nothing said so. Notes were only ever read by a *new planner run*, which
+  happens when a design is sent back, not when it is approved. Approval notes
+  now reach the builder's opening prompt as instructions that outrank the
+  design, and the reviewer judges against them too.
