@@ -31,7 +31,10 @@ export function looksLikePath(token: string): boolean {
   return REAL_ROOTS.includes(first);
 }
 
-const GIT_ESCAPES = [/\bgit\s+-C\b/, /--git-dir\b/, /--work-tree\b/, /\bGIT_DIR=/, /\bGIT_WORK_TREE=/];
+/** Redirection that points git at another repository entirely. */
+const GIT_ESCAPES = [/--git-dir\b/, /--work-tree\b/, /\bGIT_DIR=/, /\bGIT_WORK_TREE=/];
+/** `git -C <path>` — an escape only when the path leaves the worktree. */
+const GIT_C = /\bgit\s+-C\s+(?:"([^"]+)"|'([^']+)'|(\S+))/g;
 
 export function checkTool(tool: string, input: unknown, worktree: string, protectedPaths: string[]): Breach {
   const i = (input ?? {}) as Record<string, unknown>;
@@ -61,6 +64,14 @@ export function checkTool(tool: string, input: unknown, worktree: string, protec
     const command = i.command;
     for (const pattern of GIT_ESCAPES) {
       if (pattern.test(command)) return { reason: `git redirection (${pattern.source}) is not allowed inside a worktree` };
+    }
+    // `git -C` is only redirection when it redirects somewhere else. Denying it
+    // outright cost a reviewer four turns and, once, its whole report.
+    for (const match of command.matchAll(GIT_C)) {
+      const target = match[1] ?? match[2] ?? match[3] ?? '';
+      if (!within(resolve(root, target), root)) {
+        return { reason: `git -C ${target} points outside the worktree ${root}` };
+      }
     }
     for (const token of command.match(/(?:^|[\s='"`])(\/[^\s'"`;|&)]+)/g) ?? []) {
       const path = token.trim().replace(/^["'=`]/, '');

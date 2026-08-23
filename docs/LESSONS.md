@@ -268,3 +268,11 @@ Things that bit us while building the factory. Newest last.
   event triggers are installed.** Verified by applying the migration while
   zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The
   client still needs a reload to get the new schema.
+- **`git -C` was denied even when it pointed at the agent's own worktree.** The
+  guard matched the shape of the flag rather than where it went, so a reviewer
+  inspecting its own branch was refused four times in one run — and an earlier
+  one gave up entirely and wrote its findings as prose. Redirection is only
+  redirection when it redirects: `git -C` is now resolved and checked against
+  the worktree, while `--git-dir`, `--work-tree` and the GIT_* environment
+  variables stay denied outright. Third guard false positive in two days, all
+  the same mistake — matching a pattern instead of asking where it points.
