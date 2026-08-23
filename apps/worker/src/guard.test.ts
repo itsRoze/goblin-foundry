@@ -14,8 +14,19 @@ test('a protected path is readable but not writable', () => {
   assert.match(checkTool('Edit', { file_path: '.github/ci.yml' }, WORKTREE, ['.github/**'])!.reason, /protected path/);
 });
 
-test('git redirection out of the worktree is a breach', () => {
-  assert.match(checkTool('Bash', { command: 'git -C /elsewhere status' }, WORKTREE, [])!.reason, /git redirection/);
+test('git -C is a breach only when it points somewhere else', () => {
+  assert.match(checkTool('Bash', { command: 'git -C /elsewhere status' }, WORKTREE, [])!.reason,
+               /points outside the worktree/);
+  // Its own worktree, by absolute path, by relative path, and quoted.
+  assert.equal(checkTool('Bash', { command: `git -C ${WORKTREE} log --oneline -3` }, WORKTREE, []), null);
+  assert.equal(checkTool('Bash', { command: 'git -C . status' }, WORKTREE, []), null);
+  assert.equal(checkTool('Bash', { command: `git -C "${WORKTREE}/apps" diff` }, WORKTREE, []), null);
+});
+
+test('redirection that names another repository is still a breach', () => {
+  for (const command of ['git --git-dir=/other/.git log', 'GIT_WORK_TREE=/other git status']) {
+    assert.match(checkTool('Bash', { command }, WORKTREE, [])!.reason, /git redirection/, command);
+  }
 });
 
 test('a command reaching a real path outside the worktree is a breach', () => {

@@ -259,3 +259,11 @@ Things that bit us while building the factory. Newest last.
   with it. A correction's baseline is HEAD when the correction started, and each
   fix loop now commits, so the next loop measures from the last one instead of
   inheriting its uncommitted files.
+- **`git -C` was denied even when it pointed at the agent's own worktree.** The
+  guard matched the shape of the flag rather than where it went, so a reviewer
+  inspecting its own branch was refused four times in one run — and an earlier
+  one gave up entirely and wrote its findings as prose. Redirection is only
+  redirection when it redirects: `git -C` is now resolved and checked against
+  the worktree, while `--git-dir`, `--work-tree` and the GIT_* environment
+  variables stay denied outright. Third guard false positive in two days, all
+  the same mistake — matching a pattern instead of asking where it points.
