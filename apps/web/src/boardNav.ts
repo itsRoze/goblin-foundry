@@ -1,4 +1,5 @@
 import type { StatusKind } from '@goblin/schema';
+import { ticketInColumn } from './boardColumns.ts';
 
 export interface NavColumn {
   kind: StatusKind;
@@ -13,7 +14,7 @@ export interface NavTicket {
 /** Flattens the board's rendering order (column order, then per-column list order)
     into a single sequence of ticket ids, so j/k walk the board in reading order. */
 export function navigationOrder(columns: NavColumn[], tickets: NavTicket[]): string[] {
-  return columns.flatMap(column => tickets.filter(t => column.statusIds.includes(t.statusId)).map(t => t.id));
+  return columns.flatMap(column => tickets.filter(t => ticketInColumn(t, column)).map(t => t.id));
 }
 
 export function nextFocusedId(order: string[], focusedId: string | null): string | null {

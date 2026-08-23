@@ -96,6 +96,8 @@ export function rewriteBodyReferences(
   return { body: out, rewritten };
 }
 
+export type SkippedEdge = { sourceBlocker: number; sourceBlocked: number; reason: string };
+
 export type ImportReport = {
   verdict: 'written' | 'dry-run' | 'no-op';
   projectSlug: string;
@@ -109,12 +111,18 @@ export type ImportReport = {
   importedDepCount: number;
   skippedDepCount: number;
   skippedCategories: { category: string; count: number; reason: string }[];
+  skippedEdges?: SkippedEdge[];
   tickets: IdMapEntry[];
   edges: TranslatedEdge[];
   rewrittenRefs: number;
   readyTickets: string[];
   deleteStatement?: string;
 };
+
+export function readyRefs(tickets: IdMapEntry[], edges: TranslatedEdge[]): string[] {
+  const blocked = new Set(edges.map(e => e.blocked.ref));
+  return tickets.filter(t => !blocked.has(t.ref)).map(t => t.ref);
+}
 
 export function formatReport(r: ImportReport): string {
   const lines: string[] = [];
@@ -148,9 +156,16 @@ export function formatReport(r: ImportReport): string {
     }
     lines.push('');
   }
-  if (r.verdict === 'no-op') {
-    lines.push('To re-run after removing the existing project:');
-    lines.push(`  ${r.deleteStatement ?? `delete from project where slug = '${r.projectSlug}';`}`);
+  if (r.skippedEdges?.length) {
+    lines.push('Skipped edges:');
+    for (const s of r.skippedEdges) {
+      lines.push(`  ${s.sourceBlocker} → ${s.sourceBlocked}: ${s.reason}`);
+    }
+    lines.push('');
+  }
+  if (r.deleteStatement) {
+    lines.push('To remove the imported project:');
+    lines.push(`  ${r.deleteStatement}`);
     lines.push('');
   }
   lines.push(`Ready to start (no unfinished blocker): ${r.readyTickets.join(', ') || '(none)'}`);

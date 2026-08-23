@@ -39,3 +39,12 @@ test('ticketInColumn() matches a ticket against the column status ids', () => {
   assert.equal(ticketInColumn({ statusId: 'sub_b' }, backlog), true);
   assert.equal(ticketInColumn({ statusId: 'fac_d' }, backlog), false);
 });
+
+test('boardColumns() puts every enabled status in exactly one column', () => {
+  const cols = boardColumns(statuses);
+  const tickets = statuses.filter(s => s.enabled).map(s => ({ statusId: s.id }));
+  for (const t of tickets) {
+    const matches = cols.filter(c => ticketInColumn(t, c)).length;
+    assert.equal(matches, 1, `statusId ${t.statusId} matched ${matches} columns`);
+  }
+});

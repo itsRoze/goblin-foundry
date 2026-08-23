@@ -38,6 +38,6 @@ export function boardColumns(statuses: readonly BoardStatusRow[]): BoardColumn[]
 }
 
 /** True when a ticket belongs to a column (its status id is one of the column's ids). */
-export function ticketInColumn(ticket: { statusId: string }, column: BoardColumn): boolean {
+export function ticketInColumn(ticket: { statusId: string }, column: { statusIds: string[] }): boolean {
   return column.statusIds.includes(ticket.statusId);
 }

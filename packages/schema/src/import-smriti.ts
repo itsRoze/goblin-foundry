@@ -2,12 +2,12 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { connect, migrate } from './sql.ts';
+import { connect } from './sql.ts';
 import { createProject } from './project.ts';
 import { newId } from './ids.ts';
 import type { Sql } from './sql.ts';
 import {
-  formatReport, mapSourceTickets, translateEdges, rewriteBodyReferences,
+  formatReport, mapSourceTickets, readyRefs, translateEdges, rewriteBodyReferences,
   type IdMapEntry, type ImportReport, type SourceDep, type SourceTicket, type TranslatedEdge,
 } from './import.ts';
 
@@ -38,10 +38,7 @@ function firstLine(text: string): string {
   return text.trim().split(/\r?\n/)[0] ?? '';
 }
 
-function readyRefs(tickets: IdMapEntry[], edges: TranslatedEdge[]): string[] {
-  const blocked = new Set(edges.map(e => e.blocked.ref));
-  return tickets.filter(t => !blocked.has(t.ref)).map(t => t.ref);
-}
+
 
 async function buildReport(
   sql: Sql,
@@ -151,7 +148,7 @@ async function buildReport(
   const dbToSource = new Map([...sourceToDb.entries()].map(([s, d]) => [d, s]));
 
   const writtenSet = new Set(written.map(r => `${dbToSource.get(r.blocker_id)}->${dbToSource.get(r.blocked_id)}`));
-  const sourceSet = new Set(sourceDeps.map(d => `${d.blockerId}->${d.blockedId}`));
+  const sourceSet = new Set(edges.map(e => `${e.blocker.sourceId}->${e.blocked.sourceId}`));
 
   const missing = [...sourceSet].filter(s => !writtenSet.has(s));
   const extra = [...writtenSet].filter(s => !sourceSet.has(s));
@@ -178,6 +175,7 @@ async function buildReport(
     sourceDepCount: sourceDeps.length,
     importedDepCount: edges.length,
     skippedDepCount: skipped.length,
+    skippedEdges: skipped,
     skippedCategories,
     tickets: orderedTickets,
     edges,
@@ -206,7 +204,6 @@ async function main() {
   const sql = connect();
   let exit = 0;
   try {
-    await migrate(sql);
     const report = await sql.begin(async tx => {
       return await buildReport(tx as unknown as Sql, dryRun, source!.db);
     });

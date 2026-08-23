@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import type { Finding, PlanOutput, ReviewOutput } from '@goblin/schema';
 import {
-  design_complete, earsCriteria, lens_coverage, review_readable,
+  design_complete, earsCriteria, lens_coverage, refutation_attempted, review_readable,
   review_verdict_consistent, section, verdict_consistent,
 } from './gates.ts';
 
@@ -162,6 +162,24 @@ test('lens_coverage names the lens that never ran', async () => {
 
 test('lens_coverage passes when every policy lens reported', async () => {
   assert.equal((await lens_coverage(review(), REVIEW_CTX)).passed, true);
+});
+
+test('refutation_attempted passes when every unmet finding was challenged', async () => {
+  const r = await refutation_attempted(review({
+    findings: [finding({ refuted: true, refutation: 'covered by existing test' })],
+  }), REVIEW_CTX);
+  assert.equal(r.passed, true, JSON.stringify(r.checks));
+});
+
+test('refutation_attempted fails when an unmet finding was never challenged', async () => {
+  const r = await refutation_attempted(review({ findings: [finding()] }), REVIEW_CTX);
+  assert.equal(r.passed, false);
+  assert.match(r.checks[0]!.note, /never challenged/);
+});
+
+test('refutation_attempted passes when no findings are unmet', async () => {
+  const r = await refutation_attempted(review({ findings: [finding({ met: true })] }), REVIEW_CTX);
+  assert.equal(r.passed, true, JSON.stringify(r.checks));
 });
 
 // ── A push that was refused is not a push ───────────────────────────────────

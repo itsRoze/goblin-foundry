@@ -1,5 +1,5 @@
 import { connect, type Sql } from '@goblin/schema/sql';
-import { newId, type EventType, type GateReport, type Policy } from '@goblin/schema';
+import { newId, UNBLOCKING_KINDS, type EventType, type GateReport, type Policy } from '@goblin/schema';
 
 /**
  * Connects on first use, not on import.
@@ -48,7 +48,6 @@ export async function claim(
              p.repo_path, p.default_branch, p.policy,
              d.id as design_id, d.markdown as design_markdown, d.notes as design_notes,
              pd.markdown as project_design_markdown
->>>>>>> m1
       from ticket t
       join status s on s.id = t.status_id
       join project p on p.id = t.project_id
@@ -85,7 +84,7 @@ export async function claim(
           join ticket bt on bt.id = td.blocker_id
           join status bs on bs.id = bt.status_id
           where td.blocked_id = t.id
-            and bs.kind not in ('done','canceled'))
+            and bs.kind not in ${tx([...UNBLOCKING_KINDS])})
       order by t.priority, t.short_id
       limit 1
       for update of t skip locked`;

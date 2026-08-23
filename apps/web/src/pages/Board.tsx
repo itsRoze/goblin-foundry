@@ -7,7 +7,7 @@ import { api } from '../api.ts';
 import { usd } from '../format.ts';
 import { stuckFrom } from '../inbox.ts';
 import { navigationOrder, nextFocusedId, prevFocusedId, reconcileFocus, isNavKeyIgnored } from '../boardNav.ts';
-import { boardColumns } from '../boardColumns.ts';
+import { boardColumns, ticketInColumn } from '../boardColumns.ts';
 
 export function Board() {
   const [statuses] = useQuery(useMemo(() => queries.statuses(), []));
@@ -26,7 +26,7 @@ export function Board() {
 
   // Empty terminal columns are noise on a board with two tickets.
   const shown = useMemo(
-    () => columns.filter(c => c.kind !== 'canceled' || tickets.some(t => c.statusIds.includes(t.statusId))),
+    () => columns.filter(c => c.kind !== 'canceled' || tickets.some(t => ticketInColumn(t, c))),
     [columns, tickets],
   );
 
@@ -54,7 +54,7 @@ export function Board() {
   return (
     <div className="board">
       {shown.map(column => {
-        const cards = tickets.filter(t => column.statusIds.includes(t.statusId));
+        const cards = tickets.filter(t => ticketInColumn(t, column));
         return (
           <section
             key={column.kind}
