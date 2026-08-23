@@ -114,22 +114,28 @@ export async function attachWorktree(repo: string, branch: string, base: string)
  */
 export async function mergeBaseInto(
   worktree: string, base: string,
-): Promise<{ ok: boolean; merged: boolean; conflicts: string[]; baseSha?: string }> {
+): Promise<{ ok: boolean; merged: boolean; conflicts: string[]; baseSha?: string; detail?: string }> {
   const behind = await git(worktree, 'rev-list', '--count', `HEAD..${base}`);
   if (Number(behind.stdout.trim() || 0) === 0) return { ok: true, merged: false, conflicts: [] };
   const merge = await git(worktree, 'merge', '--no-edit', base);
+  if (merge.code !== 0) {
+    const conflicted = await git(worktree, 'diff', '--name-only', '--diff-filter=U');
+    const conflicts = conflicted.stdout.split('\n').map(l => l.trim()).filter(Boolean);
+    await git(worktree, 'merge', '--abort');
+    // No conflicted paths means the merge never started — a dirty tree, a lock,
+    // a detached head. Saying "conflicts: []" hides which one it was.
+    return {
+      ok: false, merged: false, conflicts,
+      detail: conflicts.length ? '' : (merge.stderr || merge.stdout).trim().slice(-400),
+    };
+  }
   if (merge.code === 0) {
     // The base is now an ancestor, so it is the commit the diff gates should
     // measure this branch's own work against.
     const sha = await git(worktree, 'rev-parse', base);
     return { ok: true, merged: true, conflicts: [], baseSha: sha.stdout.trim() };
   }
-  const conflicted = await git(worktree, 'diff', '--name-only', '--diff-filter=U');
-  await git(worktree, 'merge', '--abort');
-  return {
-    ok: false, merged: false,
-    conflicts: conflicted.stdout.split('\n').map(s => s.trim()).filter(Boolean),
-  };
+  return { ok: false, merged: false, conflicts: [] };
 }
 
 export async function removeWorktree(repo: string, path: string) {
@@ -153,6 +159,12 @@ export async function materializeDesign(worktree: string, markdown: string): Pro
   const path = join(dir, 'design.md');
   await writeFile(path, markdown, 'utf8');
   return path;
+}
+
+/** Where a branch stands right now — the baseline a correction is measured from. */
+export async function headSha(worktree: string): Promise<string> {
+  const { stdout } = await git(worktree, 'rev-parse', 'HEAD');
+  return stdout.trim();
 }
 
 export async function changedFiles(worktree: string, base: string): Promise<string[]> {

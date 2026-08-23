@@ -1,8 +1,8 @@
 import { formatRef, type EnvelopeBase } from '@goblin/schema';
 import * as db from './db.ts';
 import {
-  addWorktree, attachWorktree, hasBranchWork, mergeBaseInto, removeWorktree, syncBase,
-  type Worktree,
+  addWorktree, attachWorktree, commitAll, hasBranchWork, isClean, mergeBaseInto,
+  removeWorktree, syncBase, type Worktree,
 } from './git.ts';
 import { asHalt, overBudget } from './halt.ts';
 import {
@@ -13,8 +13,10 @@ import { TRIGGER_PIPELINES } from './pipelines.ts';
 
 /** The base moved under a branch and the two disagree: a human's call. */
 class BaseConflict extends Error {
-  constructor(readonly conflicts: string[]) {
-    super(`branch conflicts with its base in: ${conflicts.join(', ')}`);
+  constructor(readonly conflicts: string[], detail = '') {
+    super(conflicts.length
+      ? `branch conflicts with its base in: ${conflicts.join(', ')}`
+      : `branch could not merge its base: ${detail || 'unknown reason'}`);
   }
 }
 
@@ -40,13 +42,26 @@ async function acquireWorktree(pipeline: Pipeline, claim: db.Claim, branch: stri
   // conflict is a run that stops with a reason, rather than on the pull
   // request, where it is a human resolving by hand.
   if (resuming) {
+    // An earlier run may have died with work still uncommitted. It is real work
+    // and it blocks the catch-up merge, so it lands as a commit of its own
+    // rather than being stashed, abandoned, or merged over.
+    if (!(await isClean(worktree.path))) {
+      const wip = await commitAll(
+        worktree.path,
+        `${formatRef(claim.projectKey, claim.shortId)}: work left uncommitted by an earlier run`,
+        { ticket: formatRef(claim.projectKey, claim.shortId), run: claim.runId,
+          phase: 'resume', design: claim.designId },
+      );
+      await db.event({ runId: claim.runId, type: 'log', name: 'committed leftover work',
+                       payload: { code: wip.code, out: wip.stdout.slice(-300) } });
+    }
     const caught = await mergeBaseInto(worktree.path, claim.defaultBranch);
     await db.event({
       runId: claim.runId, type: caught.ok ? 'log' : 'error', name: 'catch up with base',
       payload: { base: claim.defaultBranch, merged: caught.merged, conflicts: caught.conflicts,
-                 base_sha: caught.baseSha ?? worktree.baseSha },
+                 detail: caught.detail ?? '', base_sha: caught.baseSha ?? worktree.baseSha },
     });
-    if (!caught.ok) throw new BaseConflict(caught.conflicts);
+    if (!caught.ok) throw new BaseConflict(caught.conflicts, caught.detail);
     // The diff gates measure against this commit. Catching up moves it: without
     // this, everything the base added since reads as an undeclared change by
     // the agent, and a correct fix is failed for work it never did.

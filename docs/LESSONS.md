@@ -252,3 +252,12 @@ Things that bit us while building the factory. Newest last.
   the real boundary, since bare `allowedTools` entries auto-approve before the
   callback is consulted. Worth re-reading whenever the CLI updates: this changed
   under a running factory, not in a release anyone here chose.
+- **A correction measured against the branch's base is blamed for the branch.**
+  The reviewer's fix loop reused the builder's gates with the run's `baseSha`,
+  which for a review is the merge-base with the target branch — so a fix that
+  touched four files was diffed against every commit the ticket had ever made
+  and failed `diff_matches_claims` for a migration, a blueprint and a justfile it
+  never opened. Tests green, $0.31 of work, and it took an $8.57 review down
+  with it. A correction's baseline is HEAD when the correction started, and each
+  fix loop now commits, so the next loop measures from the last one instead of
+  inheriting its uncommitted files.
