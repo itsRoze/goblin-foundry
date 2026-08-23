@@ -39,10 +39,6 @@ migrate:
 seed:
     pnpm --filter @goblin/schema seed
 
-# One-shot import from smriti's factory.db. Use --dry-run first.
-import-smriti *ARGS:
-    pnpm --filter @goblin/schema import-smriti {{ARGS}}
-
 # Run zero-cache (sync engine) against the goblin_zero publication.
 # Binds :4849 for clients and :4850 for its own change-streamer.
 zero:
