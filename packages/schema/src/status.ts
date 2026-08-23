@@ -3,7 +3,8 @@ import type { StatusKind } from './types.ts';
 /**
  * Canonical display names and column colours for the fixed status kinds.
  * Per-project rows can rename or recolour a kind, but this map is the fallback
- * and the source of truth for newly created projects (seed + importer).
+ * and the source of truth for newly created projects (used by `createProject`
+ * in `project.ts`).
  */
 export const STATUS_DISPLAY: Record<StatusKind, [string, string]> = {
   backlog:          ['Backlog',          '#5B6578'],

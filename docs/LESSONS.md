@@ -222,8 +222,6 @@ Things that bit us while building the factory. Newest last.
   neither can anything importing it.** Three test files had been split apart to
   route around it before the pi guard made it a fourth. The worker's `sql`
   handle is now a proxy that connects on first use.
-- **Node's built-in `node:sqlite` prints an experimental warning and works fine read-only.** Importing it for the smriti importer avoided adding a dependency, but the warning is noise in the report — worth suppressing or noting so the first run does not look broken.
-- **Adding a table to a Zero publication does not need a replica reset when DDL event triggers are installed.** Verified by applying the migration while zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The client still needs a reload to get the new schema.
 - **A note left on a design that was then approved went nowhere.** The UI puts
   an annotation box beside an Approve button, the note is stored on the design,
   and the claim query selected only `markdown` — so the builder never saw it and
@@ -261,3 +259,12 @@ Things that bit us while building the factory. Newest last.
   with it. A correction's baseline is HEAD when the correction started, and each
   fix loop now commits, so the next loop measures from the last one instead of
   inheriting its uncommitted files.
+- **Node's built-in `node:sqlite` opens databases read-only without error and
+  prints an experimental warning.** The warning is harmless, but in
+  user-facing output it looks like a failure. Suppress it when the module is
+  loaded for a human-run command (e.g.,
+  `--no-warnings=ExperimentalWarning`).
+- **Adding a table to a Zero publication does not need a replica reset when DDL
+  event triggers are installed.** Verified by applying the migration while
+  zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The
+  client still needs a reload to get the new schema.
