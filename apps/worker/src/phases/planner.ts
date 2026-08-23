@@ -133,7 +133,7 @@ async function runPlanner(
   return { status: 'success', envelope };
 }
 
-function firstPrompt(
+export function firstPrompt(
   claim: db.Claim, template: string, schema: Record<string, unknown>, prior?: db.PriorDesign,
   answered: { header: string; prompt: string; answer: string }[] = [],
 ): string {
@@ -146,6 +146,12 @@ function firstPrompt(
     '',
     `You are standing in \`${claim.repoPath}\`, the repository this ticket belongs to.`,
     'Read it before you ask me anything. You have no write tools, and you need none.',
+    claim.projectDesignMarkdown
+      ? '\n## Project context\n\n'
+        + 'The project this ticket belongs to has an architecture document. Read it before you plan;'
+        + ' the ticket lives inside the boundaries it sets.\n\n'
+        + '```markdown\n' + claim.projectDesignMarkdown.slice(0, 20000) + '\n```'
+      : '',
     prior
       ? `\n## Design v${prior.version}, and what I said about it\n\n`
         + 'You are writing the next version. Start from what it said, and treat my'

@@ -7,7 +7,7 @@ import {
 } from '@goblin/schema';
 import * as db from '../db.ts';
 import {
-  diff_matches_claims, lens_coverage, review_verdict_consistent, tests_pass, type GateContext,
+  diff_matches_claims, lens_coverage, refutation_attempted, review_verdict_consistent, tests_pass, type GateContext,
 } from '../gates.ts';
 import { commitAll, headSha, isClean, materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
@@ -31,7 +31,7 @@ export const reviewerPhase: PhaseSpec<ReviewOutput> = {
   kind: 'agent',
   agentName: 'reviewer',
   envelope: 'ReviewOutput',
-  gates: [review_verdict_consistent, lens_coverage],
+  gates: [review_verdict_consistent, lens_coverage, refutation_attempted],
   modelFor: policy => ({
     harness: policy.models.reviewer?.harness ?? 'claude-code',
     model: policy.models.reviewer?.model ?? 'opus',

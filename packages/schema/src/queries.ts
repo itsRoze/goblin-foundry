@@ -11,6 +11,8 @@ export const queries = defineQueries({
 
   board: defineQuery(() =>
     b.ticket.related('project').related('status')
+      .related('blockedBy', bb => bb.related('status').related('project'))
+      .related('blocks', bs => bs.related('project'))
       .related('runs', r => r.orderBy('startedAt', 'desc').limit(1)
         .related('questions', q => q.where('answeredAt', 'IS', null)))),
 
@@ -23,6 +25,8 @@ export const queries = defineQueries({
     return q
       .related('project')
       .related('status')
+      .related('blockedBy', bb => bb.related('project'))
+      .related('blocks', bs => bs.related('project'))
       .related('designs', d => d.orderBy('version', 'desc'))
       .related('runs', r => r.orderBy('startedAt', 'desc')
         .related('questions', q => q.orderBy('askedAt', 'asc').orderBy('seq', 'asc')))

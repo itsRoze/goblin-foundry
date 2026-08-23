@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { navigationOrder, nextFocusedId, prevFocusedId, reconcileFocus, isNavKeyIgnored } from './boardNav.ts';
 
-const statuses = [{ id: 's1' }, { id: 's2' }, { id: 's3' }];
+const columns = [
+  { kind: 'backlog' as const, statusIds: ['s1'] },
+  { kind: 'ready_for_design' as const, statusIds: ['s2'] },
+  { kind: 'designing' as const, statusIds: ['s3'] },
+];
 const tickets = [
   { id: 't1', statusId: 's1' },
   { id: 't2', statusId: 's2' },
@@ -10,12 +14,12 @@ const tickets = [
   { id: 't4', statusId: 's2' },
 ];
 
-test('navigationOrder() flattens tickets in status order, then per-status list order', () => {
-  assert.deepEqual(navigationOrder(statuses, tickets), ['t1', 't3', 't2', 't4']);
+test('navigationOrder() flattens tickets in column order, then per-column list order', () => {
+  assert.deepEqual(navigationOrder(columns, tickets), ['t1', 't3', 't2', 't4']);
 });
 
-test('navigationOrder() skips statuses with no tickets and returns [] when there are none', () => {
-  assert.deepEqual(navigationOrder(statuses, []), []);
+test('navigationOrder() skips columns with no tickets and returns [] when there are none', () => {
+  assert.deepEqual(navigationOrder(columns, []), []);
 });
 
 const order = ['t1', 't3', 't2', 't4'];

@@ -189,6 +189,18 @@ export const review_verdict_consistent: Gate<ReviewOutput> = async (env, ctx) =>
   return report('review_verdict_consistent', checks);
 };
 
+/** Every unmet finding must have been challenged by a refuter subagent. */
+export const refutation_attempted: Gate<ReviewOutput> = async env => {
+  const unmet = env.findings.filter(f => !f.met);
+  const checks = unmet.map(f => ({
+    item: `refutation: ${f.lens} — ${f.requirement.slice(0, 60)}`,
+    ok: f.refuted || f.refutation.trim().length > 0,
+    note: f.refuted ? 'refuted' : f.refutation.trim() ? 'survived refutation' : 'never challenged',
+  }));
+  if (!checks.length) checks.push({ item: 'refutation', ok: true, note: 'no unmet findings' });
+  return report('refutation_attempted', checks);
+};
+
 /** Every lens the policy asks for has to have actually looked. */
 export const lens_coverage: Gate<ReviewOutput> = async (env, ctx) => {
   const wanted = ctx.lenses ?? [];

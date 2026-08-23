@@ -259,6 +259,15 @@ Things that bit us while building the factory. Newest last.
   with it. A correction's baseline is HEAD when the correction started, and each
   fix loop now commits, so the next loop measures from the last one instead of
   inheriting its uncommitted files.
+- **Node's built-in `node:sqlite` opens databases read-only without error and
+  prints an experimental warning.** The warning is harmless, but in
+  user-facing output it looks like a failure. Suppress it when the module is
+  loaded for a human-run command (e.g.,
+  `--no-warnings=ExperimentalWarning`).
+- **Adding a table to a Zero publication does not need a replica reset when DDL
+  event triggers are installed.** Verified by applying the migration while
+  zero-cache was stopped; on restart it picked up `ticket_dep` and resynced. The
+  client still needs a reload to get the new schema.
 - **`git -C` was denied even when it pointed at the agent's own worktree.** The
   guard matched the shape of the flag rather than where it went, so a reviewer
   inspecting its own branch was refused four times in one run — and an earlier
