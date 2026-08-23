@@ -155,6 +155,12 @@ export async function materializeDesign(worktree: string, markdown: string): Pro
   return path;
 }
 
+/** Where a branch stands right now — the baseline a correction is measured from. */
+export async function headSha(worktree: string): Promise<string> {
+  const { stdout } = await git(worktree, 'rev-parse', 'HEAD');
+  return stdout.trim();
+}
+
 export async function changedFiles(worktree: string, base: string): Promise<string[]> {
   const tracked = await git(worktree, 'diff', '--name-only', base);
   const untracked = await git(worktree, 'ls-files', '--others', '--exclude-standard');

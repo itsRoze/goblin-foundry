@@ -9,7 +9,7 @@ import * as db from '../db.ts';
 import {
   diff_matches_claims, lens_coverage, review_verdict_consistent, tests_pass, type GateContext,
 } from '../gates.ts';
-import { materializeDesign } from '../git.ts';
+import { commitAll, headSha, isClean, materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
@@ -184,13 +184,18 @@ async function runBuilderFix(
   ctx: PhaseContext, blocking: Finding[], loop: number,
 ): Promise<{ ok: true; handoff: string } | { ok: false; reason: string }> {
   const { claim, runId, worktree } = ctx;
+  // A correction is measured from where the branch stood when it started, not
+  // from the branch's base: the fix changed four files, and diffing against the
+  // base blamed it for every commit the ticket had ever made.
+  const fixBase = await headSha(worktree!.path);
   const session = await db.lastBuilderSession(claim.ticketId);
   const tier = claim.policy.models.builder;
   const seq = await db.nextPhaseSeq(runId);
   const phaseId = await db.startPhase(runId, seq, 'agent', `builder_fix_${loop}`, 'builder',
                                       tier?.model ?? 'sonnet', tier?.effort ?? 'xhigh');
   await db.event({ runId, phaseId, type: 'phase_start', name: `builder_fix_${loop}`,
-                   payload: { kind: 'agent', resumed: session ?? null, blocking: blocking.map(describe) } });
+                   payload: { kind: 'agent', resumed: session ?? null, base_sha: fixBase,
+                              blocking: blocking.map(describe) } });
 
   const systemPrompt = await readFile(join(promptsDir, 'builder.md'), 'utf8');
   const schema = envelopeJsonSchema('BuildOutput');
@@ -230,7 +235,7 @@ async function runBuilderFix(
   await db.saveEnvelope(phaseId, 'builder', 'BuildOutput', envelope, true, 1, null);
 
   const gateCtx: GateContext = {
-    worktree: worktree!.path, base: worktree!.baseSha,
+    worktree: worktree!.path, base: fixBase,
     testCommand: claim.policy.commands.test ?? '',
   };
   const failed: string[] = [];
@@ -242,6 +247,18 @@ async function runBuilderFix(
     failed.push(...violations(gateReport));
   }
   const ok = envelope.status === 'success' && !failed.length;
+  // Each loop lands as its own commit, so the next one measures from here and
+  // the pull request shows what the review actually changed.
+  if (ok && !(await isClean(worktree!.path))) {
+    const commit = await commitAll(
+      worktree!.path,
+      envelope.commit_message || `${formatRef(claim.projectKey, claim.shortId)}: address review findings (loop ${loop})`,
+      { ticket: formatRef(claim.projectKey, claim.shortId), run: runId,
+        phase: `builder_fix_${loop}`, design: claim.designId },
+    );
+    await db.event({ runId, phaseId, type: 'log', name: 'fix commit',
+                     payload: { code: commit.code, loop, out: commit.stdout.slice(-300) } });
+  }
   await db.updatePhase(phaseId, { status: ok ? 'success' : 'fail', error: ok ? null : failed.join('; ').slice(0, 500) });
   await db.event({ runId, phaseId, type: 'phase_end', name: `builder_fix_${loop}`,
                    payload: { status: ok ? 'success' : 'fail', violations: failed } });
