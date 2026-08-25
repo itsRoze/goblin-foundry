@@ -169,11 +169,13 @@ export const STANDARD_PRESET: Policy = {
     // subagents ran out of money at $6 with the design half-written. Turns are
     // deliberately loose — the dollar budget is the leash, and a turn cap tight
     // enough to bind stops correct work rather than runaway work.
-    planner: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
-    builder: { harness: 'claude-code', model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
-    reviewer: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
-    // The cheap lane: pi against OpenCode Go, where a plan window is not the
-    // scarce resource. This is the A/B's control group.
+    // All lanes on pi/OpenCode Go since 2026-08-23 — Claude session limits
+    // kept killing reviewer runs (nine in a row on usage_limit). kimi-k3 is
+    // the only model probed end-to-end through pi; kimi-k2.7-code per the
+    // 2026-08-21 builder decision.
+    planner: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'high', budgetUsd: 15, maxTurns: 200 },
+    builder: { harness: 'pi', model: 'opencode-go/kimi-k2.7-code', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
+    reviewer: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'high', budgetUsd: 10, maxTurns: 200 },
     librarian: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'low', budgetUsd: 1, maxTurns: 60 },
   },
   design: { mockups: 'html', storage: 'factory-db' },
