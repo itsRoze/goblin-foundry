@@ -9,7 +9,10 @@ export type Route =
   | { name: 'inbox'; itemId?: string };
 
 export function parse(hash: string): Route {
-  const path = hash.replace(/^#\//, '');
+  // A notification link may carry a query string for the push service's own
+  // bookkeeping; every route below matches to end of string, so it has to
+  // come off before any of them run or it ends up inside the last capture.
+  const path = hash.replace(/^#\//, '').split('?')[0]!;
   // The pre-ref-migration link shape: resolves only when exactly one project
   // has that number, and rewrites itself to canonical form when it does.
   const legacy = /^t\/(\d+)$/.exec(path);

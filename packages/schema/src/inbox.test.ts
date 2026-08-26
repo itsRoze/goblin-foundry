@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRIGGER_STAGES } from '@goblin/schema';
+import { TRIGGER_STAGES } from './trigger.ts';
 import {
-  approvalsFrom, groupByPhase, inboxCount, isStale, roundsFrom, sectionize, stuckFrom,
+  approvalsFrom, buildItemId, groupByPhase, inboxCount, isStale, parseItemId, roundsFrom, sectionize, stuckFrom,
   type QuestionRow, type StuckTicketRow,
 } from './inbox.ts';
 
@@ -19,6 +19,47 @@ function question(over: Partial<QuestionRow> & { phaseId: string; askedAt: numbe
     ...over,
   };
 }
+
+// ── The item-id grammar ─────────────────────────────────────────────────
+
+test('buildItemId() and parseItemId() round-trip every kind', () => {
+  for (const kind of ['round', 'approval', 'stuck'] as const) {
+    const id = buildItemId(kind, 'ph_1');
+    assert.deepEqual(parseItemId(id), { kind, id: 'ph_1' });
+  }
+});
+
+test('parseItemId() round-trips an id whose entity id itself contains a colon', () => {
+  const id = buildItemId('round', 'ph:weird:1');
+  assert.equal(id, 'round:ph:weird:1');
+  assert.deepEqual(parseItemId(id), { kind: 'round', id: 'ph:weird:1' });
+});
+
+test('parseItemId() rejects an unknown kind prefix', () => {
+  assert.equal(parseItemId('bogus:ph_1'), null);
+});
+
+test('parseItemId() rejects a string with no colon at all', () => {
+  assert.equal(parseItemId('round'), null);
+});
+
+test('parseItemId() rejects a kind prefix with an empty id', () => {
+  assert.equal(parseItemId('round:'), null);
+});
+
+test('roundsFrom(), approvalsFrom() and stuckFrom() build ids parseItemId() reads back', () => {
+  const [round] = roundsFrom([question({ phaseId: 'ph_1', askedAt: 100 })]);
+  assert.deepEqual(parseItemId(round!.id), { kind: 'round', id: 'ph_1' });
+
+  const [approval] = approvalsFrom([{ id: 'd_1', version: 1, status: 'in_review', markdown: 'x', createdAt: 1, ticket: ticket() }]);
+  assert.deepEqual(parseItemId(approval!.id), { kind: 'approval', id: 'd_1' });
+
+  const [stuck] = stuckFrom([{
+    id: 'tk_1', shortId: 10, title: 'x', project: { id: 'proj_1', key: 'FAC' }, status: { kind: 'designing' },
+    runs: [{ id: 'run_1', status: 'fail', trigger: 'ready_for_design', costUsd: 1, startedAt: 1, endedAt: 2 }],
+  }], TRIGGER_STAGES);
+  assert.deepEqual(parseItemId(stuck!.id), { kind: 'stuck', id: 'tk_1' });
+});
 
 // ── groupByPhase() ───────────────────────────────────────────────────────────
 

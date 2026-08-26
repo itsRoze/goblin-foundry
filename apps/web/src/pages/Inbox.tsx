@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { formatRef } from '@goblin/schema';
 import { href } from '../router.ts';
 import { ago, usd } from '../format.ts';
 import { api } from '../api.ts';
-import { useInboxSections } from '../useInbox.ts';
+import { useInboxSections, useMissingItemTicket } from '../useInbox.ts';
 import { isStale, type Approval, type Round, type Stuck } from '../inbox.ts';
 import { Questions, type QuestionCard } from '../components/Questions.tsx';
 import { Design, type DesignRecord } from '../components/Design.tsx';
@@ -19,6 +20,7 @@ type Handled = { id: string; label: string };
  */
 export function Inbox({ itemId }: { itemId?: string }) {
   const { sections, loading } = useInboxSections();
+  const missingTicket = useMissingItemTicket(itemId);
   const [staleOpen, setStaleOpen] = useState(false);
   const [handled, setHandled] = useState<Handled[]>([]);
   const handledIds = useMemo(() => new Set(handled.map(h => h.id)), [handled]);
@@ -53,14 +55,25 @@ export function Inbox({ itemId }: { itemId?: string }) {
     <div className="page inbox">
       <h2 style={{ fontSize: 28, margin: '2px 0 8px' }}>Inbox</h2>
 
-      {missing && <div className="panel muted" style={{ marginBottom: 12 }}>That item is no longer waiting.</div>}
+      {missing && (
+        <div className="panel muted" style={{ marginBottom: 12 }}>
+          That item is no longer waiting.
+          {missingTicket && (
+            <> <a href={href.ticket(missingTicket.key, missingTicket.shortId)}>
+              Open {formatRef(missingTicket.key, missingTicket.shortId)} · {missingTicket.title}
+            </a></>
+          )}
+        </div>
+      )}
 
-      {total === 0 && !handled.length ? (
+      {total === 0 && (
         <div className="panel">
           <p>Nothing needs you.</p>
           <a className="btn ghost" href={href.board}>Back to the board</a>
         </div>
-      ) : (
+      )}
+
+      {total > 0 && (
         <>
           {blocking.length > 0 && (
             <section className="inbox-section">
@@ -92,16 +105,16 @@ export function Inbox({ itemId }: { itemId?: string }) {
               {staleOpen && stale.map(r => <RoundRow key={r.id} round={r} stale onOpen={open} />)}
             </section>
           )}
-
-          {handled.length > 0 && (
-            <section className="inbox-section">
-              <h3>Handled just now <span className="count">{handled.length}</span></h3>
-              {handled.map(h => (
-                <div key={h.id} className="inbox-row handled">{h.label}</div>
-              ))}
-            </section>
-          )}
         </>
+      )}
+
+      {handled.length > 0 && (
+        <section className="inbox-section">
+          <h3>Handled just now <span className="count">{handled.length}</span></h3>
+          {handled.map(h => (
+            <div key={h.id} className="inbox-row handled">{h.label}</div>
+          ))}
+        </section>
       )}
 
       {expanded && (

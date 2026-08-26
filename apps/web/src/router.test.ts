@@ -30,6 +30,11 @@ test('parse() reads an inbox deep link, keeping the kind-prefixed item id intact
   assert.deepEqual(parse('#/inbox/stuck:tk_3'), { name: 'inbox', itemId: 'stuck:tk_3' });
 });
 
+test('parse() strips a query string before matching an inbox deep link, keeping the id intact', () => {
+  assert.deepEqual(parse('#/inbox/round:ph_1?utm_source=ntfy'), { name: 'inbox', itemId: 'round:ph_1' });
+  assert.deepEqual(parse('#/inbox?foo=bar'), { name: 'inbox', itemId: undefined });
+});
+
 test('parse() falls back to board for garbage or an unrecognized path', () => {
   assert.deepEqual(parse('#/not-a-ref-or-route'), { name: 'board' });
   assert.deepEqual(parse('#/'), { name: 'board' });

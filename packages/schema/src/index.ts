@@ -6,4 +6,5 @@ export * from './trigger.ts';
 export * from './status.ts';
 export * from './readiness.ts';
 export * from './project.ts';
+export * from './inbox.ts';
 export { schema, type Schema } from './zero.ts';

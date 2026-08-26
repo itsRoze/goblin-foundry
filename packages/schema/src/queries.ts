@@ -65,4 +65,26 @@ export const queries = defineQueries({
       .related('phases', p => p.orderBy('seq', 'asc').related('gates').related('envelopes')
         .related('questions', q => q.orderBy('seq', 'asc')))
       .limit(1)),
+
+  /**
+   * Resolves an inbox item that has already left the inbox back to the
+   * ticket it belonged to, so a stale deep link (a notification opened after
+   * the item was handled elsewhere) can still offer somewhere to go. One
+   * query per item kind — the inbox's own item-id grammar decides which one
+   * a caller uses, since the entity id it carries differs per kind.
+   */
+  phaseTicket: defineQuery(z.object({ phaseId: z.string() }), ({ args }) =>
+    b.phase.where('id', args.phaseId)
+      .related('run', r => r.related('ticket', t => t.related('project')))
+      .limit(1)),
+
+  designTicket: defineQuery(z.object({ designId: z.string() }), ({ args }) =>
+    b.design.where('id', args.designId)
+      .related('ticket', t => t.related('project'))
+      .limit(1)),
+
+  ticketById: defineQuery(z.object({ ticketId: z.string() }), ({ args }) =>
+    b.ticket.where('id', args.ticketId)
+      .related('project')
+      .limit(1)),
 });
