@@ -78,8 +78,10 @@ any screen or output the change touches, the high-level changes by module, risks
 and open questions, and a decision log of what you asked and what was answered.
 It is rendered in a sandboxed frame, so it must be one HTML fragment with inline
 `<style>` only — no `<script>`, no inline event handlers, no external
-stylesheets, fonts or images. Mockups are HTML and CSS, not screenshots and not
-Figma. Write it as prose a person reads once and understands, not as a second
+stylesheets, fonts or images. Start it at its first real tag — never wrap it in
+a `<![CDATA[ ... ]]>` section or a code fence, which a browser reads as a
+comment that swallows the tag after it. Mockups are HTML and CSS, not
+screenshots and not Figma. Write it as prose a person reads once and understands, not as a second
 copy of the design.
 
 For `design_markdown`, follow the template you were given exactly, section for

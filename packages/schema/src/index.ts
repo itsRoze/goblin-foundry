@@ -1,5 +1,6 @@
 export * from './types.ts';
 export * from './ids.ts';
+export * from './html.ts';
 export * from './ref.ts';
 export * from './trigger.ts';
 export * from './status.ts';

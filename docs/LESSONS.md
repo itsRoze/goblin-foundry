@@ -276,3 +276,16 @@ Things that bit us while building the factory. Newest last.
   the worktree, while `--git-dir`, `--work-tree` and the GIT_* environment
   variables stay denied outright. Third guard false positive in two days, all
   the same mistake — matching a pattern instead of asking where it points.
+- **`<![CDATA[` around an HTML fragment eats the tag after it.** The planner
+  wrapped FAC-12's `review_html` in a CDATA section — reasonable-looking for
+  markup travelling inside JSON, and fatal in a browser. HTML has no CDATA
+  outside foreign content, so `<![CDATA[` opens a *bogus comment* that ends at
+  the first `>` — which in a document starting with a stylesheet is the `>` of
+  `<style>`. The opening tag vanished, the whole stylesheet rendered as
+  paragraphs of text, and `review_readable` passed it: the gate counts
+  characters, headings, scripts and remote URLs, none of which a wrapper
+  disturbs. The fix is deterministic and therefore code, not a correction round
+  — `unwrapHtmlFragment` strips CDATA and code fences where the envelope is
+  parsed, and again where the review is rendered so rows already stored still
+  display. A gate that checks four things a document has can still miss one
+  character in front of them.
