@@ -5,6 +5,7 @@ import { guardExtension, parseModelRef, piTools } from './pi.ts';
 const PHASE = {
   runId: 'run_1', phaseId: 'phs_1', agent: 'builder', cwd: '/tmp/wt',
   model: 'opencode-go/kimi-k3', effort: 'low' as const, maxTurns: 10, maxBudgetUsd: 1,
+  declaredPaidBy: 'plan' as const,
   allowedTools: ['Read', 'Bash'], protectedPaths: ['.github/**'], systemPrompt: '',
 };
 

@@ -1,5 +1,7 @@
 import { connect, type Sql } from '@goblin/schema/sql';
-import { newId, UNBLOCKING_KINDS, type EventType, type GateReport, type Policy } from '@goblin/schema';
+import {
+  newId, UNBLOCKING_KINDS, type EventType, type GateReport, type PaymentMethod, type Policy,
+} from '@goblin/schema';
 
 /**
  * Connects on first use, not on import.
@@ -144,8 +146,15 @@ export type Usage = {
   cacheReadTokens: number; cacheWriteTokens: number; numTurns: number;
 };
 
-export async function addRunCost(runId: string, u: Usage) {
+/**
+ * `billable` is the phase's own payment method, not the run's: only a phase
+ * paid for by `api-key` (or, conservatively, `unknown`) adds to the total the
+ * per-ticket cap actually reads. This is the same write as the cost and token
+ * totals, not a second writer, so the two can never disagree.
+ */
+export async function addRunCost(runId: string, u: Usage, billable: boolean) {
   await sql`update run set cost_usd = cost_usd + ${u.costUsd},
+            billable_usd = billable_usd + ${billable ? u.costUsd : 0},
             input_tokens = input_tokens + ${u.inputTokens},
             output_tokens = output_tokens + ${u.outputTokens},
             cache_read_tokens = cache_read_tokens + ${u.cacheReadTokens},
@@ -156,24 +165,29 @@ export async function addRunCost(runId: string, u: Usage) {
 export async function startPhase(
   runId: string, seq: number, kind: 'agent' | 'code' | 'human', name: string,
   agent: string | null, model: string | null, effort: string | null,
-  harness: string = 'claude-code',
+  harness: string = 'claude-code', provider: string | null = null,
+  declaredPaidBy: PaymentMethod = 'unknown',
 ) {
   const id = newId('phs');
   await sql`insert into phase (id, run_id, seq, kind, name, agent, model, effort, harness,
-                               status, started_at)
+                               provider, declared_paid_by, status, started_at)
             values (${id}, ${runId}, ${seq}, ${kind}, ${name}, ${agent}, ${model}, ${effort},
-                    ${harness}, 'running', now())`;
+                    ${harness}, ${provider}, ${declaredPaidBy}, 'running', now())`;
   return id;
 }
 
 export async function updatePhase(phaseId: string, fields: {
   sessionId?: string; attempt?: number; status?: string; error?: string | null; usage?: Usage;
+  observedPaidBy?: PaymentMethod;
 }) {
   if (fields.sessionId !== undefined) {
     await sql`update phase set session_id = ${fields.sessionId} where id = ${phaseId}`;
   }
   if (fields.attempt !== undefined) {
     await sql`update phase set attempt = ${fields.attempt} where id = ${phaseId}`;
+  }
+  if (fields.observedPaidBy !== undefined) {
+    await sql`update phase set observed_paid_by = ${fields.observedPaidBy} where id = ${phaseId}`;
   }
   if (fields.usage) {
     const u = fields.usage;
@@ -357,8 +371,29 @@ export async function answeredQuestions(ticketId: string): Promise<
     order by q.asked_at, q.seq`;
 }
 
-/** What this run has spent so far — the per-ticket budget is checked against it. */
-export async function runCost(runId: string): Promise<number> {
-  const [row] = await sql<{ cost_usd: number }[]>`select cost_usd from run where id = ${runId}`;
-  return row?.cost_usd ?? 0;
+/**
+ * What this run has spent in real dollars — `api-key` and `unknown` phases
+ * only. This, not the list-price estimate, is what the per-ticket cap reads:
+ * on today's two subscription lanes it stays at zero, which is the honest
+ * outcome, and it starts binding the day an api-key lane exists.
+ */
+export async function runBillableSpend(runId: string): Promise<number> {
+  const [row] = await sql<{ billable_usd: number }[]>`select billable_usd from run where id = ${runId}`;
+  return row?.billable_usd ?? 0;
+}
+
+/**
+ * A subscription or plan tier that has already shown real money once this run
+ * — the mismatch a phase observing `api-key` records. Once true, every later
+ * phase of the same tier in this run is capped like an api-key tier, because
+ * the surprise does not un-happen on the next phase.
+ */
+export async function hasObservedApiKey(runId: string, agent: string): Promise<boolean> {
+  const [row] = await sql<{ exists: boolean }[]>`
+    select exists(
+      select 1 from phase
+      where run_id = ${runId} and agent = ${agent}
+        and observed_paid_by = 'api-key' and declared_paid_by != 'api-key'
+    ) as exists`;
+  return row?.exists ?? false;
 }

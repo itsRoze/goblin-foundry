@@ -11,6 +11,7 @@ import {
 } from '../gates.ts';
 import { commitAll, headSha, isClean, materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
+import { providerFor, startingCapUsd } from '../payment.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
@@ -32,11 +33,14 @@ export const reviewerPhase: PhaseSpec<ReviewOutput> = {
   agentName: 'reviewer',
   envelope: 'ReviewOutput',
   gates: [review_verdict_consistent, lens_coverage, refutation_attempted],
-  modelFor: policy => ({
-    harness: policy.models.reviewer?.harness ?? 'claude-code',
-    model: policy.models.reviewer?.model ?? 'opus',
-    effort: policy.models.reviewer?.effort ?? 'high',
-  }),
+  modelFor: policy => {
+    const harness = policy.models.reviewer?.harness ?? 'claude-code';
+    const model = policy.models.reviewer?.model ?? 'opus';
+    return {
+      harness, model, effort: policy.models.reviewer?.effort ?? 'high',
+      provider: providerFor(harness, model), paidBy: policy.models.reviewer?.paidBy ?? 'subscription',
+    };
+  },
   run: runReviewer,
 };
 
@@ -62,13 +66,16 @@ async function runReviewer(
   const systemPrompt = await readFile(join(promptsDir, 'reviewer.md'), 'utf8');
   const schema = envelopeJsonSchema('ReviewOutput');
   const tier = claim.policy.models.reviewer;
+  const declaredPaidBy = tier?.paidBy ?? 'subscription';
+  const capPaidBy = (await db.hasObservedApiKey(runId, 'reviewer')) ? 'api-key' : declaredPaidBy;
   const phase = {
     runId, phaseId, agent: 'reviewer', cwd: worktree.path,
     harness: tier?.harness ?? 'claude-code',
     model: tier?.model ?? 'opus',
     effort: (tier?.effort ?? 'high') as 'high',
     maxTurns: tier?.maxTurns ?? 40,
-    maxBudgetUsd: tier?.budgetUsd ?? 8,
+    maxBudgetUsd: startingCapUsd(capPaidBy, tier?.budgetUsd ?? 8),
+    declaredPaidBy,
     allowedTools: REVIEWER_TOOLS,
     protectedPaths: claim.policy.tools.protectedPaths ?? [],
     systemPrompt, jsonSchema: schema,
@@ -190,9 +197,14 @@ async function runBuilderFix(
   const fixBase = await headSha(worktree!.path);
   const session = await db.lastBuilderSession(claim.ticketId);
   const tier = claim.policy.models.builder;
+  const harness = tier?.harness ?? 'claude-code';
+  const model = tier?.model ?? 'sonnet';
+  const declaredPaidBy = tier?.paidBy ?? 'subscription';
+  const capPaidBy = (await db.hasObservedApiKey(runId, 'builder')) ? 'api-key' : declaredPaidBy;
   const seq = await db.nextPhaseSeq(runId);
   const phaseId = await db.startPhase(runId, seq, 'agent', `builder_fix_${loop}`, 'builder',
-                                      tier?.model ?? 'sonnet', tier?.effort ?? 'xhigh');
+                                      model, tier?.effort ?? 'xhigh', harness,
+                                      providerFor(harness, model), declaredPaidBy);
   await db.event({ runId, phaseId, type: 'phase_start', name: `builder_fix_${loop}`,
                    payload: { kind: 'agent', resumed: session ?? null, base_sha: fixBase,
                               blocking: blocking.map(describe) } });
@@ -201,11 +213,11 @@ async function runBuilderFix(
   const schema = envelopeJsonSchema('BuildOutput');
   const phase = {
     runId, phaseId, agent: 'builder', cwd: worktree!.path,
-    harness: tier?.harness ?? 'claude-code',
-    model: tier?.model ?? 'sonnet',
+    harness, model,
     effort: (tier?.effort ?? 'xhigh') as 'xhigh',
     maxTurns: tier?.maxTurns ?? 80,
-    maxBudgetUsd: tier?.budgetUsd ?? 12,
+    maxBudgetUsd: startingCapUsd(capPaidBy, tier?.budgetUsd ?? 12),
+    declaredPaidBy,
     allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'TodoWrite', 'Agent',
                    'WebSearch', 'WebFetch'],
     protectedPaths: claim.policy.tools.protectedPaths ?? [],

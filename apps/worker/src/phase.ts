@@ -1,12 +1,13 @@
 import {
   query, type CanUseTool, type HookCallback, type Options, type SDKMessage,
 } from '@anthropic-ai/claude-agent-sdk';
-import type { Harness } from '@goblin/schema';
+import type { Harness, PaymentMethod } from '@goblin/schema';
 import * as db from './db.ts';
 import { checkTool } from './guard.ts';
 import { runPiPhase } from './harness/pi.ts';
 import { parseAsk } from './ask.ts';
 import { asHalt } from './halt.ts';
+import { derivePaymentMethod, isBillable, isPaymentMismatch, providerFor } from './payment.ts';
 import { askHuman } from './questions.ts';
 
 export type PhaseRun = {
@@ -19,7 +20,10 @@ export type PhaseRun = {
   model: string;
   effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   maxTurns: number;
-  maxBudgetUsd: number;
+  /** Absent means uncapped: a subscription or plan phase spends no dollars a cap could bind on. */
+  maxBudgetUsd?: number;
+  /** What the tier declared before this session started. */
+  declaredPaidBy: PaymentMethod;
   allowedTools: string[];
   systemPrompt: string;
   protectedPaths: string[];
@@ -151,7 +155,7 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
     model: p.model,
     effort: p.effort,
     maxTurns: p.maxTurns,
-    maxBudgetUsd: p.maxBudgetUsd,
+    ...(p.maxBudgetUsd !== undefined ? { maxBudgetUsd: p.maxBudgetUsd } : {}),
     allowedTools: p.allowedTools,
     // Not bypassPermissions: the CLI forces default mode while the env scrub is
     // on, and a mode nobody answers exits the process. `canUseTool` answers.
@@ -183,19 +187,34 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
   let ok = false;
   let terminalReason = 'unknown';
   let usage = { ...ZERO_USAGE };
+  // Nothing observed yet defaults to what the tier declared; the init message
+  // is what corrects it, once the subprocess has actually authenticated.
+  let observedPaidBy = p.declaredPaidBy;
 
   try {
   for await (const message of query({ prompt, options }) as AsyncIterable<SDKMessage>) {
     if (message.type === 'system' && message.subtype === 'init') {
       sessionId = message.session_id;
-      await db.updatePhase(p.phaseId, { sessionId });
       // Which credential the subprocess actually used — subscription token,
-      // API key, or the interactive login. Worth seeing in the trace.
+      // API key, or the interactive login. Worth seeing in the trace, and it
+      // is the evidence the observed payment method is derived from.
+      observedPaidBy = derivePaymentMethod({
+        harness: 'claude-code', provider: providerFor('claude-code', p.model),
+        credentialSource: message.apiKeySource ?? null, declared: p.declaredPaidBy,
+      });
+      await db.updatePhase(p.phaseId, { sessionId, observedPaidBy });
       await db.event({
         runId: p.runId, phaseId: p.phaseId, type: 'log', name: 'session',
         payload: { session_id: sessionId, api_key_source: message.apiKeySource,
-                   claude_code_version: message.claude_code_version, model: message.model },
+                   claude_code_version: message.claude_code_version, model: message.model,
+                   payment_method: observedPaidBy },
       });
+      if (isPaymentMismatch(p.declaredPaidBy, observedPaidBy)) {
+        await db.event({
+          runId: p.runId, phaseId: p.phaseId, type: 'error', name: 'payment_mismatch',
+          payload: { declared: p.declaredPaidBy, observed: observedPaidBy, api_key_source: message.apiKeySource },
+        });
+      }
     } else if (message.type === 'assistant') {
       const blocks = message.message.content as { type: string; text?: string }[];
       for (const block of blocks) {
@@ -238,11 +257,12 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
   }
 
   await db.updatePhase(p.phaseId, { usage });
-  await db.addRunCost(p.runId, usage);
+  await db.addRunCost(p.runId, usage, isBillable(observedPaidBy));
   await db.event({
     runId: p.runId, phaseId: p.phaseId, type: 'agent_end', name: p.agent,
     tokens: usage.inputTokens + usage.outputTokens,
-    payload: { terminal_reason: terminalReason, cost_usd: usage.costUsd, usage, session_id: sessionId },
+    payload: { terminal_reason: terminalReason, cost_usd: usage.costUsd, usage, session_id: sessionId,
+               payment_method: observedPaidBy },
   });
 
   return { sessionId, ok, structured, text, terminalReason, usage };

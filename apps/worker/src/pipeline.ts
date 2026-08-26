@@ -1,4 +1,4 @@
-import type { EnvelopeBase, EnvelopeName, Policy, StatusKind } from '@goblin/schema';
+import type { EnvelopeBase, EnvelopeName, PaymentMethod, Policy, StatusKind } from '@goblin/schema';
 import type { Claim } from './db.ts';
 import type { Gate } from './gates.ts';
 import type { Worktree } from './git.ts';
@@ -29,7 +29,9 @@ export type PhaseSpec<E extends EnvelopeBase = EnvelopeBase> = {
   envelope: EnvelopeName;
   gates: Gate<E>[];
   /** Agent phases only: which model tier in policy this phase draws from. */
-  modelFor?: (policy: Policy) => { model: string; effort: string; harness?: string };
+  modelFor?: (policy: Policy) => {
+    model: string; effort: string; harness?: string; provider?: string; paidBy?: PaymentMethod;
+  };
   run: (ctx: PhaseContext, handoff: EnvelopeBase | null) => Promise<PhaseAttempt<E>>;
 };
 

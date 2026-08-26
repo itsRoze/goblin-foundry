@@ -1,5 +1,16 @@
 export const usd = (n: number) => (n >= 0.01 || n === 0 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`);
 
+export const tokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k tok` : `${n} tok`);
+
+/**
+ * Both lanes authenticate with a subscription or plan seat, so a dollar figure
+ * on a run is a list-price estimate of money nobody spent. Only billable spend
+ * — real dollars on an api-key (or unresolved) phase — is worth showing as
+ * money; everything else reads as tokens.
+ */
+export const spendOrTokens = (r: { billableUsd: number; inputTokens: number; outputTokens: number }) =>
+  r.billableUsd > 0 ? usd(r.billableUsd) : tokens(r.inputTokens + r.outputTokens);
+
 export const clock = (ms: number) =>
   new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 

@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { blockingFindings, report, violations, type GateCheck } from '@goblin/schema';
+import { blockingFindings, phasePolicy, report, violations, type GateCheck } from '@goblin/schema';
+
+test('phasePolicy parses a tier that predates paidBy as a subscription with no fallback', () => {
+  const tier = phasePolicy.parse({ model: 'opus', effort: 'high', budgetUsd: 15 });
+  assert.equal(tier.paidBy, 'subscription');
+});
+
+test('phasePolicy keeps an explicit paidBy', () => {
+  const tier = phasePolicy.parse({ model: 'opus', effort: 'high', budgetUsd: 15, paidBy: 'api-key' });
+  assert.equal(tier.paidBy, 'api-key');
+});
 
 const ok = (item: string, note = ''): GateCheck => ({ item, ok: true, note });
 const fail = (item: string, note = ''): GateCheck => ({ item, ok: false, note });

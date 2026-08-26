@@ -5,7 +5,7 @@ import { formatRef } from '@goblin/schema';
 import { marked } from 'marked';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
-import { clock, usd } from '../format.ts';
+import { clock, spendOrTokens } from '../format.ts';
 import { Questions } from '../components/Questions.tsx';
 import { Design } from '../components/Design.tsx';
 
@@ -89,7 +89,7 @@ export function Ticket({ projectKey, shortId }: { projectKey: string; shortId: n
               <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>{run.status}</span>
               <span className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{run.branch ?? '—'}</span>
               <span className="spacer" style={{ marginLeft: 'auto' }} />
-              <span className="mono" style={{ fontSize: 12 }}>{usd(run.costUsd)}</span>
+              <span className="mono" style={{ fontSize: 12 }}>{spendOrTokens(run)}</span>
               <span className="mono" style={{ fontSize: 12, color: 'var(--muted)' }}>{clock(run.startedAt)}</span>
             </div>
           ))}

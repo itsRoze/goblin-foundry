@@ -8,6 +8,7 @@ import {
 import * as db from '../db.ts';
 import { design_complete, review_readable, verdict_consistent } from '../gates.ts';
 import { runPhase } from '../phase.ts';
+import { providerFor, startingCapUsd } from '../payment.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,11 +32,14 @@ export const plannerPhase: PhaseSpec<PlanOutput> = {
   agentName: 'planner',
   envelope: 'PlanOutput',
   gates: [design_complete, review_readable, verdict_consistent],
-  modelFor: policy => ({
-    harness: policy.models.planner?.harness ?? 'claude-code',
-    model: policy.models.planner?.model ?? 'opus',
-    effort: policy.models.planner?.effort ?? 'high',
-  }),
+  modelFor: policy => {
+    const harness = policy.models.planner?.harness ?? 'claude-code';
+    const model = policy.models.planner?.model ?? 'opus';
+    return {
+      harness, model, effort: policy.models.planner?.effort ?? 'high',
+      provider: providerFor(harness, model), paidBy: policy.models.planner?.paidBy ?? 'subscription',
+    };
+  },
   run: runPlanner,
 };
 
@@ -44,6 +48,8 @@ async function runPlanner(
 ): Promise<PhaseAttempt<PlanOutput>> {
   const { claim, runId, phaseId } = ctx;
   const tier = claim.policy.models.planner;
+  const declaredPaidBy = tier?.paidBy ?? 'subscription';
+  const capPaidBy = (await db.hasObservedApiKey(runId, 'planner')) ? 'api-key' : declaredPaidBy;
 
   const [systemPrompt, template, prior, answered] = await Promise.all([
     readFile(join(promptsDir, 'planner.md'), 'utf8'),
@@ -58,7 +64,8 @@ async function runPlanner(
     model: tier?.model ?? 'opus',
     effort: (tier?.effort ?? 'high') as 'high',
     maxTurns: tier?.maxTurns ?? 60,
-    maxBudgetUsd: tier?.budgetUsd ?? 6,
+    maxBudgetUsd: startingCapUsd(capPaidBy, tier?.budgetUsd ?? 6),
+    declaredPaidBy,
     allowedTools: PLANNER_TOOLS,
     // Nothing in the repository is the planner's to change; the tool list is the
     // boundary, and the protected paths are what the guard denies outright.

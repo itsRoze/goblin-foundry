@@ -107,6 +107,15 @@ export function violations(r: GateReport): string[] {
 export const HARNESSES = ['claude-code', 'pi'] as const;
 export type Harness = (typeof HARNESSES)[number];
 
+/**
+ * How a phase's lane is actually paid for: a subscription or plan seat with no
+ * per-call price, a metered API key, or `unknown` — the value historical rows
+ * and unresolved observations get rather than a guess.
+ */
+export const PAYMENT_METHODS = ['subscription', 'plan', 'api-key', 'unknown'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export const paymentMethod = z.enum(PAYMENT_METHODS);
+
 export const phasePolicy = z.object({
   /**
    * `claude-code` reads `model` as a Claude alias (`opus`); `pi` reads it as
@@ -118,6 +127,9 @@ export const phasePolicy = z.object({
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
   budgetUsd: z.number(),
   maxTurns: z.number().default(60),
+  /** What the owner expects this lane to be paid with. Older policy documents
+   *  omit this; they parse as `subscription` rather than failing. */
+  paidBy: paymentMethod.default('subscription'),
 });
 
 export const policy = z.object({
@@ -175,10 +187,12 @@ export const STANDARD_PRESET: Policy = {
     // write/edit/ls, so there is no AskUserQuestion and no grill round — a pi
     // planner writes its open questions into the design as prose and fails
     // verdict_consistent.
-    planner: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
-    builder: { harness: 'claude-code', model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
-    reviewer: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
-    librarian: { harness: 'claude-code', model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 60 },
+    // Every tier authenticates with the Claude Max subscription today, so none
+    // of them spend a dollar a cap could ever bind on.
+    planner: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200, paidBy: 'subscription' },
+    builder: { harness: 'claude-code', model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300, paidBy: 'subscription' },
+    reviewer: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200, paidBy: 'subscription' },
+    librarian: { harness: 'claude-code', model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 60, paidBy: 'subscription' },
   },
   design: { mockups: 'html', storage: 'factory-db' },
   tools: {

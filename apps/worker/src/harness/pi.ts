@@ -5,6 +5,7 @@ import {
 import * as db from '../db.ts';
 import { checkTool } from '../guard.ts';
 import { asHalt } from '../halt.ts';
+import { derivePaymentMethod, isBillable, isPaymentMismatch } from '../payment.ts';
 import type { PhaseResult, PhaseRun } from '../phase.ts';
 
 /**
@@ -71,15 +72,28 @@ export function guardExtension(
 export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): Promise<PhaseResult> {
   const started = new Date();
   const ref = parseModelRef(p.model) ?? { provider: 'opencode-go', model: p.model };
+  // The provider named in the model reference is evidence available before the
+  // session even starts, unlike the Claude harness, which waits for the init
+  // message. There is no separate "declared vs. observed" gap here.
+  const observedPaidBy = derivePaymentMethod({
+    harness: 'pi', provider: ref.provider, credentialSource: null, declared: p.declaredPaidBy,
+  });
 
   await db.event({
     runId: p.runId, phaseId: p.phaseId, type: 'agent_start', name: p.agent,
     payload: {
       harness: 'pi', provider: ref.provider, model: ref.model, effort: p.effort,
       resumed: resume ?? null, tools: p.allowedTools, budget_usd: p.maxBudgetUsd,
+      payment_method: observedPaidBy,
     },
     startedAt: started,
   });
+  if (isPaymentMismatch(p.declaredPaidBy, observedPaidBy)) {
+    await db.event({
+      runId: p.runId, phaseId: p.phaseId, type: 'error', name: 'payment_mismatch',
+      payload: { declared: p.declaredPaidBy, observed: observedPaidBy, provider: ref.provider },
+    });
+  }
 
   let denied = 0;
   const modelRuntime = await ModelRuntime.create();
@@ -174,7 +188,7 @@ export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): 
   let terminalReason = 'completed';
   let ok = true;
   try {
-    await db.updatePhase(p.phaseId, { sessionId: session.sessionId });
+    await db.updatePhase(p.phaseId, { sessionId: session.sessionId, observedPaidBy });
     await session.prompt(prompt);
     await session.agent.waitForIdle();
   } catch (e) {
@@ -192,12 +206,13 @@ export async function runPiPhase(p: PhaseRun, prompt: string, resume?: string): 
   if (error) { ok = false; terminalReason = 'agent_error'; }
 
   await db.updatePhase(p.phaseId, { usage });
-  await db.addRunCost(p.runId, usage);
+  await db.addRunCost(p.runId, usage, isBillable(observedPaidBy));
   await db.event({
     runId: p.runId, phaseId: p.phaseId, type: 'agent_end', name: p.agent,
     tokens: usage.inputTokens + usage.outputTokens,
     payload: { harness: 'pi', terminal_reason: terminalReason, cost_usd: usage.costUsd,
-               usage, denied_tools: denied, session_id: session.sessionId, error: error ?? null },
+               usage, denied_tools: denied, session_id: session.sessionId, error: error ?? null,
+               payment_method: observedPaidBy },
   });
 
   const sessionId = session.sessionId;

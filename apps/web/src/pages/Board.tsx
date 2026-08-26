@@ -4,7 +4,7 @@ import { queries } from '@goblin/schema/queries';
 import { formatRef, unfinishedBlockers, TRIGGER_STAGES } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
-import { usd } from '../format.ts';
+import { spendOrTokens } from '../format.ts';
 import { stuckFrom } from '../inbox.ts';
 import { navigationOrder, nextFocusedId, prevFocusedId, reconcileFocus, isNavKeyIgnored } from '../boardNav.ts';
 import { boardColumns, ticketInColumn } from '../boardColumns.ts';
@@ -99,7 +99,7 @@ export function Board() {
                     {ticket.delegate && <span className="pill agent">{ticket.delegate}</span>}
                     {run && (
                       <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>
-                        run {run.status} · {usd(run.costUsd)}
+                        run {run.status} · {spendOrTokens(run)}
                       </span>
                     )}
                     {run?.questions.length ? <span className="pill human">answer me</span> : null}

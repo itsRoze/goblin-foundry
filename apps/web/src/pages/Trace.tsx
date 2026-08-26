@@ -4,7 +4,7 @@ import { queries } from '@goblin/schema/queries';
 import { formatRef } from '@goblin/schema';
 import { href } from '../router.ts';
 import { api } from '../api.ts';
-import { clock, duration, usd } from '../format.ts';
+import { clock, duration, spendOrTokens, tokens, usd } from '../format.ts';
 
 type Event = {
   id: string; run_id: string; phase_id: string | null; type: string; name: string;
@@ -59,7 +59,9 @@ export function Trace({ runId }: { runId: string }) {
         <span className={`pill ${run.status === 'fail' ? 'bad' : run.status === 'success' ? 'ok' : 'code'}`}>{run.status}</span>
         {run.terminalReason && <span className="pill">{run.terminalReason}</span>}
         <span className="pill">{run.branch ?? 'no branch'}</span>
-        <span className="pill" title="Client-side estimate at API list prices. On a subscription, runs draw down plan windows, not dollars.">{usd(run.costUsd)} est.</span>
+        {run.billableUsd > 0
+          ? <span className="pill" title="Real spend on an api-key lane.">{usd(run.billableUsd)} spent</span>
+          : <span className="pill" title="On a subscription or plan, runs draw down allowance windows, not dollars.">{spendOrTokens(run)}</span>}
         <span className="pill">{duration((run.endedAt ?? Date.now()) - run.startedAt)}</span>
         <span className="pill">{events.length} events</span>
       </div>
@@ -72,7 +74,10 @@ export function Trace({ runId }: { runId: string }) {
               <div className="who" onClick={() => setSelected(p.id)}>
                 <div className="name">{p.name}</div>
                 <div className="sub">{p.kind}{p.model ? ` · ${p.model}` : ''}</div>
-                <div className="sub">{p.status} · {usd(p.costUsd)}</div>
+                <div className="sub">
+                  {p.status} · {p.observedPaidBy === 'api-key'
+                    ? `${usd(p.costUsd)} spent` : tokens(p.inputTokens + p.outputTokens)}
+                </div>
               </div>
               <div className="track">
                 {mine.filter(e => e.ended_at).map(e => {
@@ -103,8 +108,10 @@ export function Trace({ runId }: { runId: string }) {
           <h3 style={{ fontSize: 18, marginBottom: 8 }}>{phase.name} · attempt {phase.attempt}</h3>
           <dl className="kv">
             <dt>model</dt><dd>{phase.model ?? '—'} {phase.effort ? `· ${phase.effort}` : ''}</dd>
+            <dt>paid by</dt><dd>{phase.observedPaidBy ?? phase.declaredPaidBy} · {phase.provider ?? '—'}</dd>
             <dt>session</dt><dd className="mono">{phase.sessionId ?? '—'}</dd>
-            <dt>cost (est.)</dt><dd>{usd(phase.costUsd)} · {phase.inputTokens} in / {phase.outputTokens} out / {phase.cacheReadTokens} cached</dd>
+            <dt>{phase.observedPaidBy === 'api-key' ? 'cost (spent)' : 'cost (est., not money spent)'}</dt>
+            <dd>{usd(phase.costUsd)} · {phase.inputTokens} in / {phase.outputTokens} out / {phase.cacheReadTokens} cached</dd>
             <dt>turns</dt><dd>{phase.numTurns}</dd>
             {phase.error && <><dt>error</dt><dd style={{ color: 'var(--bad)' }}>{phase.error}</dd></>}
           </dl>

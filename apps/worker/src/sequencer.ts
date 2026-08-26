@@ -117,11 +117,13 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
 
   for (const { spec, seq } of numberedPhases(pipeline)) {
     // The per-ticket cap is the one budget that spans phases; a run that has
-    // spent it stops here rather than opening another agent.
-    const spent = await db.runCost(claim.runId);
+    // spent real money stops here rather than opening another agent. On
+    // today's two subscription lanes this stays inert, which is honest — it
+    // binds the day an api-key lane exists.
+    const spent = await db.runBillableSpend(claim.runId);
     if (overBudget(spent, claim.policy.budgets.perTicketUsd ?? 0)) {
       await db.event({ runId: claim.runId, type: 'error', name: 'budget_exhausted',
-                       payload: { spent_usd: spent, cap_usd: claim.policy.budgets.perTicketUsd,
+                       payload: { billable_usd: spent, cap_usd: claim.policy.budgets.perTicketUsd,
                                   next_phase: spec.name } });
       outcome = 'fail';
       terminalReason = 'budget_exhausted';
@@ -131,7 +133,8 @@ export async function runPipeline(claim: db.Claim): Promise<'success' | 'fail'> 
     const model = spec.modelFor?.(claim.policy);
     const phaseId = await db.startPhase(claim.runId, seq, spec.kind, spec.name, spec.agentName,
                                         model?.model ?? null, model?.effort ?? null,
-                                        model?.harness ?? 'claude-code');
+                                        model?.harness ?? 'claude-code', model?.provider ?? null,
+                                        model?.paidBy ?? 'unknown');
     await db.event({ runId: claim.runId, phaseId, type: 'phase_start', name: spec.name,
                      payload: { kind: spec.kind, ticket: formatRef(claim.projectKey, claim.shortId) } });
 

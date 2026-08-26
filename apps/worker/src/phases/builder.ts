@@ -9,6 +9,7 @@ import { asHalt, worthWrappingUp } from '../halt.ts';
 import { diff_matches_claims, tests_pass } from '../gates.ts';
 import { changedFiles, materializeDesign } from '../git.ts';
 import { runPhase } from '../phase.ts';
+import { providerFor, startingCapUsd } from '../payment.ts';
 import type { PhaseAttempt, PhaseContext, PhaseSpec } from '../pipeline.ts';
 
 const promptsDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'prompts');
@@ -30,11 +31,14 @@ export const builderPhase: PhaseSpec<BuildOutput> = {
   agentName: 'builder',
   envelope: 'BuildOutput',
   gates: [tests_pass, diff_matches_claims],
-  modelFor: policy => ({
-    harness: policy.models.builder?.harness ?? 'claude-code',
-    model: policy.models.builder?.model ?? 'sonnet',
-    effort: policy.models.builder?.effort ?? 'xhigh',
-  }),
+  modelFor: policy => {
+    const harness = policy.models.builder?.harness ?? 'claude-code';
+    const model = policy.models.builder?.model ?? 'sonnet';
+    return {
+      harness, model, effort: policy.models.builder?.effort ?? 'xhigh',
+      provider: providerFor(harness, model), paidBy: policy.models.builder?.paidBy ?? 'subscription',
+    };
+  },
   run: runBuilder,
 };
 
@@ -45,6 +49,10 @@ async function runBuilder(
   if (!worktree) throw new Error('builder phase requires a worktree');
   const model = claim.policy.models.builder?.model ?? 'sonnet';
   const effort = (claim.policy.models.builder?.effort ?? 'xhigh') as 'xhigh';
+  const declaredPaidBy = claim.policy.models.builder?.paidBy ?? 'subscription';
+  // A mismatch earlier this run means real money already showed up on this
+  // tier once; the cap binds from here on rather than never.
+  const capPaidBy = (await db.hasObservedApiKey(runId, 'builder')) ? 'api-key' : declaredPaidBy;
 
   // Designs are stored, never committed: the DB is the source, the worktree
   // gets a git-ignored copy so the agent can read it with plain file tools.
@@ -62,7 +70,8 @@ async function runBuilder(
     runId, phaseId, agent: 'builder', cwd: worktree.path,
     harness: claim.policy.models.builder?.harness ?? 'claude-code', model,
     effort, maxTurns: claim.policy.models.builder?.maxTurns ?? 80,
-    maxBudgetUsd: claim.policy.models.builder?.budgetUsd ?? 12,
+    maxBudgetUsd: startingCapUsd(capPaidBy, claim.policy.models.builder?.budgetUsd ?? 12),
+    declaredPaidBy,
     allowedTools: BUILDER_TOOLS, protectedPaths: claim.policy.tools.protectedPaths ?? [],
     systemPrompt, jsonSchema: schema,
   };
