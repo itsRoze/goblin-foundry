@@ -2,7 +2,8 @@ import type { Sql } from './sql.ts';
 import { newId } from './ids.ts';
 import { deriveProjectKey, formatRef } from './ref.ts';
 import { STATUS_DISPLAY } from './status.ts';
-import { STANDARD_PRESET, STATUS_KINDS, type Policy, type StatusKind } from './types.ts';
+import { POLICY_PRESETS, type Policy } from './policy.ts';
+import { STATUS_KINDS, type StatusKind } from './types.ts';
 
 export type ProjectCreate = {
   id?: string;
@@ -34,7 +35,7 @@ export async function createProject(
   const existingKeys = (await db<{ key: string }[]>`select key from project`).map(r => r.key);
   const key = spec.key ?? deriveProjectKey(spec.slug, existingKeys);
   const projectId = spec.id ?? newId('prj');
-  const policy = spec.policy ?? STANDARD_PRESET;
+  const policy = spec.policy ?? POLICY_PRESETS.standard;
 
   await db`insert into project (id, slug, key, name, repo_path, repo_remote, default_branch, policy) values (
     ${projectId}, ${spec.slug}, ${key}, ${spec.name}, ${spec.repoPath},
