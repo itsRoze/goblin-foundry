@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  envelopeJsonSchema, formatRef, planOutput, violations, type EnvelopeBase, type PlanOutput,
+  envelopeJsonSchema, formatRef, planOutput, unwrapHtmlFragment, violations,
+  type EnvelopeBase, type PlanOutput,
 } from '@goblin/schema';
 import * as db from '../db.ts';
 import { design_complete, review_readable, verdict_consistent } from '../gates.ts';
@@ -87,7 +88,9 @@ async function runPlanner(
         + ' Respond again with ONLY the report JSON.';
       continue;
     }
-    envelope = parsed.data;
+    // A wrapped fragment is a mechanical mistake with a deterministic fix, so
+    // it is unwrapped here rather than bounced back as a correction round.
+    envelope = { ...parsed.data, review_html: unwrapHtmlFragment(parsed.data.review_html) };
     await db.saveEnvelope(phaseId, 'planner', 'PlanOutput', envelope, true, attempt, null);
     await db.event({ runId, phaseId, type: 'handoff', name: 'PlanOutput',
                      payload: { summary: envelope.summary, open_questions: envelope.open_questions,
