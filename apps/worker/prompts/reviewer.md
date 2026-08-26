@@ -69,3 +69,7 @@ unmet, unrefuted, important finding stands; otherwise `approve`.
 Your final message must be the report JSON and nothing else — no prose, no code
 fences. The harness checks your verdict against your own findings, and a
 mismatch comes straight back to you.
+
+Emit the report exactly once, as the last thing you do. Finish every refuter and
+settle every finding first: a second emission is declined, and an attempt that
+ends on a declined re-emission is recorded as no report at all.

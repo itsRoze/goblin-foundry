@@ -289,3 +289,16 @@ Things that bit us while building the factory. Newest last.
   parsed, and again where the review is rendered so rows already stored still
   display. A gate that checks four things a document has can still miss one
   character in front of them.
+- **An agent that emits its report and keeps working loses the report.**
+  `structured_output` on the SDK's result message only survives when the agent
+  stops at its emission. FAC-12's reviewer emitted a valid report, then let its
+  refuter subagents return, then tried to emit a revision — the second call was
+  declined, and the result arrived with `structured_output: null`. Two of three
+  attempts died as `no_envelope` having each done a full review: $17.21 of the
+  run's $18.92, and the trace said "no envelope" about attempts that had
+  emitted one. The tool call itself was in the trace the whole time, recorded
+  `ok: true`. The phase now holds the last successful `StructuredOutput` input
+  and falls back to it, so a late correction costs the revision rather than the
+  report, and the reviewer prompt says to emit once, last. Where an agent's
+  output is a tool call, the tool call is the evidence — not the field the
+  result message happens to carry.

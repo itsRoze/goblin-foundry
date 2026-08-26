@@ -69,6 +69,20 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
   // closes the span with duration_ms — the only first-class per-tool duration.
   const openCalls = new Map<string, { eventId: string; startedAt: Date }>();
 
+  /**
+   * The last report the agent successfully emitted.
+   *
+   * `structured_output` on the result message only survives when the agent
+   * stops at its emission. An agent that emits, keeps working — subagents
+   * returning, a finding revised — and then tries to emit again has the second
+   * call declined, and the result arrives with `structured_output: null`: a
+   * whole attempt of real work reported as "no envelope". FAC-12's reviewer
+   * lost two attempts and $17 that way, having emitted a valid report in both.
+   * Holding the emission here means a late correction costs the revision, not
+   * the report.
+   */
+  let emitted: unknown;
+
   const onPreTool: HookCallback = async input => {
     if (input.hook_event_name !== 'PreToolUse') return {};
     const breach = checkTool(input.tool_name, input.tool_input, p.cwd, p.protectedPaths);
@@ -104,6 +118,7 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
     if (!open) return {};
     openCalls.delete(input.tool_use_id);
     const failed = input.hook_event_name === 'PostToolUseFailure';
+    if (!failed && input.tool_name === 'StructuredOutput') emitted = input.tool_input;
     const durationMs = (input as { duration_ms?: number }).duration_ms
       ?? Date.now() - open.startedAt.getTime();
     try {
@@ -211,7 +226,7 @@ async function runClaudeCodePhase(p: PhaseRun, prompt: string, resume?: string):
       sessionId ||= message.session_id;
       terminalReason = message.subtype === 'success' ? 'completed' : message.subtype;
       ok = message.subtype === 'success' && !message.is_error;
-      structured = (message as { structured_output?: unknown }).structured_output;
+      structured = (message as { structured_output?: unknown }).structured_output ?? emitted;
       if (message.subtype === 'success') text = message.result || text;
       // modelUsage covers subagents and compaction; `usage` does not.
       usage = { ...ZERO_USAGE, numTurns: message.num_turns };
