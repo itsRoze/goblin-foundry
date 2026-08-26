@@ -139,17 +139,19 @@ export const RETIRED_KEYS: { section: string; key: string; message: string }[] =
 // subagents ran out of money at $6 with the design half-written. Turns are
 // deliberately loose — the dollar budget is the leash, and a turn cap tight
 // enough to bind stops correct work rather than runaway work.
-// All lanes on pi/OpenCode Go since 2026-08-23 — Claude session limits kept
-// killing reviewer runs (nine in a row on usage_limit). kimi-k3 is the only
-// model probed end-to-end through pi (docs/LESSONS.md); kimi-k2.7-code for
-// the builder per the 2026-08-21 decision. serious and vibe reuse these same
+// Every lane on claude-code since 2026-08-25: the OpenCode Go window ran out
+// mid-milestone (429 GoUsageLimitError) and killed three planner runs at $0,
+// so the cheap lane turned out to have a plan window of its own. The planner
+// cannot be a pi tier at all as the harness stands — piTools() maps only
+// read/find/grep/bash/write/edit/ls, so there is no AskUserQuestion and no
+// grill round (docs/LESSONS.md, FAC-26). serious and vibe reuse these same
 // ids and spend up/down through effort, budget and turns instead of guessing
 // at a stronger or cheaper model id this codebase has never run.
 const STANDARD_MODELS = {
-  planner: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'high', budgetUsd: 15, maxTurns: 200 },
-  builder: { harness: 'pi', model: 'opencode-go/kimi-k2.7-code', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
-  reviewer: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'high', budgetUsd: 10, maxTurns: 200 },
-  librarian: { harness: 'pi', model: 'opencode-go/kimi-k3', effort: 'low', budgetUsd: 1, maxTurns: 60 },
+  planner: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 15, maxTurns: 200 },
+  builder: { harness: 'claude-code', model: 'sonnet', effort: 'xhigh', budgetUsd: 12, maxTurns: 300 },
+  reviewer: { harness: 'claude-code', model: 'opus', effort: 'high', budgetUsd: 10, maxTurns: 200 },
+  librarian: { harness: 'claude-code', model: 'haiku', effort: 'low', budgetUsd: 1, maxTurns: 60 },
 } as const;
 
 // A function, not a shared constant: each preset gets its own array so that
