@@ -55,7 +55,7 @@ Multi-user, multi-provider, unattended merging, LLM review chains, mutation gate
  │   typed API │ (zod)          provider contract                                              │
  └─────────────┼──────────────────────────────┼────────────────────────────────────────────────┘
                │                              ▼
-      web GUI · gf CLI          ┌──────────── sandbox (per run) ───────────┐
+      web GUI · goblin CLI      ┌──────────── sandbox (per run) ───────────┐
       / task-scoped             │  trusted wrapper (controller code)       │
         agent capability        │    ├─ pi --mode rpc  (agent, unrestricted)│
                                 │    ├─ make verify → verify.json          │
@@ -95,7 +95,7 @@ Names per ADR-0003 (the earlier `draft/running/ready_for_review` became `backlog
 
 **Lease.** The smallest correct atomic lease: `run_id, ticket_id, lease_owner, leased_at, heartbeat_at, expires_at, attempt`. Semantics (atomic acquisition, heartbeat, expiry → reconciliation) are the contract; the implementation is an atomic conditional update on one row, which SQLite and a Durable Object both honour (ADR-0001). No distributed queue.
 
-**Surface.** A typed HTTP API (Hono + zod) is the one audited write path; the web GUI, the `gf` CLI, and later the agent capability are all clients of it (ADR-0004). Transitions are named intent endpoints (`POST /tickets/:key/approve|start|ship|…`), never a writable `status` field; errors are `problem+json` (`422` zod issues, `409 {owner, hint}` for refused transitions). The GUI ships in S1 — kanban as home with drag-and-drop between statuses, Ticket, Project and App views, a markdown editor, a per-project dependency graph, URL-parameter filters — because a tracker the human cannot operate by hand is not usable (P2). Drop targets and refusal text derive from the transition table so controller-owned edges become refusals in S5 with no UI change. The `gf` CLI is a thin JSON wrapper so the planning skill has a reliable tool; it is not a second write path. Every mutation records actor (`human` | `agent`; `controller` later), kind, prior, new, timestamp.
+**Surface.** A typed HTTP API (Hono + zod) is the one audited write path; the web GUI, the `goblin` CLI, and later the agent capability are all clients of it (ADR-0004). Transitions are named intent endpoints (`POST /tickets/:key/approve|start|ship|…`), never a writable `status` field; errors are `problem+json` (`422` zod issues, `409 {owner, hint}` for refused transitions). The GUI ships in S1 — kanban as home with drag-and-drop between statuses, Ticket, Project and App views, a markdown editor, a per-project dependency graph, URL-parameter filters — because a tracker the human cannot operate by hand is not usable (P2). Drop targets and refusal text derive from the transition table so controller-owned edges become refusals in S5 with no UI change. The `goblin` CLI is a thin JSON wrapper so the planning skill has a reliable tool; it is not a second write path. Every mutation records actor (`human` | `agent`; `controller` later), kind, prior, new, timestamp.
 
 **Agent access is task-scoped and intent-level**, not generic record mutation:
 
@@ -111,7 +111,7 @@ factory run complete <id> --envelope <file>
 
 A worker's capability covers its ticket only. It cannot browse unrelated apps, approve its own design, re-arm, or mark work shipped.
 
-**Storage (ADR-0001).** One Bun process, one SQLite file (`~/.goblin-foundry/foundry.db`, WAL) accessed only through Drizzle's async API behind a single `db.ts` seam, so a later move to a Cloudflare SQLite-backed Durable Object hosting the same Hono app is a driver swap, not a rewrite. Postgres rejected (second service and credentials for a single writer; closes the Cloudflare path). Backups: `gf backup` (`VACUUM INTO` a dated copy) nightly; Litestream to R2 once the process leaves the laptop. No Zero, no sync engine (P11); the GUI uses plain fetch with a query cache, optimistic transitions rolled back on `409`, and a 5 s poll on the board.
+**Storage (ADR-0001).** One Bun process, one SQLite file (`~/.goblin-foundry/foundry.db`, WAL) accessed only through Drizzle's async API behind a single `db.ts` seam, so a later move to a Cloudflare SQLite-backed Durable Object hosting the same Hono app is a driver swap, not a rewrite. Postgres rejected (second service and credentials for a single writer; closes the Cloudflare path). Backups: `goblin backup` (`VACUUM INTO` a dated copy) nightly; Litestream to R2 once the process leaves the laptop. No Zero, no sync engine (P11); the GUI uses plain fetch with a query cache, optimistic transitions rolled back on `409`, and a 5 s poll on the board.
 
 **Keys (ADR-0002).** Tickets have one global serial number shown as `<prefix>-<n>` (`GF-12`), prefix set once per installation; never reused, never changes when a ticket moves between apps or projects. Apps and projects use opaque ids with mutable names.
 
@@ -262,7 +262,7 @@ Per accepted ticket: success without human correction; human correction and revi
 
 ## 4. Human workflow
 
-**Planning (terminal, with skills, before any run):** idea → app and project in the tracker → project and ticket designs written into the tracker (markdown, via the GUI or the planning skill over `gf`) → vertical-slice tickets with dependencies, declared scope and acceptance criteria → risk lane (S2) → approval. Agent-created tickets land in `planning`, never `ready`; approval is always the human's. Mattpocock's day-shift chain is adopted as-is; QRSPI's instruction-budget rule applies (~200-line design doc, small prompts).
+**Planning (terminal, with skills, before any run):** idea → app and project in the tracker → project and ticket designs written into the tracker (markdown, via the GUI or the planning skill over `goblin`) → vertical-slice tickets with dependencies, declared scope and acceptance criteria → risk lane (S2) → approval. Agent-created tickets land in `planning`, never `ready`; approval is always the human's. Mattpocock's day-shift chain is adopted as-is; QRSPI's instruction-budget rule applies (~200-line design doc, small prompts).
 
 **Execution:** the controller claims approved, unblocked tickets and produces PRs with evidence; anything needing a human ends the run.
 
@@ -280,7 +280,7 @@ Each slice ends with something the human uses. Contents are planned with `/grill
 
 | Slice | Delivers | Exit criterion |
 |---|---|---|
-| S1 | Tracker core (spec: `docs/specs/S1-tracker-core.md`): App, Project, Ticket (description, design, `simple`), Dependency, event log, eight-status transition table, Hono + zod API, `gf` CLI, GUI (kanban home with drag-and-drop and filters, Ticket, Project, App, markdown editor, dependency graph) | A fresh Subway Reader MVP project is created in the GUI; an agent-assisted planning conversation (Claude Code skill over `gf`) produces approved tickets with dependencies through the API; tickets can be dragged between statuses; the ready frontier is correct on screen |
+| S1 | Tracker core (spec: `docs/specs/S1-tracker-core.md`): App, Project, Ticket (description, design, `simple`), Dependency, event log, eight-status transition table, Hono + zod API, `goblin` CLI, GUI (kanban home with drag-and-drop and filters, Ticket, Project, App, markdown editor, dependency graph) | A fresh Subway Reader MVP project is created in the GUI; an agent-assisted planning conversation (Claude Code skill over `goblin`) produces approved tickets with dependencies through the API; tickets can be dragged between statuses; the ready frontier is correct on screen |
 | S2 | Approved input snapshot, agent envelope, controller run result, failure taxonomy and disposition | A hand-run pi session consumes one approved ticket snapshot; successful, malformed, blocked and timed-out results classify correctly |
 | S3 | Repository verification contract | A representative repository emits valid `verify.json`; tampering and failure cases classify correctly |
 | S4 | Provider bakeoff, one production adapter, warm image, controller deployment target | One provider selected from a bounded experiment; warm-start, cost, artifact export, credentials, teardown and restart behaviour measured |
