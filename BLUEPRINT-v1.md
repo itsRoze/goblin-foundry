@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-27 (rev 3)
 **Status:** Architectural blueprint for v1. Slice-level detail is deliberately absent; each slice is planned with `/grill-me` when it starts.
-**Inputs:** `research/SYNTHESIS.html`, `research/CRITIQUE-AND-PROPOSED-DIRECTION.md`, `research/factories/goblin-factory-v0-postmortem.md`, `TEMP-BLUEPRINT-v1-REVIEW.md` (rev 2), `CONTEXT.md` + `docs/adr/0001–0006` + `docs/specs/S1-tracker-core.md` (rev 3: S1 decisions folded back), `research/subway-reader/*` (reference only).
+**Inputs:** `research/SYNTHESIS.html`, `research/CRITIQUE-AND-PROPOSED-DIRECTION.md`, `research/factories/goblin-factory-v0-postmortem.md`, `CONTEXT.md` + `docs/adr/0001–0006` + `docs/specs/S1-tracker-core.md` (rev 3: S1 decisions folded back), `research/subway-reader/*` (reference only).
 
 ## 1. What v1 is
 
