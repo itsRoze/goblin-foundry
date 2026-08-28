@@ -6,7 +6,13 @@ Glossary of the tracker's language. No implementation details here; decisions li
 A product the factory works on; owns one git repository. Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
 
 ## Project
-A body of work inside an App (e.g. "Subway Reader MVP"). Has a Project Design and contains Tickets. Renamable.
+A body of work (e.g. "Subway Reader MVP"), usually inside an App. May exist with no App (created before it is known where it belongs) and may be moved to another App later; its Tickets go with it. Has a Project Design and contains Tickets. Renamable; identity is an opaque id, not its name.
+
+## Archived
+A reversible condition on an App or Project: out of the way, not gone. An archived thing is hidden from lists and pickers by default but still opens by its address; its Tickets are untouched and stay on the board. Archiving is about navigation, never workflow. A Ticket is never archived — it is `cancelled` (a workflow decision) or Trashed (a mistake).
+
+## Trashed
+A recoverable deletion of an App, Project or Ticket (something created by accident). A trashed thing is hidden everywhere and can be restored; after a grace period it is gone for good. Distinct from Archived (out of the way) and from `cancelled` (a decision not to do a Ticket).
 
 ## Milestone
 A named grouping of Tickets inside a Project. Not in S1 (wanted later).
@@ -15,7 +21,7 @@ A named grouping of Tickets inside a Project. Not in S1 (wanted later).
 A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place; not versioned in S1. *(Later slices snapshot it at claim time so a run is judged against the design it started with.)*
 
 ## Ticket
-A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs no Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
+A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). A Ticket in a Project always shares that Project's App; a Ticket's App is chosen directly only when it has no Project. Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs no Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
 
 ## Ticket Key
 The display form of a Ticket's number: `<prefix>-<number>`, prefix configurable once per installation (default `GF`). Apps and Projects do not have keys.
