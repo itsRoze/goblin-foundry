@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Sora:wght@400;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    
+  .d { width: 1280px; height: 800px; background: #F1E3C3; color: #2B1E17; font-family: 'Sora', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 20px 28px; display: grid; grid-template-rows: 44px 210px 1fr; gap: 18px; overflow: hidden; }
+  .d .hd { display: flex; align-items: center; gap: 16px; }
+  .d h1 { font-family: 'Silkscreen', monospace; font-size: 22px; margin: 0; letter-spacing: -.02em; }
+  .d .pill { border: 3px solid #2B1E17; background: #FBF3DF; padding: 6px 12px; box-shadow: 4px 4px 0 #2B1E17; font-weight: 600; font-size: 13px; }
+  .d .benches { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
+  .d .bench { border: 3px solid #2B1E17; background: #FBF3DF; box-shadow: 6px 6px 0 #2B1E17; padding: 14px 16px; display: grid; grid-template-columns: 96px 1fr; gap: 14px; position: relative; }
+  .d .bench:after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 18px; background: #C89A62; border-top: 3px solid #2B1E17; }
+  .d .bench h3 { font-family: 'Silkscreen'; font-size: 13px; margin: 0 0 6px; }
+  .d .bench p { margin: 0 0 4px; line-height: 1.35; }
+  .d .bench .m { color: #63534A; font-size: 12.5px; }
+  .d .bubble { display: inline-block; border: 2px solid #2B1E17; background: #F1E3C3; padding: 4px 8px; font-size: 12px; margin-top: 6px; box-shadow: 3px 3px 0 #2B1E17; }
+  .d .cols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; min-height: 0; }
+  .d .board { border: 3px solid #2B1E17; background: #FBF3DF; box-shadow: 6px 6px 0 #2B1E17; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .d h2 { font-family: 'Silkscreen'; font-size: 14px; margin: 0; display: flex; justify-content: space-between; }
+  .d h2 span { font-family: 'Sora'; font-weight: 400; color: #63534A; font-size: 12px; }
+  .d .note { display: grid; grid-template-columns: 84px 1fr auto; gap: 12px; align-items: center; padding: 9px 10px; border: 2px solid #2B1E17; background: #F1E3C3; box-shadow: 3px 3px 0 #2B1E17; }
+  .d .kind { font-family: 'Silkscreen'; font-size: 10px; padding: 4px 6px; text-align: center; border: 2px solid #2B1E17; background: #5B9A45; color: #fff; }
+  .d .kind.hot { background: #E8842C; } .d .kind.plum { background: #6E4D93; }
+  .d .note b { display: block; font-weight: 600; }
+  .d .note i { font-style: normal; color: #63534A; font-size: 12px; }
+  .d .kbd { font-family: 'Silkscreen'; font-size: 11px; border: 2px solid #2B1E17; padding: 2px 6px; }
+  .d .crate { display: grid; grid-template-columns: 24px 60px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 2px solid #2B1E17; background: #F1E3C3; }
+  .d .crate.blocked { opacity: .55; } .d .crate.draft { border-style: dashed; } .d .crate.running { border-color: #E8842C; box-shadow: 3px 3px 0 #E8842C; }
+  .d .sq { width: 14px; height: 14px; border: 2px solid #2B1E17; background: #5B9A45; }
+  .d .crate.running .sq { background: #E8842C; } .d .crate.blocked .sq { background: #63534A; } .d .crate.draft .sq { background: transparent; }
+  .d .id { font-family: 'Silkscreen'; font-size: 10px; color: #63534A; }
+  
+  </style>
+</helmet>
+<div class="d">
+  <div class="hd"><h1>GOBLIN FOUNDRY</h1><span class="pill">Subway Reader · MVP</span><span class="pill" style="border-color: #E8842C;">design r3 approved</span><span class="pill" style="margin-left: auto;">⌘K</span></div>
+  <div class="benches">
+    <div class="bench" style="border-color: #E8842C;"><svg width="96" height="96" viewBox="0 0 48 48" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="6" y="14" width="6" height="8" fill="#5B9A45"/><rect x="36" y="14" width="6" height="8" fill="#5B9A45"/>
+    <rect x="12" y="10" width="24" height="20" fill="#5B9A45"/>
+    <rect x="17" y="17" width="4" height="4" fill="#2B1E17"/><rect x="27" y="17" width="4" height="4" fill="#2B1E17"/>
+    <rect x="18" y="24" width="12" height="3" fill="#2B1E17"/><rect x="20" y="27" width="8" height="1" fill="#2B1E17"/>
+    <rect x="14" y="30" width="20" height="12" fill="#6E4D93"/><rect x="10" y="32" width="4" height="8" fill="#5B9A45"/><rect x="34" y="32" width="4" height="8" fill="#5B9A45"/>
+    <rect x="16" y="42" width="6" height="4" fill="#2B1E17"/><rect x="26" y="42" width="6" height="4" fill="#2B1E17"/>
+  </svg><div><h3>BENCH 1 · sandbox fly-3</h3><p>SR-8 Reader typography settings</p><p class="m">$1.42 of $5.00 · 06:12 of 14:00 · 38 turns</p><span class="bubble">verifying… 2 tests failed, fixing</span></div></div>
+    <div class="bench"><svg width="96" height="96" viewBox="0 0 48 48" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="6" y="14" width="6" height="8" fill="#5B9A45"/><rect x="36" y="14" width="6" height="8" fill="#5B9A45"/>
+    <rect x="12" y="10" width="24" height="20" fill="#5B9A45"/>
+    <rect x="17" y="17" width="4" height="4" fill="#2B1E17"/><rect x="27" y="17" width="4" height="4" fill="#2B1E17"/>
+    <rect x="20" y="25" width="8" height="2" fill="#2B1E17"/>
+    <rect x="14" y="30" width="20" height="12" fill="#6E4D93"/><rect x="10" y="32" width="4" height="8" fill="#5B9A45"/><rect x="34" y="32" width="4" height="8" fill="#5B9A45"/>
+    <rect x="16" y="42" width="6" height="4" fill="#2B1E17"/><rect x="26" y="42" width="6" height="4" fill="#2B1E17"/>
+  </svg><div><h3>BENCH 2 · waiting</h3><p>SR-3 OPML import</p><p class="m">stopped and came back with a question</p><span class="bubble">keep folder hierarchy?</span></div></div>
+    <div class="bench"><svg width="96" height="96" viewBox="0 0 48 48" shape-rendering="crispEdges" aria-hidden="true">
+    <rect x="6" y="14" width="6" height="8" fill="#5B9A45"/><rect x="36" y="14" width="6" height="8" fill="#5B9A45"/>
+    <rect x="12" y="10" width="24" height="20" fill="#5B9A45"/>
+    <rect x="17" y="17" width="4" height="4" fill="#2B1E17"/><rect x="27" y="17" width="4" height="4" fill="#2B1E17"/>
+    <rect x="18" y="25" width="12" height="2" fill="#2B1E17"/>
+    <rect x="14" y="30" width="20" height="12" fill="#6E4D93"/><rect x="10" y="32" width="4" height="8" fill="#5B9A45"/><rect x="34" y="32" width="4" height="8" fill="#5B9A45"/>
+    <rect x="16" y="42" width="6" height="4" fill="#2B1E17"/><rect x="26" y="42" width="6" height="4" fill="#2B1E17"/>
+  </svg><div><h3>BENCH 3 · idle</h3><p class="m">Next up: SR-9, when bench 1 frees.</p></div></div>
+  </div>
+  <div class="cols">
+    <div class="board"><h2>YOUR DESK <span>5 things to decide</span></h2><div class="note"><span class="kind ">Approve</span><span><b><span class="id">SR-12</span> Article list screen: e-ink pagination</b><i>draft · design r3 · lane L3</i></span><span class="kbd">1</span></div><div class="note"><span class="kind hot">Re-arm</span><span><b><span class="id">SR-7</span> Room migration v2</b><i>needs human · verify failed twice with the same failure · $3.80 spent</i></span><span class="kbd">2</span></div><div class="note"><span class="kind hot">Answer</span><span><b><span class="id">SR-3</span> OPML import</b><i>needs human · run asked: keep folder hierarchy?</i></span><span class="kbd">3</span></div><div class="note"><span class="kind ">Review</span><span><b><span class="id">SR-5</span> Feed parser core (pure Kotlin)</b><i>PR #14 · CI passing · lane L3 · +412 −38</i></span><span class="kbd">4</span></div><div class="note"><span class="kind plum">Reconcile</span><span><b><span class="id">SR-5</span> proposes PROJECT-DESIGN.md r4</b><i>sha 9f3c1a · accept or reject</i></span><span class="kbd">5</span></div></div>
+    <div class="board"><h2>SHELF <span>ready frontier, claim order</span></h2><div style="display: flex; flex-direction: column; gap: 8px;"><div class="crate ready"><i class="sq"></i><span class="id">SR-9</span><span>Feed fixture parser tests</span><span class="id">L4</span></div><div class="crate ready"><i class="sq"></i><span class="id">SR-10</span><span>Boox refresh-mode hook</span><span class="id">L3</span></div><div class="crate running"><i class="sq"></i><span class="id">SR-8</span><span>Reader typography settings</span><span class="id">at bench 1</span></div><div class="crate blocked"><i class="sq"></i><span class="id">SR-11</span><span>Offline sync worker</span><span class="id">by SR-7</span></div><div class="crate draft"><i class="sq"></i><span class="id">SR-13</span><span>Feed subscribe screen</span><span class="id">no design</span></div></div></div>
+  </div>
+</div></x-dc>
+</body>
+</html>

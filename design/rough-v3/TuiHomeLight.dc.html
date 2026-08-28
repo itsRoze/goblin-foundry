@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    .tui { width: 1440px; height: 900px; background: #EEF2F4; color: #0C161D; box-sizing: border-box; padding: 26px 20px 20px; overflow: hidden; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; line-height: 17px; position: relative; }
+    .tui .tb { position: absolute; top: 0; left: 0; right: 0; height: 22px; background: #DDE5EA; color: #5B6E79; font-size: 11px; line-height: 22px; padding: 0 12px; }
+    .tui pre { margin: 0; font: inherit; white-space: pre; letter-spacing: 0; }
+    .tui .c { color: #006E7F; font-weight: 400; } .tui .m { color: #B50D57; font-weight: 400; } .tui .a { color: #8A5A00; font-weight: 400; } .tui .id { color: #5B6E79; }
+    .tui pre > .l0, .tui pre > .ln { background: #DDE5EA; color: #5B6E79; display: block; }
+    .tui .box { color: #5B6E79; }
+  </style>
+</helmet>
+<div class="tui"><div class="tb">foundry — home — foundry · 168×48 · light terminal</div><pre><span class="l0"> goblin-foundry  <b class="c">[1 home]</b> 2 tickets  3 design  4 runs  5 evidence      subway-reader/mvp · r3@4b7e2d                                  <b class="a">draft</b> 3 <b class="c">ready</b> 2 run 1 <b class="m">NEEDS</b> 2 rev 1 </span>
+┏━ waiting on you · 5 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓┌─ frontier · what depends on what ──────────────────────────────────────────────────────┐
+┃                                                                            ┃│                                                                                        │
+┃▶ <b class="c">[1]</b> <b class="c">APPROVE</b>   <span class="id">SR-12</span>  Article list screen: e-ink pagination                ┃│   <span class="id">SR-1</span> <b class="c">◆</b>──┬── <span class="id">SR-2</span> <b class="c">◆</b>──┐                                                                │
+┃               <b class="a">draft</b> · design r3 · L3                                       ┃│   core    │   fetch   ├── <span class="id">SR-5</span> <b class="c">◈</b> parser ──┬── <span class="id">SR-9</span> <b class="c">◆</b> fixture tests                     │
+┃                                                                            ┃│           │           │       <b class="c">review</b>      ├── <span class="id">SR-8</span> <b class="m">●</b> typography ──┐                    │
+┃  <b class="c">[2]</b> <b class="m">RE-ARM</b>    <span class="id">SR-7</span>   Room migration v2                                    ┃│           └── <span class="id">SR-4</span> <b class="c">◆</b>──┤                   └── <span class="id">SR-10</span> <b class="c">◆</b> refresh    ├── <span class="id">SR-12</span> <b class="m">▲</b> article li│
+┃               verify failed ×2, same failure · $3.80                       ┃│               fixtures└── <span class="id">SR-3</span> <b class="m">▲</b> opml import                      │                    │
+┃                                                                            ┃│                                                                   │                    │
+┃  <b class="c">[3]</b> <b class="m">ANSWER</b>    <span class="id">SR-3</span>   OPML import                                          ┃│   <span class="id">SR-7</span> <b class="m">▲</b> room migration ╌╌╌ <span class="id">SR-11</span> ◇ offline sync                  │                    │
+┃               run asked: keep folder hierarchy?                            ┃│                                                                                        │
+┃                                                                            ┃│   <b class="c">◆</b> done/<b class="c">ready</b>  <b class="c">◈</b> <b class="c">review</b>  <b class="m">●</b> <b class="m">running</b>  <b class="m">▲</b> needs you  ◇ blocked  · <b class="a">draft</b>    ╌╌ source can't│
+┃  <b class="c">[4]</b> <b class="c">REVIEW</b>    <span class="id">SR-5</span>   Feed parser core (pure Kotlin)                       ┃│                                                                                        │
+┃               PR #14 · CI green · L3 · +412 −38                            ┃│                                                                                        │
+┃                                                                            ┃│                                                                                        │
+┃  <b class="c">[5]</b> <b class="c">RECONCILE</b> <span class="id">SR-5</span>   proposes PROJECT-DESIGN.md r4                        ┃│                                                                                        │
+┃               sha 9f3c1a · accept / reject                                 ┃│                                                                                        │
+┃                                                                            ┃│                                                                                        │
+┃                                                                            ┃│                                                                                        │
+┃ j/k move   ⏎ open   a approve   r re-arm   : command                       ┃│                                                                                        │
+┃                                                                            ┃│                                                                                        │
+┃                                                                            ┃│                                                                                        │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ claim order ──────────────────────────────────────────────────────────────┐┌─ run 31 · <span class="id">SR-8</span> · verifying (fast) · fly-3 ─────────────────────────────────────────────┐
+│                                                                            ││                                                                                        │
+│ <b class="c">◆</b> <span class="id">SR-9</span>   Feed fixture parser tests      <b class="c">ready</b>   L4 · next                  ││ spend  <b class="c">▰▰▰▰▰</b>▱▱▱▱▱▱▱▱▱▱▱▱▱  $1.42 / 5.00                                                │
+│ <b class="c">◆</b> <span class="id">SR-10</span>  Boox refresh-mode hook         <b class="c">ready</b>   L3                         ││ wall   <b class="c">▰▰▰▰▰▰▰▰</b>▱▱▱▱▱▱▱▱▱▱  06:12 / 14:00                                               │
+│ <b class="m">●</b> <span class="id">SR-8</span>   Reader typography settings     <b class="m">running</b> run 31 · hb 4s             ││ turns  <b class="c">▰▰▰▰▰▰▰▰▰</b>▱▱▱▱▱▱▱▱▱  38 / 80                                                     │
+│ ◇ <span class="id">SR-11</span>  Offline sync worker            blocked by <span class="id">SR-7</span>                    ││                                                                                        │
+│ · <span class="id">SR-13</span>  Feed subscribe screen          <b class="a">draft</b>   no design                  ││ 06:08 verify(fast) exit 1 · 2 tests failed                                             │
+│                                                                            ││ 06:09 correct_same_session 1/2                                                         │
+│ J/K reorder claim order   s status   n new                                 ││ 06:11 edit core/Typography.kt                                                          │
+│                                                                            ││ 06:12 verify(fast) <b class="m">running</b> <b class="m">█</b>                                                           │
+│                                                                            ││ digests ok · scope ok · fly-3 · hb 4s                                                  │
+│                                                                            ││                                                                                        │
+│                                                                            ││                                                                                        │
+└────────────────────────────────────────────────────────────────────────────┘└────────────────────────────────────────────────────────────────────────────────────────┘
+<span class="l0"> :                                                                                                                                        tue 09:41  ? help  q quit </span></pre></div>
+</x-dc>
+</body>
+</html>

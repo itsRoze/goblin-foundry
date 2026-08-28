@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Bebas+Neue&family=Archivo:wght@400;600;700&family=JetBrains+Mono&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    
+  .k { width: 1280px; height: 800px; background: #E8E5E0; color: #17131C; font-family: 'Archivo', system-ui, sans-serif; font-size: 13px; position: relative; overflow: hidden; display: grid; grid-template-rows: 150px 1fr 40px; box-sizing: border-box; }
+  .k .mast { border-bottom: 4px solid #17131C; display: grid; grid-template-columns: 330px 1fr; }
+  .k .mast h1 { font-family: 'UnifrakturMaguntia', serif; font-weight: 400; font-size: 58px; margin: 0; padding: 26px 28px 0; line-height: .95; border-right: 4px solid #17131C; }
+  .k .mast h1 small { display: block; font-family: 'Archivo'; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #5E5768; margin-top: 8px; }
+  .k .nums { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); }
+  .k .nums div { border-right: 2px solid #17131C; padding: 14px 18px 0; display: flex; flex-direction: column; justify-content: space-between; }
+  .k .nums div:last-child { border-right: 0; }
+  .k .nums b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 104px; line-height: .82; letter-spacing: -.02em; }
+  .k .nums span { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; padding-bottom: 12px; }
+  .k .nums .hot b { color: #D9651A; } .k .nums .run b { color: #4A8A00; -webkit-text-stroke: 1.5px #17131C; }
+  .k .main { display: grid; grid-template-columns: 330px 1fr 380px; min-height: 0; }
+  .k .side { border-right: 4px solid #17131C; padding: 20px 28px; display: flex; flex-direction: column; gap: 10px; }
+  .k .side h2, .k .att h2, .k .fr h2 { font-family: 'UnifrakturMaguntia'; font-weight: 400; font-size: 30px; margin: 0 0 4px; }
+  .k .side p { margin: 0; line-height: 1.45; }
+  .k .side .rev { border: 2px solid #17131C; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.5; }
+  .k .side .rev b { display: block; font-family: 'Bebas Neue'; font-size: 24px; letter-spacing: .02em; font-weight: 400; }
+  .k .att { padding: 20px 28px; border-right: 4px solid #17131C; display: flex; flex-direction: column; }
+  .k .row { display: grid; grid-template-columns: 56px 100px 1fr; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 2px solid #17131C; position: relative; }
+  .k .row .n { font-family: 'Bebas Neue'; font-size: 40px; line-height: 1; }
+  .k .row .kind { font-family: 'Bebas Neue'; font-size: 18px; letter-spacing: .06em; color: #5E5768; }
+  .k .row.hot { background: repeating-linear-gradient(-45deg, transparent 0 14px, #D9651A 14px 16px); background-size: 100% 6px; background-repeat: no-repeat; background-position: bottom; }
+  .k .row.hot .kind { color: #D9651A; }
+  .k .row .t { font-weight: 700; font-size: 15px; }
+  .k .row .t em { display: block; font-style: normal; font-weight: 400; color: #5E5768; font-size: 12px; }
+  .k .row .id { font-family: 'JetBrains Mono'; font-size: 11px; color: #5E5768; }
+  .k .fr { padding: 20px 28px; }
+  .k .fl { display: grid; grid-template-columns: 30px 60px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1.5px solid #17131C; }
+  .k .fl .n { font-family: 'Bebas Neue'; font-size: 22px; color: #5E5768; }
+  .k .fl .id { font-family: 'JetBrains Mono'; font-size: 11px; color: #5E5768; }
+  .k .fl .t { font-weight: 600; font-size: 14px; }
+  .k .fl .t small { font-weight: 400; color: #5E5768; margin-left: 6px; font-size: 11px; }
+  .k .fl.running .t { color: #4A8A00; } .k .fl.blocked { opacity: .5; } .k .fl.draft .t { font-weight: 400; font-style: italic; }
+  .k .ticker { border-top: 4px solid #17131C; background: #17131C; color: #E8E5E0; overflow: hidden; display: flex; align-items: center; font-family: 'JetBrains Mono'; font-size: 12px; white-space: nowrap; }
+  .k .ticker span { display: inline-block; padding-left: 100%; animation: tick 28s linear infinite; }
+  .k .ticker b { color: #4A8A00; font-weight: 400; } .k .ticker i { color: #D9651A; font-style: normal; }
+  @keyframes tick { to { transform: translateX(-100%); } }
+  
+  </style>
+</helmet>
+<div class="k">
+  <div class="mast">
+    <h1>Goblin Foundry<small>Subway Reader · MVP</small></h1>
+    <div class="nums"><div class=""><b>3</b><span>draft</span></div><div class=""><b>2</b><span>ready</span></div><div class="run"><b>1</b><span>running</span></div><div class="hot"><b>2</b><span>needs you</span></div><div class=""><b>1</b><span>review</span></div><div class=""><b>4</b><span>done</span></div></div>
+  </div>
+  <div class="main">
+    <div class="side">
+      <h2>The Run</h2>
+      <p><b>SR-8</b> Reader typography settings</p>
+      <div class="rev"><b>$1.42 <span style="color: #5E5768; font-size: 14px;">/ 5.00</span></b>06:12 of 14:00 · 38 of 80 turns<br>fly-3 · heartbeat 4s<br>verifying (fast)</div>
+      <h2 style="margin-top: 14px;">Design</h2>
+      <div class="rev"><b>r3 · approved</b>PROJECT-DESIGN.md<br>sha 4b7e2d · used by runs 27–31<br><span style="color: #D9651A;">r4 proposed by SR-5 →</span></div>
+      <p style="margin-top: auto; color: #5E5768; font-family: 'JetBrains Mono'; font-size: 11px;">⌘K · 1–5 jump · a approve · r re-arm</p>
+    </div>
+    <div class="att"><h2>Waiting on you</h2><div class="row "><span class="n">1</span><span class="kind">Approve</span><div class="t"><span class="id">SR-12</span> Article list screen: e-ink pagination<em>draft · design r3 · lane L3</em></div></div><div class="row hot"><span class="n">2</span><span class="kind">Re-arm</span><div class="t"><span class="id">SR-7</span> Room migration v2<em>verify failed twice with the same failure · $3.80 spent</em></div></div><div class="row hot"><span class="n">3</span><span class="kind">Answer</span><div class="t"><span class="id">SR-3</span> OPML import<em>run asked: keep folder hierarchy?</em></div></div><div class="row "><span class="n">4</span><span class="kind">Review</span><div class="t"><span class="id">SR-5</span> Feed parser core (pure Kotlin)<em>PR #14 · CI passing · lane L3 · +412 −38</em></div></div><div class="row "><span class="n">5</span><span class="kind">Reconcile</span><div class="t"><span class="id">SR-5</span> proposes PROJECT-DESIGN.md r4<em>sha 9f3c1a · accept or reject</em></div></div></div>
+    <div class="fr"><h2>Frontier</h2><div class="fl ready"><span class="n">1</span><span class="id">SR-9</span><span class="t">Feed fixture parser tests<small>ready · L4</small></span></div><div class="fl ready"><span class="n">2</span><span class="id">SR-10</span><span class="t">Boox refresh-mode hook<small>ready · L3</small></span></div><div class="fl running"><span class="n">3</span><span class="id">SR-8</span><span class="t">Reader typography settings<small>heartbeat 4s</small></span></div><div class="fl blocked"><span class="n">4</span><span class="id">SR-11</span><span class="t">Offline sync worker<small>blocked · by SR-7</small></span></div><div class="fl draft"><span class="n">5</span><span class="id">SR-13</span><span class="t">Feed subscribe screen<small>draft · no design</small></span></div></div>
+  </div>
+  <div class="ticker"><span>06:08 verify(fast) exit 1 · 2 tests &nbsp;·&nbsp; 06:09 <b>correct_same_session</b> 1 of 2 &nbsp;·&nbsp; 06:11 edit core/Typography.kt &nbsp;·&nbsp; 06:12 verify(fast) running &nbsp;·&nbsp; protected digests ok · scope ok &nbsp;·&nbsp; <i>SR-7 needs you: same failure twice</i> &nbsp;·&nbsp; PR #14 CI green</span></div>
+</div></x-dc>
+</body>
+</html>

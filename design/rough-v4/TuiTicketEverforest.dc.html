@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    .tui { width: 1440px; height: 900px; background: #232A2E; color: #D3C6AA; box-sizing: border-box; padding: 26px 20px 20px; overflow: hidden; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; line-height: 18px; position: relative; }
+    .tui .tb { position: absolute; top: 0; left: 0; right: 0; height: 22px; background: #2D353B; color: #9AA595; font-size: 11px; line-height: 22px; padding: 0 12px; }
+    .tui pre { margin: 0; font: inherit; white-space: pre; letter-spacing: 0; }
+    .tui .c { color: #A7C080; font-weight: 400; } .tui .m { color: #E67E80; font-weight: 400; } .tui .a { color: #DBBC7F; font-weight: 400; } .tui .id { color: #9AA595; }
+    .tui pre > .l0, .tui pre > .ln { background: #2D353B; color: #9AA595; display: block; }
+    .tui .bx { color: #4F585E; } .tui .h { color: #9AA595; letter-spacing: .08em; }
+  </style>
+</helmet>
+<div class="tui"><div class="tb">foundry — SR-12 — foundry · 168×48 · ever · 160×44</div><pre><span class="l0"> foundry    1 home  <b class="c">[2 tickets]</b> 3 design  4 runs  5 evidence     tickets / subway-reader / mvp / <span class="id">SR-12</span>                        <b class="a">draft</b> 3 <b class="c">ready</b> 2 run 1 <b class="m">NEEDS</b> 2 rev 1 </span>
+<span class="bx">┏━</span> SPEC · rev 2 <span class="bx">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓┌─</span> STATE <span class="bx">──────────────────────────────────────────────────────┐</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span> <span class="id">SR-12</span>  Article list screen: e-ink pagination                       <b class="a">DRAFT</b>                     <span class="bx">┃│</span> status     <b class="a">DRAFT</b> → <b class="c">ready</b> needs your approval                 <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span> lane       L3                                                <span class="bx">│</span>
+<span class="bx">┃</span> The article list is the home screen of Subway Reader. On Boox e-ink it                       <span class="bx">┃│</span> design     r3 @4b7e2d  PROJECT-DESIGN.md                     <span class="bx">│</span>
+<span class="bx">┃</span> must paginate with full-page refreshes: no scrolling, no partial redraws,                    <span class="bx">┃│</span> depends    <span class="id">SR-5</span>  <span class="id">SR-8</span>                                        <span class="bx">│</span>
+<span class="bx">┃</span> one tap per page. Unread count comes from the core module; the screen                        <span class="bx">┃│</span> blocks     <span class="id">SR-13</span>                                             <span class="bx">│</span>
+<span class="bx">┃</span> never computes it.                                                                           <span class="bx">┃│</span> budget     $5 · 14 min · 80 turns                            <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span> <span class="h">ACCEPTANCE</span>                                                                                   <span class="bx">┃│</span> <span class="h">RUNS</span>       none yet                                          <span class="bx">│</span>
+<span class="bx">┃</span>  1. List paginates with a full-page refresh, no partial redraws on Boox.                     <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span>  2. Unread count matches core fixture 07.                                                    <span class="bx">┃│</span> <span class="h">HISTORY</span>                                                      <span class="bx">│</span>
+<span class="bx">┃</span>  3. Screenshot of first and last page attached as evidence.                                  <span class="bx">┃│</span>  1h  you      edited spec · rev 2                            <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>  3h  planner  proposed acceptance #3                         <span class="bx">│</span>
+<span class="bx">┃</span> <span class="h">SCOPE</span>       app/src/main/…/reader/list/**   core/src/…/paging/**                             <span class="bx">┃│</span>  1d  you      created from planning · r3                     <span class="bx">│</span>
+<span class="bx">┃</span> <span class="h">PROTECTED</span>   core/src/test/fixtures/**   verify.mk                                            <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span> e edit   a approve → <b class="c">ready</b>   d deps   p plan   esc back                                      <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┃</span>                                                                                              <span class="bx">┃│</span>                                                              <span class="bx">│</span>
+<span class="bx">┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└──────────────────────────────────────────────────────────────┘</span>
+<span class="bx">┌─</span> PLANNING · 3 exchanges · 1 open question <span class="bx">───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">│</span> you      Should page size be fixed or derived from the device font scale?                                                                                    <span class="bx">│</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">│</span> planner  Derive it: core exposes pageSize(fontScale, viewport); the screen                                                                                   <span class="bx">│</span>
+<span class="bx">│</span>          just asks. Keeps the Boox variant testable on JVM.                                                                                                  <span class="bx">│</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">│</span> you      Agreed. Deferred: landscape. Not in MVP.                                                                                                            <span class="bx">│</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">│</span> planner  Open: should the unread badge refresh on page turn or on sync                                                                                       <span class="bx">│</span>
+<span class="bx">│</span>          only? Affects acceptance #2.                                                                                                                        <span class="bx">│</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">│</span> > <b class="m">█</b>                                                                                                                                                          <span class="bx">│</span>
+<span class="bx">│</span>                                                                                                                                                              <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+<span class="l0"> :                                                                                                                                tue 09:41  ? help  q quit </span></pre></div>
+</x-dc>
+</body>
+</html>

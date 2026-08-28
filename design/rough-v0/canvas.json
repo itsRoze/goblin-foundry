@@ -1,0 +1,108 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Shared bones (wireframe)"
+    },
+    {
+      "file": "FoundryDay.dc.html",
+      "x": 0,
+      "y": 1000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "FoundryNight.dc.html",
+      "x": 1380,
+      "y": 1000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "NotebookDay.dc.html",
+      "x": 0,
+      "y": 2000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "NotebookNight.dc.html",
+      "x": 1380,
+      "y": 2000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "ControlDay.dc.html",
+      "x": 0,
+      "y": 3000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "ControlNight.dc.html",
+      "x": 1380,
+      "y": 3000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "GoblinDay.dc.html",
+      "x": 0,
+      "y": 4000,
+      "w": 1280,
+      "h": 800
+    },
+    {
+      "file": "GoblinNight.dc.html",
+      "x": 1380,
+      "y": 4000,
+      "w": 1280,
+      "h": 800
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 1380,
+      "y": 0,
+      "w": 520,
+      "text": "Goblin Foundry tracker — home screen, four directions.\n\nSame bones every time: Waiting on you (decisions) · Ready frontier (claim order) · Running now (evidence, budget, heartbeat). Apps/projects on the side; design revisions one click in.\n\nRough sketches to pick a FEEL. Day + night for each, as two characters rather than an inverted palette."
+    },
+    {
+      "id": "a-note",
+      "x": 2760,
+      "y": 1000,
+      "w": 360,
+      "text": "A · THE FOUNDRY (solarpunk industrial)\nWhy: the lifecycle is literally a pour line; heat = a run in progress; copper/verdigris keep it warm but serious.\nTradeoff: the metaphor has to earn its keep on every screen or it becomes decoration."
+    },
+    {
+      "id": "b-note",
+      "x": 2760,
+      "y": 2000,
+      "w": 360,
+      "text": "B · FIELD NOTEBOOK\nWhy: the blueprint calls the tracker \"durable memory\" — this reads like one. Best for long design docs and planning conversations.\nTradeoff: lowest density; the running-run telemetry feels slightly out of place on paper."
+    },
+    {
+      "id": "c-note",
+      "x": 2760,
+      "y": 3000,
+      "w": 360,
+      "text": "C · CONTROL ROOM\nWhy: \"code owns the loop\" made visible — the FSM with authority marked is the header. Densest; fastest with a keyboard.\nTradeoff: closest to the AI-tool default look; hostile to reading prose."
+    },
+    {
+      "id": "d-note",
+      "x": 2760,
+      "y": 4000,
+      "w": 360,
+      "text": "D · GOBLIN WORKSHOP\nWhy: benches make sandboxes, leases and questions tangible — a goblin waiting with a question is impossible to ignore. Data views stay typographic.\nTradeoff: risks toy-ness; needs real sprite craft and discipline about where characters appear."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

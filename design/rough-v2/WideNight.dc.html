@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Recursive:CASL,MONO,wght@0..1,0..1,300..800&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    
+  .g { background: #14111C; color: #EAE5F2; font-family: 'Recursive', ui-monospace, monospace; font-variation-settings: 'MONO' 0, 'CASL' 0.35, 'wght' 420; font-size: 13.5px; position: relative; overflow: hidden; box-sizing: border-box; display: grid; grid-template-rows: 34px 1fr; }
+  .g .mono { font-variation-settings: 'MONO' 1, 'CASL' 0, 'wght' 400; }
+  .g .bar { background: #0F0D16; display: flex; align-items: center; gap: 18px; padding: 0 14px; font-size: 12px; font-variation-settings: 'MONO' 1, 'CASL' 0, 'wght' 450; color: #8E86A4; }
+  .g .ws { display: flex; gap: 4px; }
+  .g .ws span { padding: 2px 9px; border-radius: 6px; }
+  .g .ws span.on { background: #A9F07C; color: #0F0D16; font-variation-settings: 'MONO' 1, 'wght' 650; }
+  .g .bar .mid { margin-left: auto; margin-right: auto; color: #EAE5F2; }
+  .g .bar .cts { display: flex; gap: 14px; }
+  .g .bar .cts b { color: #EAE5F2; font-variation-settings: 'MONO' 1, 'wght' 650; margin-right: 3px; }
+  .g .bar .cts .hot b { color: #FFA45E; }
+  .g .bar .mini { display: flex; align-items: center; gap: 6px; }
+  .g .bar .mini i { width: 60px; height: 5px; background: #2C2640; border-radius: 3px; position: relative; overflow: hidden; }
+  .g .bar .mini i:after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 28%; background: #FFA45E; }
+  .g .desk { padding: 10px; display: grid; gap: 10px; min-height: 0; }
+  .g .tile { background: #1A1624; border: 2px solid #2C2640; border-radius: 10px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .g .tile.focus { border-color: #A9F07C; box-shadow: 0 0 0 1px #A9F07C, 0 0 22px rgba(169,240,124,.35); }
+  .g .tile.hotb { border-color: #FFA45E; }
+  .g .th { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #2C2640; font-size: 12px; font-variation-settings: 'MONO' 1, 'CASL' 0, 'wght' 500; color: #8E86A4; background: #211C2E; }
+  .g .th b { color: #EAE5F2; font-variation-settings: 'MONO' 1, 'wght' 650; }
+  .g .th .dot { width: 8px; height: 8px; border-radius: 50%; background: #8E86A4; }
+  .g .tile.focus .th .dot { background: #A9F07C; box-shadow: 0 0 8px rgba(169,240,124,.35); }
+  .g .tile.hotb .th .dot { background: #FFA45E; animation: breathe 1.8s ease-in-out infinite; }
+  @keyframes breathe { 50% { box-shadow: 0 0 12px rgba(255,164,94,.45); } }
+  .g .th .keys { margin-left: auto; display: flex; gap: 6px; }
+  .g kbd { font-family: inherit; font-variation-settings: 'MONO' 1, 'wght' 500; font-size: 11px; color: #8E86A4; border: 1px solid #2C2640; border-radius: 4px; padding: 0 5px; line-height: 16px; background: #1A1624; }
+  .g .body { padding: 6px 12px 10px; overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+  .g .row { display: grid; grid-template-columns: 78px 1fr auto; gap: 12px; align-items: center; padding: 9px 8px; border-radius: 8px; margin: 0 -8px; }
+  .g .row.sel { background: #211C2E; outline: 1px solid #2C2640; }
+  .g .row .kind { font-size: 11.5px; font-variation-settings: 'MONO' 1, 'wght' 600; color: #7EE0D2; letter-spacing: .02em; }
+  .g .row.hot .kind { color: #FFA45E; }
+  .g .row .t { font-variation-settings: 'MONO' 0, 'CASL' 0.4, 'wght' 560; font-size: 14px; line-height: 1.25; }
+  .g .row .t span { font-variation-settings: 'MONO' 1, 'wght' 450; color: #8E86A4; font-size: 11.5px; margin-right: 6px; }
+  .g .row .t em { display: block; font-style: normal; color: #8E86A4; font-size: 12px; font-variation-settings: 'MONO' 0, 'CASL' 0.6, 'wght' 400; }
+  .g .fr { display: grid; grid-template-columns: 16px 56px 1fr auto; gap: 10px; align-items: center; padding: 7px 8px; margin: 0 -8px; border-radius: 8px; }
+  .g .fr .id { font-variation-settings: 'MONO' 1; font-size: 11.5px; color: #8E86A4; }
+  .g .fr .t { font-variation-settings: 'CASL' 0.4, 'wght' 520; }
+  .g .fr .n { font-size: 11.5px; color: #8E86A4; font-variation-settings: 'MONO' 1; }
+  .g .fr i { width: 9px; height: 9px; border-radius: 3px; background: #A9F07C; transform: rotate(45deg); }
+  .g .fr.running i { background: #FFA45E; box-shadow: 0 0 8px rgba(255,164,94,.45); border-radius: 50%; transform: none; }
+  .g .fr.blocked i { background: transparent; border: 1.5px solid #8E86A4; box-sizing: border-box; } .g .fr.blocked .t { color: #8E86A4; text-decoration: line-through; text-decoration-color: #2C2640; }
+  .g .fr.draft i { background: #BBA9FF; opacity: .7; } .g .fr.draft .t { color: #8E86A4; }
+  .g .grab { color: #2C2640; font-size: 14px; letter-spacing: -2px; cursor: grab; }
+  .g svg text { font-family: 'Recursive'; font-variation-settings: 'CASL' 0.4, 'wght' 520; font-size: 12px; fill: #EAE5F2; }
+  .g svg text.id { font-variation-settings: 'MONO' 1, 'wght' 400; font-size: 10px; fill: #8E86A4; }
+  .g svg .e { fill: none; stroke: #7EE0D2; stroke-width: 1.5; opacity: .55; } .g svg .e.dead { stroke: #8E86A4; stroke-dasharray: 4 4; opacity: .45; }
+  .g svg .nd { fill: #1A1624; stroke: #A9F07C; stroke-width: 2; }
+  .g svg .nd.done { fill: #A9F07C; } .g svg .nd.draft { stroke: #BBA9FF; stroke-dasharray: 3 3; } .g svg .nd.blocked { stroke: #8E86A4; }
+  .g svg .nd.human { stroke: #FFA45E; } .g svg .nd.review { stroke: #7EE0D2; fill: #7EE0D2; }
+  .g svg .nd.running { stroke: #FFA45E; fill: #FFA45E; animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { filter: drop-shadow(0 0 4px rgba(255,164,94,.45)); } 50% { filter: drop-shadow(0 0 16px rgba(255,164,94,.45)); } }
+  .g .meter { display: grid; grid-template-columns: 52px 1fr 78px; gap: 10px; align-items: center; font-variation-settings: 'MONO' 1; font-size: 11.5px; color: #8E86A4; margin: 4px 0; }
+  .g .meter div { height: 6px; border-radius: 3px; background: #2C2640; overflow: hidden; } .g .meter div i { display: block; height: 100%; background: #FFA45E; border-radius: 3px; }
+  .g .meter b { color: #EAE5F2; font-variation-settings: 'MONO' 1, 'wght' 600; text-align: right; }
+  .g .log { font-variation-settings: 'MONO' 1; font-size: 11.5px; color: #8E86A4; line-height: 1.6; margin-top: 6px; }
+  .g .log div { animation: fade .5s ease-out both; } .g .log div:nth-child(2) { animation-delay: .15s; } .g .log div:nth-child(3) { animation-delay: .3s; } .g .log div:nth-child(4) { animation-delay: .45s; } .g .log div:nth-child(5) { animation-delay: .6s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+  .g .log b { color: #A9F07C; font-variation-settings: 'MONO' 1, 'wght' 500; } .g .log i { color: #FFA45E; font-style: normal; } .g .log .cur { display: inline-block; width: 7px; height: 12px; background: #A9F07C; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .g .field { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid #2C2640; align-items: baseline; }
+  .g .field span { color: #8E86A4; font-variation-settings: 'MONO' 1; font-size: 11.5px; }
+  .g .chip { display: inline-block; border: 1px solid #2C2640; border-radius: 6px; padding: 1px 8px; font-size: 12px; margin-right: 6px; background: #211C2E; }
+  .g .chip.lilac { color: #BBA9FF; border-color: #BBA9FF; } .g .chip.green { color: #A9F07C; border-color: #A9F07C; }
+  .g h1 { font-variation-settings: 'CASL' 0.6, 'wght' 620; font-size: 20px; margin: 2px 0 8px; line-height: 1.2; }
+  .g .ac { padding: 6px 0 2px 18px; margin: 0; line-height: 1.5; font-variation-settings: 'CASL' 0.5, 'wght' 420; }
+  .g .hint { margin-top: auto; padding-top: 8px; color: #8E86A4; font-size: 11.5px; font-variation-settings: 'MONO' 1; display: flex; gap: 12px; }
+  .g .empty { color: #8E86A4; font-variation-settings: 'CASL' 0.7, 'wght' 400; padding: 8px 0; }
+.g { width: 2560px; height: 1440px; font-size: 15px; } .g .desk { grid-template-columns: 1fr 1.25fr 1fr; grid-template-rows: 1.1fr 1fr; gap: 12px; } .g .row .t { font-size: 15.5px; } .g .row .t em { font-size: 13px; } .g svg text { font-size: 13.5px; } .g svg text.id { font-size: 11px; } .g .bar { height: 38px; font-size: 13px; } .g h1 { font-size: 24px; }
+  </style>
+</helmet>
+<div class="g"><div class="bar">
+  <div class="ws"><span class="on">1 home</span><span>2 tickets</span><span>3 design</span><span>4 runs</span><span>5 evidence</span></div>
+  <span class="mid">subway-reader / mvp · design r3 @4b7e2d</span>
+  <div class="cts"><span class=""><b>3</b>draft</span><span class=""><b>2</b>ready</span><span class=""><b>1</b>running</span><span class="hot"><b>2</b>needs you</span><span class=""><b>1</b>review</span></div>
+  <span class="mini">run 31 <i></i> $1.42</span>
+  <span>tue 09:41</span>
+</div>
+  <div class="desk">
+    <div class="tile "><div class="th"><i class="dot"></i><b>waiting on you · 5</b><span class="keys"><kbd>⌘1</kbd></span></div><div class="body"><div class="row  sel"><span class="kind">approve</span><div class="t"><span>SR-12</span>Article list screen: e-ink pagination<em>draft · design r3 · lane L3</em></div><kbd>a</kbd></div><div class="row hot "><span class="kind">re-arm</span><div class="t"><span>SR-7</span>Room migration v2<em>verify failed twice, same failure · $3.80 spent</em></div><kbd>r</kbd></div><div class="row hot "><span class="kind">answer</span><div class="t"><span>SR-3</span>OPML import<em>the run asked: keep folder hierarchy?</em></div><kbd>⏎</kbd></div><div class="row  "><span class="kind">review</span><div class="t"><span>SR-5</span>Feed parser core (pure Kotlin)<em>PR #14 · CI green · lane L3 · +412 −38</em></div><kbd>⏎</kbd></div><div class="row  "><span class="kind">reconcile</span><div class="t"><span>SR-5</span>proposes PROJECT-DESIGN.md r4<em>sha 9f3c1a · accept or reject</em></div><kbd>⏎</kbd></div><div class="hint"><span>j/k move</span><span>⏎ open</span><span>a approve</span><span>r re-arm</span><span>⌘k anything</span></div></div></div>
+    <div class="tile "><div class="th"><i class="dot"></i><b>frontier · what grows from what</b><span class="keys"><kbd>⌘2</kbd></span></div><div class="body"><svg width="1000" height="440" viewBox="0 0 1000 440" style="margin: 6px 0 0 -4px; max-width: 100%;"><path class="e " d="M84 87 C 144 87, 220 43.5, 280 43.5"/><path class="e " d="M84 87 C 144 87, 220 159.5, 280 159.5"/><path class="e " d="M280 43.5 C 340 43.5, 415.99999999999994 101.5, 475.99999999999994 101.5"/><path class="e " d="M280 159.5 C 340 159.5, 415.99999999999994 101.5, 475.99999999999994 101.5"/><path class="e " d="M280 159.5 C 340 159.5, 415.99999999999994 246.5, 475.99999999999994 246.5"/><path class="e " d="M84 87 C 144 87, 164 304.5, 224 304.5"/><path class="e " d="M475.99999999999994 101.5 C 536 101.5, 626 43.5, 686 43.5"/><path class="e " d="M475.99999999999994 101.5 C 536 101.5, 626 174, 686 174"/><path class="e " d="M475.99999999999994 101.5 C 536 101.5, 626 304.5, 686 304.5"/><path class="e dead" d="M224 304.5 C 284 304.5, 401.99999999999994 391.5, 461.99999999999994 391.5"/><path class="e " d="M686 174 C 746 174, 836 232, 896 232"/><path class="e " d="M686 304.5 C 746 304.5, 836 232, 896 232"/><path class="e dead" d="M896 232 C 956 232, 836 377, 896 377"/><g><circle class="nd done" cx="84" cy="87" r="7"/><text class="id" x="97" y="84">SR-1</text><text x="97" y="97">Core module</text></g><g><circle class="nd done" cx="280" cy="43.5" r="7"/><text class="id" x="293" y="40.5">SR-2</text><text x="293" y="53.5">Feed fetch</text></g><g><circle class="nd done" cx="280" cy="159.5" r="7"/><text class="id" x="293" y="156.5">SR-4</text><text x="293" y="169.5">Fixtures</text></g><g><circle class="nd review" cx="475.99999999999994" cy="101.5" r="7"/><text class="id" x="488.99999999999994" y="98.5">SR-5</text><text x="488.99999999999994" y="111.5">Parser core</text></g><g><circle class="nd human" cx="475.99999999999994" cy="246.5" r="7"/><text class="id" x="488.99999999999994" y="243.5">SR-3</text><text x="488.99999999999994" y="256.5">OPML import</text></g><g><circle class="nd human" cx="224" cy="304.5" r="7"/><text class="id" x="237" y="301.5">SR-7</text><text x="237" y="314.5">Room migration v2</text></g><g><circle class="nd ready" cx="686" cy="43.5" r="7"/><text class="id" x="699" y="40.5">SR-9</text><text x="699" y="53.5">Fixture tests</text></g><g><circle class="nd running" cx="686" cy="174" r="9"/><text class="id" x="699" y="171">SR-8</text><text x="699" y="184">Typography</text></g><g><circle class="nd ready" cx="686" cy="304.5" r="7"/><text class="id" x="699" y="301.5">SR-10</text><text x="699" y="314.5">Refresh hook</text></g><g><circle class="nd blocked" cx="461.99999999999994" cy="391.5" r="7"/><text class="id" x="474.99999999999994" y="388.5">SR-11</text><text x="474.99999999999994" y="401.5">Offline sync</text></g><g><circle class="nd human" cx="896" cy="232" r="7"/><text class="id" x="909" y="229">SR-12</text><text x="909" y="242">Article list</text></g><g><circle class="nd draft" cx="896" cy="377" r="7"/><text class="id" x="909" y="374">SR-13</text><text x="909" y="387">Subscribe screen</text></g></svg><div class="hint"><span>edges = depends on</span><span>dashed = source can't proceed</span><span>click a node to open</span></div></div></div>
+    <div class="tile focus"><div class="th"><i class="dot"></i><b>SR-12 · ticket</b><span class="keys"><kbd>⌘5</kbd><kbd>esc</kbd></span></div><div class="body">
+  <h1>Article list screen: e-ink pagination</h1>
+  <div class="field"><span>status</span><div><span class="chip lilac">draft</span><kbd>s</kbd> → ready when approved</div></div>
+  <div class="field"><span>lane</span><div><span class="chip">L3 · read the full diff</span></div></div>
+  <div class="field"><span>design</span><div><span class="chip green">r3 · approved</span>PROJECT-DESIGN.md @4b7e2d</div></div>
+  <div class="field"><span>depends on</span><div><span class="chip">SR-5 parser core</span><span class="chip">SR-8 typography</span></div></div>
+  <div class="field"><span>scope</span><div class="mono" style="font-size: 12px;">app/src/main/…/reader/list/** · core/src/…/paging/**</div></div>
+  <div class="field"><span>acceptance</span><div><ol class="ac"><li>List paginates with a full-page refresh, no partial redraws on Boox.</li><li>Unread count matches core module fixture 07.</li><li>Screenshot of first and last page attached as evidence.</li></ol></div></div>
+  <div class="field"><span>budget</span><div>$5 · 14 min · 80 turns (repo defaults)</div></div>
+  <div class="hint"><span>a approve → ready</span><span>e edit</span><span>d deps</span><span>esc back</span></div></div></div>
+    <div class="tile "><div class="th"><i class="dot"></i><b>claim order</b><span class="keys"><kbd>⌘3</kbd></span></div><div class="body"><div class="fr ready"><span class="grab">⋮⋮</span><span class="id">SR-9</span><span class="t">Feed fixture parser tests</span><span class="n">L4 · next to claim</span></div><div class="fr ready"><span class="grab">⋮⋮</span><span class="id">SR-10</span><span class="t">Boox refresh-mode hook</span><span class="n">L3</span></div><div class="fr running"><span class="grab">⋮⋮</span><span class="id">SR-8</span><span class="t">Reader typography settings</span><span class="n">run 31 · heartbeat 4s</span></div><div class="fr blocked"><span class="grab">⋮⋮</span><span class="id">SR-11</span><span class="t">Offline sync worker</span><span class="n">by SR-7</span></div><div class="fr draft"><span class="grab">⋮⋮</span><span class="id">SR-13</span><span class="t">Feed subscribe screen</span><span class="n">no design yet</span></div><div class="hint"><span>drag to reorder claim order</span><span>s set status</span><span>n new ticket</span></div></div></div>
+    <div class="tile hotb"><div class="th"><i class="dot"></i><b>run 31 · SR-8 · verifying (fast)</b><span class="keys"><kbd>⌘4</kbd></span></div><div class="body">
+  <div class="meter"><span>spend</span><div><i style="width: 28%;"></i></div><b>$1.42 / 5</b></div>
+  <div class="meter"><span>time</span><div><i style="width: 44%;"></i></div><b>06:12 / 14:00</b></div>
+  <div class="meter"><span>turns</span><div><i style="width: 47%;"></i></div><b>38 / 80</b></div>
+  <div class="log"><div>06:08 verify(fast) exit 1 · 2 tests failed</div><div>06:09 <b>correct_same_session</b> 1 of 2</div><div>06:11 edit core/Typography.kt</div><div>06:12 verify(fast) <i>running</i> <span class="cur"></span></div><div>protected digests ok · scope ok · fly-3 · heartbeat 4s</div></div></div></div>
+    <div class="tile "><div class="th"><i class="dot"></i><b>planning · SR-12</b><span class="keys"><kbd>⌘6</kbd></span></div><div class="body"><div class="empty">Conversation with the planner lives here once /grill-me runs against this ticket — questions, assumptions, deferred decisions, all attached to design r3.</div><div class="hint"><span>p start planning</span></div></div></div>
+  </div>
+</div></x-dc>
+</body>
+</html>

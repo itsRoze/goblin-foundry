@@ -1,0 +1,125 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "HUD · night · type A: Chakra Petch + Share Tech Mono"
+    },
+    {
+      "file": "MartianNight.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "HUD · night · type B: Martian Mono everywhere"
+    },
+    {
+      "file": "ChakraDay.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "HUD · day · type A"
+    },
+    {
+      "file": "KanbanNight.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Kanban · workspace 2"
+    },
+    {
+      "file": "TicketNight.dc.html",
+      "x": 1540,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Ticket page · SR-12"
+    },
+    {
+      "file": "ProjectNight.dc.html",
+      "x": 3080,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Project page · MVP"
+    },
+    {
+      "file": "WideNight.dc.html",
+      "x": 0,
+      "y": 2200,
+      "w": 2560,
+      "h": 1440,
+      "title": "HUD · night · 32\" (ticket open)"
+    },
+    {
+      "file": "WideDay.dc.html",
+      "x": 0,
+      "y": 3840,
+      "w": 2560,
+      "h": 1440,
+      "title": "HUD · day · 32\" (ticket open)"
+    },
+    {
+      "file": "TuiHome.dc.html",
+      "x": 0,
+      "y": 5480,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · home · dark terminal"
+    },
+    {
+      "file": "TuiTicket.dc.html",
+      "x": 1540,
+      "y": 5480,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · ticket SR-12"
+    },
+    {
+      "file": "TuiHomeLight.dc.html",
+      "x": 3080,
+      "y": 5480,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · home · light terminal"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief4",
+      "x": 2660,
+      "y": 2200,
+      "w": 520,
+      "text": "ROUND 4 — back to the HUD, keeping the tiling bones.\n\nSquare everything: chamfered panels, corner brackets, 1px rules, diamond nodes and orthogonal edges in the graph. Cyan = system / ready, magenta = needs a human or is live, amber = draft only. Warmth comes from copy and pacing, not from softening the geometry.\n\nTwo type options, same layout: A Chakra Petch (squared humanist) + Share Tech Mono; B Martian Mono, a wide techno mono for everything. Pick one; both day/wide boards use A for now."
+    },
+    {
+      "id": "views4",
+      "x": 4620,
+      "y": 1100,
+      "w": 420,
+      "text": "Row 2 — the other surfaces, all night / type A.\n\nKanban: columns are the lifecycle; human-only transitions are marked so a drag the controller owns is refused, not faked.\n\nTicket: spec + planning conversation side by side; state rail on the right; runs/history below it.\n\nProject: outcomes up top (what survived, not what shipped), design revisions as path+sha, the ticket table."
+    },
+    {
+      "id": "motion4",
+      "x": 2660,
+      "y": 2600,
+      "w": 520,
+      "text": "Motion: scanline over the live run, the running node pulses, cursor blinks, focused tile glows inward. All off under reduced-motion."
+    },
+    {
+      "id": "tui4",
+      "x": 4620,
+      "y": 5480,
+      "w": 420,
+      "text": "TUI investigation — the same home and ticket screens as a full-screen terminal app (168×48, box-drawing, 3 accent colours, same keys as the GUI).\n\nWhat survives: the tiles, the attention list, the claim order, the run meters, the planning conversation. What suffers: the dependency graph (hand-drawn ASCII, unmaintainable past ~15 nodes), drag-and-drop (becomes J/K reorder), and the 32\" case (a TUI just gets wider columns).\n\nA TUI could be the first client the blueprint's S1 calls \"minimal\" — the web GUI the second."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

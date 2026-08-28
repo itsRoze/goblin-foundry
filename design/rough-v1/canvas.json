@@ -1,0 +1,198 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Riso Zine · day",
+      "page": "round-2"
+    },
+    {
+      "file": "RisoNight.dc.html",
+      "x": 1380,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Riso Zine · night",
+      "page": "round-2"
+    },
+    {
+      "file": "BioNight.dc.html",
+      "x": 0,
+      "y": 1000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "BioDay.dc.html",
+      "x": 1380,
+      "y": 1000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "BlackletterNight.dc.html",
+      "x": 0,
+      "y": 2000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "BlackletterDay.dc.html",
+      "x": 1380,
+      "y": 2000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "HudNight.dc.html",
+      "x": 0,
+      "y": 3000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "HudDay.dc.html",
+      "x": 1380,
+      "y": 3000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-2"
+    },
+    {
+      "file": "Wireframe.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "FoundryDay.dc.html",
+      "x": 0,
+      "y": 1000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "FoundryNight.dc.html",
+      "x": 1380,
+      "y": 1000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "NotebookDay.dc.html",
+      "x": 0,
+      "y": 2000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "NotebookNight.dc.html",
+      "x": 1380,
+      "y": 2000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "ControlDay.dc.html",
+      "x": 0,
+      "y": 3000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "ControlNight.dc.html",
+      "x": 1380,
+      "y": 3000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "GoblinDay.dc.html",
+      "x": 0,
+      "y": 4000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    },
+    {
+      "file": "GoblinNight.dc.html",
+      "x": 1380,
+      "y": 4000,
+      "w": 1280,
+      "h": 800,
+      "page": "round-1"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief2",
+      "x": 2760,
+      "y": -140,
+      "w": 560,
+      "text": "ROUND 2 — more punk. Same state as round 1 (5 decisions, 5 frontier tickets, 1 live run). No characters. Each direction carries one motion signature; reduced-motion disables it.\n\nRound 1 lives on page \"Round 1\". Notebook is held as a candidate for the design-doc view only.",
+      "page": "round-2"
+    },
+    {
+      "id": "riso-n",
+      "x": 2760,
+      "y": 0,
+      "w": 360,
+      "text": "RISO ZINE\nWhy: punk as in print — two fluorescent inks, misregistration, rubber stamps for decision kinds, a halftone budget bar. Serif italic against a brutal grotesk.\nMotion: stamps slam in; status changes = ink drying.\nTradeoff: needs restraint at 32\" or it shouts.",
+      "page": "round-2"
+    },
+    {
+      "id": "bio-n",
+      "x": 2760,
+      "y": 1000,
+      "w": 360,
+      "text": "BIOLUMINESCENT\nWhy: dependencies are the hero — the ready frontier IS the graph, and a run visibly pulses where it grows. Cave-plum from GoblinNight, spore green, torch.\nMotion: the running node breathes; edges light up as blockers clear.\nTradeoff: graphs get messy past ~40 tickets; needs a list mode too.",
+      "page": "round-2"
+    },
+    {
+      "id": "black-n",
+      "x": 2760,
+      "y": 2000,
+      "w": 360,
+      "text": "BLACKLETTER FOUNDRY\nWhy: a masthead, not a toolbar. Giant counts you read from across the room; hazard stripes where the human is needed; a live event ticker.\nMotion: ticker crawl; counts roll like a flipboard.\nTradeoff: blackletter must stay to headings only or legibility dies.",
+      "page": "round-2"
+    },
+    {
+      "id": "hud-n",
+      "x": 2760,
+      "y": 3000,
+      "w": 360,
+      "text": "HUD\nWhy: chamfered panels, bracketed ids, a scanline over the live run — cyberpunk done as an instrument, not a movie set.\nMotion: scan sweep on the run; values tick up.\nTradeoff: closest to a genre; ages fastest.",
+      "page": "round-2"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "round-2"
+  },
+  "pages": [
+    {
+      "id": "round-2",
+      "name": "Round 2 · punk"
+    },
+    {
+      "id": "round-1",
+      "name": "Round 1"
+    }
+  ]
+}

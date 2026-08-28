@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    .tui { width: 1440px; height: 900px; background: #232A2E; color: #D3C6AA; box-sizing: border-box; padding: 26px 20px 20px; overflow: hidden; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; line-height: 18px; position: relative; }
+    .tui .tb { position: absolute; top: 0; left: 0; right: 0; height: 22px; background: #2D353B; color: #9AA595; font-size: 11px; line-height: 22px; padding: 0 12px; }
+    .tui pre { margin: 0; font: inherit; white-space: pre; letter-spacing: 0; }
+    .tui .c { color: #A7C080; font-weight: 400; } .tui .m { color: #E67E80; font-weight: 400; } .tui .a { color: #DBBC7F; font-weight: 400; } .tui .id { color: #9AA595; }
+    .tui pre > .l0, .tui pre > .ln { background: #2D353B; color: #9AA595; display: block; }
+    .tui .bx { color: #4F585E; } .tui .h { color: #9AA595; letter-spacing: .08em; }
+  </style>
+</helmet>
+<div class="tui"><div class="tb">foundry — home — foundry · 168×48 · ever · 160×44</div><pre><span class="l0"> foundry   <b class="c">[1 home]</b>  2 tickets  3 design  4 runs  5 evidence     subway-reader / mvp · r3@4b7e2d                              <b class="a">draft</b> 3 <b class="c">ready</b> 2 run 1 <b class="m">NEEDS</b> 2 rev 1 </span>
+<span class="bx">┏━</span> WAITING ON YOU · 5 <span class="bx">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓┌─</span> FRONTIER · what depends on what <span class="bx">────────────────────────────────────────────────┐</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>▶ 1  <b class="c">APPROVE</b>   <span class="id">SR-12</span>  Article list screen: e-ink pagination               <span class="bx">┃│</span>   <span class="id">SR-1</span> <b class="c">◆</b><span class="bx">──┬──</span> <span class="id">SR-2</span> <b class="c">◆</b><span class="bx">──┐</span>                                                          <span class="bx">│</span>
+<span class="bx">┃</span>                <b class="a">draft</b> · design r3 · L3                                    <span class="bx">┃│</span>   core    <span class="bx">│</span>   fetch   <span class="bx">├──</span> <span class="id">SR-5</span> <b class="c">◈</b> parser <span class="bx">──┬──</span> <span class="id">SR-9</span> <b class="c">◆</b> fixture tests               <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>           <span class="bx">│</span>           <span class="bx">│</span>       <b class="c">review</b>      <span class="bx">├──</span> <span class="id">SR-8</span> <b class="m">●</b> typography <span class="bx">──┐</span>              <span class="bx">│</span>
+<span class="bx">┃</span>  2  <b class="m">RE-ARM</b>    <span class="id">SR-7</span>   Room migration v2                                   <span class="bx">┃│</span>           <span class="bx">└──</span> <span class="id">SR-4</span> <b class="c">◆</b><span class="bx">──┤</span>                   <span class="bx">└──</span> <span class="id">SR-10</span> <b class="c">◆</b> refresh    <span class="bx">├──</span> <span class="id">SR-12</span> <b class="m">▲</b> arti<span class="bx">│</span>
+<span class="bx">┃</span>                verify failed ×2, same failure · $3.80                    <span class="bx">┃│</span>               fixtures<span class="bx">└──</span> <span class="id">SR-3</span> <b class="m">▲</b> opml import                      <span class="bx">│</span>              <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                   <span class="bx">│</span>              <span class="bx">│</span>
+<span class="bx">┃</span>  3  <b class="m">ANSWER</b>    <span class="id">SR-3</span>   OPML import                                         <span class="bx">┃│</span>   <span class="id">SR-7</span> <b class="m">▲</b> room migration <span class="bx">╌╌╌</span> <span class="id">SR-11</span> ◇ offline sync                  <span class="bx">│</span>              <span class="bx">│</span>
+<span class="bx">┃</span>                run asked: keep folder hierarchy?                         <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>   <b class="c">◆</b> done/<b class="c">ready</b>  <b class="c">◈</b> <b class="c">review</b>  <b class="m">●</b> <b class="m">running</b>  <b class="m">▲</b> needs you  ◇ blocked  · <b class="a">draft</b>    <span class="bx">╌╌</span> source<span class="bx">│</span>
+<span class="bx">┃</span>  4  <b class="c">REVIEW</b>    <span class="id">SR-5</span>   Feed parser core (pure Kotlin)                      <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                PR #14 · CI green · L3 · +412 −38                         <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>  5  <b class="c">RECONCILE</b> <span class="id">SR-5</span>   proposes PROJECT-DESIGN.md r4                       <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                sha 9f3c1a · accept / reject                              <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span> j/k move   ⏎ open   a approve   r re-arm   : command                     <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┃</span>                                                                          <span class="bx">┃│</span>                                                                                  <span class="bx">│</span>
+<span class="bx">┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└──────────────────────────────────────────────────────────────────────────────────┘</span>
+<span class="bx">┌─</span> CLAIM ORDER <span class="bx">────────────────────────────────────────────────────────────┐┌─</span> RUN 31 · <span class="id">SR-8</span> · verifying (fast) · fly-3 <span class="bx">───────────────────────────────────────┐</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span>                                                                                  <span class="bx">│</span>
+<span class="bx">│</span> <b class="c">◆</b> <span class="id">SR-9</span>   Feed fixture parser tests                        <b class="c">ready</b>   L4 · ne<span class="bx">││</span> spend  <b class="c">▮▮▮▮▮</b>▯▯▯▯▯▯▯▯▯▯▯▯▯   $1.42 / 5.00                                         <span class="bx">│</span>
+<span class="bx">│</span> <b class="c">◆</b> <span class="id">SR-10</span>  Boox refresh-mode hook                                  <b class="c">ready</b>   <span class="bx">││</span> wall   <b class="c">▮▮▮▮▮▮▮▮</b>▯▯▯▯▯▯▯▯▯▯   06:12 / 14:00                                        <span class="bx">│</span>
+<span class="bx">│</span> <b class="m">●</b> <span class="id">SR-8</span>   Reader typography settings                  <b class="m">running</b> run 31 · hb <span class="bx">││</span> turns  <b class="c">▮▮▮▮▮▮▮▮▮</b>▯▯▯▯▯▯▯▯▯   38 / 80                                              <span class="bx">│</span>
+<span class="bx">│</span> ◇ <span class="id">SR-11</span>  Offline sync worker                                blocked by SR<span class="bx">││</span>                                                                                  <span class="bx">│</span>
+<span class="bx">│</span> · <span class="id">SR-13</span>  Feed subscribe screen                            <b class="a">draft</b>   no desi<span class="bx">││</span> 06:08 verify(fast) exit 1 · 2 tests failed                                       <span class="bx">│</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span> 06:09 correct_same_session 1/2                                                   <span class="bx">│</span>
+<span class="bx">│</span> J/K reorder claim order   s status   n new                               <span class="bx">││</span> 06:11 edit core/Typography.kt                                                    <span class="bx">│</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span> 06:12 verify(fast) <b class="m">running</b> <b class="m">█</b>                                                     <span class="bx">│</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span> digests ok · scope ok · fly-3 · hb 4s                                            <span class="bx">│</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span>                                                                                  <span class="bx">│</span>
+<span class="bx">│</span>                                                                          <span class="bx">││</span>                                                                                  <span class="bx">│</span>
+<span class="bx">└──────────────────────────────────────────────────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────┘</span>
+<span class="l0"> :                                                                                                                                tue 09:41  ? help  q quit </span></pre></div>
+</x-dc>
+</body>
+</html>

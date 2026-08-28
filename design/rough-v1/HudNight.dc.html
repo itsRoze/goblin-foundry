@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Share+Tech+Mono&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    
+  .h { width: 1280px; height: 800px; background: #05070B; color: #D9E7EC; font-family: 'Chakra Petch', sans-serif; font-size: 13px; position: relative; overflow: hidden; box-sizing: border-box; padding: 18px 22px; display: grid; grid-template-rows: 56px 1fr; gap: 14px;
+       background-image: linear-gradient(#1C2A36 1px, transparent 1px), linear-gradient(90deg, #1C2A36 1px, transparent 1px); background-size: 40px 40px; }
+  .h .top { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #3AF0FF; padding-bottom: 10px; }
+  .h .top h1 { font-weight: 700; font-size: 26px; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+  .h .top h1 b { color: #3AF0FF; }
+  .h .top .st { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #6F8592; letter-spacing: .08em; }
+  .h .top .st b { color: #D9E7EC; font-weight: 400; }
+  .h .top .cts { margin-left: auto; display: flex; gap: 16px; font-family: 'Share Tech Mono'; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #6F8592; }
+  .h .top .cts b { color: #D9E7EC; font-size: 18px; font-weight: 400; margin-right: 4px; } .h .top .cts .hot b { color: #FF2D86; }
+  .h .grid { display: grid; grid-template-columns: 1.35fr 1fr 0.95fr; gap: 14px; min-height: 0; }
+  .h .pan { background: #0B1119; clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); padding: 14px 16px; position: relative; display: flex; flex-direction: column; gap: 6px; }
+  .h .pan:before { content: ''; position: absolute; inset: 0; border: 1px solid #1C2A36; clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); pointer-events: none; }
+  .h .pan.hot:before { border-color: #FF2D86; }
+  .h .pan.run:before { border-color: #3AF0FF; }
+  .h .hd { font-family: 'Share Tech Mono'; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #3AF0FF; display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .h .hd span { color: #6F8592; }
+  .h .pan.hot .hd { color: #FF2D86; }
+  .h .r { display: grid; grid-template-columns: 34px 92px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid #1C2A36; }
+  .h .r .n { font-family: 'Share Tech Mono'; color: #6F8592; font-size: 12px; }
+  .h .r .n:before { content: '['; } .h .r .n:after { content: ']'; }
+  .h .r .kind { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: #3AF0FF; }
+  .h .r.hot .kind { color: #FF2D86; text-shadow: 0 0 10px rgba(255,45,134,.4); }
+  .h .r .t { font-weight: 600; font-size: 14px; }
+  .h .r .t em { display: block; font-style: normal; font-weight: 400; font-size: 11.5px; color: #6F8592; font-family: 'Share Tech Mono'; }
+  .h .r .id { font-family: 'Share Tech Mono'; color: #6F8592; font-size: 11px; margin-right: 6px; }
+  .h .f { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid #1C2A36; }
+  .h .f .id { font-family: 'Share Tech Mono'; color: #6F8592; font-size: 11px; }
+  .h .f .t { font-weight: 600; }
+  .h .f .s { font-family: 'Share Tech Mono'; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #3AF0FF; }
+  .h .f.running .s { color: #FF2D86; } .h .f.blocked, .h .f.draft { opacity: .55; } .h .f.blocked .s, .h .f.draft .s { color: #6F8592; }
+  .h .big { font-family: 'Share Tech Mono'; font-size: 46px; line-height: 1; color: #D9E7EC; letter-spacing: -.02em; }
+  .h .big small { font-size: 14px; color: #6F8592; letter-spacing: .1em; }
+  .h .g { height: 10px; background: #1C2A36; position: relative; margin: 6px 0 12px; }
+  .h .g i { position: absolute; left: 0; top: 0; bottom: 0; background: #3AF0FF; box-shadow: 0 0 12px rgba(58,240,255,.35); }
+  .h .g i.m { background: #FF2D86; box-shadow: 0 0 12px rgba(255,45,134,.4); }
+  .h .g b { position: absolute; right: 0; top: -15px; font-family: 'Share Tech Mono'; font-size: 11px; font-weight: 400; color: #6F8592; }
+  .h .scan { position: absolute; left: 0; right: 0; height: 40px; background: linear-gradient(transparent, rgba(58,240,255,.35), transparent); animation: scan 2.6s linear infinite; pointer-events: none; }
+  @keyframes scan { from { top: -40px; } to { top: 100%; } }
+  .h .ev { font-family: 'Share Tech Mono'; font-size: 11.5px; color: #6F8592; line-height: 1.55; }
+  .h .ev b { color: #3AF0FF; font-weight: 400; } .h .ev i { color: #FF2D86; font-style: normal; }
+  
+  </style>
+</helmet>
+<div class="h">
+  <div class="top"><h1>Goblin <b>Foundry</b></h1><span class="st">APP <b>SUBWAY READER</b> · PROJECT <b>MVP</b> · DESIGN <b>R3</b> @4B7E2D</span>
+    <div class="cts"><span class=""><b>3</b>draft</span><span class=""><b>2</b>ready</span><span class=""><b>1</b>running</span><span class="hot"><b>2</b>needs you</span><span class=""><b>1</b>review</span><span class=""><b>4</b>done</span></div></div>
+  <div class="grid">
+    <div class="pan hot"><div class="hd">Waiting on you <span>5 · oldest first · ⌘K</span></div><div class="r "><span class="n">1</span><span class="kind">Approve</span><div class="t"><span class="id">SR-12</span>Article list screen: e-ink pagination<em>draft · design r3 · lane L3</em></div></div><div class="r hot"><span class="n">2</span><span class="kind">Re-arm</span><div class="t"><span class="id">SR-7</span>Room migration v2<em>verify failed twice with the same failure · $3.80 spent</em></div></div><div class="r hot"><span class="n">3</span><span class="kind">Answer</span><div class="t"><span class="id">SR-3</span>OPML import<em>run asked: keep folder hierarchy?</em></div></div><div class="r "><span class="n">4</span><span class="kind">Review</span><div class="t"><span class="id">SR-5</span>Feed parser core (pure Kotlin)<em>PR #14 · CI passing · lane L3 · +412 −38</em></div></div><div class="r "><span class="n">5</span><span class="kind">Reconcile</span><div class="t"><span class="id">SR-5</span>proposes PROJECT-DESIGN.md r4<em>sha 9f3c1a · accept or reject</em></div></div></div>
+    <div class="pan"><div class="hd">Frontier <span>claim order</span></div><div class="f ready"><span class="id">SR-9</span><span class="t">Feed fixture parser tests</span><span class="s">ready L4</span></div><div class="f ready"><span class="id">SR-10</span><span class="t">Boox refresh-mode hook</span><span class="s">ready L3</span></div><div class="f running"><span class="id">SR-8</span><span class="t">Reader typography settings</span><span class="s">heartbeat 4s</span></div><div class="f blocked"><span class="id">SR-11</span><span class="t">Offline sync worker</span><span class="s">blocked by SR-7</span></div><div class="f draft"><span class="id">SR-13</span><span class="t">Feed subscribe screen</span><span class="s">draft no design</span></div></div>
+    <div class="pan run"><div class="scan"></div><div class="hd">Run 31 · SR-8 <span>fly-3</span></div>
+      <div class="big">$1.42<small> / 5.00</small></div><div class="g"><i style="width: 28%;"></i><b>SPEND</b></div>
+      <div class="big">06:12<small> / 14:00</small></div><div class="g"><i style="width: 44%;"></i><b>WALL</b></div>
+      <div class="big">38<small> / 80 TURNS</small></div><div class="g"><i class="m" style="width: 47%;"></i><b>TURNS</b></div>
+      <div class="hd" style="margin-top: 6px;">Events <span>verifying (fast)</span></div>
+      <div class="ev">06:08 verify(fast) exit 1 · 2 tests<br>06:09 <b>correct_same_session</b> 1/2<br>06:11 edit core/Typography.kt<br>06:12 verify(fast) <i>running</i><br>digests ok · scope ok · heartbeat 4s</div>
+    </div>
+  </div>
+</div></x-dc>
+</body>
+</html>

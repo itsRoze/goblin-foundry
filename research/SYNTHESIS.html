@@ -1,0 +1,436 @@
+<title>Goblin Foundry Field Notes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F4F1;--surface:#FBFBF9;--surface2:#E9EBE6;--line:#D3D6CF;--ink:#1C1F1E;--muted:#5B625F;--faint:#8A908C;
+  --accent:#B8541F;--accent-ink:#FFFFFF;--accent-soft:#F4E3D8;
+  --adopt:#2E7D6B;--adopt-soft:#DCEFE9;--adapt:#9A6A00;--adapt-soft:#F5EAC8;--ref:#4B6A8A;--ref-soft:#DDE6EF;--skip:#7A7A76;--skip-soft:#E6E6E3;
+  --warn:#A3372A;--warn-soft:#F5DCD8;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;--body:"IBM Plex Sans","Segoe UI",Roboto,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#16191A;--surface:#1E2224;--surface2:#262B2D;--line:#343A3C;--ink:#E8E6E0;--muted:#A9AFAA;--faint:#767C78;
+  --accent:#E07A3F;--accent-ink:#16191A;--accent-soft:#3A2618;
+  --adopt:#5FB89F;--adopt-soft:#1D3530;--adapt:#D9A93E;--adapt-soft:#3A2F12;--ref:#8FB0D0;--ref-soft:#1F2E3C;--skip:#9A9A95;--skip-soft:#2B2D2C;
+  --warn:#E07A6E;--warn-soft:#3B1F1C;
+}}
+:root[data-theme="dark"]{
+  --bg:#16191A;--surface:#1E2224;--surface2:#262B2D;--line:#343A3C;--ink:#E8E6E0;--muted:#A9AFAA;--faint:#767C78;
+  --accent:#E07A3F;--accent-ink:#16191A;--accent-soft:#3A2618;
+  --adopt:#5FB89F;--adopt-soft:#1D3530;--adapt:#D9A93E;--adapt-soft:#3A2F12;--ref:#8FB0D0;--ref-soft:#1F2E3C;--skip:#9A9A95;--skip-soft:#2B2D2C;
+  --warn:#E07A6E;--warn-soft:#3B1F1C;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent);outline:none}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.shell{display:grid;grid-template-columns:1fr;gap:0;max-width:1180px;margin:0 auto;padding:0 20px}
+@media (min-width:1000px){.shell{grid-template-columns:220px minmax(0,1fr);gap:48px}}
+nav.rail{display:none}
+@media (min-width:1000px){nav.rail{display:block;position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px}}
+nav.rail .k{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+nav.rail ol{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:6px}
+nav.rail li a{display:block;color:var(--muted);font-size:13.5px;line-height:1.3;padding:2px 0 2px 10px;border-left:2px solid var(--line);border-bottom:0}
+nav.rail li a:hover{color:var(--ink);border-left-color:var(--accent)}
+main{min-width:0;padding:40px 0 96px}
+header.masthead{padding:8px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,5vw,54px);line-height:1.02;letter-spacing:-.015em;margin:0 0 18px;text-wrap:balance}
+.lede{font-size:18px;line-height:1.5;color:var(--muted);max-width:68ch;margin:0 0 22px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:8px}
+.fact{background:var(--surface);border:1px solid var(--line);padding:12px 14px}
+.fact b{display:block;font-family:var(--display);font-size:26px;font-weight:700;line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.fact span{font-size:12.5px;color:var(--muted);line-height:1.3;display:block}
+section{margin:0 0 56px;scroll-margin-top:24px}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,32px);line-height:1.1;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+h2 .n{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--accent);letter-spacing:.08em;display:block;margin-bottom:8px}
+h3{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.2;margin:32px 0 10px;text-wrap:balance}
+h4{font-family:var(--body);font-weight:600;font-size:15px;margin:22px 0 6px}
+p{max-width:72ch;margin:0 0 14px}
+.sub{color:var(--muted);max-width:72ch;margin:0 0 22px;font-size:15.5px}
+ul,ol{max-width:72ch;padding-left:22px;margin:0 0 16px}
+li{margin:0 0 7px}
+li>ul{margin-top:6px}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface2);padding:1px 5px;border-radius:2px}
+.src{font-family:var(--mono);font-size:11.5px;color:var(--faint);white-space:nowrap}
+.src a{color:var(--faint)}
+.src a:hover{color:var(--accent)}
+.thesis{display:grid;grid-template-columns:1fr;gap:14px;margin:18px 0 8px}
+@media (min-width:760px){.thesis{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);padding:18px 20px}
+.card h4{margin:0 0 8px;font-family:var(--display);font-size:17px;font-weight:700;line-height:1.2}
+.card p{font-size:14.5px;margin:0 0 8px;color:var(--ink)}
+.card p:last-child{margin:0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:14px 0 22px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap;line-height:1.5}
+.chip.adopt{background:var(--adopt-soft);color:var(--adopt)}
+.chip.adapt{background:var(--adapt-soft);color:var(--adapt)}
+.chip.ref{background:var(--ref-soft);color:var(--ref)}
+.chip.skip{background:var(--skip-soft);color:var(--skip)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.layer{border-left:3px solid var(--accent);padding:4px 0 4px 18px;margin:26px 0 30px}
+.layer h3{margin-top:0}
+.layer .role{color:var(--muted);font-size:14.5px;margin:0 0 12px;max-width:72ch}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:14.5px;max-width:78ch;margin:0 0 12px}
+.kv dt{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.kv dd{margin:0}
+blockquote{margin:18px 0;padding:14px 18px;border-left:3px solid var(--line);background:var(--surface);max-width:72ch;font-style:italic;color:var(--ink)}
+blockquote cite{display:block;margin-top:6px;font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.decision{background:var(--surface);border:1px solid var(--line);padding:16px 18px;margin:0 0 14px}
+.decision h4{margin:0 0 8px;font-family:var(--display);font-size:16px;font-weight:700}
+.decision .opts{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0}
+@media (min-width:760px){.decision .opts{grid-template-columns:1fr 1fr}}
+.decision .opt{background:var(--surface2);padding:10px 12px;font-size:14px}
+.decision .opt b{display:block;margin-bottom:3px;font-weight:600}
+.decision .lean{font-size:14px;margin:6px 0 0}
+.decision .lean b{color:var(--accent);font-weight:600}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 18px;max-width:72ch;margin:18px 0 22px;font-size:15px}
+.callout b{font-weight:600}
+.qgrid{display:grid;grid-template-columns:1fr;gap:10px}
+.q{background:var(--surface);border:1px solid var(--line);padding:12px 14px;font-size:14.5px;display:grid;grid-template-columns:1fr;gap:4px}
+.q .how{color:var(--muted);font-size:13.5px}
+.q .how::before{content:"how → ";font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.two{display:grid;grid-template-columns:1fr;gap:0 40px}
+@media (min-width:860px){.two{grid-template-columns:1fr 1fr}}
+footer{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13.5px}
+.srcmap li{font-size:14px}
+</style>
+
+<div class="shell">
+<nav class="rail" aria-label="Sections">
+  <p class="k">Field notes</p>
+  <ol>
+    <li><a href="#given">Givens &amp; corpus</a></li>
+    <li><a href="#theses">Eight theses</a></li>
+    <li><a href="#layers">The layer map</a></li>
+    <li><a href="#blocks">Adopt list</a></li>
+    <li><a href="#decisions">Decisions the blueprint must make</a></li>
+    <li><a href="#failures">Failure modes</a></li>
+    <li><a href="#metrics">What to measure</a></li>
+    <li><a href="#questions">Open questions</a></li>
+    <li><a href="#sources">Source map</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="masthead">
+  <p class="eyebrow">Research synthesis · 2026-08-26</p>
+  <h1>Goblin Foundry Field Notes</h1>
+  <p class="lede">What two rounds of research say about building an open-source, pi-based software factory that runs its agents in cloud sandboxes. This is the material a blueprint gets drawn from — the facts, the reusable parts, the tensions, and the questions still open — not the blueprint itself.</p>
+  <div class="facts">
+    <div class="fact"><b>57</b><span>research files, ~134k words, under <code>research/</code></span></div>
+    <div class="fact"><b>14</b><span>resources requested → ~45 resources actually read</span></div>
+    <div class="fact"><b>222</b><span>follow-up candidates queued in <code>_meta/FOLLOWUP-QUEUE.md</code></span></div>
+    <div class="fact"><b>4</b><span>theme digests in <code>research/_synthesis/</code> (this page condenses them)</span></div>
+  </div>
+</header>
+
+<section id="given">
+  <h2><span class="n">00</span>Givens, and what the corpus turned out to be</h2>
+  <p>Fixed before research started: the agent runtime is <strong>pi</strong> (<code>earendil-works/pi</code>, formerly <code>badlogic/pi-mono</code> — same repo, transferred April 2026), it is a <strong>solo</strong> project that will be <strong>open-sourced</strong>, and workers run in <strong>cloud sandboxes</strong>. Every "fit" judgment below is filtered through those three constraints.</p>
+  <p>The requested resources sorted themselves into roles cleanly, which is itself a finding: <strong>no single source ships isolation + acceptance + queue together.</strong> Sandcastle is execution plumbing, Super Simple Software Factory is a control plane, SwarmForge is an inter-agent protocol, fusion-harness is a definition-of-done primitive, Pocock's skills are the human-facing process, and the blogs are the field evidence for why any of it matters. The blueprint will be a composition.</p>
+  <div class="callout"><b>Two lucky facts.</b> Several requested resources are already pi-native: fusion-harness and SSSF run only on pi, exe.dev's image ships pi prebuilt, E2B/Vercel/Daytona/Sprites have first-party pi templates, and SlopCodeBench has a <code>pi.yaml</code> adapter. Choosing pi did not cost compatibility with this corpus — it bought it.</div>
+</section>
+
+<section id="theses">
+  <h2><span class="n">01</span>Eight theses the evidence supports</h2>
+  <p class="sub">Cross-cutting conclusions that showed up independently in more than one theme. A blueprint that contradicts one of these should have a reason.</p>
+  <div class="thesis">
+    <div class="card"><h4>1 · Agent proposes, code disposes.</h4><p>Sequencing, retries, gates, completion checks and merges are code the factory owns; agents are bounded nodes returning typed envelopes. Every rigorous source (SSSF, bmad-loop, Stripe Blueprints, Uber AutoCover) converges here; the agent-driven variants (Sandcastle's merger agent, Ralph deciding "done") are where the documented failures live.</p><p class="src">B §1.2 · D §1.8 · runtime/disler-pi-factories.md</p></div>
+    <div class="card"><h4>2 · pi is deliberately empty where a factory needs the most — and that is fine.</h4><p>No permissions, sandbox, subagents, MCP or orchestration in core; ~35 extension events, tool override with <code>operations</code> injection, <code>--mode rpc</code>/<code>json</code>, and <code>appendEntry</code> are enough to build the entire worker side without forking. Orchestration belongs outside pi anyway (thesis 1), and the maintainers explicitly want it there.</p><p class="src">A §1.1–1.3, §1.13 · runtime/pi.md</p></div>
+    <div class="card"><h4>3 · Fresh context per task; resumed session per correction.</h4><p>Ralph, afk-workflow, GSD, QRSPI and bmad-loop all restart context per ticket/stage; SSSF and Sandcastle show that re-prompting the <em>same</em> session on a gate failure costs one message where a restart throws away everything learned. Never resume across a model change.</p><p class="src">B §1.4–1.5, §3</p></div>
+    <div class="card"><h4>4 · "Done" is a stack of oracles; only deterministic ones may block.</h4><p>Build → lint → tests → diff-coverage → weak-oracle scan → diff-scoped mutation block; LLM graders rank and filter; held-out checkpointed evals judge the harness, not the PR. 80% of agent-written test patches carry no real oracle — the gate must check that tests <em>can fail</em>.</p><p class="src">C §1.1–1.4 · validation/validation-landscape.md</p></div>
+    <div class="card"><h4>5 · Hold the verifier out of the agent's reach.</h4><p>StrongDM stores scenarios outside the repo; SWE-bench discards test-file edits; FrontierCode requires agent tests to fail on the pre-patch tree; fusion-harness proves its gate RED before the build starts. In-repo tests serve the inner loop; held-out acceptance is the definition of done.</p><p class="src">D §1.9 · C §3 · skills-agents/fusion-harness.md</p></div>
+    <div class="card"><h4>6 · Every factory with published throughput still has a human merge gate.</h4><p>Stripe (1,300 minion PRs/week, all human-reviewed), Ramp, WorkOS, Uber. The one lights-off shop publishes no outcomes; HumanLayer's lights-off run ended in a rewrite. The solo answer is "lights-dim": intake assigns a lane (L3 read every diff / L4 read the PR / L5 sampled) and defect rate is logged per lane.</p><p class="src">D §1.1, §5 · blogs/dexhorthy-*.md</p></div>
+    <div class="card"><h4>7 · Per-VM isolation makes worktrees, jj workspaces and file locks moot — but not provenance.</h4><p>Every worktree orchestrator assumes a shared checkout on one machine, which cloud sandboxes remove. What survives: deterministic branch names, provenance trailers in commits + PR body, a tool-call-granular snapshot journal, stacked PRs, and a merge queue whose failures re-enter the still-live session.</p><p class="src">C §1.11–1.16 · git-snapshots/landscape.md</p></div>
+    <div class="card"><h4>8 · Context is scarce; instruction budget is a hard constraint.</h4><p>~100-line router file (OpenAI), CLAUDE.md &lt;60 lines (HumanLayer), models silently drop steps past ~150–200 instructions, "a 1,000-line plan contains as many surprises as 1,000 lines of code." Guardrails go into gates and scripts, not prompt text; pi's short prompt and 3× lower context per turn is a real cost advantage.</p><p class="src">B §1.12 · D §1.7 · A §1.16</p></div>
+  </div>
+</section>
+
+<section id="layers">
+  <h2><span class="n">02</span>The layer map</h2>
+  <p class="sub">The corpus decomposes into seven layers. For each: what we know, the candidate parts with verdicts, and the tension a blueprint must settle. Verdict legend — <span class="chip adopt">adopt</span> use as-is or near-verbatim · <span class="chip adapt">adapt</span> port the design, rewrite the code · <span class="chip ref">reference</span> steal ideas only · <span class="chip skip">skip</span>.</p>
+
+  <div class="layer">
+    <h3>L1 · Intake &amp; alignment (the day shift)</h3>
+    <p class="role">Where a human turns intent into work an agent can finish unattended. Every source agrees this is the only ceiling-raising lever a solo dev has; the harness only raises the floor.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>Four alignment phases (product review with mockups → architecture → program design as call-stack trees / file-tree diffs → 1–3 vertical slices per session) cut rework from 20–50% on one-shot PRs; ~40% of tasks are one-shot and skip it. Pocock's chain (<code>grill-with-docs → CONTEXT.md + ADRs → to-spec → to-tickets → triage</code>) is the packaged version and its skills load unchanged in pi. Wayfinder adds a map (destination / decisions so far / not yet specified / out of scope) and typed decision tickets, with HITL vs AFK tagging.</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> mattpocock/skills day-shift chain as-is · <span class="chip adopt">adopt</span> Wayfinder map + ticket types · <span class="chip adapt">adapt</span> QRSPI-lite (Q → ticket-hidden research → ~200-line design doc deep-reviewed → structure "header file" → spot-checked plan) · <span class="chip adapt">adapt</span> Spec-Kit's three templates (<code>spec/plan/tasks.md</code>, <code>[P]</code> markers) · <span class="chip adopt">adopt</span> SSSF operator skill ("print the menu and wait", four-line prompt: ask / where / done-means / out-of-scope) · <span class="chip skip">skip</span> BMAD personas, GSD command router.</dd>
+      <dt>Tension</dt><dd>Skills vs owned process. Pocock: small composable skills, "fix the failure modes, don't own the process"; GSD/BMAD/Spec-Kit own the phase sequence. Middle seen in SSSF and Spec-Kit's <code>converge</code>: phases in code, phase <em>content</em> as skill files. pi caveat: model-invoked skills are less reliable than in Claude Code, so AFK phases must force-load (<code>--skill</code>, <code>before_agent_start</code>).</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L2 · Control plane (queue, scheduler, phases, gates)</h3>
+    <p class="role">The deterministic program that owns the task graph and calls agents as nodes. Lives outside the sandbox, stateless across restarts, treats the tracker as truth.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>Planner emits a dependency graph; scheduler runs the ready frontier (open ∧ unblocked ∧ unclaimed) — same shape in Sandcastle, fusion-harness, <code>implement-spec</code>, GSD waves, Spec-Kit, Symphony. Markdown plan files do not survive &gt;1 worker; Beads gives atomic <code>bd ready --claim --json</code>, hash IDs, <code>blocks</code> edges, gates (<code>human | timer | gh:run | gh:pr</code>) and execution metadata (suggested model, effort, parallel group). Symphony's SPEC (Unclaimed → Claimed → Running → RetryQueued → Released, <code>max_turns</code> 20, 5-min stall, exponential backoff capped at 300 s, nothing persisted across restart) is the most complete public state machine. Triage is a state machine with transitions agents may not make (<code>needs-triage</code>, <code>wontfix</code>).</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> SSSF phase primitive + typed envelope triad (schema ↔ prompt example ↔ call site) + post-hoc gates (<code>artifacts_exist, diff_matches_claims, verdict_consistent, tests_pass</code>) + permission-by-diff with <code>protected_files</code> — rewritten in TS over pi · <span class="chip adopt">adopt</span> Beads on the controller as the queue (one issue per VM via prompt; server mode deferred) · <span class="chip adopt">adopt</span> Symphony/AO state machine + Stripe's two-CI-round cap · <span class="chip adopt">adopt</span> role = tool allowlist (<code>READONLY/FULL/VALIDATOR</code>) + writer lease · <span class="chip adopt">adopt</span> Sandcastle produce-then-extract, two-phase timeouts, <code>{{ARG}}</code> substitution as injection boundary, deterministic branch names · <span class="chip adapt">adapt</span> bmad-loop's orchestrator design (<code>policy.toml</code> budgets, hook-event files, separate dev/review sessions, CRITICAL/PREFERENCE escalation, deferred-work ledger) · <span class="chip adapt">adapt</span> humanlayer <code>design-control-loop</code> for every recurring lane, bounded to one open PR · <span class="chip ref">reference</span> SwarmForge inbox/outbox handoff + two-call audit gate (no license — reimplement semantics only) · <span class="chip skip">skip</span> in-session Stop-hook ralph plugin (doesn't reset context).</dd>
+      <dt>Tension</dt><dd>Beads vs GitHub Issues vs markdown as the tracker. Beads is the only correct multi-worker queue but is Dolt/Go weight that must be pinned into images; GitHub renders the frontier natively ("blocking is what renders the frontier visually") but needs <code>gh</code> and API rate in the loop. Leading option: Beads as queue on the controller, GitHub as human UI via <code>bd github</code> sync.</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L3 · Worker runtime (pi inside the sandbox)</h3>
+    <p class="role">One pi session per task, driven headlessly. Everything factory-specific is a TypeScript extension pre-baked into the image.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>Three headless seams in maturity order: <code>pi --mode rpc</code> / <code>--mode json -p</code> JSONL on stdio (stable, any controller language, <code>extension_ui_request</code> gives headless HITL); SDK <code>createAgentSession()</code> in-process (stable, TS-only); <code>pi-server/client/protocol</code> (leases, authoritative snapshots — "may be removed without notice", no shipped service). <code>--session-id</code> is create-or-continue, so "run" and "re-prompt with a correction" are the same call. Gotchas: close stdin when spawning <code>pi -p</code>; split RPC frames on <code>\n</code> only. Session JSONL is the audit artifact everywhere and is mid-migration (v3 tree → v4 durable records + SQLite) — pin pi version, treat layout as versioned data. Opus 4.8/Sonnet 5 invent tool fields on pi's stricter <code>edit</code> schema because they were RL-trained in Claude Code's forgiving harness. Databricks (Aug 2026): pi + Opus 4.8 highest pass rate, ~3× less context per turn, &gt;2× cheaper per task than Claude Code/Codex.</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> <code>--mode rpc</code> per task · <span class="chip adopt">adopt</span> <code>tool_call</code> policy hook (block/mutate/terminate) + <code>tool_result</code> scrub/truncate · <span class="chip adopt">adopt</span> <code>terminate:true</code> structured output for envelopes · <span class="chip adopt">adopt</span> <code>appendEntry</code> for task id / checkpoint SHAs / gate verdicts · <span class="chip adopt">adopt</span> provider hooks for telemetry, budget kill-switch, gateway routing · <span class="chip adopt">adopt</span> Agent Skills spec frontmatter as the portability line (identical in pi and Claude Code; <code>disable-model-invocation</code> honored by both) · <span class="chip adapt">adapt</span> official examples (<code>git-checkpoint.ts</code>, <code>subagent/</code>, <code>ssh.ts</code>, <code>sandbox/</code>) by vendoring · <span class="chip adapt">adapt</span> Claude-hook-JSON shim in one extension so existing hook scripts run unchanged · <span class="chip adapt">adapt</span> clean-room children (<code>--no-skills --no-extensions --no-context-files</code>) with explicit <code>--skill</code> · <span class="chip ref">reference</span> 30+ subagent packages (capability ceilings, launch-contract digests, <code>gate:"npm test"</code>, journaled <code>resumeFromRunId</code>) — never install in workers · <span class="chip ref">reference</span> pi-server lease/snapshot semantics for the controller's own protocol.</dd>
+      <dt>Tension</dt><dd>Agent-in-VM (works today, every provider demos it, VM must hold some LLM credential unless proxied) vs tools-in-VM via Gondolin/<code>ssh.ts</code> (credentials and sessions central; needs nested virt on the controller host; controller crash kills every in-flight session). Read: A now, but write the worker extension so it also works under B. Sub-agents inside a worker vs fan-out in the controller: maintainers call sub-agents "a black box within a black box"; workers stay single-session, fan-out lives in the controller.</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L4 · Sandbox / execution substrate</h3>
+    <p class="role">The cloud VM each worker runs in. Isolation is the only security boundary because pi runs YOLO inside it.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>The landscape has converged (microVM, TS SDK, sub-2 s start, SNI egress allowlists). Differentiators: plan floor vs per-second billing; <strong>fork-1:N from a warm state</strong> (E2B, Vercel, boxd, Morph yes; Sprites, Cloudflare, exe.dev no — it is the cloud replacement for git worktrees); <strong>secrets injected at the edge</strong> so the VM never holds a key (Vercel, Cloudflare, Daytona, exe.dev, Gondolin). Firecracker cannot bind-mount a checkout — every cloud path needs a sync strategy (push <code>refs/sandbox/&lt;run&gt;</code> vs pull diff/bundle). Reference workload 10 × 2 vCPU × 4 h/day ≈ 880 sandbox-h/mo costs $30 (Sprites) → $350 (E2B); the unmeasured variable is real CPU duty cycle while waiting on the LLM. Ramp/Stripe/Uber all rebuild a warm image on a cron (&lt;10 s start) — latency is the adoption lever. Daytona went closed-source in June; Cloudflare 1.0 preview breaks the API; treat every provider as replaceable behind a small interface.</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> E2B as primary candidate (pause-with-memory, <code>fork({count})</code>, official pi template, Apache-2 infra; $150 floor, idle billed) · <span class="chip adopt">adopt</span> Vercel Sandbox as second implementation (pi preinstalled, fork, best credential brokering, active-CPU billing; 24 h cap) · <span class="chip adapt">adapt</span> exe.dev / Sprites for a small persistent-bot tier (merge-queue repair, flaky-test fixer) · <span class="chip adopt">adopt</span> Inkwell credential boundary (host holds provisioning key; VM gets capped, revocable <code>sbx-</code> runtime key) as provider-agnostic fallback · <span class="chip adopt">adopt</span> own Docker image with <code>ARG PI_VERSION</code> · <span class="chip ref">reference</span> Gondolin (best OSS secrets story; needs nested virt) and OpenShell (YAML policy, K8s gateway) · <span class="chip ref">reference</span> Amp orbs (setup-then-snapshot, <code>services.yaml</code> portals, per-thread OIDC) as a repo-side contract · <span class="chip skip">skip</span> Modal for now.</dd>
+      <dt>Tension</dt><dd>Ephemeral fork-per-task (E2B/Vercel) vs long-lived restored pool (Sprites/exe.dev): drives provider choice and depends on the duty-cycle measurement nobody has done. Secrets: proxy injection (never in VM, TLS interception, lock-in) vs capped runtime key (provider-agnostic, disposable) vs plain env — layer them. Egress allowlists are SNI/Host-only everywhere → git over HTTPS only.</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L5 · Validation (oracles, gates, evals)</h3>
+    <p class="role">What decides "done" — for a tool call, a phase, a PR, and the harness itself. Ordered by cost and by how hard each oracle is to fool.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>Three independent production/practitioner orderings agree: build → lint/typecheck → tests → diff-coverage (≥80% on changed lines) → weak-oracle scan → arch/dup rules → diff-scoped mutation; LLM review after, as a generate → different-vendor grade → dedupe → suppress chain (Uber: 75% useful, 65% addressed only once chained). Two 5-second "tests can fail" proxies exist besides mutation: the no-op stub check and B/S/G replay on the pre-fix commit (+7.4 pp when fed back). Uncle Bob's per-file zero-survivor rule beats a global percentage (percentages are gamed by adding easy code) — but all his repos are unlicensed. fusion-harness's gate-first pattern (validator writes an executable gate <em>before</em> the build, proven RED at baseline, builder iterates on verbatim <code>FAIL:</code> lines, one gate repair per run) is the strongest definition-of-done primitive found. Evidence gates (deny <code>edit</code> before <code>read</code>; deny commit without fresh verify hash; deny <code>tests/**</code> writes in fix tasks) are ~100-line <code>tool_call</code> hooks and cut tokens 12%. SlopCodeBench (checkpointed specs, hidden black-box tests, cumulative regression, canaries) is the only oracle for the harness itself and already drives pi; no model solves any problem end-to-end (best 24–33% strict).</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> tiered <code>make verify</code> (<code>fast / verify / deep</code>) emitting <code>verify.json</code> · <span class="chip adopt">adopt</span> diff-coverage, weak-oracle AST scan, no-op stub check, B/S/G replay · <span class="chip adopt">adopt</span> incremental diff-scoped mutation (Stryker <code>--incremental</code>, mutmut <code>--CI</code>, gremlins) pre-merge + full nightly · <span class="chip adopt">adopt</span> zero-survivor-per-file rule on new functions (rule, not binary) · <span class="chip adapt">adapt</span> fusion-harness gate-first acceptance · <span class="chip adapt">adapt</span> uReview chain as a second pi session with one global threshold + 30–50 PR golden set · <span class="chip adopt">adopt</span> ECLoop-style evidence gates as pi extensions · <span class="chip adopt">adopt</span> held-out cumulative acceptance (SCBench marker scheme) as definition of done for multi-slice epics; weekly SCBench run on 3–5 private problems as harness CI · <span class="chip adapt">adapt</span> APS acceptance-data mutation (~500 lines to reimplement) nightly · <span class="chip ref">reference</span> LLM judge rubrics (report, never gate), property-based sweeps, Uber AutoCover's bounded "do no harm" fixer.</dd>
+      <dt>Tension</dt><dd>Held-out evals vs in-repo tests: hidden tests are the only oracle "fooled by nothing cheap" but the worker cannot run them in its inner loop. Resolution: both — in-repo for the loop under a <code>tests/**</code> write policy; held-out in the orchestrator as done. Grader vendor diversity (Uber's best F1 used a second vendor) vs one-account simplicity. Mutation cost vs signal: incremental + proxies in the loop, full nightly.</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L6 · Versioning, provenance &amp; integration</h3>
+    <p class="role">How agent work becomes commits, PRs and merges — and how every line stays traceable to the session that wrote it.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>Both "agent-native VCS" products are vendor traps today: Zed Delta/DeltaDB (operation-level CRDT deltas adjacent to messages) is a closed private beta with no API; Cursor Origin's agent features (provenance, agent principals, machine-readable review state, agent-aware merge queue) are announced, not shipped. Both confirm the direction and every piece is emulable on git + pi session + trailers. jj inside a VM gives tool-call-granular undo (<code>jj util snapshot</code> on <code>tool_result</code>, <code>jj op restore</code>) with no custom format, but has no hooks, change IDs die in GitHub squash, and agentjj's post-mortem shows <code>absorb</code>/<code>squash</code>/colocated-git confuse agents. GitHub merge queue is GA and free (<code>merge_group</code> CI, <code>gh pr merge --auto</code>, <code>dequeued</code> event → repair); <code>gh stack</code> is preview with no API; git-spice is the scriptable OSS stacker; Graphite is now Cursor-owned. exe.dev: "by the time automated failures arrive, the agent context window is dead and gone" — the merge queue <em>is</em> the CI, and its failures must land while the session is alive.</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> v1 git <code>write-tree</code> journal → <code>refs/factory/&lt;session&gt;/&lt;n&gt;</code> + JSONL <code>{session, turn, tool_call_id, tree}</code> · <span class="chip adopt">adopt</span> provenance trailers (<code>Agent-Session / Agent-Model / Agent-Task / Agent-Prompt-Sha / Agent-Runner</code>) from pi's <code>PI_SESSION_ID</code>/<code>PI_MODEL</code> env, copied into the squash message via PR template + CI presence check · <span class="chip adopt">adopt</span> message↔edit adjacency as a pi session <code>custom</code> entry · <span class="chip adopt">adopt</span> <code>agent/&lt;task-id&gt;</code> branch from fresh base, task metadata in PR body, TTL sweeper · <span class="chip adopt">adopt</span> git-spice stacks + GitHub merge queue with dequeue → resume-same-session repair, cap 3 → "Needs You" · <span class="chip adopt">adopt</span> one GitHub App identity per agent role so the bot can never self-approve · <span class="chip adapt">adapt</span> jj in-VM snapshots as a v2 experiment with a tiny agent verb set · <span class="chip ref">reference</span> ACP's <code>tool_call{kind,status,locations,content:[diff]}</code> as the neutral event-log shape (pi is not ACP-native; <code>--mode rpc</code> is richer) · <span class="chip skip">skip</span> worktree orchestrators (Vibe Kanban sunsetting, Conductor closed) except AO's state machine · <span class="chip skip">skip</span> Mergify/Depot until &gt;~20 PRs/hour.</dd>
+      <dt>Tension</dt><dd>Squash (simplest queue; kills per-commit trailers and jj IDs → trailers via PR body) vs rebase (keeps trailers and agent noise). jj vs plain git: 80% of the value from <code>write-tree</code> with zero new dependency. Freeze trailer names now vs wait for Origin/ACP to publish a de-facto standard: freeze, rename via CI mapping later.</dd>
+    </dl>
+  </div>
+
+  <div class="layer">
+    <h3>L7 · Observability, routing &amp; the outcome dataset</h3>
+    <p class="role">Traces for kill-ability and replay, a model-routing document, and the per-PR outcome telemetry nobody in the corpus publishes.</p>
+    <dl class="kv">
+      <dt>Known</dt><dd>SSSF's single SQLite WAL trace (7 tables, one <code>rowid &gt; ?</code> cursor, a <code>processes</code> table for kill) is the cheapest observability that handles "goes quiet rather than red." pi's session JSONL + provider hooks are the exporter seam; <code>pi-telemetry</code> and <code>pi-evals</code> are experimental but shaped right. StrongDM's Weather Report (model × role × reasoning-effort, updated monthly) and Devin Fusion (frontier decider + cheap executor, switch at compaction: within 2 points of Fable 5 at 1/8 cost) make "one model for everything" obsolete. Faros: while merges rose, incidents/PR +243%, churn 10×, review time 5×, deploys −12% — "throughput measures what was shipped, not what survived."</dd>
+      <dt>Parts</dt><dd><span class="chip adopt">adopt</span> SSSF trace schema (with <code>processes</code>) · <span class="chip adopt">adopt</span> <code>WEATHER.md</code> routing table; Beads execution metadata feeds it · <span class="chip adopt">adopt</span> per-run + per-PR JSONL outcome rows (see <a href="#metrics">§05</a>) · <span class="chip adapt">adapt</span> pi-web as the interim fleet dashboard · <span class="chip adapt">adapt</span> OpenAI/Uber scheduled GC loops against <code>docs/golden-principles.md</code>, capped at 3 open PRs · <span class="chip adapt">adapt</span> weekly manual skill distillation from session logs · <span class="chip ref">reference</span> <code>pi-telemetry</code> → OTel when stable.</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="blocks">
+  <h2><span class="n">03</span>The adopt list, in one table</h2>
+  <p class="sub">Everything marked <span class="chip adopt">adopt</span> or <span class="chip adapt">adapt</span> above, with the source to open when building it. Maturity: S stable · B beta/experimental · C community/small · P pattern only.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Layer</th><th>Block</th><th>Verdict</th><th>Mat.</th><th>Open this file</th></tr></thead>
+    <tbody>
+      <tr><td>L1</td><td>Pocock day-shift chain (grill → CONTEXT.md/ADRs → to-spec → to-tickets → triage), invocation conventions</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">skills-agents/mattpocock-skills.md</td></tr>
+      <tr><td>L1</td><td>Wayfinder map + typed decision tickets (HITL/AFK)</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">skills-agents/wayfinder.md</td></tr>
+      <tr><td>L1</td><td>QRSPI-lite phases, ~200-line design doc, instruction budget</td><td><span class="chip adapt">adapt</span></td><td>P</td><td class="src">patterns/rpi-qrspi-humanlayer-skills.md</td></tr>
+      <tr><td>L1</td><td>Spec-Kit spec/plan/tasks templates</td><td><span class="chip adapt">adapt</span></td><td>S</td><td class="src">patterns/spec-driven-methods.md</td></tr>
+      <tr><td>L1</td><td>SSSF operator skill (menu-and-wait, four-line prompt)</td><td><span class="chip adopt">adopt</span></td><td>C</td><td class="src">factories/super-simple-software-factory.md</td></tr>
+      <tr><td>L2</td><td>SSSF phase primitive, envelope triad, post-hoc gates, permission-by-diff, SQLite trace</td><td><span class="chip adopt">adopt</span> (TS rewrite)</td><td>C</td><td class="src">factories/super-simple-software-factory.md · runtime/disler-pi-factories.md</td></tr>
+      <tr><td>L2</td><td>Beads queue on controller (<code>bd ready --claim</code>, gates, execution metadata)</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">patterns/beads.md</td></tr>
+      <tr><td>L2</td><td>Symphony/AO task state machine, turn/stall/backoff budgets, two-CI-round cap</td><td><span class="chip adopt">adopt</span></td><td>P</td><td class="src">blogs/openai-harness-engineering.md · git-snapshots/worktree-orchestrators.md</td></tr>
+      <tr><td>L2</td><td>Role tool allowlists + writer lease</td><td><span class="chip adopt">adopt</span></td><td>C</td><td class="src">skills-agents/fusion-harness.md</td></tr>
+      <tr><td>L2</td><td>Produce-then-extract, two-phase timeouts, <code>{{ARG}}</code> boundary, deterministic branches, label state machine</td><td><span class="chip adopt">adopt</span></td><td>S (dormant)</td><td class="src">factories/sandcastle.md</td></tr>
+      <tr><td>L2</td><td>Ralph prompt conventions (plan/build files, priority ladder, commit contract, "don't assume not implemented")</td><td><span class="chip adopt">adopt</span> (rewrite)</td><td>P</td><td class="src">patterns/ralph-loop.md · patterns/afk-workflow.md</td></tr>
+      <tr><td>L2</td><td>bmad-loop orchestrator design (policy budgets, escalation, deferred-work ledger)</td><td><span class="chip adapt">adapt</span></td><td>B</td><td class="src">patterns/spec-driven-methods.md</td></tr>
+      <tr><td>L2</td><td>humanlayer control-loop design, one-open-PR bound</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">skills-agents/humanlayer-skills.md</td></tr>
+      <tr><td>L3</td><td><code>--mode rpc</code>, <code>tool_call</code>/<code>tool_result</code> hooks, <code>terminate:true</code>, <code>appendEntry</code>, provider hooks, <code>registerProvider</code></td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">runtime/pi.md</td></tr>
+      <tr><td>L3</td><td>Agent Skills spec frontmatter; single repo with <code>plugin.json</code> + <code>marketplace.json</code> + <code>package.json#pi</code></td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">skills-agents/agent-skills-spec.md · skills-agents/claude-code-plugins.md</td></tr>
+      <tr><td>L3</td><td>Claude-hook-JSON shim extension; clean-room children</td><td><span class="chip adapt">adapt</span></td><td>P</td><td class="src">skills-agents/hooks-mastery-to-pi-mapping.md · skills-agents/fusion-harness.md</td></tr>
+      <tr><td>L3</td><td>Official example extensions (git-checkpoint, subagent, ssh, sandbox)</td><td><span class="chip adapt">adapt</span> (vendor)</td><td>S</td><td class="src">runtime/pi-extensions-catalog.md</td></tr>
+      <tr><td>L4</td><td>E2B (primary) / Vercel Sandbox (second) behind a provider interface</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">sandboxes/e2b.md · sandboxes/vercel-sandbox.md · sandboxes/provider-comparison.md</td></tr>
+      <tr><td>L4</td><td>Inkwell credential boundary; own image with <code>ARG PI_VERSION</code></td><td><span class="chip adopt">adopt</span></td><td>C / S</td><td class="src">runtime/disler-pi-factories.md · runtime/pi-remote-and-sandboxing.md</td></tr>
+      <tr><td>L4</td><td>exe.dev / Sprites persistent-bot tier</td><td><span class="chip adapt">adapt</span></td><td>S</td><td class="src">sandboxes/exe-dev.md · sandboxes/sprites.md</td></tr>
+      <tr><td>L5</td><td>Tiered <code>make verify</code> + <code>verify.json</code>; diff-coverage; weak-oracle scan; stub check; B/S/G replay</td><td><span class="chip adopt">adopt</span></td><td>P / S</td><td class="src">validation/validation-landscape.md</td></tr>
+      <tr><td>L5</td><td>Incremental diff-scoped mutation + zero-survivor-per-file rule</td><td><span class="chip adopt">adopt</span></td><td>S / P</td><td class="src">validation/validation-landscape.md · validation/unclebob-acceptance-and-quality-tools.md</td></tr>
+      <tr><td>L5</td><td>Gate-first executable acceptance</td><td><span class="chip adapt">adapt</span></td><td>C</td><td class="src">skills-agents/fusion-harness.md</td></tr>
+      <tr><td>L5</td><td>Review chain (generate → grade → dedupe → suppress)</td><td><span class="chip adapt">adapt</span></td><td>P</td><td class="src">validation/uber-autocover-ureview-mechanics.md</td></tr>
+      <tr><td>L5</td><td>Evidence gates as pi extensions</td><td><span class="chip adopt">adopt</span></td><td>P</td><td class="src">validation/validation-landscape.md</td></tr>
+      <tr><td>L5</td><td>Held-out cumulative acceptance; weekly SlopCodeBench harness CI</td><td><span class="chip adopt">adopt</span></td><td>B</td><td class="src">validation/slopcodebench.md</td></tr>
+      <tr><td>L5</td><td>APS acceptance-data mutation (reimplement)</td><td><span class="chip adapt">adapt</span></td><td>P (unlicensed ref)</td><td class="src">validation/unclebob-acceptance-and-quality-tools.md</td></tr>
+      <tr><td>L6</td><td>git <code>write-tree</code> journal; provenance trailers; message↔edit adjacency</td><td><span class="chip adopt">adopt</span></td><td>P</td><td class="src">git-snapshots/landscape.md · git-snapshots/deltadb-data-model.md</td></tr>
+      <tr><td>L6</td><td>git-spice stacks + GitHub merge queue + repair loop; per-role GitHub App</td><td><span class="chip adopt">adopt</span></td><td>S</td><td class="src">git-snapshots/stacking-and-merge-queues.md</td></tr>
+      <tr><td>L6</td><td>jj in-VM snapshots</td><td><span class="chip adapt">adapt</span> (v2)</td><td>S (pre-1.0)</td><td class="src">git-snapshots/jujutsu.md</td></tr>
+      <tr><td>L7</td><td><code>WEATHER.md</code> routing; Fusion-style decider/executor split</td><td><span class="chip adopt">adopt</span></td><td>P</td><td class="src">blogs/strongdm-lights-off.md · blogs/cognition-frontier-code.md</td></tr>
+      <tr><td>L7</td><td>Scheduled GC loops with capped PRs; skill distillation</td><td><span class="chip adapt">adapt</span></td><td>P</td><td class="src">blogs/openai-harness-engineering.md · blogs/uber-software-factory.md</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Licensing note.</strong> SwarmForge, Uncle Bob's mutation/CRAP/DRY tools and APS, how-to-ralph, and hooks-mastery carry no license. Only semantics may be reimplemented; no text or scripts may be vendored into an open-source factory. Sandcastle, SSSF, fusion-harness, Beads, jj, git-spice, SlopCodeBench runner and pi are MIT/Apache/GPL and safe.</p>
+</section>
+
+<section id="decisions">
+  <h2><span class="n">04</span>Decisions the blueprint must make</h2>
+  <p class="sub">The places where the sources genuinely disagree, or where two viable options exist. Each shows the options, the evidence, and where the corpus leans — the lean is an input to the blueprint, not a verdict.</p>
+
+  <div class="decision"><h4>D1 · Ephemeral fork-per-task or long-lived worker pool?</h4>
+    <div class="opts"><div class="opt"><b>Fork per task</b> E2B / Vercel. Warm clone in seconds, clean state, idle billed, plan floor $150 (E2B).</div><div class="opt"><b>Restored pool</b> Sprites / exe.dev. $20–50/mo realistic, pooled CPU caps true parallelism, no fork, state reset by restore.</div></div>
+    <p class="lean"><b>Lean:</b> fork-per-task for build workers, a tiny persistent tier for bots — but the choice hinges on measured CPU duty cycle (Q-A2), which nobody has published.</p></div>
+
+  <div class="decision"><h4>D2 · Agent-in-VM or tools-in-VM?</h4>
+    <div class="opts"><div class="opt"><b>Agent in VM</b> One <code>pi --mode rpc</code> per sandbox; any controller language; session stays with workspace; VM holds an LLM credential unless the provider proxies it.</div><div class="opt"><b>Tools in VM</b> pi on the controller, <code>read/write/bash</code> relocated via Gondolin/ssh; secrets central; needs nested virt; controller crash kills every session.</div></div>
+    <p class="lean"><b>Lean:</b> agent-in-VM now, with the provider-side secret proxy removing its main weakness; write the worker extension against the same API so B stays possible.</p></div>
+
+  <div class="decision"><h4>D3 · Who writes the acceptance gate, and in what language?</h4>
+    <div class="opts"><div class="opt"><b>Validator agent per ticket</b> fusion-harness: separate model writes <code>gate.py</code> before the build, proven RED. One extra frontier call + baseline run.</div><div class="opt"><b>Human criteria + tests only</b> <code>to-tickets</code> acceptance criteria compiled by a cheap model; <code>tests_pass</code> + held-out suite for v1.</div></div>
+    <p class="lean"><b>Lean:</b> define a language-neutral <code>gate.sh</code> contract (exit 0 iff done; <code>PASS:/FAIL:</code> lines) and start with human-authored criteria; add the validator agent when ticket quality supports it.</p></div>
+
+  <div class="decision"><h4>D4 · Tracker of record: Beads, GitHub Issues, or both?</h4>
+    <div class="opts"><div class="opt"><b>Beads on the controller</b> Atomic claim, blocking edges, gates, execution metadata; Dolt/Go weight, single-writer embedded mode.</div><div class="opt"><b>GitHub Issues + labels</b> Native frontier rendering, human UI, Sandcastle's label state machine; needs <code>gh</code> and API rate in loop.</div></div>
+    <p class="lean"><b>Lean:</b> Beads as queue, GitHub as human UI via <code>bd github</code> sync, one issue per VM passed by prompt. Needs a <code>--claim</code> concurrency test first (Q-B1).</p></div>
+
+  <div class="decision"><h4>D5 · Session policy per stage</h4>
+    <div class="opts"><div class="opt"><b>Fresh every stage</b> bmad-loop: review never inherits the implementer's context; no anchoring.</div><div class="opt"><b>Resume within a stage</b> SSSF: a correction costs one message; bounded by <code>max_dev_attempts</code>.</div></div>
+    <p class="lean"><b>Lean:</b> fresh per ticket and per stage; resume only for gate corrections within a stage; never across a model change. Write the matrix (plan / build / fix / review / extract / merge × fresh-or-resume × cap × model) explicitly.</p></div>
+
+  <div class="decision"><h4>D6 · Results sync: workers push, or controller pulls?</h4>
+    <div class="opts"><div class="opt"><b>Push</b> Worker pushes <code>agent/&lt;task&gt;</code> or <code>refs/sandbox/&lt;run&gt;</code>; needs a push credential in the VM (brokered or capped).</div><div class="opt"><b>Pull</b> Controller pulls <code>git diff</code>/bundle; VM holds nothing; controller does all history work.</div></div>
+    <p class="lean"><b>Lean:</b> push to a namespaced ref with a per-run GitHub App token; the orchestrator owns stacking, squash and merge (C §5). Prototype both on the chosen provider.</p></div>
+
+  <div class="decision"><h4>D7 · Lights-off lane criteria</h4>
+    <div class="opts"><div class="opt"><b>Three lanes at intake</b> L3 read every diff · L4 spec + scenarios, read the PR · L5 sampled review only.</div><div class="opt"><b>Uniform human gate</b> Every PR read; simplest; review becomes the bottleneck immediately (Faros).</div></div>
+    <p class="lean"><b>Lean:</b> three lanes; L5 initially only for {dep bump, GC refactor, lint fix} with diff &lt;100 lines, in-scope files, all held-out scenarios green, no slop-metric regression; 30-day defect check per lane before widening.</p></div>
+
+  <div class="decision"><h4>D8 · Merge strategy and provenance</h4>
+    <div class="opts"><div class="opt"><b>Squash</b> Simplest for the queue; per-commit trailers and jj IDs die → carry trailers in the PR body.</div><div class="opt"><b>Rebase</b> Trailers survive per commit; agent noise commits survive too.</div></div>
+    <p class="lean"><b>Lean:</b> squash + PR-body template with a CI presence check; tool-call granularity lives in the journal and session, not git history.</p></div>
+
+  <div class="decision"><h4>D9 · Review grader: one vendor or two?</h4>
+    <div class="opts"><div class="opt"><b>Two vendors</b> Uber's best F1 (Sonnet generator + o4-mini grader); graders drift on model updates.</div><div class="opt"><b>One vendor</b> Haiku-class grader; shares blind spots with the author model; one account.</div></div>
+    <p class="lean"><b>Lean:</b> undecidable without a 30–50 PR golden set; build the set first, then measure the F1 gap (Q-C9).</p></div>
+
+  <div class="decision"><h4>D10 · Vendor or rewrite Sandcastle's plumbing?</h4>
+    <div class="opts"><div class="opt"><b>Vendor/fork</b> 7.7k★ MIT TS; <code>run()</code>, worktree reuse, session capture; Effect-ts peer dep; no pushes since June.</div><div class="opt"><b>Own <code>run()</code> over pi</b> Smaller; no Docker/worktree code we don't need in cloud VMs.</div></div>
+    <p class="lean"><b>Lean:</b> rewrite; keep Sandcastle's ADRs (branch naming, timeouts, extraction) as the spec.</p></div>
+</section>
+
+<section id="failures">
+  <h2><span class="n">05</span>Failure modes the corpus documents</h2>
+  <p class="sub">Each of these was hit by someone with more resources than a solo developer. The mitigation column is what they did about it — and where in the layer map it lands.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Failure</th><th>Who hit it</th><th>Root cause</th><th>Mitigation seen · layer</th></tr></thead>
+    <tbody>
+      <tr><td>Codebase unmaintainable after 3–6 months lights-off; rewrite</td><td>HumanLayer; pi's own "world of slop" post</td><td>RL rewards test-pass in seconds; no oracle for design</td><td>Human review back; four-phase alignment; slices; slop-metric trajectories · L1, L5</td></tr>
+      <tr><td>Agent games the test (returns <code>true</code>, comments out failing test, mocks it away)</td><td>StrongDM, SWE-bench, FrontierCode</td><td>Verifier inside the agent's write scope</td><td>Held-out scenarios; discard test-file edits; reverse-classical tests; <code>tests/**</code> write policy · L5</td></tr>
+      <tr><td>Builder <code>git checkout</code>s the grader it is about to be judged by</td><td>SSSF</td><td>No boundary between capability and permission</td><td>Permission-by-diff with <code>protected_files</code>; <code>tool_call</code> pre-block · L2, L3</td></tr>
+      <tr><td>Three rounds burned on a defective gate</td><td>fusion-harness (live run)</td><td>Gate bug indistinguishable from build failure</td><td>Prove gate RED at baseline; one gate repair per run; triage after N · L5</td></tr>
+      <tr><td>Hallucinated review comments; developers ignore the bot</td><td>Uber uReview v1</td><td>Unfiltered single-pass LLM output</td><td>Grader + thresholds + dedupe + suppression; "addressed" measured by re-run · L5</td></tr>
+      <tr><td>Review queue explodes; unreviewed merges creep up</td><td>Faros (review time 5×, +31% unreviewed)</td><td>Output outruns human absorption; PR size +51%</td><td>PR size budget; slices; validation evidence in PR; lanes · L1, L2</td></tr>
+      <tr><td>Shared CI hammered by agent pushes</td><td>Uber, Stripe</td><td>Agents push before local validation</td><td>Draft-PR gate after inner-loop checks; two-CI-round cap · L2, L5</td></tr>
+      <tr><td>Slop accumulates; 20% of the week on cleanup</td><td>OpenAI Frontier</td><td>No continuous enforcement of taste</td><td>Golden principles + scheduled GC agents emitting tiny PRs; 350-line file cap · L7</td></tr>
+      <tr><td>Models silently drop steps past ~150–200 instructions</td><td>HumanLayer (RPI → QRSPI), Ralph's 999-line prompts</td><td>Instruction budget; plan-reading illusion</td><td>Fresh contexts &lt;40%; split phases; signs into gates not prompts · L1, L3</td></tr>
+      <tr><td>Horizontal plans (DB → service → API → UI) with nothing touchable until the end</td><td>Every frontier model by default</td><td>Model planning prior</td><td>Force mock-API-first vertical slices with a per-slice touch test · L1</td></tr>
+      <tr><td>Duplication inflects when new requirements fight the initial design</td><td>SlopCodeBench (4.6% → 16.8% at checkpoint 3)</td><td>No refactor incentive; cold context per checkpoint</td><td>Per-PR duplication/complexity trajectory alarms · L5, L7</td></tr>
+      <tr><td>Tool-call loops / token burn</td><td>StrongDM Weather Report</td><td>Model × task mismatch</td><td>Routing table with effort; turn budget + stall timeout · L2, L7</td></tr>
+      <tr><td>Silent hangs ("goes quiet rather than red")</td><td>SSSF, Sandcastle (gh/MCP child holds stdout)</td><td>No liveness signal</td><td><code>processes</code> table for kill; two-phase timeouts · L2, L7</td></tr>
+      <tr><td>Models invent tool fields on pi's stricter schemas</td><td>pi maintainers (Opus 4.8, Sonnet 5)</td><td>RL inside Claude Code's forgiving harness</td><td>Schema-drift eval per model release; leniency wrapper · L3</td></tr>
+      <tr><td>jj verbs (<code>absorb</code>/<code>squash</code>/colocated git) confuse agents</td><td>agentjj post-mortem</td><td>History-editing verbs exposed to the model</td><td>Tiny agent verb set; orchestrator owns history editing · L6</td></tr>
+      <tr><td>Agent takes real-world action unprompted (emailed 100 people)</td><td>Dex Horthy anecdote</td><td>Agency beyond code with real credentials</td><td>Egress allowlist; no prod creds in sandbox; QA-only env · L4</td></tr>
+      <tr><td>Provider/forge SaaS churn</td><td>Daytona closed-source; Vibe Kanban sunset; Graphite → Cursor; Cloudflare 1.0 breaks API</td><td>Dependence on a moving vendor layer</td><td>Provider interface; native GitHub + OSS CLIs; pin versions · L4, L6</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="metrics">
+  <h2><span class="n">06</span>What to measure</h2>
+  <p class="sub">Nobody in the corpus publishes the outcome dataset Dex Horthy asks for (what survived, not what shipped). A solo factory can — one JSONL row per run and per merged PR, a weekly script as the dashboard.</p>
+  <div class="two">
+    <div>
+      <h4>Per run (pi session)</h4>
+      <ul><li>issue id · lane (L3/L4/L5) · model + effort from <code>WEATHER.md</code></li><li>tokens in/out · cache hit rate · $ cost · turns used vs <code>max_turns</code> · wall time</li><li>terminal state (Symphony: done / stalled / timeout / released) · CI rounds used (cap 2)</li><li>inner-loop checks passed (validation table) · diff size · files touched vs declared scope</li></ul>
+      <h4>Per PR (outcome)</h4>
+      <ul><li>human read it? (yes / sampled / no) · review minutes · rework % after first review</li><li>review-agent comments posted / addressed (re-run reviewer on final commit)</li><li>time to merge · reverted? · 14-day churn · incidents linked within 30 days</li></ul>
+    </div>
+    <div>
+      <h4>Repo trajectory (per merge)</h4>
+      <ul><li>SLOC · cyclomatic mean/max · duplication share · single-use-function share · files &gt;350 lines · dependency cycles</li><li>alarm on <em>inflection</em>, not level (SlopCodeBench checkpoint-3 pattern)</li></ul>
+      <h4>Platform &amp; harness</h4>
+      <ul><li>sandbox cold-start s (target &lt;10) · snapshot age · $/day (budget $20–50) · $/merged PR · $/surviving PR</li><li>review-agent precision on a 30–50 PR golden set; re-pick model pair when F1 moves</li><li>weekly SlopCodeBench-style run on 3–5 private checkpointed problems: strict-pass + erosion inflection</li><li>PRs/week and deploys/week side by side — divergence is the Faros "hollow gain" signal. Never "% code by AI."</li></ul>
+    </div>
+  </div>
+</section>
+
+<section id="questions">
+  <h2><span class="n">07</span>Open questions, grouped by how to answer them</h2>
+  <p class="sub">Fifty-eight questions were raised across the four digests; these are the ones whose answers change the blueprint's shape. Full lists live in <code>research/_synthesis/*.md</code> §4.</p>
+
+  <h3>Answer by experiment (a day each, on a real provider)</h3>
+  <div class="qgrid">
+    <div class="q"><span>Q-A2 · What is a pi worker's real CPU duty cycle and RAM footprint on a typical task?</span><span class="how">10 real tasks on a per-second provider with lifecycle metrics; re-run every cost estimate with the number. Unblocks D1.</span></div>
+    <div class="q"><span>Q-A3 · Does <code>pi --mode rpc</code> survive VM pause/resume mid-turn, and how do we resume after a cold restart?</span><span class="how">E2B memory pause mid-turn; check session JSONL integrity; test <code>-c</code> resume after kill.</span></div>
+    <div class="q"><span>Q-A5 · Does proxy-injected LLM auth work with pi's provider layer without <code>auth.json</code> (streaming + cache headers intact)?</span><span class="how"><code>models.json</code> → proxy host with dummy key on Vercel and one self-hosted Caddy sidecar.</span></div>
+    <div class="q"><span>Q-A6 · Which egress allowlist do workers actually need; does anything use QUIC/SSH/raw IP?</span><span class="how">5 tasks under deny-all + allowlist; log blocked hosts; iterate.</span></div>
+    <div class="q"><span>Q-A12 · Budget kill-switch: in-worker provider hook, capped runtime key, or provider TTL — which fires first and what state is left?</span><span class="how">Set all three low on a deliberately looping task; inspect session file + git state.</span></div>
+    <div class="q"><span>Q-A13 · Do current Anthropic models hallucinate fields on pi's <code>edit</code> / our custom tools?</span><span class="how"><code>pi-evals</code> on 20 edit-heavy tasks per model; count rejected calls; decide on a leniency wrapper.</span></div>
+    <div class="q"><span>Q-B1 · Does Beads <code>--claim</code> stay atomic under push/pull from multiple controllers or VMs?</span><span class="how">Concurrency test in embedded vs server mode. Unblocks D4.</span></div>
+    <div class="q"><span>Q-C1 · Wall-clock and $ for diff-scoped mutation (Stryker / mutmut / gremlins) on a 300-line diff at 4–8 vCPU?</span><span class="how">Measure in the VM; set the pre-merge time budget (10 min?) from data.</span></div>
+    <div class="q"><span>Q-C2 · jj op-store behaviour at ~2,000 snapshots/day/agent?</span><span class="how">24-hour soak in one VM before committing to jj as v2.</span></div>
+    <div class="q"><span>Q-A11 · Is a PTY needed for headless pi on any provider?</span><span class="how"><code>pi -p --mode json</code> without PTY on E2B, Vercel, Cloudflare; watch for hangs/ANSI noise.</span></div>
+  </div>
+
+  <h3>Answer by reading source or docs</h3>
+  <div class="qgrid">
+    <div class="q"><span>Q-A4 · Exact return shapes of <code>context</code>, <code>before_agent_start</code>, <code>tool_call</code> and the <code>ExecutionEnv</code> interface in pi 0.84.x; is v4 session/SQLite default?</span><span class="how"><code>packages/coding-agent/src/core/extensions/types.ts</code>, <code>src/server/create-harness.ts</code>, <code>docs/session-format.md</code>.</span></div>
+    <div class="q"><span>Q-A9 · Which pi version do E2B's template, Vercel <code>universal</code> and exeuntu pin, and how fast do they track releases?</span><span class="how"><code>pi --version</code> in each image; decide on own image with <code>ARG PI_VERSION</code>.</span></div>
+    <div class="q"><span>Q-A14 · Which pi-server lease/snapshot semantics do we mirror now so migrating later is cheap?</span><span class="how"><code>pi-protocol</code> README + client API; match <code>createSession / acquireSession / attachSession / subscribe / prompt</code>.</span></div>
+    <div class="q"><span>Q-C7 · Where do held-out acceptance tests live and how do they run against a worker VM; how are CORE/REGRESSION markers expressed outside pytest?</span><span class="how">SCBench <code>docs/problems/</code>; design a vitest/go-test marker convention.</span></div>
+    <div class="q"><span>Q-C4 · Does jj <code>templates.commit_trailers</code> accept <code>env()</code> in v0.44?</span><span class="how">Verify; else pass <code>--config</code> per invocation from the orchestrator.</span></div>
+    <div class="q"><span>Q-C11 · Does <code>gh stack</code> interact with the merge queue at all?</span><span class="how">Undocumented; if not, git-spice + queue is the only tested path.</span></div>
+  </div>
+
+  <h3>Answer by design decision (no data will settle them)</h3>
+  <div class="qgrid">
+    <div class="q"><span>Q-B4 · Envelope schema v1: minimum fields and mandatory gates per phase.</span><span class="how">Start from SSSF's <code>status / summary / artifacts / changed_files / commit_message / notes_for_next_agent / blocking</code>; <code>status:"fail"</code> defaults everything to fail.</span></div>
+    <div class="q"><span>Q-B13 · Completion-signal contract: sentinel in final text, a file the agent writes, or a structured extraction turn?</span><span class="how">Pick one for the orchestrator to parse from <code>--mode json</code>; <code>terminate:true</code> favours extraction.</span></div>
+    <div class="q"><span>Q-B9 · Exactly which transitions require a human, and over which channel?</span><span class="how">Spec approval, <code>ready-for-human</code>, one-way doors, PR merge; Beads <code>human</code> gate + <code>ATTENTION</code> file vs PR comment <code>/iterate</code>.</span></div>
+    <div class="q"><span>Q-C10 · Freeze provenance trailer keys now or wait for Origin/ACP?</span><span class="how">Freeze; rename via CI mapping later.</span></div>
+    <div class="q"><span>Q-D7 · Which slop metrics and thresholds hard-block a merge vs alarm?</span><span class="how">Subset of SCBench's 41 (duplication share, cyclomatic max, files &gt;350 lines, propagation cost); needs a TS-compatible detector.</span></div>
+    <div class="q"><span>Q-B14 · Licensing hygiene for unlicensed sources.</span><span class="how">Reimplement semantics only; one email to Uncle Bob could unblock APS vendoring.</span></div>
+    <div class="q"><span>Q-A8 · Where does the controller run — laptop, one persistent VM, or a Cloudflare Worker?</span><span class="how">Affects reconnect logic, Gondolin feasibility, dashboard; cost calc + nested-virt check.</span></div>
+  </div>
+</section>
+
+<section id="sources">
+  <h2><span class="n">08</span>Source map</h2>
+  <p class="sub">All paths relative to <code>research/</code>. <code>INDEX.md</code> lists every file with a one-line hook; the four digests under <code>_synthesis/</code> carry the full building-block tables, tensions and question lists this page condenses.</p>
+  <div class="two srcmap">
+    <div>
+      <h4>Runtime</h4><ul><li><code>runtime/pi.md</code> — core, config, ~35 events, SDK, RPC, comparison vs Claude Code</li><li><code>runtime/pi-remote-and-sandboxing.md</code> — Docker / Gondolin / OpenShell, pi-server, three fleet topologies</li><li><code>runtime/pi-extensions-catalog.md</code> — ~40 packages, spawn designs</li><li><code>runtime/disler-pi-factories.md</code> — SSSF/Inkwell controller shape, credential boundary</li><li><code>runtime/pi-design-philosophy-posts.md</code></li></ul>
+      <h4>Sandboxes</h4><ul><li><code>sandboxes/provider-comparison.md</code> — 12-row decision matrix, cost arithmetic</li><li><code>sandboxes/e2b.md · vercel-sandbox.md · daytona.md · modal.md · cloudflare-sandbox.md · sprites.md</code></li><li><code>sandboxes/exe-dev.md · exe-dev-factory-series.md</code> — platform + the "software factory" blog series</li><li><code>sandboxes/amp.md · small-oss-sandboxes.md</code></li></ul>
+      <h4>Factories &amp; patterns</h4><ul><li><code>factories/sandcastle.md · super-simple-software-factory.md · swarm-forge.md</code></li><li><code>patterns/ralph-loop.md · afk-workflow.md · beads.md · rpi-qrspi-humanlayer-skills.md · spec-driven-methods.md</code></li></ul>
+    </div>
+    <div>
+      <h4>Skills &amp; agents</h4><ul><li><code>skills-agents/fusion-harness.md · mattpocock-skills.md · wayfinder.md · humanlayer-skills.md</code></li><li><code>skills-agents/agent-skills-spec.md · skills-sh-registry.md · claude-code-plugins.md · hooks-mastery-to-pi-mapping.md</code></li></ul>
+      <h4>Validation</h4><ul><li><code>validation/validation-landscape.md</code> — 20 oracle types, four-tier gate order</li><li><code>validation/slopcodebench.md · uber-autocover-ureview-mechanics.md · unclebob-acceptance-and-quality-tools.md</code></li></ul>
+      <h4>Git &amp; snapshots</h4><ul><li><code>git-snapshots/landscape.md · jujutsu.md · stacking-and-merge-queues.md · acp.md · worktree-orchestrators.md</code></li><li><code>git-snapshots/zed-delta.md · deltadb-data-model.md · cursor-origin.md</code></li></ul>
+      <h4>Field evidence</h4><ul><li><code>blogs/dexhorthy-*.md</code> — "Why Software Factories Fail" 1–3, recovered verbatim, + context</li><li><code>blogs/uber-software-factory.md · openai-harness-engineering.md · strongdm-lights-off.md</code></li><li><code>blogs/company-factories-ramp-stripe-workos-brex.md · cognition-frontier-code.md · dan-shapiro-five-levels.md · faros-whiplash-report.md</code></li></ul>
+      <h4>Meta</h4><ul><li><code>_meta/TEMPLATE.md · _meta/FOLLOWUP-QUEUE.md</code> (222 rows, R1 + R2)</li><li><code>_synthesis/A-runtime-and-execution.md · B-control-plane-and-process.md · C-validation-and-versioning.md · D-field-lessons.md</code></li></ul>
+    </div>
+  </div>
+
+  <blockquote>"Agent proposes, code disposes." <cite>Super Simple Software Factory</cite></blockquote>
+  <blockquote>"Tests give you feedback in seconds, but the cost function of bad architecture is measured in weeks, months, maybe even years." <cite>Dex Horthy, Why Software Factories Fail, part 1</cite></blockquote>
+  <blockquote>"Your script IS the definition of done … impossible to pass without actually doing what was asked, and impossible to fail for reasons unrelated to the request." <cite>fusion-harness validator prompt</cite></blockquote>
+  <blockquote>"By the time automated failures arrive, the agent context window is dead and gone." <cite>exe.dev, Replace Your CI With a Merge Queue</cite></blockquote>
+  <blockquote>"Throughput measures what was shipped, not what survived." <cite>Faros AI</cite></blockquote>
+</section>
+
+<footer>
+  <p>Research and synthesis run 2026-08-26 in two rounds (14 requested resources → ~45 read), with four theme digests condensed here. Gaps are recorded at the bottom of every research file; the largest are: no hands-on latency/cost measurement on any provider, pi-server internals unread, several X/openai.com pages reconstructed from mirrors, and unlicensed sources summarized rather than quoted.</p>
+</footer>
+</main>
+</div>

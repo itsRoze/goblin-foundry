@@ -1,0 +1,57 @@
+/* Goblin Foundry — house style tokens v0 (Everforest dark, flat/matte)
+   Descriptive, not prescriptive: change a value here when the product needs it,
+   then update DESIGN.md. Nothing below is a rule for its own sake. */
+:root {
+  /* surfaces — three opaque steps, no gradients, no shadows, no blur */
+  --gf-page:    #232A2E;   /* app background */
+  --gf-tile:    #2D353B;   /* panels, tiles, table bodies */
+  --gf-raised:  #343F44;   /* tile headers, cards, selected rows, chips */
+  --gf-rule:    #3D484D;   /* 1px rules and borders */
+  --gf-rule-2:  #475258;   /* stronger border (inputs, kbd) */
+
+  /* text */
+  --gf-ink:     #D3C6AA;   /* primary text */
+  --gf-mute:    #9DA9A0;   /* secondary text, labels, hints — text-safe (≥4.5:1 on tile) */
+  --gf-dim:     #7A8478;   /* decorative only: drag handles, dividers, never words */
+
+  /* accents by meaning — the colour is the meaning, so each has one job */
+  --gf-system:  #A7C080;   /* green: the controller / ready / focused / ok */
+  --gf-human:   #E67E80;   /* red: your attention is required. Nothing else. */
+  --gf-live:    #E69875;   /* orange: a run is alive right now — watch, don't touch. Only when a run row exists (S5+); hand-built `building` tickets use --gf-system */
+  --gf-draft:   #DBBC7F;   /* yellow: not yet real (draft, no design) */
+  --gf-review:  #83C092;   /* aqua: in review / merged-pending */
+  --gf-link:    #7FBBB3;   /* blue: links and paths */
+
+  /* type — one humanist sans, one mono. Mono is for identifiers and telemetry only. */
+  --gf-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --gf-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --gf-t-title: 500 20px/1.2 var(--gf-sans);      /* page titles */
+  --gf-t-h:     500 14px/1.25 var(--gf-sans);     /* row titles, card titles */
+  --gf-t-body:  400 13.5px/1.5 var(--gf-sans);    /* prose, spec text */
+  --gf-t-meta:  400 11.5px/1.4 var(--gf-mono);    /* metadata under titles */
+  --gf-t-label: 400 11px/1 var(--gf-mono);        /* tile headers, kv labels: uppercase, .14em */
+  --gf-t-kbd:   400 10.5px/15px var(--gf-mono);   /* key hints */
+  --gf-t-num:   500 15px/1.2 var(--gf-mono);      /* telemetry inside rows — text size */
+  --gf-t-stat:  500 22px/1.1 var(--gf-mono);      /* stat tiles only (project outcomes) */
+  --gf-track:   .14em;                            /* letter-spacing for labels */
+
+  /* space — 4px base */
+  --gf-s1: 4px; --gf-s2: 8px; --gf-s3: 12px; --gf-s4: 14px; --gf-s5: 18px; --gf-s6: 24px;
+  --gf-gap: var(--gf-s3);    /* between tiles (the WM gap) */
+  --gf-pad-y: var(--gf-s4);  /* tile body padding, vertical */
+  --gf-pad-x: var(--gf-s5);  /* tile body padding, horizontal */
+  --gf-radius: 0;            /* square. Everything. */
+
+  /* motion — few, short, all optional */
+  --gf-ease: cubic-bezier(.2, .8, .2, 1);
+  --gf-fast: 120ms;          /* hover, focus, selection */
+  --gf-move: 200ms;          /* tiles resizing, rows reordering */
+  --gf-breathe: 1.6s;        /* the one ambient animation: a live run's node */
+}
+/* Reduced motion: transitions collapse to instant; the breathe animation is
+   switched OFF in the component (animation: none), never set to 0s — a 0s
+   loop still flickers. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --gf-fast: 0ms; --gf-move: 0ms; }
+  .gf-breathe { animation: none !important; }
+}

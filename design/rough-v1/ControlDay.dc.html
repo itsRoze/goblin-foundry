@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    
+  .c { width: 1280px; height: 800px; background: #E4E7E0; color: #15181A; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; box-sizing: border-box; padding: 14px; display: grid; grid-template-rows: 24px 150px 1fr; gap: 12px; overflow: hidden; line-height: 1.4; }
+  .c .bar { display: flex; gap: 22px; align-items: center; text-transform: uppercase; letter-spacing: .1em; font-size: 11px; color: #5F6660; }
+  .c .bar b { color: #15181A; font-weight: 700; }
+  .c .bar .live { color: #1E6E3C; }
+  .c .bar .live:before { content: '●'; margin-right: 6px; }
+  .c .pan { background: #EEF0EA; border: 1px solid #B9BFB4; padding: 10px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+  .c .hd { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; color: #5F6660; display: flex; justify-content: space-between; border-bottom: 1px solid #B9BFB4; padding-bottom: 6px; margin-bottom: 4px; }
+  .c .fsm { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); align-items: center; height: 100%; }
+  .c .fsm:before { content: ''; position: absolute; left: 60px; right: 60px; top: 50%; border-top: 1px solid #B9BFB4; }
+  .c .node { position: relative; justify-self: center; border: 1px solid #B9BFB4; background: #E4E7E0; padding: 8px 12px; min-width: 110px; text-align: center; }
+  .c .node b { display: block; font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .c .node span { text-transform: uppercase; letter-spacing: .1em; font-size: 10px; color: #5F6660; }
+  .c .node.on { border-color: #9A5A00; color: #9A5A00; box-shadow: 0 0 0 1px #9A5A00 inset; }
+  .c .node.hum { border-color: #A8321E; }
+  .c .node.hum b { color: #A8321E; }
+  .c .edge { position: absolute; top: 12px; left: 0; right: 0; text-align: center; font-size: 10px; color: #5F6660; }
+  .c .grid { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr; gap: 12px; min-height: 0; }
+  .c table { border-collapse: collapse; width: 100%; }
+  .c td { padding: 6px 6px; border-bottom: 1px solid #B9BFB4; vertical-align: top; }
+  .c td.k { color: #9A5A00; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; white-space: nowrap; }
+  .c td.k.hum { color: #A8321E; }
+  .c td.k.ok { color: #1E6E3C; }
+  .c td .m { color: #5F6660; display: block; font-size: 11.5px; }
+  .c td.h { text-align: right; color: #5F6660; white-space: nowrap; }
+  .c td.h kbd { border: 1px solid #B9BFB4; padding: 0 5px; font-family: inherit; }
+  .c .st { text-transform: uppercase; font-size: 10.5px; letter-spacing: .08em; }
+  .c .st.ready { color: #1E6E3C; } .c .st.running { color: #9A5A00; } .c .st.blocked, .c .st.draft { color: #5F6660; }
+  .c .tel { display: grid; grid-template-columns: 96px 1fr 70px; gap: 8px; align-items: center; }
+  .c .tel .g { height: 8px; background: #D6DAD2; position: relative; }
+  .c .tel .g i { position: absolute; left: 0; top: 0; bottom: 0; background: #9A5A00; }
+  .c .tel .g i.ok { background: #1E6E3C; }
+  .c .hb { font-size: 11px; color: #5F6660; letter-spacing: .05em; word-break: break-all; line-height: 1.3; }
+  .c .hb b { color: #1E6E3C; font-weight: 400; }
+  
+  </style>
+</helmet>
+<div class="c">
+  <div class="bar"><b>GOBLIN FOUNDRY</b><span>app SUBWAY-READER</span><span>project MVP</span><span>design r3 @4b7e2d</span><span class="live">controller tick 2s</span><span style="margin-left: auto;">⌘K</span></div>
+  <div class="pan">
+    <div class="hd"><span>lifecycle · authority: human unless marked</span><span>edges: controller ▸ · human ▹</span></div>
+    <div class="fsm">
+      <div class="node"><b>3</b><span>draft</span><i class="edge">▹ approve</i></div>
+      <div class="node"><b>2</b><span>ready</span><i class="edge">▸ lease</i></div>
+      <div class="node on"><b>1</b><span>running</span><i class="edge">▸ pr exists</i></div>
+      <div class="node hum"><b>2</b><span>needs_human</span><i class="edge">▹ re-arm</i></div>
+      <div class="node"><b>1</b><span>ready_for_review</span><i class="edge">▹ merge</i></div>
+      <div class="node"><b>4</b><span>done</span></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="pan"><div class="hd"><span>attention · 5</span><span>oldest first</span></div><table><tr><td class="k ">Approve</td><td>SR-12 Article list screen: e-ink pagination<span class="m">draft · design r3 · lane L3</span></td><td class="h"><kbd>1</kbd></td></tr><tr><td class="k hum">Re-arm</td><td>SR-7 Room migration v2<span class="m">needs human · verify failed twice with the same failure · $3.80 spent</span></td><td class="h"><kbd>2</kbd></td></tr><tr><td class="k hum">Answer</td><td>SR-3 OPML import<span class="m">needs human · run asked: keep folder hierarchy?</span></td><td class="h"><kbd>3</kbd></td></tr><tr><td class="k ok">Review</td><td>SR-5 Feed parser core (pure Kotlin)<span class="m">PR #14 · CI passing · lane L3 · +412 −38</span></td><td class="h"><kbd>4</kbd></td></tr><tr><td class="k ">Reconcile</td><td>SR-5 proposes PROJECT-DESIGN.md r4<span class="m">sha 9f3c1a · accept or reject</span></td><td class="h"><kbd>5</kbd></td></tr></table></div>
+    <div class="pan"><div class="hd"><span>frontier · claim order</span><span>ready ∧ ¬blocked ∧ ¬leased</span></div><table><tr><td class="h" style="text-align: left;">1</td><td>SR-9 Feed fixture parser tests</td><td class="h"><span class="st ready">ready</span> L4</td></tr><tr><td class="h" style="text-align: left;">2</td><td>SR-10 Boox refresh-mode hook</td><td class="h"><span class="st ready">ready</span> L3</td></tr><tr><td class="h" style="text-align: left;">3</td><td>SR-8 Reader typography settings</td><td class="h"><span class="st running">running</span> run 31</td></tr><tr><td class="h" style="text-align: left;">4</td><td>SR-11 Offline sync worker</td><td class="h"><span class="st blocked">blocked</span> by SR-7</td></tr><tr><td class="h" style="text-align: left;">5</td><td>SR-13 Feed subscribe screen</td><td class="h"><span class="st draft">draft</span> no design</td></tr></table></div>
+    <div class="pan">
+      <div class="hd"><span>run 31 · SR-8</span><span>sandbox fly-3</span></div>
+      <div class="tel"><span>cost</span><div class="g"><i style="width: 28%;"></i></div><span style="text-align: right;">1.42/5.00</span></div>
+      <div class="tel"><span>wall</span><div class="g"><i style="width: 44%;"></i></div><span style="text-align: right;">06:12/14</span></div>
+      <div class="tel"><span>turns</span><div class="g"><i style="width: 47%;"></i></div><span style="text-align: right;">38/80</span></div>
+      <div class="tel"><span>lease</span><div class="g"><i class="ok" style="width: 100%;"></i></div><span style="text-align: right;">hb 4s</span></div>
+      <div class="hd" style="margin-top: 8px;"><span>events</span><span>implement · verifying (fast)</span></div>
+      <div class="hb">06:08 ▸ verify(fast) exit 1 · 2 tests<br>06:09 ▸ correct_same_session 1/2<br>06:11 ▸ edit core/Typography.kt<br>06:12 ▸ verify(fast) <b>running</b><br>—— protected digests ok · scope ok</div>
+    </div>
+  </div>
+</div></x-dc>
+</body>
+</html>

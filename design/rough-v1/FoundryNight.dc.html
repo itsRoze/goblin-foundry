@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Public+Sans:wght@400;600&family=IBM+Plex+Mono&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    
+  .a { width: 1280px; height: 800px; background: #10201B; color: #EFE5D3; font-family: 'Public Sans', system-ui, sans-serif; font-size: 14px; display: grid; grid-template-columns: 72px 1fr; box-sizing: border-box; overflow: hidden; }
+  .a .rail { background: #20362E; display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 18px; }
+  .a .mark { width: 36px; height: 36px; border-radius: 50%; background: #E09256; display: grid; place-items: center; color: #10201B; font-family: 'Bricolage Grotesque'; font-weight: 800; font-size: 18px; }
+  .a .app { width: 40px; height: 40px; border-radius: 10px; border: 2px solid #2C443B; display: grid; place-items: center; font-family: 'Bricolage Grotesque'; font-weight: 700; font-size: 13px; color: #9AA69B; }
+  .a .app.on { border-color: #6FCDB3; color: #6FCDB3; }
+  .a .body { padding: 22px 32px; display: flex; flex-direction: column; gap: 20px; }
+  .a h1 { font-family: 'Bricolage Grotesque'; font-weight: 800; font-size: 30px; letter-spacing: -0.02em; margin: 0; }
+  .a .top { display: flex; align-items: baseline; gap: 18px; }
+  .a .kbd { margin-left: auto; font-family: 'IBM Plex Mono'; font-size: 12px; color: #9AA69B; border: 1px solid #2C443B; padding: 6px 12px; border-radius: 999px; }
+  /* pour line */
+  .a .line { position: relative; height: 84px; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); align-items: end; }
+  .a .line:before { content: ''; position: absolute; left: 0; right: 0; top: 40px; height: 6px; background: linear-gradient(90deg, #6FCDB3, #E09256 55%, #FF8C4B 70%, #6FCDB3); border-radius: 3px; opacity: .9; }
+  .a .st { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-left: 4px; }
+  .a .st b { font-family: 'Bricolage Grotesque'; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #9AA69B; }
+  .a .st .n { font-family: 'Bricolage Grotesque'; font-size: 28px; font-weight: 800; line-height: 1; }
+  .a .st i { position: absolute; top: 37px; left: 4px; width: 12px; height: 12px; border-radius: 50%; background: #172A24; border: 3px solid #E09256; }
+  .a .st.hot i { border-color: #FF8C4B; box-shadow: 0 0 0 8px rgba(255,140,75,.35); }
+  .a .cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; flex: 1; min-height: 0; }
+  .a .card { background: #172A24; border: 1px solid #2C443B; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .a h2 { font-family: 'Bricolage Grotesque'; font-weight: 700; font-size: 18px; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+  .a h2 small { font-weight: 400; color: #9AA69B; font-size: 13px; font-family: 'Public Sans'; }
+  .a .row { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #2C443B; }
+  .a .tag { font-family: 'Bricolage Grotesque'; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; background: #20362E; color: #E09256; text-align: center; }
+  .a .tag.hot { background: #FF8C4B; color: #10201B; }
+  .a .tag.verd { background: #6FCDB3; color: #10201B; }
+  .a .ttl { display: flex; flex-direction: column; gap: 2px; }
+  .a .ttl span { font-weight: 600; }
+  .a .ttl em { font-style: normal; color: #9AA69B; font-size: 12.5px; }
+  .a .id { font-family: 'IBM Plex Mono'; font-size: 12px; color: #9AA69B; }
+  .a .key { font-family: 'IBM Plex Mono'; font-size: 11px; color: #9AA69B; border: 1px solid #2C443B; border-radius: 4px; padding: 2px 6px; }
+  .a .slug { display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; align-items: center; padding: 9px 12px; border-radius: 10px; border: 1px solid #2C443B; }
+  .a .slug.running { border-color: #FF8C4B; box-shadow: inset 0 0 0 1px #FF8C4B, 0 0 24px rgba(255,140,75,.35); }
+  .a .slug.blocked { opacity: .55; }
+  .a .slug.draft { border-style: dashed; }
+  .a .dot { width: 10px; height: 10px; border-radius: 50%; background: #6FCDB3; }
+  .a .slug.running .dot { background: #FF8C4B; }
+  .a .slug.blocked .dot { background: #9AA69B; }
+  .a .slug.draft .dot { background: transparent; border: 2px solid #9AA69B; box-sizing: border-box; }
+  .a .runbar { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; margin-top: 4px; }
+  .a .meter { display: flex; flex-direction: column; gap: 5px; font-family: 'IBM Plex Mono'; font-size: 12px; color: #9AA69B; }
+  .a .meter div { height: 6px; border-radius: 3px; background: #20362E; overflow: hidden; }
+  .a .meter div i { display: block; height: 100%; background: #E09256; }
+  
+  </style>
+</helmet>
+<div class="a">
+  <div class="rail">
+    <div class="mark">G</div>
+    <div class="app on">SR</div>
+    <div class="app">GF</div>
+  </div>
+  <div class="body">
+    <div class="top"><h1>Subway Reader</h1><span style="color: #9AA69B;">MVP project · design r3 approved</span><span class="kbd">⌘K  approve · re-arm · open · ticket</span></div>
+    <div class="line">
+      <div class="st"><b>Draft</b><span class="n">3</span><i></i></div>
+      <div class="st"><b>Ready</b><span class="n">2</span><i></i></div>
+      <div class="st hot"><b>Running</b><span class="n">1</span><i></i></div>
+      <div class="st"><b>Needs you</b><span class="n">2</span><i></i></div>
+      <div class="st"><b>Review</b><span class="n">1</span><i></i></div>
+      <div class="st"><b>Done</b><span class="n">4</span><i></i></div>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h2>Waiting on you <small>5 decisions · press a number</small></h2>
+        
+    <div class="row">
+      <span class="tag ">Approve</span>
+      <div class="ttl"><span><span class="id">SR-12</span> &nbsp;Article list screen: e-ink pagination</span><em>draft · design r3 · lane L3</em></div>
+      <span class="key">1</span>
+    </div>
+    <div class="row">
+      <span class="tag hot">Re-arm</span>
+      <div class="ttl"><span><span class="id">SR-7</span> &nbsp;Room migration v2</span><em>needs human · verify failed twice with the same failure · $3.80 spent</em></div>
+      <span class="key">2</span>
+    </div>
+    <div class="row">
+      <span class="tag hot">Answer</span>
+      <div class="ttl"><span><span class="id">SR-3</span> &nbsp;OPML import</span><em>needs human · run asked: keep folder hierarchy?</em></div>
+      <span class="key">3</span>
+    </div>
+    <div class="row">
+      <span class="tag verd">Review</span>
+      <div class="ttl"><span><span class="id">SR-5</span> &nbsp;Feed parser core (pure Kotlin)</span><em>PR #14 · CI passing · lane L3 · +412 −38</em></div>
+      <span class="key">4</span>
+    </div>
+    <div class="row">
+      <span class="tag ">Reconcile</span>
+      <div class="ttl"><span><span class="id">SR-5</span> &nbsp;proposes PROJECT-DESIGN.md r4</span><em>sha 9f3c1a · accept or reject</em></div>
+      <span class="key">5</span>
+    </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 20px; min-height: 0;">
+        <div class="card" style="flex: 1;">
+          <h2>Ready frontier <small>claim order</small></h2>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div class="slug ready"><span class="id">SR-9</span><span style="display: flex; align-items: center; gap: 10px;"><i class="dot"></i>Feed fixture parser tests</span><span class="id">L4</span></div>
+    <div class="slug ready"><span class="id">SR-10</span><span style="display: flex; align-items: center; gap: 10px;"><i class="dot"></i>Boox refresh-mode hook</span><span class="id">L3</span></div>
+    <div class="slug running"><span class="id">SR-8</span><span style="display: flex; align-items: center; gap: 10px;"><i class="dot"></i>Reader typography settings</span><span class="id">heartbeat 4s ago</span></div>
+    <div class="slug blocked"><span class="id">SR-11</span><span style="display: flex; align-items: center; gap: 10px;"><i class="dot"></i>Offline sync worker</span><span class="id">by SR-7</span></div>
+    <div class="slug draft"><span class="id">SR-13</span><span style="display: flex; align-items: center; gap: 10px;"><i class="dot"></i>Feed subscribe screen</span><span class="id">no design</span></div></div>
+        </div>
+        <div class="card" style="border-color: #FF8C4B;">
+          <h2>Pouring <small>SR-8 · implement · verifying (fast)</small></h2>
+          <div class="runbar">
+            <div class="meter"><span>$1.42 of $5.00</span><div><i style="width: 28%;"></i></div></div>
+            <div class="meter"><span>06:12 of 14:00</span><div><i style="width: 44%;"></i></div></div>
+            <div class="meter"><span>38 turns</span><div><i style="width: 47%;"></i></div></div>
+            <div class="meter"><span>sandbox fly-3</span><div><i style="width: 100%; background: #6FCDB3;"></i></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></x-dc>
+</body>
+</html>

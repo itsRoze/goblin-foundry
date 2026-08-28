@@ -1,0 +1,90 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Home",
+      "page": "pages"
+    },
+    {
+      "file": "Kanban.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Kanban",
+      "page": "pages"
+    },
+    {
+      "file": "Ticket.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Ticket · SR-12",
+      "page": "pages"
+    },
+    {
+      "file": "Project.dc.html",
+      "x": 1540,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Project · MVP",
+      "page": "pages"
+    },
+    {
+      "file": "Tokens.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Tokens",
+      "page": "system"
+    },
+    {
+      "file": "Components.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Components",
+      "page": "system"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief6",
+      "x": 3080,
+      "y": 0,
+      "w": 420,
+      "text": "ROUND 6 — Everforest dark, flat and matte.\n\nThree opaque surface steps (page, tile, tile header/card), 1px rules, no shadows, no blur, no gradients. Text-safe Everforest variants for anything under 16px.\n\nFour surfaces: Home, Kanban, Ticket, Project. Same data throughout.",
+      "page": "pages"
+    },
+    {
+      "id": "sys",
+      "x": 3080,
+      "y": 0,
+      "w": 420,
+      "page": "system",
+      "text": "HOUSE STYLE v0 — not a strict design system.\n\nSource of truth in the repo: design/DESIGN.md and design/tokens.css. This page is the visual companion. The four pages on the \"Pages\" page are built from these tokens."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "system"
+  },
+  "pages": [
+    {
+      "id": "system",
+      "name": "System"
+    },
+    {
+      "id": "pages",
+      "name": "Pages"
+    }
+  ]
+}

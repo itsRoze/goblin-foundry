@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    
+  .wf { width: 1280px; height: 800px; background: #f6f5f1; color: #222; font-family: 'Caveat', cursive; font-size: 20px; display: grid; grid-template-columns: 180px 1fr 1fr; grid-template-rows: 64px 1fr 150px; gap: 16px; padding: 16px; box-sizing: border-box; }
+  .box { border: 2px dashed #777; border-radius: 4px; padding: 12px; box-sizing: border-box; background: #fbfaf7; }
+  .box h3 { margin: 0 0 6px; font-size: 24px; font-weight: 700; }
+  .box p { margin: 0 0 4px; line-height: 1.25; }
+  .sm { font-size: 16px; color: #555; }
+  .note { position: absolute; background: #fff5a6; padding: 6px 10px; transform: rotate(-2deg); font-size: 18px; box-shadow: 2px 2px 0 #c9b95a; }
+  
+  </style>
+</helmet>
+<div class="wf" style="position: relative;">
+  <div class="box" style="grid-column: 1 / 4; display: flex; align-items: center; gap: 24px;">
+    <span style="font-size: 28px; font-weight: 700;">Goblin Foundry</span>
+    <span class="sm">Subway Reader ▾</span>
+    <span class="sm" style="margin-left: auto;">⌘K anything · one run live · 5 things waiting on you</span>
+  </div>
+  <div class="box">
+    <h3>Apps</h3>
+    <p>Subway Reader</p>
+    <p class="sm">— MVP project</p>
+    <p class="sm">— Boox polish (later)</p>
+    <p style="margin-top: 12px;">Goblin Foundry</p>
+    <p class="sm">(dogfood, after SR)</p>
+  </div>
+  <div class="box">
+    <h3>Waiting on you ①</h3>
+    <p class="sm">Approve draft → ready</p>
+    <p class="sm">Re-arm a needs-human ticket (with reason)</p>
+    <p class="sm">Answer a run's question</p>
+    <p class="sm">Review a PR (lane L3/L4)</p>
+    <p class="sm">Accept/reject a design revision</p>
+    <p style="margin-top: 8px;">Every row = one decision, one keystroke away.</p>
+  </div>
+  <div class="box">
+    <h3>Ready frontier ③</h3>
+    <p class="sm">ready ∧ unblocked ∧ not leased ∧ within limits</p>
+    <p class="sm">shows blockers, lane, design revision</p>
+    <p class="sm">running ticket glows here too</p>
+    <p style="margin-top: 8px;">Order of tickets = order the controller will claim.</p>
+  </div>
+  <div class="box" style="grid-column: 2 / 4;">
+    <h3>Running now ④</h3>
+    <p class="sm">SR-8 · sandbox · heartbeat · cost / cap · time / cap · phase · evidence so far</p>
+    <p class="sm">Design revision / planning conversation ② lives one click in from any ticket.</p>
+  </div>
+  <div class="note" style="left: 420px; top: 30px;">Same bones for all four skins →</div>
+</div></x-dc>
+</body>
+</html>

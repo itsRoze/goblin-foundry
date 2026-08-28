@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Manrope:wght@400;600;700&family=DM+Mono&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    
+  .o { width: 1280px; height: 800px; background: radial-gradient(1100px 700px at 30% 40%, #17121F, #100C16); color: #EDE6F3; font-family: 'Manrope', system-ui, sans-serif; font-size: 13.5px; position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr 420px; box-sizing: border-box; }
+  .o .graph { position: relative; padding: 30px 36px; }
+  .o h1 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 44px; margin: 0; letter-spacing: -.01em; line-height: 1; }
+  .o h1 span { font-style: normal; font-family: 'Manrope'; font-size: 13px; color: #8E84A0; letter-spacing: .1em; text-transform: uppercase; display: block; margin-bottom: 8px; }
+  .o svg text { font-family: 'Manrope'; font-size: 12.5px; fill: #EDE6F3; font-weight: 600; }
+  .o svg text.id { font-family: 'DM Mono', monospace; font-size: 10.5px; fill: #8E84A0; font-weight: 400; }
+  .o svg .edge { fill: none; stroke: #5CE6CC; stroke-width: 1.5; opacity: .55; }
+  .o svg .edge.dead { stroke: #8E84A0; stroke-dasharray: 4 4; opacity: .5; }
+  .o svg .node { fill: #17121F; stroke: #A6FF5E; stroke-width: 2; }
+  .o svg .node.done { fill: #A6FF5E; stroke: #A6FF5E; }
+  .o svg .node.draft { stroke: #8E84A0; stroke-dasharray: 3 3; }
+  .o svg .node.blocked { stroke: #8E84A0; }
+  .o svg .node.human { stroke: #FF9A3C; filter: drop-shadow(0 0 8px rgba(255,154,60,.5)); }
+  .o svg .node.running { stroke: #FF9A3C; fill: #FF9A3C; animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { filter: drop-shadow(0 0 6px rgba(255,154,60,.5)); } 50% { filter: drop-shadow(0 0 22px rgba(255,154,60,.5)); } }
+  .o svg .halo { fill: none; stroke: #A6FF5E; stroke-width: 1; opacity: .35; }
+  .o .legend { position: absolute; left: 36px; bottom: 26px; display: flex; gap: 18px; font-size: 11px; color: #8E84A0; letter-spacing: .06em; text-transform: uppercase; }
+  .o .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1.5px solid #A6FF5E; }
+  .o .side { border-left: 1px solid #2A2338; padding: 30px 28px; display: flex; flex-direction: column; gap: 6px; background: #100C16; }
+  .o h2 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 26px; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .o h2 small { font-family: 'DM Mono'; font-style: normal; font-size: 11px; color: #8E84A0; }
+  .o .it { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: start; padding: 10px 0; border-top: 1px solid #2A2338; }
+  .o .it i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: #A6FF5E; box-shadow: 0 0 10px rgba(166,255,94,.45); }
+  .o .it.hot i { background: #FF9A3C; box-shadow: 0 0 12px rgba(255,154,60,.5); }
+  .o .it b { display: block; font-weight: 700; font-size: 14px; }
+  .o .it b span { font-family: 'DM Mono'; font-weight: 400; font-size: 11px; color: #8E84A0; margin-right: 6px; }
+  .o .it em { font-style: normal; color: #8E84A0; font-size: 12.5px; }
+  .o .it kbd { font-family: 'DM Mono'; font-size: 11px; color: #8E84A0; border: 1px solid #2A2338; border-radius: 999px; padding: 1px 8px; }
+  .o .kind { font-family: 'DM Mono'; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #5CE6CC; }
+  .o .it.hot .kind { color: #FF9A3C; }
+  .o .runc { margin-top: auto; border: 1px solid #FF9A3C; border-radius: 16px; padding: 14px 16px; box-shadow: 0 0 30px rgba(255,154,60,.5) inset; }
+  .o .runc h3 { margin: 0 0 8px; font-family: 'Bodoni Moda'; font-style: italic; font-weight: 400; font-size: 20px; }
+  .o .m { display: grid; grid-template-columns: 62px 1fr auto; gap: 10px; align-items: center; font-family: 'DM Mono'; font-size: 11px; color: #8E84A0; margin: 5px 0; }
+  .o .m div { height: 4px; background: #2A2338; border-radius: 2px; } .o .m div i { display: block; height: 100%; border-radius: 2px; background: #FF9A3C; box-shadow: 0 0 8px rgba(255,154,60,.5); }
+  
+  </style>
+</helmet>
+<div class="o">
+  <div class="graph">
+    <h1><span>Subway Reader · MVP · design r3</span>What grows from what</h1>
+    <svg width="880" height="520" viewBox="0 0 880 520" style="margin-top: 10px;"><path class="edge " d="M120 150 C 190 150, 230 110, 300 110"/><path class="edge " d="M120 150 C 190 150, 230 220, 300 220"/><path class="edge " d="M300 110 C 370 110, 400 165, 470 165"/><path class="edge " d="M300 220 C 370 220, 400 165, 470 165"/><path class="edge " d="M300 220 C 370 220, 400 300, 470 300"/><path class="edge " d="M120 150 C 190 150, 180 360, 250 360"/><path class="edge " d="M470 165 C 540 165, 580 120, 650 120"/><path class="edge " d="M470 165 C 540 165, 580 250, 650 250"/><path class="edge " d="M470 165 C 540 165, 580 380, 650 380"/><path class="edge dead" d="M250 360 C 320 360, 380 450, 450 450"/><path class="edge " d="M650 250 C 720 250, 730 320, 800 320"/><path class="edge " d="M650 380 C 720 380, 730 320, 800 320"/><path class="edge dead" d="M800 320 C 870 320, 730 460, 800 460"/><g><circle class="halo" cx="120" cy="150" r="18"/><circle class="node done" cx="120" cy="150" r="9"/><text class="id" x="136" y="146">SR-1</text><text x="136" y="161">Core module</text></g><g><circle class="halo" cx="300" cy="110" r="18"/><circle class="node done" cx="300" cy="110" r="9"/><text class="id" x="316" y="106">SR-2</text><text x="316" y="121">Feed fetch</text></g><g><circle class="halo" cx="300" cy="220" r="18"/><circle class="node done" cx="300" cy="220" r="9"/><text class="id" x="316" y="216">SR-4</text><text x="316" y="231">Fixtures</text></g><g><circle class="halo" cx="470" cy="165" r="18"/><circle class="node review" cx="470" cy="165" r="9"/><text class="id" x="486" y="161">SR-5</text><text x="486" y="176">Parser core</text></g><g><circle class="halo" cx="470" cy="300" r="18"/><circle class="node human" cx="470" cy="300" r="9"/><text class="id" x="486" y="296">SR-3</text><text x="486" y="311">OPML import</text></g><g><circle class="halo" cx="250" cy="360" r="18"/><circle class="node human" cx="250" cy="360" r="9"/><text class="id" x="266" y="356">SR-7</text><text x="266" y="371">Room migration v2</text></g><g><circle class="halo" cx="650" cy="120" r="18"/><circle class="node ready" cx="650" cy="120" r="9"/><text class="id" x="666" y="116">SR-9</text><text x="666" y="131">Fixture tests</text></g><g><circle class="halo" cx="650" cy="250" r="26"/><circle class="node running" cx="650" cy="250" r="12"/><text class="id" x="666" y="246">SR-8</text><text x="666" y="261">Typography</text></g><g><circle class="halo" cx="650" cy="380" r="18"/><circle class="node ready" cx="650" cy="380" r="9"/><text class="id" x="666" y="376">SR-10</text><text x="666" y="391">Refresh hook</text></g><g><circle class="halo" cx="450" cy="450" r="18"/><circle class="node blocked" cx="450" cy="450" r="9"/><text class="id" x="466" y="446">SR-11</text><text x="466" y="461">Offline sync</text></g><g><circle class="halo" cx="800" cy="320" r="18"/><circle class="node human" cx="800" cy="320" r="9"/><text class="id" x="816" y="316">SR-12</text><text x="816" y="331">Article list</text></g><g><circle class="halo" cx="800" cy="460" r="18"/><circle class="node draft" cx="800" cy="460" r="9"/><text class="id" x="816" y="456">SR-13</text><text x="816" y="471">Subscribe screen</text></g></svg>
+    <div class="legend"><span><i></i>ready</span><span><i style="background: #A6FF5E;"></i>done</span><span><i style="border-color: #FF9A3C; background: #FF9A3C;"></i>running</span><span><i style="border-color: #FF9A3C;"></i>needs you</span><span><i style="border-style: dashed; border-color: #8E84A0;"></i>draft</span><span>edges are dependencies · dashed when the source can't proceed</span></div>
+  </div>
+  <div class="side">
+    <h2>Waiting on you <small>5 · ⌘K</small></h2>
+    <div class="it "><i></i><div><span class="kind">Approve</span><b><span>SR-12</span>Article list screen: e-ink pagination</b><em>draft · design r3 · lane L3</em></div><kbd>1</kbd></div><div class="it hot"><i></i><div><span class="kind">Re-arm</span><b><span>SR-7</span>Room migration v2</b><em>verify failed twice with the same failure · $3.80 spent</em></div><kbd>2</kbd></div><div class="it hot"><i></i><div><span class="kind">Answer</span><b><span>SR-3</span>OPML import</b><em>run asked: keep folder hierarchy?</em></div><kbd>3</kbd></div><div class="it "><i></i><div><span class="kind">Review</span><b><span>SR-5</span>Feed parser core (pure Kotlin)</b><em>PR #14 · CI passing · lane L3 · +412 −38</em></div><kbd>4</kbd></div><div class="it "><i></i><div><span class="kind">Reconcile</span><b><span>SR-5</span>proposes PROJECT-DESIGN.md r4</b><em>sha 9f3c1a · accept or reject</em></div><kbd>5</kbd></div>
+    <div class="runc"><h3>SR-8 is growing</h3>
+      <div class="m"><span>spend</span><div><i style="width: 28%;"></i></div><span>$1.42/5.00</span></div>
+      <div class="m"><span>time</span><div><i style="width: 44%;"></i></div><span>06:12/14:00</span></div>
+      <div class="m"><span>turns</span><div><i style="width: 47%;"></i></div><span>38/80</span></div>
+      <div class="m" style="margin-top: 8px;"><span>fly-3</span><span style="color: #EDE6F3;">verifying (fast)</span><span>heartbeat 4s</span></div>
+    </div>
+  </div>
+</div></x-dc>
+</body>
+</html>

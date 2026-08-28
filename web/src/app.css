@@ -1,0 +1,43 @@
+/* Shell only. House style per design/DESIGN.md: flat, square, Everforest dark. */
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--gf-page);
+  color: var(--gf-ink);
+  font: var(--gf-t-body);
+}
+.gf-status {
+  display: flex;
+  align-items: center;
+  gap: var(--gf-s3);
+  height: 28px;
+  padding: 0 var(--gf-s3);
+  background: var(--gf-tile);
+  border-bottom: 1px solid var(--gf-rule);
+  font: var(--gf-t-label);
+  letter-spacing: var(--gf-track);
+  text-transform: uppercase;
+  color: var(--gf-mute);
+}
+.gf-status strong { color: var(--gf-ink); font-weight: 500; }
+.gf-main { padding: var(--gf-gap); }
+.gf-tile {
+  background: var(--gf-tile);
+  border: 1px solid var(--gf-rule);
+  border-radius: var(--gf-radius);
+  max-width: 480px;
+}
+.gf-tile-head {
+  padding: var(--gf-s2) var(--gf-pad-x);
+  background: var(--gf-raised);
+  border-bottom: 1px solid var(--gf-rule);
+  font: var(--gf-t-label);
+  letter-spacing: var(--gf-track);
+  text-transform: uppercase;
+  color: var(--gf-mute);
+}
+.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); }
+.gf-kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--gf-s2) var(--gf-s5); align-items: baseline; }
+.gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
+.gf-kv dd { margin: 0; font: var(--gf-t-num); color: var(--gf-system); }
+.gf-err { color: var(--gf-human); }

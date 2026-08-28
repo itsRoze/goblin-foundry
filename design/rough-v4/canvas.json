@@ -1,0 +1,95 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Everforest · dark"
+    },
+    {
+      "file": "EverforestDay.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Everforest · light"
+    },
+    {
+      "file": "KanbanEverforest.dc.html",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Everforest · kanban"
+    },
+    {
+      "file": "NordNight.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Nord · dark"
+    },
+    {
+      "file": "NordDay.dc.html",
+      "x": 1540,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Nord · light"
+    },
+    {
+      "file": "KanbanNord.dc.html",
+      "x": 3080,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Nord · kanban"
+    },
+    {
+      "file": "TuiEverforest.dc.html",
+      "x": 0,
+      "y": 2200,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · Everforest"
+    },
+    {
+      "file": "TuiNord.dc.html",
+      "x": 1540,
+      "y": 2200,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · Nord"
+    },
+    {
+      "file": "TuiTicketEverforest.dc.html",
+      "x": 3080,
+      "y": 2200,
+      "w": 1440,
+      "h": 900,
+      "title": "TUI · ticket · Everforest"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief5",
+      "x": 4620,
+      "y": 0,
+      "w": 420,
+      "text": "ROUND 5 — instrument, not game. Same square tiling bones; no chamfers, brackets, glows or scanline. Run numbers at text size. Diamonds stay in the graph.\n\nType: IBM Plex Sans + JetBrains Mono — the typography those palettes grew up with.\n\nEverforest: warm, mossy, low-contrast greens; red only where you are needed. Nord: cooler, blue-grey, frost accents, aurora orange for attention."
+    },
+    {
+      "id": "tui5",
+      "x": 4620,
+      "y": 2200,
+      "w": 420,
+      "text": "TUI polished: one border weight (heavy = focused), section labels in caps, gauges with a single glyph, notes right-aligned, palettes matched to the GUI so both clients read as one product."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Serif:ital@1&family=Space+Mono&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    
+  .z { width: 1280px; height: 800px; background: #121212; color: #EFE9DA; font-family: 'Space Mono', monospace; font-size: 13px; position: relative; overflow: hidden; box-sizing: border-box;
+       background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.2px); background-size: 4px 4px; }
+  .z .head { position: absolute; left: 40px; top: 28px; }
+  .z .head h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 84px; line-height: .86; letter-spacing: -.04em; margin: 0; text-transform: uppercase; position: relative; }
+  .z .head h1:before { content: attr(data-t); position: absolute; left: 4px; top: 3px; color: #FF5DBA; z-index: -1; }
+  .z .head h1 i { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .z .tape { position: absolute; right: -60px; top: 54px; background: #6C95FF; color: #121212; font-family: 'Syne'; font-weight: 800; font-size: 15px; letter-spacing: .12em; text-transform: uppercase; padding: 8px 90px; transform: rotate(8deg); box-shadow: 4px 4px 0 #FF5DBA; }
+  .z .cmd { position: absolute; left: 40px; top: 214px; font-size: 12px; color: #B5AE9E; }
+  .z .cmd b { font-weight: 400; border: 1.5px solid #EFE9DA; padding: 2px 7px; margin-right: 8px; }
+  .z .list { position: absolute; left: 40px; top: 262px; width: 680px; }
+  .z .row { display: grid; grid-template-columns: 40px 118px 1fr; gap: 14px; align-items: start; padding: 11px 0; border-top: 2px solid #EFE9DA; }
+  .z .row .n { font-family: 'Syne'; font-weight: 800; font-size: 26px; line-height: 1; }
+  .z .stamp { font-family: 'Syne'; font-weight: 800; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; border: 2.5px solid #6C95FF; color: #6C95FF; padding: 4px 6px; text-align: center; transform: rotate(-3deg); border-radius: 3px; display: inline-block; }
+  .z .stamp.hot { border-color: #FF5DBA; color: #FF5DBA; transform: rotate(2deg); }
+  .z .stamp.ok { border-color: #3BE38A; color: #3BE38A; }
+  .z .row .t { font-family: 'Syne'; font-weight: 700; font-size: 16px; line-height: 1.2; }
+  .z .row .t em { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400; font-size: 17px; color: #B5AE9E; display: block; margin-top: 2px; }
+  .z .row .id { color: #B5AE9E; font-size: 11px; }
+  .z .col { position: absolute; left: 780px; top: 262px; width: 460px; }
+  .z .col h2 { font-family: 'Syne'; font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: -.02em; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .z .col h2 small { font-family: 'Space Mono'; font-weight: 400; font-size: 11px; color: #B5AE9E; letter-spacing: 0; text-transform: none; }
+  .z .fr { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; padding: 8px 0; border-top: 1.5px dashed #EFE9DA; align-items: center; }
+  .z .fr .id { font-size: 11px; color: #B5AE9E; }
+  .z .fr .t { font-family: 'Syne'; font-weight: 700; font-size: 14px; }
+  .z .fr.running .t { background: #FF5DBA; color: #121212; padding: 1px 6px; }
+  .z .fr.blocked { opacity: .5; text-decoration: line-through; }
+  .z .fr.draft .t { font-weight: 400; font-style: italic; font-family: 'Instrument Serif'; font-size: 16px; }
+  .z .runblk { position: absolute; left: 780px; top: 600px; width: 460px; height: 160px; background: #EFE9DA; color: #121212; padding: 16px 18px; box-sizing: border-box; }
+  .z .runblk h2 { font-family: 'Syne'; font-weight: 800; font-size: 20px; margin: 0 0 8px; text-transform: uppercase; }
+  .z .runblk h2 span { color: #FF5DBA; }
+  .z .bar { height: 14px; margin: 6px 0; background-image: radial-gradient(#FF5DBA 2px, transparent 2.4px); background-size: 8px 8px; position: relative; }
+  .z .bar i { position: absolute; right: 0; top: 0; bottom: 0; background: #EFE9DA; }
+  .z .bar b { position: absolute; left: 0; top: -13px; font-weight: 400; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .z .counts { position: absolute; left: 40px; bottom: 26px; display: flex; gap: 22px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+  .z .counts b { font-family: 'Syne'; font-weight: 800; font-size: 22px; display: block; letter-spacing: -.03em; }
+  .z .counts .hot b { color: #FF5DBA; }
+  
+  </style>
+</helmet>
+<div class="z">
+  <div class="head"><h1 data-t="Waiting on you">Waiting <i>on</i> you</h1></div>
+  <div class="tape">Subway Reader · MVP · design r3</div>
+  <div class="cmd"><b>⌘K</b>approve · re-arm · open · new ticket &nbsp;&nbsp; <b>1–5</b>jump</div>
+  <div class="list">
+    <div class="row"><span class="n">1</span><span class="stamp ">Approve</span>
+      <div class="t"><span class="id">SR-12</span> Article list screen: e-ink pagination<em>draft · design r3 · lane L3</em></div></div>
+    <div class="row"><span class="n">2</span><span class="stamp hot">Re-arm</span>
+      <div class="t"><span class="id">SR-7</span> Room migration v2<em>verify failed twice with the same failure · $3.80 spent</em></div></div>
+    <div class="row"><span class="n">3</span><span class="stamp hot">Answer</span>
+      <div class="t"><span class="id">SR-3</span> OPML import<em>run asked: keep folder hierarchy?</em></div></div>
+    <div class="row"><span class="n">4</span><span class="stamp ok">Review</span>
+      <div class="t"><span class="id">SR-5</span> Feed parser core (pure Kotlin)<em>PR #14 · CI passing · lane L3 · +412 −38</em></div></div>
+    <div class="row"><span class="n">5</span><span class="stamp ">Reconcile</span>
+      <div class="t"><span class="id">SR-5</span> proposes PROJECT-DESIGN.md r4<em>sha 9f3c1a · accept or reject</em></div></div></div>
+  <div class="col"><h2>Frontier <small>claim order</small></h2><div class="fr ready"><span class="id">SR-9</span><span class="t">Feed fixture parser tests</span><span class="id">L4</span></div><div class="fr ready"><span class="id">SR-10</span><span class="t">Boox refresh-mode hook</span><span class="id">L3</span></div><div class="fr running"><span class="id">SR-8</span><span class="t">Reader typography settings</span><span class="id">heartbeat 4s</span></div><div class="fr blocked"><span class="id">SR-11</span><span class="t">Offline sync worker</span><span class="id">by SR-7</span></div><div class="fr draft"><span class="id">SR-13</span><span class="t">Feed subscribe screen</span><span class="id">no design</span></div></div>
+  <div class="runblk">
+    <h2>Now pouring <span>SR-8</span></h2>
+    <div class="bar"><b>$1.42 of 5.00</b><i style="width: 72%;"></i></div>
+    <div class="bar"><b>06:12 of 14:00 · 38 turns</b><i style="width: 56%;"></i></div>
+    <div style="font-size: 11px; margin-top: 10px; color: #121212; opacity: .8;">fly-3 · heartbeat 4s · verifying (fast)</div>
+  </div>
+  <div class="counts"><span class=""><b>3</b>draft</span><span class=""><b>2</b>ready</span><span class=""><b>1</b>running</span><span class="hot"><b>2</b>needs you</span><span class=""><b>1</b>review</span><span class=""><b>4</b>done</span></div>
+</div></x-dc>
+</body>
+</html>

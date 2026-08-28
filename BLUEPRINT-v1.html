@@ -1,0 +1,491 @@
+<title>Goblin Foundry Blueprint v1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F4F1;--surface:#FBFBF9;--surface2:#E9EBE6;--line:#D3D6CF;--ink:#1C1F1E;--muted:#5B625F;--faint:#8A908C;
+  --accent:#B8541F;--accent-soft:#F4E3D8;
+  --ok:#2E7D6B;--ok-soft:#DCEFE9;--warn:#9A6A00;--warn-soft:#F5EAC8;--info:#4B6A8A;--info-soft:#DDE6EF;--off:#7A7A76;--off-soft:#E6E6E3;--bad:#A3372A;--bad-soft:#F5DCD8;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;--body:"IBM Plex Sans","Segoe UI",Roboto,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#16191A;--surface:#1E2224;--surface2:#262B2D;--line:#343A3C;--ink:#E8E6E0;--muted:#A9AFAA;--faint:#767C78;
+  --accent:#E07A3F;--accent-soft:#3A2618;
+  --ok:#5FB89F;--ok-soft:#1D3530;--warn:#D9A93E;--warn-soft:#3A2F12;--info:#8FB0D0;--info-soft:#1F2E3C;--off:#9A9A95;--off-soft:#2B2D2C;--bad:#E07A6E;--bad-soft:#3B1F1C;
+}}
+:root[data-theme="dark"]{
+  --bg:#16191A;--surface:#1E2224;--surface2:#262B2D;--line:#343A3C;--ink:#E8E6E0;--muted:#A9AFAA;--faint:#767C78;
+  --accent:#E07A3F;--accent-soft:#3A2618;
+  --ok:#5FB89F;--ok-soft:#1D3530;--warn:#D9A93E;--warn-soft:#3A2F12;--info:#8FB0D0;--info-soft:#1F2E3C;--off:#9A9A95;--off-soft:#2B2D2C;--bad:#E07A6E;--bad-soft:#3B1F1C;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.shell{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 20px}
+@media (min-width:1000px){.shell{grid-template-columns:220px minmax(0,1fr);gap:48px}}
+nav.rail{display:none}
+@media (min-width:1000px){nav.rail{display:block;position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0}}
+nav.rail .k{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+nav.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+nav.rail li a{display:block;color:var(--muted);font-size:13.5px;line-height:1.3;padding:2px 0 2px 10px;border-left:2px solid var(--line);border-bottom:0}
+nav.rail li a:hover{color:var(--ink);border-left-color:var(--accent)}
+main{min-width:0;padding:40px 0 96px}
+header.masthead{padding:8px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,5vw,54px);line-height:1.02;letter-spacing:-.015em;margin:0 0 18px;text-wrap:balance}
+.lede{font-size:18px;line-height:1.5;color:var(--muted);max-width:68ch;margin:0 0 18px}
+.meta{font-family:var(--mono);font-size:12.5px;color:var(--faint);display:flex;flex-wrap:wrap;gap:6px 22px}
+section{margin:0 0 56px;scroll-margin-top:24px}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,32px);line-height:1.1;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+h2 .n{font-family:var(--mono);font-weight:500;font-size:13px;color:var(--accent);letter-spacing:.08em;display:block;margin-bottom:8px}
+h3{font-family:var(--display);font-weight:700;font-size:20px;line-height:1.2;margin:30px 0 10px;text-wrap:balance}
+h4{font-family:var(--body);font-weight:600;font-size:15px;margin:20px 0 6px}
+p{max-width:72ch;margin:0 0 14px}
+.sub{color:var(--muted);max-width:72ch;margin:0 0 20px;font-size:15.5px}
+ul,ol{max-width:72ch;padding-left:22px;margin:0 0 16px}
+li{margin:0 0 7px}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface2);padding:1px 5px;border-radius:2px}
+pre{font-family:var(--mono);font-size:13px;line-height:1.5;background:var(--surface);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;margin:12px 0 20px;max-width:100%}
+pre code{background:none;padding:0;font-size:inherit}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface);margin:14px 0 22px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:620px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface2)}
+tr:last-child td{border-bottom:0}
+td.id{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--accent)}
+.quote{font-family:var(--display);font-weight:500;font-size:clamp(20px,2.4vw,26px);line-height:1.3;max-width:34ch;margin:22px 0 26px;padding-left:18px;border-left:3px solid var(--accent);text-wrap:balance}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 18px;max-width:72ch;margin:18px 0 22px;font-size:15px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;font-size:14.5px;max-width:80ch;margin:0 0 14px}
+.kv dt{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.kv dd{margin:0}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap;line-height:1.5}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.info{background:var(--info-soft);color:var(--info)}.chip.off{background:var(--off-soft);color:var(--off)}.chip.bad{background:var(--bad-soft);color:var(--bad)}
+/* diagram */
+.diagram{margin:18px 0 26px;overflow-x:auto}
+.dg{min-width:720px;display:grid;grid-template-columns:1fr;gap:10px;font-size:13.5px}
+.dg .human{background:var(--surface2);border:1px dashed var(--line);padding:10px 14px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.dg .proc{border:2px solid var(--accent);background:var(--surface);padding:14px}
+.dg .proc .t{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.dg .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dg .box{background:var(--surface2);border:1px solid var(--line);padding:10px 12px}
+.dg .box b{display:block;font-family:var(--display);font-size:15px;margin-bottom:6px}
+.dg .box ul{padding-left:16px;margin:0;font-size:13px}
+.dg .box li{margin:0 0 3px}
+.dg .arrow{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:2px 0}
+.dg .sbx{border:2px solid var(--line);background:var(--surface);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dg .sbx .t{grid-column:1/-1;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.dg .trusted{border-left:3px solid var(--ok)}
+.dg .agent{border-left:3px solid var(--warn)}
+.dg .ext{background:var(--surface2);border:1px solid var(--line);padding:10px 14px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.fsm{font-family:var(--mono);font-size:13px;line-height:1.7;background:var(--surface);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;margin:12px 0 18px}
+.fsm b{color:var(--accent);font-weight:500}
+.fsm .h{color:var(--ok)}
+.two{display:grid;grid-template-columns:1fr;gap:0 40px}
+@media (min-width:860px){.two{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);padding:16px 18px;margin:0 0 12px}
+.card h4{margin:0 0 6px;font-family:var(--display);font-size:16px;font-weight:700}
+.card p{font-size:14.5px;margin:0 0 6px}
+footer{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13.5px}
+</style>
+
+<div class="shell">
+<nav class="rail" aria-label="Sections">
+  <p class="k">Blueprint v1</p>
+  <ol>
+    <li><a href="#what">What v1 is</a></li>
+    <li><a href="#principles">Principles</a></li>
+    <li><a href="#shape">System shape</a></li>
+    <li><a href="#tracker">Tracker</a></li>
+    <li><a href="#inputs">Run inputs</a></li>
+    <li><a href="#controller">Controller</a></li>
+    <li><a href="#results">Results &amp; evidence</a></li>
+    <li><a href="#runtime">Worker runtime</a></li>
+    <li><a href="#sandbox">Sandbox &amp; git</a></li>
+    <li><a href="#restart">Restart reconciliation</a></li>
+    <li><a href="#verify">Verification</a></li>
+    <li><a href="#lanes">Lanes &amp; outcomes</a></li>
+    <li><a href="#human">Human workflow</a></li>
+    <li><a href="#subway">Subway Reader</a></li>
+    <li><a href="#order">Build order</a></li>
+    <li><a href="#decisions">Decision order</a></li>
+    <li><a href="#salvage">Salvage from v0</a></li>
+    <li><a href="#deferred">Deferred</a></li>
+    <li><a href="#risks">Risks</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="masthead">
+  <p class="eyebrow">Architectural blueprint · rev 3</p>
+  <h1>Goblin Foundry Blueprint v1</h1>
+  <p class="lede">An owned ticket-management system built first, then a controller that runs one pi session in one cloud sandbox per approved ticket and hands back a human-reviewed PR. Slice-level detail is deliberately absent; each slice is planned with <code>/grill-me</code> when it starts.</p>
+  <div class="meta"><span>2026-08-27</span><span>source: BLUEPRINT-v1.md</span><span>inputs: synthesis · critique · v0 post-mortem · review · CONTEXT.md + ADR-0001–0006 + S1 spec</span></div>
+</header>
+
+<section id="what">
+  <h2><span class="n">01</span>What v1 is</h2>
+  <p>A solo, open-source software factory with two halves built in order:</p>
+  <ol>
+    <li><strong>An owned ticket-management system</strong> — the durable product/design memory and human control surface for a portfolio of apps. Built first, used by the human before any automation exists.</li>
+    <li><strong>A controller</strong> that takes an approved ticket, runs one <strong>pi</strong> session in one <strong>cloud sandbox</strong>, verifies the result with a repository-owned command, and opens a human-reviewed PR.</li>
+  </ol>
+  <p>The first product built through it is <strong>Subway Reader</strong>, an offline-first e-ink RSS reader for Android. It enters after the tracker exists, as a freshly planned project created through the tracker; the legacy breakdown in <code>research/subway-reader/</code> is reference material, not the plan.</p>
+  <p>v1 is a new codebase. Nothing is reused from <code>~/dev/factory</code> except contracts, prompts, and lessons.</p>
+  <p class="quote">Agents produce candidates. Deterministic code enforces boundaries. Evidence informs trust. The human owns intent and irreversible decisions.</p>
+  <h4>Non-goals for v1</h4>
+  <p>Multi-user, multi-provider, unattended merging, LLM review chains, mutation gates, stacked PRs, merge queues, model routing, scheduled maintenance agents, benchmark infrastructure, GitHub Issues sync, a Linear-style board. <a href="#deferred">§18</a> lists each with its evidence.</p>
+</section>
+
+<section id="principles">
+  <h2><span class="n">02</span>Principles</h2>
+  <p class="sub">Each principle carries the evidence that earned it. A slice that contradicts one should have a reason.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Principle</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td class="id">P1</td><td><strong>Code owns the loop; agents are bounded nodes returning candidates.</strong> Sequencing, claims, dispositions, gates, transitions, commits and merges are controller code. The agent never owns commit/push semantics or decides completion.</td><td>SSSF, bmad-loop, Stripe Blueprints, Uber AutoCover converge here; v0's agent-decided "done" and reviewer loop are where failures clustered.</td></tr>
+      <tr><td class="id">P2</td><td><strong>Build in slices, tracker first.</strong> A slice is usable by the human before the next starts. No table, field, or process exists ahead of the slice that needs it.</td><td>v0: 18 tables / 163 columns, five built ahead of use; M0 thin slice worked (4/6), M1 five-features-at-once failed (20%).</td></tr>
+      <tr><td class="id">P3</td><td><strong>Fresh session per ticket; same session for bounded corrections; never across a model change.</strong></td><td>Ralph/afk/GSD/QRSPI/bmad-loop vs SSSF/Sandcastle. v0 builder_fix succeeded 5/9 by resuming.</td></tr>
+      <tr><td class="id">P4</td><td><strong>The sandbox provides execution isolation; the controller enforces authority.</strong> pi runs unrestricted inside a disposable VM holding minimum credentials, egress, repo scope and lifetime. Post-run policy, tamper detection and every external write are enforced by the controller or a trusted wrapper, never by host heuristics on tool calls.</td><td>v0 path guard: 66 breaches, 19/29 false positives. Sandboxes delete ~600 lines of v0 isolation code.</td></tr>
+      <tr><td class="id">P5</td><td><strong>Deterministic failures block; semantic concerns route.</strong> Build/test/scope/protected-artifact failures block. An LLM concern routes to a human or revokes unattended eligibility; it never rejects alone. Route-to-human results are recorded so a future reviewer can be scored.</td><td>Critique §1; uReview; v0 reviewer 1/46.</td></tr>
+      <tr><td class="id">P6</td><td><strong>Protected verifier by default, hidden by class.</strong> Workers may read acceptance artifacts; modification is detected and rejected (v1) or prevented (later). Hidden only for regression fixes, external contracts, security invariants, migrations, factory self-evaluation.</td><td>Critique §2; fusion-harness; 80% of agent-written tests carry no oracle.</td></tr>
+      <tr><td class="id">P7</td><td><strong>Planning is a conversation, not a phase.</strong> A ticket is ready when no unresolved question could materially change scope, acceptance criteria, or an irreversible decision; known assumptions and deferred questions are allowed. Workers never park waiting on a human; a run that must ask ends and returns the ticket.</td><td>v0: 152 questions, 896 min blocked inside worker phases.</td></tr>
+      <tr><td class="id">P8</td><td><strong>Humans re-arm.</strong> A failed run leaves the ticket in <code>needs_human</code> with the reason. Lease expiry never silently makes a ticket runnable. Reconciliation of the <em>same</em> attempt may be automatic; a <em>new</em> attempt requires a human.</td><td>v0: 12,357-iteration claim loop, FAC-13 26 runs / 3 successes, 11 <code>base_conflict</code>.</td></tr>
+      <tr><td class="id">P9</td><td><strong>One metered provider, dollar-capped per run.</strong></td><td>v0: 30 of 94 runs died on subscription windows.</td></tr>
+      <tr><td class="id">P10</td><td><strong>Measure what survived, not what shipped.</strong></td><td>Faros: merges up, incidents/PR +243%.</td></tr>
+      <tr><td class="id">P11</td><td><strong>Reversible order.</strong> Prefer the option replaceable behind a contract over the one that dictates schema.</td><td>Zero: 11 of 45 v0 lessons, three databases before one ticket ran.</td></tr>
+      <tr><td class="id">P12</td><td><strong>Write LESSONS.md and DECISIONS.md as you go, union-merged.</strong></td><td>The only reason the post-mortem has numbers.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="shape">
+  <h2><span class="n">03</span>System shape</h2>
+  <p class="sub">One controller process with one authoritative store; a disposable sandbox per run containing a trusted wrapper (controller code) and pi (the agent); GitHub as the integration surface.</p>
+  <div class="diagram"><div class="dg">
+    <div class="human">human — /grill-me · planning conversation · approvals · re-arm · review · merge</div>
+    <div class="arrow">▼ typed API (zod) — the one audited write path; the web GUI, the <code>gf</code> CLI and the task-scoped agent capability are all clients of it</div>
+    <div class="proc">
+      <p class="t">controller process (one) + authoritative store</p>
+      <div class="cols">
+        <div class="box"><b>Tracker</b><ul><li>App → Project → Ticket</li><li>design revisions · dependencies</li><li>lifecycle FSM · transition authority</li><li>lease · ready frontier</li><li>GitHub projection</li></ul></div>
+        <div class="box"><b>Controller</b><ul><li>claim → input snapshot → effective policy</li><li>dispatch · gate results · disposition</li><li>integration (PR, idempotent by run_id)</li><li>restart reconciliation</li></ul></div>
+        <div class="box"><b>Evidence</b><ul><li>artifact (digest, producer, retention)</li><li>gate_result · run_event</li><li>run_result (authoritative)</li><li>agent evidence_claim (assertion)</li></ul></div>
+      </div>
+    </div>
+    <div class="arrow">▼ provider contract: create · exec · putFile/getFile · destroy · capabilities()</div>
+    <div class="sbx">
+      <p class="t">cloud sandbox — one per run, destroyed after · repo clone @ base_sha · warm caches · pinned pi · allowlisted egress</p>
+      <div class="box trusted"><b>Trusted wrapper <span class="chip ok">controller code</span></b><ul><li>starts and supervises pi</li><li>runs <code>make verify</code> → <code>verify.json</code></li><li>tamper check on protected digests</li><li>commits with provenance trailers</li><li>pushes <code>agent/&lt;ticket-id&gt;</code> with the per-run token</li><li>exports artifacts</li></ul></div>
+      <div class="box agent"><b>pi <span class="chip warn">agent, unrestricted</span></b><ul><li><code>--mode rpc</code>, fresh session</li><li>edits the working tree; runs commands freely</li><li>never commits; holds no GitHub token</li><li>factory extension: telemetry, budget kill-switch, scrubbing, advisory <code>tool_call</code> policy</li><li>returns an optional fenced-JSON envelope</li></ul></div>
+    </div>
+    <div class="arrow">▼ pushed sha observed → PR opened with evidence</div>
+    <div class="ext">GitHub — branch · PR · CI (incl. KVM emulator jobs) · human review (L3/L4) · squash merge   ──▶   projection back into the tracker (poll; optional webhook)</div>
+  </div></div>
+</section>
+
+<section id="tracker">
+  <h2><span class="n">04</span>Tracker</h2>
+  <p>The durable memory and control surface for a solo portfolio of apps, and the factory's queue. A first-class product, not queue plumbing.</p>
+  <dl class="kv">
+    <dt>Authority</dt><dd>Goblin Foundry owns apps, projects, designs (as revisions), tickets, dependencies, runs and workflow state. GitHub owns repositories, commits, checks, PRs, reviews and merge state. Selected GitHub state is <em>projected</em> into the tracker; tickets are never mirrored into GitHub Issues.</dd>
+    <dt>Domain</dt><dd>Grows by slice. S1 (per ADR-0006): <code>App</code>, <code>Project</code> (with a markdown design), <code>Ticket</code> (description, markdown design, <code>simple</code> flag; may belong to no app or project), <code>TicketDependency</code>, <code>Event</code> (audit log), <code>Setting</code> (key prefix). Later: <code>Run</code>, <code>Artifact</code>, <code>GateResult</code>, <code>RunResult</code>, <code>RunEvent</code> as needed; lane/scope/acceptance/budget fields in S2; claim order and <code>needs_human</code> in S5.</dd>
+    <dt>Designs</dt><dd>Markdown stored <strong>in the tracker</strong> as a <code>design</code> column on Project and on Ticket, edited in place (ADR-0005; supersedes the earlier "markdown in the app repository, <code>path + sha</code>" rule). Reasons: tickets can exist without a repository, and design files cluttered the product repo. History is the <code>event</code> log; no revision table or sha in S1. The hard requirement — a run is judged against the design it started with — is met by copying the text into the S2 input snapshot at claim time. An implementation PR that wants a design change proposes a tracker edit; it takes effect only after the human accepts it.</dd>
+    <dt>Readiness</dt><dd><code>ready</code> ∧ no incomplete blocker ∧ not leased ∧ within concurrency and risk limits.</dd>
+    <dt>Lease</dt><dd>The smallest correct atomic lease: <code>run_id, ticket_id, lease_owner, leased_at, heartbeat_at, expires_at, attempt</code>. Atomic acquisition, heartbeat and expiry-to-reconciliation are the contract; the implementation is an atomic conditional update on one row, which SQLite and a Durable Object both honour (ADR-0001). No distributed queue.</dd>
+    <dt>Surface</dt><dd>Typed HTTP API (Hono + zod) is the one audited write path; the web GUI, the <code>gf</code> CLI, and later the agent capability are all clients of it (ADR-0004). Transitions are named intent endpoints (<code>POST /tickets/:key/approve|start|ship|…</code>), never a writable <code>status</code> field; errors are <code>problem+json</code> (<code>422</code> zod issues, <code>409 {owner, hint}</code> for refused transitions). The GUI ships in S1 — kanban as home with drag-and-drop between statuses, Ticket, Project and App views, a markdown editor, a per-project dependency graph, URL-parameter filters — because a tracker the human cannot operate by hand is not usable (P2). Drop targets and refusal text derive from the transition table so controller-owned edges become refusals in S5 with no UI change. The <code>gf</code> CLI is a thin JSON wrapper for the planning skill, not a second write path. Every mutation records actor (<code>human</code> | <code>agent</code>; <code>controller</code> later), kind, prior, new, timestamp.</dd>
+  </dl>
+
+  <h3>Lifecycle</h3>
+  <p class="sub">Per ADR-0003. The earlier <code>draft / running / ready_for_review</code> became <code>backlog·todo·planning / building / review</code>; authority rules did not change. Status is workflow state only — CI and PR review state are separate observed fields; blocked is derived, never a status.</p>
+  <div class="fsm">
+backlog ⇄ todo ⇄ planning ──<span class="h">(human approves; needs app + description + design unless simple)</span>──▶ <b>ready</b><br>
+ready ────────<span class="h">(human by hand in S1</span>; controller lease from S5)──▶ <b>building</b><br>
+building ─────(PR exists)──────────────────────────────▶ <b>review</b><br>
+building ─────(stop)───────────────────────────────────▶ <b>ready</b> · ready ──(unapprove)──▶ <b>planning</b><br>
+review ───────<span class="h">(ship)</span>─────────────────────────────────▶ <b>done</b><br>
+any but done ─<span class="h">(human)</span>────────────────────────────────▶ <b>cancelled</b> ──(restore)──▶ backlog<br>
+S5 adds: building ──(question · semantic route · terminal failure · lease expiry)──▶ <b>needs_human</b> ──<span class="h">(human re-arms)</span>──▶ ready
+  </div>
+  <ul>
+    <li>Agents may propose results and transitions; they cannot approve, re-arm, change canonical status, or mark shipped.</li>
+    <li>A reaper that finds an expired lease records a run failure and routes to <code>needs_human</code>; it never re-queues.</li>
+  </ul>
+
+  <h3>Agent access is task-scoped and intent-level</h3>
+<pre><code>factory app show &lt;id&gt;
+factory project context &lt;id&gt;
+factory ticket show &lt;id&gt; --approved-revision
+factory ticket ready
+factory ticket propose &lt;id&gt; --result &lt;file&gt;
+factory run heartbeat &lt;id&gt;
+factory run complete &lt;id&gt; --envelope &lt;file&gt;</code></pre>
+  <p>A worker's capability covers its ticket only. It cannot browse unrelated apps, approve its own design, re-arm, or mark work shipped.</p>
+
+  <h3>Storage and keys</h3>
+  <p><strong>ADR-0001.</strong> One Bun process, one SQLite file (<code>~/.goblin-foundry/foundry.db</code>, WAL) accessed only through Drizzle's async API behind a single <code>db.ts</code> seam, so a later move to a Cloudflare SQLite-backed Durable Object hosting the same Hono app is a driver swap, not a rewrite. Postgres rejected: a second service and credentials for a single writer, and it closes the Cloudflare path. Backups: <code>gf backup</code> nightly; Litestream to R2 once the process leaves the laptop. No Zero, no sync engine (P11); the GUI uses plain fetch with a query cache, optimistic transitions rolled back on <code>409</code>, and a 5 s poll on the board.</p>
+  <p><strong>ADR-0002.</strong> Tickets have one global serial number shown as <code>&lt;prefix&gt;-&lt;n&gt;</code> (<code>GF-12</code>), prefix set once per installation; never reused, never changes when a ticket moves between apps or projects. Apps and projects use opaque ids with mutable names.</p>
+</section>
+
+<section id="inputs">
+  <h2><span class="n">05</span>Run inputs: immutable approved snapshot</h2>
+  <p>At claim time the controller records an immutable input snapshot and every gate evaluates against it, so an implementation is never judged against a specification it changed during the run.</p>
+<pre><code>app_id · project_id · ticket_id · ticket_revision
+project_design (text, copied) · ticket_description (text, copied) · ticket_design (text, copied)
+acceptance_revision · declared_scope · risk_lane
+factory_config_sha · repository_base_sha</code></pre>
+  <div class="two">
+    <div class="card"><h4>Repository policy (~10 fields)</h4><p>default model and effort · budget/turn/time ceilings · verification command · protected paths and artifact classes · default max diff · egress rules · integration settings</p></div>
+    <div class="card"><h4>Ticket / run input (per approved revision)</h4><p>scope · acceptance criteria · risk lane · dependency snapshot · budget override within ceilings · human-approved exceptional paths</p></div>
+  </div>
+  <p>The controller compiles both into an <strong>effective run policy</strong> stored with the run.</p>
+</section>
+
+<section id="controller">
+  <h2><span class="n">06</span>Controller</h2>
+  <p>A small TypeScript loop in the same process as the tracker. The tracker is truth; the controller is recoverable from it (<a href="#restart">§10</a>).</p>
+<pre><code>human approves ticket → ready
+controller acquires lease (ready → building), records input snapshot + effective policy
+provider.create(image, base_sha, per-run credentials, egress, ttl)
+trusted wrapper starts pi --mode rpc, fresh session, ticket snapshot + design as prompt
+agent implements one vertical slice (edits only; never commits)
+wrapper runs `make verify` → verify.json; controller derives gate_result
+disposition:
+  correct_same_session  — verification failure, budget/time/progress permitting,
+                          failure not repeating unchanged
+  retry_infrastructure  — provider/harness failure; does not consume a correction
+  return_to_human       — semantic route, blocked, scope question,
+                          repeated protected-artifact violation
+  terminal              — budget/turn/usage exhaustion, unrecoverable
+wrapper: tamper check → commit with provenance → push agent/&lt;ticket-id&gt;
+controller observes pushed sha (idempotent by run_id) → opens PR with evidence → destroys sandbox
+human reviews (L3/L4; ticket in `review`), squash-merges
+GitHub projection updates → ticket done → dependents unblocked → design reconciliation recorded</code></pre>
+  <dl class="kv">
+    <dt>Phase</dt><dd>v1 has one agent phase, <code>implement</code> ("build" is reserved for compilation and build-gate failures). A second phase is added only when <code>implement</code> is stable enough to build on <em>and</em> outcome data identifies a problem a separate phase is likely to solve.</dd>
+    <dt>Corrections</dt><dd>Two is a maximum, not a rule: governed by disposition, total cost, wall time and progress; stop early when the same normalized failure repeats unchanged.</dd>
+    <dt>Backstops</dt><dd>Kept from v0: named halt reasons that are never retried (<code>budget_exhausted</code>, <code>turn_limit</code>, <code>usage_limit</code>, <code>no_credit</code>), rate breaker, stalled-run sweep on every tick routing to <code>needs_human</code>.</dd>
+  </dl>
+</section>
+
+<section id="results">
+  <h2><span class="n">07</span>Results and evidence</h2>
+  <p>Two distinct contracts. The agent's envelope is optional — many failures mean no valid envelope exists. The controller's run result is authoritative for every terminal run.</p>
+<pre><code>// Returned by the agent only when the pi interaction completes enough to produce one.
+type AgentEnvelope = {
+  status: "completed" | "blocked";
+  summary: string;
+  changedFiles: string[];
+  evidence: EvidenceClaim[];      // assertions, not proof
+  handoff?: string;
+  blockingReason?: string;
+};
+
+// Owned by the controller. Present for every terminal run.
+type RunFailureOrigin = "provider" | "harness" | "protocol" | "verification" | "semantic" | "integration";
+type RunDisposition   = "correct_same_session" | "return_to_human" | "retry_infrastructure" | "terminal";
+type RunResult = {
+  outcome: "succeeded" | "failed";
+  failureCode?: string;           // stable, enumerated
+  origin?: RunFailureOrigin;
+  disposition?: RunDisposition;   // independent of origin
+  detail: string;
+  artifacts: ArtifactRef[];
+};</code></pre>
+  <p>Evidence is modelled as distinct concepts even where early slices store them in few tables:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Concept</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><code>evidence_claim</code></td><td>What the agent says it did or verified</td></tr>
+      <tr><td><code>artifact</code></td><td>Immutable content or URI, digest, producer, type, retention — verify.json, logs, patch, screenshots, session JSONL, provider usage</td></tr>
+      <tr><td><code>gate_result</code></td><td>The controller's interpretation of a verification command</td></tr>
+      <tr><td><code>run_event</code></td><td>Operational state transitions</td></tr>
+      <tr><td><code>run_result</code></td><td>Authoritative terminal outcome</td></tr>
+    </tbody>
+  </table></div>
+  <p>Envelope transport: fenced JSON at the end of the final message, <code>tryJson</code> fallback, one re-prompt (pi has no structured-output mode; v0's SDK mode returned null 29 times).</p>
+</section>
+
+<section id="runtime">
+  <h2><span class="n">08</span>Worker runtime — pi and the trusted wrapper</h2>
+  <p>Inside the sandbox two things run with different trust:</p>
+  <div class="two">
+    <div class="card"><h4><span class="chip ok">trusted</span> Wrapper</h4><p>Controller code. Starts and supervises pi, runs verification, performs the tamper check, commits with controller-supplied provenance, pushes the namespaced branch, exports artifacts. Holds the per-run GitHub token; the agent process does not.</p></div>
+    <div class="card"><h4><span class="chip warn">agent</span> pi</h4><p><code>--mode rpc</code>, JSONL on stdio, fresh session. Edits the workspace and runs commands freely. Its factory extension provides telemetry (provider hooks: cost, budget kill-switch), <code>tool_result</code> scrubbing, <code>appendEntry</code> for run id / base sha, and a <code>tool_call</code> policy that is <em>advisory friction</em>, not the security boundary (P4).</p></div>
+  </div>
+  <p>Skills follow the Agent Skills spec (portable to Claude Code) and are loaded explicitly with <code>--skill</code>. pi is pinned in the image (<code>ARG PI_VERSION</code>); the session JSONL is exported as an artifact. Starting point: v0 <code>apps/worker/src/harness/pi.ts</code>.</p>
+</section>
+
+<section id="sandbox">
+  <h2><span class="n">09</span>Sandbox, git ownership, and GitHub projection</h2>
+  <dl class="kv">
+    <dt>Provider contract</dt><dd>Small, capabilities explicit: <code>create(image, opts) → handle</code>, <code>exec</code>, <code>putFile/getFile</code>, <code>destroy</code>, <code>capabilities()</code> (snapshot, fork, pause, proxy-auth, max ttl). One provider in v1, chosen in S4 by measurement.</dd>
+    <dt>Credentials</dt><dd>Provider-brokered where available; otherwise a capped, revocable per-run LLM key and a per-run GitHub App installation token scoped to the one repository, held by the wrapper. Never the factory's own secrets. The bot identity cannot approve its own PR.</dd>
+    <dt>Egress</dt><dd>Allowlist: LLM host, GitHub, package registries (Maven/Google for Android). Git over HTTPS.</dd>
+    <dt>Image</dt><dd>Repo toolchain + pinned pi + skills + warmed dependency caches, rebuilt on a schedule. Cold start is the adoption lever.</dd>
+    <dt>Snapshots</dt><dd>Phase boundaries only: task start, implementation complete, after each correction, final tree. Tree hash stored on the run.</dd>
+  </dl>
+  <h3>Git ownership — "worker transports, controller integrates"</h3>
+  <p>The agent never commits. The trusted wrapper, after final verification and tamper check, commits with controller-supplied trailers (<code>Factory-Ticket</code>, <code>Factory-Run</code>, <code>Factory-Model</code>, <code>Factory-Base</code>) and pushes <code>agent/&lt;ticket-id&gt;</code>. The controller observes the pushed sha and opens the PR; every external operation is idempotent on <code>run_id</code>.</p>
+  <div class="callout"><strong>Fallback.</strong> If the chosen provider cannot hold a safe per-run token, switch to controller-pull: the wrapper exports a bundle + evidence and the controller commits and pushes. Either way the agent owns nothing past the working tree.</div>
+  <h3>GitHub projection</h3>
+  <p>Stored per ticket/run: <code>pr_url/pr_number, head_sha, ci_state, review_state, merged_at, merge_sha, last_observed_at</code>. Updated by periodic reconciliation, with an optional webhook endpoint as an accelerator — webhook delivery is never part of correctness. A projection of an integration artifact, not a second ticket source.</p>
+  <h3>Integration path</h3>
+  <p>One ticket → one branch → one PR → human approval → squash merge, trailers copied into the squash message via PR template and checked by CI. TTL sweeper for stale branches.</p>
+</section>
+
+<section id="restart">
+  <h2><span class="n">10</span>Restart reconciliation</h2>
+  <p>On startup the controller reconciles every non-terminal run against provider and GitHub state before doing anything else:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Observed state</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>Sandbox exists and pi is live</td><td>Reattach and continue observing</td></tr>
+      <tr><td>Sandbox exists, process terminal</td><td>Collect artifacts, classify, record <code>run_result</code></td></tr>
+      <tr><td>Sandbox gone</td><td>Record provider/harness failure, route to <code>needs_human</code></td></tr>
+      <tr><td>Branch or PR already exists</td><td>Adopt it idempotently; never create a second</td></tr>
+      <tr><td>Lease expired, external state ambiguous</td><td>Quarantine in <code>needs_human</code>; never rerun automatically</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="verify">
+  <h2><span class="n">11</span>Verification and protected artifacts</h2>
+  <p><strong>One repo-owned command</strong> (<code>make verify</code> or equivalent) emits <code>verify.json</code>; the controller reads only that. Tiers: <code>fast</code> (inner loop), <code>full</code> (pre-PR). <code>deep</code> (mutation, acceptance-data mutation, property sweeps) is a scheduled diagnostic, not a gate.</p>
+  <div class="two">
+    <div class="card"><h4><span class="chip bad">blocks</span> Deterministic</h4><p>build · format/lint/static analysis · unit and integration tests · files touched ⊆ declared scope · max diff · exact base and head tree verified · verification performed on the clean proposed tree</p></div>
+    <div class="card"><h4><span class="chip off">telemetry</span> Promoted only by outcome data</h4><p>read-before-edit · structural metrics (file length, duplication, complexity trajectory)</p></div>
+  </div>
+  <h3>Protected artifacts — enforcement is named, not assumed</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mode</th><th>Mechanism</th><th>v1</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Detected after execution</strong></td><td>Controller compares approved digests of protected paths (fixtures, selected regression tests, verification config) against the final tree and rejects any modification. If the agent needs a protected verifier in its inner loop, the wrapper verifies its digest immediately before every execution. This is tamper detection, not filesystem protection.</td><td><span class="chip ok">default</span></td></tr>
+      <tr><td><strong>Prevented during execution</strong></td><td>Read-only mount, or a second OS user without escalation.</td><td><span class="chip off">later</span></td></tr>
+      <tr><td><strong>Hidden</strong></td><td>Never enters the sandbox; executed by the controller or CI.</td><td><span class="chip info">P6 classes only</span></td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>UI evidence</strong> (screenshots/recordings) attaches to the PR for human judgment, never as automatic proof.</p>
+  <div class="callout"><strong>Android constraint.</strong> Emulator tests need KVM, which Firecracker microVM providers lack. In v1 the sandbox runs JVM-side verification (pure-Kotlin module tests, Room/migration tests, lint, <code>assembleDebug</code>); emulator smoke tests run in KVM-enabled GitHub Actions and report to the PR. This constrains provider choice and image design; it does not shape the tracker or build order.</div>
+</section>
+
+<section id="lanes">
+  <h2><span class="n">12</span>Review lanes and outcomes</h2>
+  <div class="two">
+    <div class="card"><h4>L3</h4><p>Human reads the full diff.</p></div>
+    <div class="card"><h4>L4</h4><p>Human reads ticket, evidence, summary and high-risk files; spot-checks the diff.</p></div>
+  </div>
+  <p><strong>L5</strong> does not exist in v1; earned per task class from outcome data. Dependency updates are not automatically safe. Lane is set at intake and recorded on the run and PR so defect rate per lane is measurable; semantic route-to-human results are recorded for the same reason.</p>
+  <h3>Outcomes per accepted ticket</h3>
+  <ul>
+    <li>success without human correction · human correction and review minutes · total cost · wall time</li>
+    <li>retry count by failure origin and disposition · revert or corrective follow-up within 14 and 30 days</li>
+    <li>changed lines and files · verification duration and flaky-check rate · sandbox startup and idle time</li>
+  </ul>
+  <p>Structural metrics are observations. Events are written in batches; no transcript mirror (v0: 80 MB unread). Budgets calibrated from v0: implement ≈ $4–5 / 14 min / ~80 turns.</p>
+</section>
+
+<section id="human">
+  <h2><span class="n">13</span>Human workflow</h2>
+  <dl class="kv">
+    <dt>Planning</dt><dd>In the terminal, with skills, before any run: idea → app and project in the tracker → project and ticket designs written into the tracker (markdown, via the GUI or the planning skill over <code>gf</code>) → vertical-slice tickets with dependencies, declared scope and acceptance criteria → risk lane (S2) → approval. Agent-created tickets land in `planning`, never `ready`; approval is always the human's. Mattpocock's day-shift chain is adopted as-is; QRSPI's instruction-budget rule applies (~200-line design doc, small prompts).</dd>
+    <dt>Execution</dt><dd>The controller claims approved, unblocked tickets and produces PRs with evidence; anything needing a human ends the run.</dd>
+    <dt>Attention</dt><dd>Everything waiting on the human — PRs to review, tickets in <code>needs_human</code> with reasons, design reconciliations to accept — visible without reading raw logs (v0 <code>inbox.ts</code> derivation).</dd>
+  </dl>
+</section>
+
+<section id="subway">
+  <h2><span class="n">14</span>First proving product: Subway Reader</h2>
+  <p>Offline-first RSS/Atom reader for Boox e-ink (Android), iPhone later. Legacy design and tickets in <code>research/subway-reader/</code> are inputs to a <strong>fresh planning conversation run through the tracker after S1</strong>; they are not commitments.</p>
+  <p>Carried forward as architecture, not tickets: a pure-Kotlin JVM core module with no Android imports — the seam that lets most logic verify in any sandbox without an emulator — under a Compose/WorkManager Android app. Validation: Gradle build, ktlint/detekt, core tests on curated feed fixtures (protected), Room migration tests, repository tests with networking disabled, emulator smoke tests in CI, screenshots as evidence. Slices are cut so each changes the core and exposes a tappable surface on the device.</p>
+</section>
+
+<section id="order">
+  <h2><span class="n">15</span>Build order</h2>
+  <p class="sub">Each slice ends with something the human uses. Contents are planned with <code>/grill-me</code> at slice start; this fixes order and exit criteria only.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Slice</th><th>Delivers</th><th>Exit criterion</th></tr></thead>
+    <tbody>
+      <tr><td class="id">S1</td><td>Tracker core (spec: <code>docs/specs/S1-tracker-core.md</code>): App, Project, Ticket (description, design, <code>simple</code>), Dependency, event log, eight-status transition table, Hono + zod API, <code>gf</code> CLI, GUI (kanban home with drag-and-drop and filters, Ticket, Project, App, markdown editor, dependency graph)</td><td>A fresh Subway Reader MVP project is created in the GUI; an agent-assisted planning conversation (Claude Code skill over <code>gf</code>) produces approved tickets with dependencies through the API; tickets can be dragged between statuses; the ready frontier is correct on screen</td></tr>
+      <tr><td class="id">S2</td><td>Approved input snapshot, agent envelope, controller run result, failure taxonomy and disposition</td><td>A hand-run pi session consumes one approved ticket snapshot; successful, malformed, blocked and timed-out results classify correctly</td></tr>
+      <tr><td class="id">S3</td><td>Repository verification contract</td><td>A representative repository emits valid <code>verify.json</code>; tampering and failure cases classify correctly</td></tr>
+      <tr><td class="id">S4</td><td>Provider bakeoff, one production adapter, warm image, controller deployment target</td><td>One provider selected from a bounded experiment; warm-start, cost, artifact export, credentials, teardown and restart behaviour measured</td></tr>
+      <tr><td class="id">S5</td><td>Controller execution and integration loop, restart reconciliation</td><td>The first newly approved Subway Reader implementation ticket becomes a human-reviewed PR and is merged through the loop</td></tr>
+      <tr><td class="id">S6</td><td>Outcome telemetry and attention view</td><td>Ten real tickets have authoritative run/outcome rows; every attention state is visible without raw logs</td></tr>
+      <tr><td class="id">S7+</td><td>Decided from S6 data: second phase, L5 for a task class, prevented/hidden verifier classes, a non-blocking review pass</td><td>Each gated on <code>implement</code> stability and a measured problem</td></tr>
+    </tbody>
+  </table></div>
+  <p>Before S5 every step is driven by hand until it is boring. The factory onboards itself as a project only after a non-factory repo has gone through cleanly.</p>
+</section>
+
+<section id="decisions">
+  <h2><span class="n">16</span>Decision order</h2>
+  <ol>
+    <li><s>Minimum tracker entities, fields, design representation, lifecycle</s> — decided (CONTEXT.md, ADR-0002, 0003, 0005; spec <code>docs/specs/S1-tracker-core.md</code>).</li>
+    <li><s>Human vs agent transition authority</s> — decided (ADR-0003: every edge names an owner; all S1 edges human).</li>
+    <li><s>SQLite vs Postgres</s> — decided: SQLite via Drizzle, one Bun process, Cloudflare-compatible by construction (ADR-0001).</li>
+    <li>Fresh Subway Reader MVP planning through the new tracker.</li>
+    <li>Immutable approved ticket/run-input schema.</li>
+    <li>Agent envelope + controller run result, taxonomy, disposition.</li>
+    <li>Verification and protected-artifact enforcement contract.</li>
+    <li>Worker/controller git ownership confirmation and artifact transport for the chosen provider.</li>
+    <li>Provider bakeoff and controller deployment/restart behaviour.</li>
+    <li>First product ticket through the complete loop.</li>
+  </ol>
+</section>
+
+<section id="salvage">
+  <h2><span class="n">17</span>Salvage from v0</h2>
+  <p class="sub">Contracts and prompts, not systems.</p>
+  <p><code>packages/schema/src/types.ts</code> (envelope base, gate check/report, status kinds), <code>trigger.ts</code>, the <code>run/phase/event</code> shape from <code>001_init.sql</code> (trimmed), lease semantics of <code>claim()</code>, <code>halt.ts</code>, <code>breaker.ts</code>, <code>reaper.ts</code>, trailer commit logic, mechanical gates (<code>tests_pass</code>, <code>diff_matches_claims</code>), <code>harness/pi.ts</code>, <code>questions.ts</code> (post-v1), <code>/plan</code> skill and prompts, cursor SSE stream, <code>inbox.ts</code>, <code>docs/LESSONS.md</code>, <code>docs/DECISIONS.md</code>.</p>
+  <p>Real v0 is branch <code>m1</code> at <code>~/.herdr/worktrees/factory/m1</code>; <code>pg_dump</code> its database before it goes.</p>
+</section>
+
+<section id="deferred">
+  <h2><span class="n">18</span>Explicitly deferred</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Deferred</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Beads or GitHub Issues sync</td><td>Two sources of truth before one is needed</td></tr>
+      <tr><td>Second sandbox provider</td><td>Portability is earned by evidence</td></tr>
+      <tr><td>Stacked PRs, merge queue, repair bots</td><td>GitHub FIFO suffices below ~20 PRs/hour</td></tr>
+      <tr><td>Validator-agent-authored gates</td><td>Needs acceptance criteria good enough to script; v1 uses human criteria + tests</td></tr>
+      <tr><td>LLM review chain</td><td>v0: 1/46, half the spend; trusted only as a graded chain at Uber volume</td></tr>
+      <tr><td>Mutation as a blocking gate</td><td>Diagnostic until runtime, equivalent mutants and false positives are measured</td></tr>
+      <tr><td>Hidden acceptance for every task</td><td>Excessive for exploratory and UI work</td></tr>
+      <tr><td>Tool-call-level git snapshots</td><td>Session JSONL has it; phase-level recovery points suffice</td></tr>
+      <tr><td>Prevented (mount/user) protection</td><td>Tamper detection suffices until an incident says otherwise</td></tr>
+      <tr><td>Multiple GitHub App identities</td><td>One bot that cannot self-approve is enough for one human</td></tr>
+      <tr><td><code>WEATHER.md</code> model routing</td><td>One model per role until $/accepted ticket is measured</td></tr>
+      <tr><td>L5 unattended merging</td><td>Earned per task class from S6 data</td></tr>
+      <tr><td>Scheduled cleanup agents</td><td>No slop trajectory data yet</td></tr>
+      <tr><td>Private benchmark runs</td><td>Harness CI for a one-phase harness</td></tr>
+      <tr><td>Zero / sync engine</td><td>P11; REST + polling/SSE covers one user</td></tr>
+      <tr><td>Configurable workflows, custom statuses, comments/mentions, notifications, saved views, real-time collaboration, label/milestone lifecycle, plugins, extra import/export formats</td><td>Tracker stays a planning/control surface until the planning session proves a need</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="risks">
+  <h2><span class="n">19</span>Risks</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td class="id">R1</td><td>Tracker becomes a Linear clone before the factory runs</td><td>S1 GUI is limited to the four mockup screens with empty run/evidence tiles; no sync engine; tracker deferrals in §18</td></tr>
+      <tr><td class="id">R2</td><td>Gradle cold start dominates run cost</td><td>Warm image with dependency cache; measured in S4 before provider choice</td></tr>
+      <tr><td class="id">R3</td><td>Android emulator can't run in the chosen sandbox</td><td>JVM verification in sandbox, emulator in KVM CI (§11)</td></tr>
+      <tr><td class="id">R4</td><td>Model tool-schema drift on pi's strict schemas</td><td>Pin pi; re-run S2's hand session per model release</td></tr>
+      <tr><td class="id">R5</td><td>Provider churn</td><td>Provider contract; pinned image; nothing provider-specific in the controller</td></tr>
+      <tr><td class="id">R6</td><td>Dogfooding too early</td><td>Factory onboards itself only after Subway Reader has shipped tickets</td></tr>
+      <tr><td class="id">R7</td><td>Correction loop burns budget on non-verification failures</td><td>Disposition independent of origin; infrastructure failures don't consume corrections; humans re-arm</td></tr>
+      <tr><td class="id">R8</td><td>Agent tampers with protected artifacts</td><td>Digest check before verification and before commit; repeated violation → <code>return_to_human</code></td></tr>
+      <tr><td class="id">R9</td><td>Controller crash mid-run duplicates work or orphans sandboxes</td><td>§10 reconciliation; idempotency keys on <code>run_id</code>; quarantine on ambiguity</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer><p>Rev 2, 2026-08-26. Source of truth is <code>BLUEPRINT-v1.md</code>; this page is a rendering of it. Companion: the Goblin Foundry Field Notes artifact (research synthesis).</p></footer>
+</main>
+</div>

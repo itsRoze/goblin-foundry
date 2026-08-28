@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; } a:hover { color: inherit; }
+    .tui { width: 1440px; height: 900px; background: #07090E; color: #D7E3E9; box-sizing: border-box; padding: 26px 20px 20px; overflow: hidden; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; line-height: 17px; position: relative; }
+    .tui .tb { position: absolute; top: 0; left: 0; right: 0; height: 22px; background: #0E1520; color: #5E7280; font-size: 11px; line-height: 22px; padding: 0 12px; }
+    .tui pre { margin: 0; font: inherit; white-space: pre; letter-spacing: 0; }
+    .tui .c { color: #3AF0FF; font-weight: 400; } .tui .m { color: #FF2D86; font-weight: 400; } .tui .a { color: #FFC14D; font-weight: 400; } .tui .id { color: #5E7280; }
+    .tui pre > .l0, .tui pre > .ln { background: #0E1520; color: #5E7280; display: block; }
+    .tui .box { color: #5E7280; }
+  </style>
+</helmet>
+<div class="tui"><div class="tb">foundry — SR-12 — foundry · 168×48 · dark terminal</div><pre><span class="l0"> goblin-foundry   1 home <b class="c">[2 tickets]</b> 3 design  4 runs  5 evidence      tickets / subway-reader / mvp / <span class="id">SR-12</span>                          <b class="a">draft</b> 3 <b class="c">ready</b> 2 run 1 <b class="m">NEEDS</b> 2 rev 1 </span>
+┏━ spec · rev 2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓┌─ state ──────────────────────────────────────────────────────────┐
+┃                                                                                                  ┃│                                                                  │
+┃ <span class="id">SR-12</span>  Article list screen: e-ink pagination                       <b class="a">DRAFT</b>                         ┃│ status     <b class="a">DRAFT</b> → <b class="c">ready</b> needs your approval                     │
+┃                                                                                                  ┃│ lane       L3                                                    │
+┃ The article list is the home screen of Subway Reader. On Boox e-ink it                           ┃│ design     r3 @4b7e2d  PROJECT-DESIGN.md                         │
+┃ must paginate with full-page refreshes: no scrolling, no partial redraws,                        ┃│ depends    <span class="id">SR-5</span>  <span class="id">SR-8</span>                                            │
+┃ one tap per page. Unread count comes from the core module; the screen                            ┃│ blocks     <span class="id">SR-13</span>                                                 │
+┃ never computes it.                                                                               ┃│ budget     $5 · 14 min · 80 turns                                │
+┃                                                                                                  ┃│                                                                  │
+┃ ACCEPTANCE                                                                                       ┃│ RUNS       none yet                                              │
+┃  1. List paginates with a full-page refresh, no partial redraws on Boox.                         ┃│                                                                  │
+┃  2. Unread count matches core fixture 07.                                                        ┃│ HISTORY                                                          │
+┃  3. Screenshot of first and last page attached as evidence.                                      ┃│  1h  you      edited spec · rev 2                                │
+┃                                                                                                  ┃│  3h  planner  proposed acceptance #3                             │
+┃ SCOPE       app/src/main/…/reader/list/**   core/src/…/paging/**                                 ┃│  1d  you      created from planning · r3                         │
+┃ PROTECTED   core/src/test/fixtures/**   verify.mk                                                ┃│                                                                  │
+┃                                                                                                  ┃│                                                                  │
+┃                                                                                                  ┃│                                                                  │
+┃ e edit   a approve → <b class="c">ready</b>   d deps   p plan   esc back                                          ┃│                                                                  │
+┃                                                                                                  ┃│                                                                  │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└──────────────────────────────────────────────────────────────────┘
+┌─ planning · 3 exchanges · 1 open question ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                                                                                      │
+│ you      Should page size be fixed or derived from the device font scale?                                                                                            │
+│                                                                                                                                                                      │
+│ planner  Derive it: core exposes pageSize(fontScale, viewport); the screen                                                                                           │
+│          just asks. Keeps the Boox variant testable on JVM.                                                                                                          │
+│                                                                                                                                                                      │
+│ you      Agreed. Deferred: landscape. Not in MVP.                                                                                                                    │
+│                                                                                                                                                                      │
+│ planner  Open: should the unread badge refresh on page turn or on sync                                                                                               │
+│          only? Affects acceptance #2.                                                                                                                                │
+│                                                                                                                                                                      │
+│ > <b class="m">█</b>                                                                                                                                                                  │
+│                                                                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+<span class="l0"> :                                                                                                                                        tue 09:41  ? help  q quit </span></pre></div>
+</x-dc>
+</body>
+</html>

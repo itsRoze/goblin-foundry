@@ -1,0 +1,17 @@
+{
+  "name": "goblin-foundry",
+  "private": true,
+  "workspaces": ["shared", "api", "web", "cli"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '@gf/web' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test api cli shared",
+    "test:e2e": "playwright test",
+    "db:push": "bun run --filter '@gf/api' db:push"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.9.2"
+  }
+}

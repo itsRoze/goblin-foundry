@@ -1,0 +1,55 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Tiling · night · 14\" laptop"
+    },
+    {
+      "file": "LaptopDay.dc.html",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Tiling · day · 14\" laptop"
+    },
+    {
+      "file": "WideNight.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 2560,
+      "h": 1440,
+      "title": "Tiling · night · 32\" (ticket open)"
+    },
+    {
+      "file": "WideDay.dc.html",
+      "x": 0,
+      "y": 2740,
+      "w": 2560,
+      "h": 1440,
+      "title": "Tiling · day · 32\" (ticket open)"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief3",
+      "x": 3080,
+      "y": 0,
+      "w": 520,
+      "text": "ROUND 3 — \"tech goblins\". Bio × HUD, restyled as a tiling window manager: a status bar with workspaces, tiles with gaps, a focused-tile border, keyboard hints in every title bar. No characters.\n\nWarm on purpose: plum, spore green, torch, teal — pastel-bright, never neon. One typeface (Recursive) that slides between mono for data and a casual sans for titles.\n\nOn 32\" more tiles open: the ticket detail and planning tile appear beside the graph, the way a WM fills a wider screen."
+    },
+    {
+      "id": "motion3",
+      "x": 3080,
+      "y": 320,
+      "w": 520,
+      "text": "Motion: focused border glow, the running node breathes, log lines fade in, a blinking cursor in the run tile. All off under reduced-motion.\n\nManipulation (Linear-like): j/k + enter, drag handles on claim order, s to set status, n new ticket, ⌘K for everything."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
