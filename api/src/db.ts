@@ -9,7 +9,7 @@ import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { sql } from 'drizzle-orm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY } from '@gf/shared';
+import { DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY } from '@goblin/shared';
 import * as schema from './schema';
 import { defaultDbPath } from './db-path';
 

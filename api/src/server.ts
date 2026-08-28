@@ -1,6 +1,6 @@
 import { createApp } from './app';
 import { openDb } from './db';
-import { DEFAULT_PORT } from '@gf/shared';
+import { DEFAULT_PORT } from '@goblin/shared';
 
 const port = Number(process.env.GF_PORT ?? DEFAULT_PORT);
 const handle = await openDb();

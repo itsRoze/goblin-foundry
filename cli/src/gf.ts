@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { DEFAULT_PORT } from '@gf/shared';
+import { DEFAULT_PORT } from '@goblin/shared';
 import { runGf } from './run';
 
 const { code, out } = await runGf(process.argv.slice(2), {

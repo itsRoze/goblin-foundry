@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { makeTestApp } from '@gf/api/test/harness';
+import { makeTestApp } from '@goblin/api/test/harness';
 import { runGf } from '../src/run';
 
 describe('gf settings', () => {

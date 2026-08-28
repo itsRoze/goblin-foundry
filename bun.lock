@@ -10,9 +10,9 @@
       },
     },
     "api": {
-      "name": "@gf/api",
+      "name": "@goblin/api",
       "dependencies": {
-        "@gf/shared": "workspace:*",
+        "@goblin/shared": "workspace:*",
         "drizzle-orm": "^0.44.5",
         "hono": "^4.9.6",
         "zod": "^4.1.5",
@@ -25,21 +25,21 @@
       },
     },
     "cli": {
-      "name": "@gf/cli",
+      "name": "@goblin/cli",
       "bin": {
         "gf": "./src/gf.ts",
       },
       "dependencies": {
-        "@gf/shared": "workspace:*",
+        "@goblin/shared": "workspace:*",
       },
       "devDependencies": {
-        "@gf/api": "workspace:*",
+        "@goblin/api": "workspace:*",
         "bun-types": "^1.3.9",
         "typescript": "^5.9.2",
       },
     },
     "shared": {
-      "name": "@gf/shared",
+      "name": "@goblin/shared",
       "dependencies": {
         "zod": "^4.1.5",
       },
@@ -49,11 +49,11 @@
       },
     },
     "web": {
-      "name": "@gf/web",
+      "name": "@goblin/web",
       "dependencies": {
         "@fontsource/ibm-plex-sans": "^5.2.6",
         "@fontsource/jetbrains-mono": "^5.2.6",
-        "@gf/shared": "workspace:*",
+        "@goblin/shared": "workspace:*",
         "react": "^19.1.1",
         "react-dom": "^19.1.1",
       },
@@ -167,13 +167,13 @@
 
     "@fontsource/jetbrains-mono": ["@fontsource/jetbrains-mono@5.3.0", "", {}, "sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A=="],
 
-    "@gf/api": ["@gf/api@workspace:api"],
+    "@goblin/api": ["@goblin/api@workspace:api"],
 
-    "@gf/cli": ["@gf/cli@workspace:cli"],
+    "@goblin/cli": ["@goblin/cli@workspace:cli"],
 
-    "@gf/shared": ["@gf/shared@workspace:shared"],
+    "@goblin/shared": ["@goblin/shared@workspace:shared"],
 
-    "@gf/web": ["@gf/web@workspace:web"],
+    "@goblin/web": ["@goblin/web@workspace:web"],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

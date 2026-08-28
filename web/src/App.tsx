@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { SettingsSchema, type Settings } from '@gf/shared';
+import { SettingsSchema, type Settings } from '@goblin/shared';
 
 type State = { kind: 'loading' } | { kind: 'ok'; settings: Settings } | { kind: 'error'; message: string };
 

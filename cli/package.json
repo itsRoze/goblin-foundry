@@ -1,9 +1,9 @@
 {
-  "name": "@gf/cli",
+  "name": "@goblin/cli",
   "private": true,
   "type": "module",
   "bin": { "gf": "./src/gf.ts" },
   "scripts": { "typecheck": "tsc -p ." },
-  "dependencies": { "@gf/shared": "workspace:*" },
-  "devDependencies": { "@gf/api": "workspace:*", "typescript": "^5.9.2", "bun-types": "^1.3.9" }
+  "dependencies": { "@goblin/shared": "workspace:*" },
+  "devDependencies": { "@goblin/api": "workspace:*", "typescript": "^5.9.2", "bun-types": "^1.3.9" }
 }

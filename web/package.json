@@ -1,5 +1,5 @@
 {
-  "name": "@gf/web",
+  "name": "@goblin/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.2.6",
     "@fontsource/jetbrains-mono": "^5.2.6",
-    "@gf/shared": "workspace:*",
+    "@goblin/shared": "workspace:*",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

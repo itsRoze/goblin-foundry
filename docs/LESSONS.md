@@ -8,7 +8,7 @@ ADR-0001 says `drizzle-kit push` locally. That is fine for the one dev database,
 
 ## 2026-08-27 — `bun run --filter` takes package names, not directory names
 
-`bun run --filter 'web' build` says "No packages matched the filter". The filter matches the `name` field (`@gf/web`), so root scripts use `--filter '@gf/web'` and `--filter '*'` for all.
+`bun run --filter 'web' build` says "No packages matched the filter". The filter matches the `name` field (`@goblin/web`), so root scripts use `--filter '@goblin/web'` and `--filter '*'` for all.
 
 ## 2026-08-27 — the old GitHub repo held v0
 

@@ -4,11 +4,11 @@
   "workspaces": ["shared", "api", "web", "cli"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
-    "build": "bun run --filter '@gf/web' build",
+    "build": "bun run --filter '@goblin/web' build",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
     "test:e2e": "playwright test",
-    "db:push": "bun run --filter '@gf/api' db:push"
+    "db:push": "bun run --filter '@goblin/api' db:push"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
