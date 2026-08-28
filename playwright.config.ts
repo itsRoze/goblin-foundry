@@ -10,6 +10,7 @@ const dbPath = join(mkdtempSync(join(tmpdir(), 'gf-e2e-')), 'foundry.db');
 
 export default defineConfig({
   testDir: './e2e',
+  testMatch: '**/*.e2e.ts', // *.spec.ts would also be picked up by `bun test`
   timeout: 15_000,
   retries: 0,
   reporter: 'list',

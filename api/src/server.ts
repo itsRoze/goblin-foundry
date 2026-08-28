@@ -1,7 +1,8 @@
 import { createApp } from './app';
 import { openDb } from './db';
+import { DEFAULT_PORT } from '@gf/shared';
 
-const port = Number(process.env.GF_PORT ?? 4747);
+const port = Number(process.env.GF_PORT ?? DEFAULT_PORT);
 const handle = await openDb();
 const app = createApp(handle.db);
 

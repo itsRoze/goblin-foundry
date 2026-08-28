@@ -3,20 +3,21 @@ import { makeTestApp } from '@gf/api/test/harness';
 import { runGf } from '../src/run';
 
 describe('gf settings', () => {
-  let t: Awaited<ReturnType<typeof makeTestApp>> | undefined;
-  afterEach(() => t?.close());
+  let harness: Awaited<ReturnType<typeof makeTestApp>> | undefined;
+  afterEach(() => harness?.close());
 
   test('prints the settings JSON from the API', async () => {
-    t = await makeTestApp();
-    const app = t.app;
-    const r = await runGf(['settings'], { fetch: async (path, init) => app.request(path, init) });
-    expect(r.code).toBe(0);
-    expect(JSON.parse(r.out)).toEqual({ ticket_prefix: 'GF' });
+    harness = await makeTestApp();
+    const app = harness.app;
+    const result = await runGf(['settings'], { fetch: async (path, init) => app.request(path, init) });
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.out)).toEqual({ ticket_prefix: 'GF' });
   });
 
   test('unknown commands fail with usage', async () => {
-    const r = await runGf(['nope'], { fetch: () => Promise.reject(new Error('unreachable')) });
-    expect(r.code).toBe(1);
-    expect(r.out).toContain('unknown command');
+    const result = await runGf(['nope'], { fetch: () => Promise.reject(new Error('unreachable')) });
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("unknown command 'nope'");
+    expect(result.out).toContain('usage: gf <command>');
   });
 });

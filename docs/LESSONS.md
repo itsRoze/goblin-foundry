@@ -17,3 +17,7 @@ ADR-0001 says `drizzle-kit push` locally. That is fine for the one dev database,
 ## 2026-08-27 — `drizzle-kit push` does not speak `bun:sqlite`
 
 drizzle-kit connects with `better-sqlite3` or `@libsql/client`, never the Bun driver, so `@libsql/client` is an `api` devDependency used only by `bun run db:push`. App code still imports nothing but `bun:sqlite` (inside `db.ts`).
+
+## 2026-08-27 — Playwright specs must not look like Bun tests
+
+Bare `bun test` picks up `*.spec.ts` and `*.test.ts` everywhere, so a Playwright file named `shell.spec.ts` fails under Bun with "Playwright Test did not expect test() to be called here". Browser tests are `e2e/*.e2e.ts` (Playwright `testMatch`), and `bun test` from the root stays clean without path filters.

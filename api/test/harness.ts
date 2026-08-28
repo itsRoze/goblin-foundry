@@ -14,8 +14,6 @@ export async function makeTestApp() {
   const app = createApp(handle.db);
   return {
     app,
-    db: handle.db,
-    path: handle.path,
     close() {
       handle.close();
       rmSync(dir, { recursive: true, force: true });

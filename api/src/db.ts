@@ -8,10 +8,12 @@ import { Database } from 'bun:sqlite';
 import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { sql } from 'drizzle-orm';
 import { mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { DEFAULT_TICKET_PREFIX } from '@gf/shared';
+import { dirname } from 'node:path';
+import { DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY } from '@gf/shared';
 import * as schema from './schema';
+import { defaultDbPath } from './db-path';
+
+export { defaultDbPath };
 
 export type Db = BunSQLiteDatabase<typeof schema>;
 
@@ -21,17 +23,12 @@ export interface DbHandle {
   close(): void;
 }
 
-/** `GF_DB_PATH` (tests, one-offs) or `~/.goblin-foundry/foundry.db`. */
-export function defaultDbPath(env: Record<string, string | undefined> = process.env): string {
-  return env.GF_DB_PATH ?? join(homedir(), '.goblin-foundry', 'foundry.db');
-}
-
 export async function openDb(path: string = defaultDbPath()): Promise<DbHandle> {
   mkdirSync(dirname(path), { recursive: true });
   const client = new Database(path, { create: true, strict: true });
-  client.exec('PRAGMA journal_mode = WAL');
-  client.exec('PRAGMA foreign_keys = ON');
   const db = drizzle(client, { schema });
+  await db.run(sql`PRAGMA journal_mode = WAL`);
+  await db.run(sql`PRAGMA foreign_keys = ON`);
   await ensureSchema(db);
   return { db, path, close: () => client.close() };
 }
@@ -48,6 +45,6 @@ async function ensureSchema(db: Db): Promise<void> {
   )`);
   await db
     .insert(schema.setting)
-    .values({ key: 'ticket_prefix', value: DEFAULT_TICKET_PREFIX })
+    .values({ key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX })
     .onConflictDoNothing();
 }
