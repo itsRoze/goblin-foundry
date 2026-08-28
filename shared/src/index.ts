@@ -1,1 +1,20 @@
 export { SettingsSchema, type Settings, DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY, DEFAULT_PORT } from './settings';
+export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
+export { EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';
+export {
+  AppSchema,
+  type App,
+  CreateAppBodySchema,
+  type CreateAppBody,
+  PatchAppBodySchema,
+  type PatchAppBody,
+  DEFAULT_BRANCH_NEEDS_REPOSITORY,
+  branchWithoutRepository,
+  ProjectSchema,
+  type Project,
+  CreateProjectBodySchema,
+  type CreateProjectBody,
+  PatchProjectBodySchema,
+  type PatchProjectBody,
+} from './apps';
+export { slugify, slugPath, parseSlugId } from './slug';

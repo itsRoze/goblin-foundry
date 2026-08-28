@@ -14,6 +14,8 @@ export async function makeTestApp() {
   const app = createApp(handle.db);
   return {
     app,
+    /** For stubbing rows the API cannot yet write (tickets until issue 03). Read behaviour through the API. */
+    db: handle.db,
     close() {
       handle.close();
       rmSync(dir, { recursive: true, force: true });

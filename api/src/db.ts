@@ -47,6 +47,55 @@ async function ensureSchema(db: Db): Promise<void> {
     key text PRIMARY KEY NOT NULL,
     value text NOT NULL
   )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS app (
+    id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name text NOT NULL,
+    repository_url text,
+    default_branch text,
+    description text DEFAULT '' NOT NULL,
+    archived_at text,
+    trashed_at text,
+    trashed_via text,
+    created_at text NOT NULL,
+    updated_at text NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS project (
+    id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    app_id integer REFERENCES app(id),
+    name text NOT NULL,
+    description text DEFAULT '' NOT NULL,
+    design text,
+    archived_at text,
+    trashed_at text,
+    trashed_via text,
+    created_at text NOT NULL,
+    updated_at text NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS ticket (
+    id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    title text NOT NULL,
+    description text DEFAULT '' NOT NULL,
+    design text,
+    status text DEFAULT 'backlog' NOT NULL,
+    simple integer DEFAULT false NOT NULL,
+    app_id integer REFERENCES app(id),
+    project_id integer REFERENCES project(id),
+    trashed_at text,
+    trashed_via text,
+    created_at text NOT NULL,
+    updated_at text NOT NULL
+  )`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS event (
+    id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    entity_kind text NOT NULL,
+    entity_id integer NOT NULL,
+    actor text NOT NULL,
+    kind text NOT NULL,
+    prior text,
+    new text NOT NULL,
+    at text NOT NULL
+  )`);
+  db.run(sql`CREATE INDEX IF NOT EXISTS event_entity ON event (entity_kind, entity_id, id)`);
   await db
     .insert(schema.setting)
     .values({ key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX })
