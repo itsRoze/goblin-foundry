@@ -9,7 +9,7 @@ A solo software factory. S1 is the tracker: one Bun process, a typed HTTP API ov
 | `shared` | zod schemas (and, later, the transition table) imported by all three |
 | `api` | Hono + Drizzle over `bun:sqlite`; serves the built GUI; `src/db.ts` is the only module that touches the driver |
 | `web` | React + Vite shell, tokens from `design/tokens.css` |
-| `cli` | `gf`, a thin JSON client of the API |
+| `cli` | `goblin`, a thin JSON client of the API |
 | `e2e` | Playwright smoke suite against the built GUI and a temp database |
 
 ## Run

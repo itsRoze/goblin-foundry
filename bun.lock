@@ -27,7 +27,7 @@
     "cli": {
       "name": "@goblin/cli",
       "bin": {
-        "gf": "./src/gf.ts",
+        "goblin": "./src/goblin.ts",
       },
       "dependencies": {
         "@goblin/shared": "workspace:*",

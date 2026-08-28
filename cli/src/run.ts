@@ -1,20 +1,20 @@
 /**
- * `gf` is a thin JSON-in/JSON-out client of the API (ADR-0004). Handlers take
+ * `goblin` is a thin JSON-in/JSON-out client of the API (ADR-0004). Handlers take
  * an injected `fetch` so tests drive them against the in-process Hono app.
  */
-export type GfFetch = (path: string, init?: RequestInit) => Promise<Response>;
+export type GoblinFetch = (path: string, init?: RequestInit) => Promise<Response>;
 
-export interface GfResult {
+export interface GoblinResult {
   code: number;
   out: string;
 }
 
-const USAGE = `usage: gf <command>
+const USAGE = `usage: goblin <command>
 
 commands:
   settings   print installation settings as JSON`;
 
-export async function runGf(argv: string[], deps: { fetch: GfFetch }): Promise<GfResult> {
+export async function runGoblin(argv: string[], deps: { fetch: GoblinFetch }): Promise<GoblinResult> {
   const [command] = argv;
   switch (command) {
     case 'settings': {
@@ -27,6 +27,6 @@ export async function runGf(argv: string[], deps: { fetch: GfFetch }): Promise<G
     case '--help':
       return { code: command === undefined ? 1 : 0, out: USAGE };
     default:
-      return { code: 1, out: `gf: unknown command '${command}'\n\n${USAGE}` };
+      return { code: 1, out: `goblin: unknown command '${command}'\n\n${USAGE}` };
   }
 }

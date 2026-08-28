@@ -2,7 +2,7 @@
   "name": "@goblin/cli",
   "private": true,
   "type": "module",
-  "bin": { "gf": "./src/gf.ts" },
+  "bin": { "goblin": "./src/goblin.ts" },
   "scripts": { "typecheck": "tsc -p ." },
   "dependencies": { "@goblin/shared": "workspace:*" },
   "devDependencies": { "@goblin/api": "workspace:*", "typescript": "^5.9.2", "bun-types": "^1.3.9" }
