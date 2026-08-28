@@ -9,7 +9,7 @@ I am building a solo software factory. Before any agent can run a ticket, I need
 
 ## Solution
 
-A single Bun process serving a typed HTTP API (Hono + zod) over one SQLite file, and a thin web GUI over that API. The GUI is a kanban-as-home with drag-and-drop between statuses, plus Ticket, Project and App views with a Linear-style markdown editor for descriptions and designs, a dependency graph per project, and URL-parameter filters. A small `gf` CLI wraps the API so a Claude Code planning skill can create tickets, designs and dependencies. Status is a code-owned state machine whose transition table names an owner per edge; in S1 every edge is human-owned, and the same table later lets controller-owned columns refuse drags and say why.
+A single Bun process serving a typed HTTP API (Hono + zod) over one SQLite file, and a thin web GUI over that API. The GUI is a kanban-as-home with drag-and-drop between statuses, plus Ticket, Project and App views with a Linear-style markdown editor for descriptions and designs, a dependency graph per project, and URL-parameter filters. A small `goblin` CLI wraps the API so a Claude Code planning skill can create tickets, designs and dependencies. Status is a code-owned state machine whose transition table names an owner per edge; in S1 every edge is human-owned, and the same table later lets controller-owned columns refuse drags and say why.
 
 **Done when:** a fresh Subway Reader MVP project is created in the GUI; an agent-assisted planning conversation produces approved vertical-slice tickets with dependencies through the API; tickets can be dragged between statuses; the ready frontier is correct on screen.
 
@@ -75,10 +75,10 @@ A single Bun process serving a typed HTTP API (Hono + zod) over one SQLite file,
 47. As the human, I want a history tile on the Ticket view built from those records, so that a ticket's story is readable without logs.
 
 ### CLI and planning
-48. As the human, I want a `gf` CLI that mirrors the API (apps, projects, tickets, designs, dependencies, transitions, frontier) with JSON in/out, so that agents and scripts have a reliable tool.
-49. As a planning agent in Claude Code, I want to create tickets, set their designs and add dependencies via `gf`, so that a planning conversation ends with tickets on the board.
+48. As the human, I want a `goblin` CLI that mirrors the API (apps, projects, tickets, designs, dependencies, transitions, frontier) with JSON in/out, so that agents and scripts have a reliable tool.
+49. As a planning agent in Claude Code, I want to create tickets, set their designs and add dependencies via `goblin`, so that a planning conversation ends with tickets on the board.
 50. As the human, I want agent-created tickets to land in `planning` (never `ready`), so that approval is always mine.
-51. As the human, I want `gf backup` to write a dated copy of the database to a folder I choose, so that the tracker is never the only copy of my memory.
+51. As the human, I want `goblin backup` to write a dated copy of the database to a folder I choose, so that the tracker is never the only copy of my memory.
 52. As the human, I want to bootstrap Subway Reader on day one by creating the App and MVP Project in the GUI and pasting the existing project design in, so that the first real planning session has something to plan against.
 
 ### Errors and validation
@@ -86,7 +86,7 @@ A single Bun process serving a typed HTTP API (Hono + zod) over one SQLite file,
 
 ## Implementation Decisions
 
-- **Runtime and layout.** Bun, TypeScript end-to-end, Bun workspaces: `api` (Hono + zod, serves the built GUI), `web` (React + Vite), `shared` (zod schemas and the transition table, imported by all three), `cli` (`gf`). One process; the API binds to localhost. No auth; actor comes from a request header, default `human`. (ADR-0001, 0004)
+- **Runtime and layout.** Bun, TypeScript end-to-end, Bun workspaces: `api` (Hono + zod, serves the built GUI), `web` (React + Vite), `shared` (zod schemas and the transition table, imported by all three), `cli` (`goblin`). One process; the API binds to localhost. No auth; actor comes from a request header, default `human`. (ADR-0001, 0004)
 - **Storage.** SQLite (WAL) at `~/.goblin-foundry/foundry.db` via Drizzle's async API over `bun:sqlite`, isolated behind one database seam module; `drizzle-kit push` locally. No Drizzle transactions relied on for correctness; each mutation is a short sequence of statements. Test databases are temp files or `:memory:`. (ADR-0001, research/storage)
 - **Schema.** `app(id serial, name, repository_url?, default_branch?, description, timestamps)`; `project(id serial, app_id, name, description, design markdown?, timestamps)`; `ticket(id serial — the number in the key, title, description markdown, design markdown?, status, simple bool, app_id?, project_id?, timestamps)`; `dependency(blocker_id, blocked_id, created_at)` with a uniqueness constraint; `event(id, entity_kind, entity_id, actor, kind, prior json, new json, at)`; `setting(key, value)` holding the key prefix. No labels, milestones, priority, rank, lane, scope, acceptance, budget, revision or html columns. (ADR-0002, 0005, 0006)
 - **Keys.** Ticket key = `prefix + '-' + id`; API routes accept the key or the bare number. Apps/projects addressed by id. Rename is a plain field update. (ADR-0002)
@@ -97,13 +97,13 @@ A single Bun process serving a typed HTTP API (Hono + zod) over one SQLite file,
 - **API surface.** Resources: `apps`, `projects`, `tickets`, `dependencies`, `frontier`, `events` (per entity), `settings`. Field updates via `PATCH`; `status` rejected in `PATCH`. Transitions via `POST /tickets/:key/<name>` where `<name>` is a transition name from the table. Errors per ADR-0004. Every list endpoint accepts the filter params the board uses.
 - **Events.** Written in the same request as the mutation, with prior/new limited to the fields that changed. The Ticket history tile reads `GET /tickets/:key/events`.
 - **GUI.** React + Vite, TanStack Query (fetch on navigate, optimistic transitions with rollback on 409, refetch on focus, 5 s poll on the board while visible), `@atlaskit/pragmatic-drag-and-drop` for kanban with touch support, TipTap with a markdown serializer for description/design editing (markdown is the only stored form; rendered on read), `@dagrejs/dagre` layout rendered as our own SVG for the graph. Screens: Kanban (home), Ticket, Project, App, plus create forms. Tokens from `design/tokens.css`; house style per DESIGN.md; mobile-first CSS with the tile grid at ≥ laptop widths. DESIGN.md §5 gains a small-layout note and §10 drops "Mobile".
-- **CLI.** `gf` is a thin client: one subcommand per endpoint, JSON output, `--actor agent` flag, plus `gf backup <dir>` (`VACUUM INTO`). Planning is a Claude Code skill that calls `gf`; the tracker has no planning feature.
+- **CLI.** `goblin` is a thin client: one subcommand per endpoint, JSON output, `--actor agent` flag, plus `goblin backup <dir>` (`VACUUM INTO`). Planning is a Claude Code skill that calls `goblin`; the tracker has no planning feature.
 - **Bootstrap.** No seed data and no import. Day one is manual: create App "Subway Reader" (repo URL), Project "MVP", paste `research/subway-reader/PROJECT-DESIGN.md` as the project design, then run the planning skill.
 
 ## Testing Decisions
 
 - A good test drives the system through a public seam and asserts observable behaviour — a response, a row visible through another endpoint, a card in another column — never internal function calls or table shapes.
-- **Primary seam: the HTTP API, in-process.** Tests call the Hono app's `fetch`/`request` against a fresh temp SQLite database per test, with no server socket. This covers the transition table (every S1 edge accepted, every non-edge refused with the right `409` hint, every guard), readiness and `blocked_by` (including cancelled blockers not blocking), cycle and cross-app refusal, key/prefix behaviour, event recording (actor, prior, new), filters, and problem+json shapes. The `gf` CLI is tested through the same seam by invoking its command handlers against the in-process app, not by spawning a binary.
+- **Primary seam: the HTTP API, in-process.** Tests call the Hono app's `fetch`/`request` against a fresh temp SQLite database per test, with no server socket. This covers the transition table (every S1 edge accepted, every non-edge refused with the right `409` hint, every guard), readiness and `blocked_by` (including cancelled blockers not blocking), cycle and cross-app refusal, key/prefix behaviour, event recording (actor, prior, new), filters, and problem+json shapes. The `goblin` CLI is tested through the same seam by invoking its command handlers against the in-process app, not by spawning a binary.
 - **Secondary seam: the browser, one smoke suite.** A handful of Playwright tests against the built GUI over a temp database: create app → project → ticket, drag a card `todo → planning` and see the status change, drag to a refused column and see the refusal text, approve a ticket and see it appear in the ready column, add a dependency and see the blocked strikethrough. This is the exit criterion made executable; it is not where behaviour is enumerated.
 - **The transition table itself** gets one table-driven unit test asserting the S1 edge list matches ADR-0003 exactly, so an accidental edge is a red test.
 - No unit tests of React components, query hooks or Drizzle queries in isolation. No mocks of the database.

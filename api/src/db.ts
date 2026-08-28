@@ -1,8 +1,9 @@
 /**
  * The database seam (ADR-0001). This is the ONLY module that imports the
- * driver. Everything else receives a `Db` and uses Drizzle's async API
- * (`await db.select()…`), never the driver's sync calls, so a later move to
- * `drizzle-orm/durable-sqlite` is a swap inside this file.
+ * driver. Everything else receives a `Db` and uses Drizzle's thenable query
+ * builder (`await db.select()…`), never `db.run`/`db.all` or the driver's own
+ * calls, so a later move to `drizzle-orm/durable-sqlite` is a swap inside
+ * this file.
  */
 import { Database } from 'bun:sqlite';
 import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
@@ -27,8 +28,11 @@ export async function openDb(path: string = defaultDbPath()): Promise<DbHandle> 
   mkdirSync(dirname(path), { recursive: true });
   const client = new Database(path, { create: true, strict: true });
   const db = drizzle(client, { schema });
-  await db.run(sql`PRAGMA journal_mode = WAL`);
-  await db.run(sql`PRAGMA foreign_keys = ON`);
+  // `db.run` is typed synchronous on the bun-sqlite driver (no promise to
+  // await); it is used only here, in the seam, for PRAGMAs and DDL. Query
+  // code elsewhere uses the thenable query builder (`await db.select()…`).
+  db.run(sql`PRAGMA journal_mode = WAL`);
+  db.run(sql`PRAGMA foreign_keys = ON`);
   await ensureSchema(db);
   return { db, path, close: () => client.close() };
 }
@@ -39,7 +43,7 @@ export async function openDb(path: string = defaultDbPath()): Promise<DbHandle> 
  * Keep this in step with `schema.ts` — new tables land in both.
  */
 async function ensureSchema(db: Db): Promise<void> {
-  await db.run(sql`CREATE TABLE IF NOT EXISTS setting (
+  db.run(sql`CREATE TABLE IF NOT EXISTS setting (
     key text PRIMARY KEY NOT NULL,
     value text NOT NULL
   )`);

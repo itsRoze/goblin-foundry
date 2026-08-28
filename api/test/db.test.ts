@@ -20,7 +20,9 @@ describe('openDb', () => {
     const handle = await openDb();
     try {
       expect(existsSync(wanted)).toBe(true);
-      const rows = await handle.db.all<{ journal_mode: string }>(sql`PRAGMA journal_mode`);
+      const rows = await handle.db
+        .select({ journal_mode: sql<string>`journal_mode` })
+        .from(sql`pragma_journal_mode`);
       expect(rows[0]?.journal_mode).toBe('wal');
     } finally {
       handle.close();
