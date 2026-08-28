@@ -25,3 +25,15 @@ Bare `bun test` picks up `*.spec.ts` and `*.test.ts` everywhere, so a Playwright
 ## 2026-08-27 — on the bun-sqlite driver, only the query builder is awaitable
 
 Drizzle's `bun-sqlite` driver types `db.run` / `db.all` / `db.get` as synchronous, so `await db.run(...)` is a no-op and the editor says so (TS 80007). The thenable surface is the query builder (`await db.select()…`, `await db.insert()…`). The seam uses sync `run` for PRAGMAs and DDL only; everywhere else, query-builder calls with `await` — a `pragma_*` table-valued function (`select … from pragma_journal_mode`) gets an awaitable read when a test needs one.
+
+## 2026-08-27 — zod 4 reports unknown keys in `keys`, not `path`
+
+A strict object refusing `archived_at` in a body yields one `unrecognized_keys` issue with `path: []` and `keys: ['archived_at']`. The problem+json layer (`api/src/problems.ts`) fans that out into one issue per key so every 422 issue is addressable by `path`, and the GUI can point at a field.
+
+## 2026-08-27 — entity ids collide across kinds; event queries need both columns
+
+`event.entity_id` alone is ambiguous: project 1 and ticket 1 both exist. Every read of events filters on `(entity_kind, entity_id)`; the index is on that pair. A test that forgot the kind saw a project's events under a ticket.
+
+## 2026-08-27 — keyboard shortcuts race with route loading in browser tests
+
+`page.keyboard.press('e')` right after clicking a link fires before the view that owns the `e` handler has mounted (the entity is still loading). Smoke tests wait for the owning tile to be visible before pressing a key.
