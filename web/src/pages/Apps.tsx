@@ -6,7 +6,7 @@ import { useApps, useCreateApp } from '../queries';
 import { useCrumb } from '../shell';
 import { Chip, Empty, InlineForm, Kbd, Row, Tile } from '../ui';
 
-export const appFields = [
+export const appFormFields = [
   { name: 'name', label: 'name' },
   { name: 'repository_url', label: 'repository url', placeholder: 'https://github.com/…' },
   { name: 'default_branch', label: 'default branch', placeholder: 'main' },
@@ -44,7 +44,7 @@ export function AppsPage() {
       {creating && (
         <InlineForm
           testId="new-app-form"
-          fields={appFields}
+          fields={appFormFields}
           submitLabel="create app"
           onCancel={() => setCreating(false)}
           onSubmit={async (v) => {

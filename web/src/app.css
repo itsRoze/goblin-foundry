@@ -62,8 +62,6 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* chips, buttons, forms */
 .gf-chip { display: inline-block; font: var(--gf-t-label); letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--gf-rule-2); padding: 2px 6px; color: var(--gf-mute); }
 .gf-chip.is-draft { color: var(--gf-draft); border-color: var(--gf-draft); }
-.gf-chip.is-system { color: var(--gf-system); border-color: var(--gf-system); }
-.gf-chip.is-human { color: var(--gf-human); border-color: var(--gf-human); }
 .gf-btn {
   font: var(--gf-t-meta); color: var(--gf-ink); background: var(--gf-raised); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius);
   padding: 4px 10px; cursor: pointer; display: inline-flex; gap: var(--gf-s2); align-items: center; transition: border-color var(--gf-fast) var(--gf-ease);

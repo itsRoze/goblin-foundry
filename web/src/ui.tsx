@@ -33,7 +33,8 @@ export function Tile({
   );
 }
 
-export const Chip = ({ tone, children }: { tone?: 'draft' | 'system' | 'human' | 'mute'; children: ReactNode }) => (
+/** Coloured only when it carries state; `draft` = archived ("not active", DESIGN.md §3). */
+export const Chip = ({ tone, children }: { tone?: 'draft'; children: ReactNode }) => (
   <span className={`gf-chip${tone ? ` is-${tone}` : ''}`}>{children}</span>
 );
 

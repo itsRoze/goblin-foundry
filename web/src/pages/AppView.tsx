@@ -5,9 +5,9 @@ import { useKey } from '../keys';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects } from '../queries';
 import { useCrumb } from '../shell';
 import { Empty, History, InlineForm, Kbd, Kv, Tile } from '../ui';
-import { appBody, appFields } from './Apps';
+import { appBody, appFormFields } from './Apps';
 import { AboutTile, NotFound, useAppNamer, useSlugParam } from './Entity';
-import { ProjectRows, projectBody, projectFields } from './Projects';
+import { ProjectRows, projectBody, projectFormFields } from './Projects';
 
 export function AppView() {
   const { id } = useSlugParam('apps', undefined);
@@ -50,7 +50,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         {creating && (
           <InlineForm
             testId="new-project-form"
-            fields={projectFields(undefined, false)}
+            fields={projectFormFields(undefined, false)}
             submitLabel="create project"
             onCancel={() => setCreating(false)}
             onSubmit={async (v) => {
@@ -72,7 +72,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
       <AboutTile
         kind="app"
         entity={app}
-        fields={appFields}
+        fields={appFormFields}
         initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '', description: app.description }}
         toBody={appBody}
         patch={(b) => patch.mutateAsync(b)}

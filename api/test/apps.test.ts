@@ -153,7 +153,9 @@ describe('/api/apps', () => {
     expect((await req(`/api/apps/${a.id}`)).status).toBe(404);
     expect((await req(`/api/apps/${a.id}`, json('PATCH', { name: 'x' }))).status).toBe(404);
     expect((await req(`/api/apps/${a.id}/archive`, json('POST'))).status).toBe(404);
-    expect((await req(`/api/apps/${a.id}`, { method: 'DELETE' })).status).toBe(404);
+    const twice = await req(`/api/apps/${a.id}`, { method: 'DELETE' });
+    expect(twice.status).toBe(409);
+    expect((await twice.json()).hint).toContain('already in the trash');
 
     const trash = await req('/api/trash').then((r) => r.json());
     expect(trash.apps).toEqual([expect.objectContaining({ id: a.id, name: 'Oops', trashed_at: expect.any(String) })]);

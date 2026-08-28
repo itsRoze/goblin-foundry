@@ -30,22 +30,17 @@ export const project = sqliteTable('project', {
   app_id: integer('app_id').references(() => app.id),
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
-  design: text('design'),
   ...lifecycle,
 });
 
 /**
- * Tickets proper arrive in issue 03; the columns that App/Project moves and
- * trash touch (`app_id`, `project_id`, `trashed_*`) are here so ADR-0007 holds
- * from the start. A ticket is never archived (CONTEXT.md).
+ * Tickets proper arrive in issue 03; only the columns that App/Project moves
+ * and trash touch (`app_id`, `project_id`, `trashed_*`) are here so ADR-0007
+ * holds from the start. A ticket is never archived (CONTEXT.md).
  */
 export const ticket = sqliteTable('ticket', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   title: text('title').notNull(),
-  description: text('description').notNull().default(''),
-  design: text('design'),
-  status: text('status').notNull().default('backlog'),
-  simple: integer('simple', { mode: 'boolean' }).notNull().default(false),
   app_id: integer('app_id').references(() => app.id),
   project_id: integer('project_id').references(() => project.id),
   trashed_at: text('trashed_at'),

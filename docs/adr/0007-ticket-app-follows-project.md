@@ -11,3 +11,4 @@ Linear, Jira, GitHub Projects and Shortcut all make the owning unit (team / spac
 - Tickets in an app-less Project cannot be approved (the approve guard needs an App); attaching the Project fills every ticket's App at once.
 - Trashing a Project detaches its Tickets (`project_id → null`, App kept); trashing an App detaches its Projects and project-less Tickets. Cascade is opt-in (`?cascade=1`).
 - Dependencies are unconstrained by App or Project (any open ticket may block any other); the earlier cross-App refusal is dropped.
+- Restoring a Project whose App is still in the trash brings it back app-less (its tickets' `app_id` cleared with it); a live thing never points into the trash. Restoring the App later does not re-attach it.

@@ -18,7 +18,11 @@ describe('/api/projects', () => {
   beforeEach(async () => (h = await makeTestApp()));
   afterEach(() => h.close());
 
-  /** Tickets cannot be created through the API until issue 03; stub them straight into the table. */
+  /**
+   * Tickets have no API until issue 03, so they are stubbed straight into the
+   * table and their homes read back the same way. Issue 03 moves these reads
+   * to `/api/tickets/:key` and its `/events` (spec: behaviour through the seam).
+   */
   async function stubTicket(title: string, app_id: number | null, project_id: number | null) {
     const at = new Date().toISOString();
     const [row] = await h.db.insert(ticket).values({ title, app_id, project_id, created_at: at, updated_at: at }).returning();
@@ -70,7 +74,7 @@ describe('/api/projects', () => {
     const b = await create('/api/apps', { name: 'B' });
     const p = await create('/api/projects', { name: 'Roaming' });
     const t1 = await stubTicket('one', null, p.id);
-    const t2 = await stubTicket('two', null, p.id);
+    await stubTicket('two', null, p.id);
     await stubTicket('elsewhere', a.id, null);
 
     const attached = await req(`/api/projects/${p.id}`, json('PATCH', { app_id: a.id })).then((r) => r.json());
@@ -90,7 +94,6 @@ describe('/api/projects', () => {
       ['ticket', 'updated', 'human', { app_id: null }, { app_id: a.id }],
       ['ticket', 'updated', 'agent', { app_id: a.id }, { app_id: b.id }],
     ]);
-    expect(t2.id).not.toBe(t1.id);
 
     const pEvents = await req(`/api/projects/${p.id}/events`).then((r) => r.json());
     expect(pEvents.map((e: { kind: string; prior: unknown; new: unknown }) => [e.kind, e.prior, e.new])).toEqual([

@@ -6,7 +6,7 @@ import { useApps, useCreateProject, useProjects } from '../queries';
 import { useCrumb } from '../shell';
 import { Chip, Empty, InlineForm, Kbd, Row, Tile } from '../ui';
 
-export const projectFields = (apps: App[] | undefined, withApp: boolean) => [
+export const projectFormFields = (apps: App[] | undefined, withApp: boolean) => [
   { name: 'name', label: 'name' },
   { name: 'description', label: 'description', kind: 'textarea' as const },
   ...(withApp
@@ -72,7 +72,7 @@ export function ProjectsPage() {
       {creating && (
         <InlineForm
           testId="new-project-form"
-          fields={projectFields(apps.data?.filter((a) => !a.archived_at), true)}
+          fields={projectFormFields(apps.data?.filter((a) => !a.archived_at), true)}
           submitLabel="create project"
           onCancel={() => setCreating(false)}
           onSubmit={async (v) => {

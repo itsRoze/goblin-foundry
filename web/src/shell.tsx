@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useApps, useProjects } from './queries';
 import { useKey } from './keys';
@@ -58,5 +58,3 @@ export function Shell() {
     </CrumbContext.Provider>
   );
 }
-
-export const Desk = ({ children }: { children: ReactNode }) => <>{children}</>;

@@ -23,7 +23,6 @@ export const unprocessable = (c: Context, issues: Issue[] | ZodError) =>
     issues: Array.isArray(issues) ? issues : issues.issues.flatMap(fromZod),
   });
 
-/** A refused intent names its owner and what would let it through; the GUI shows `hint`. */
 /** One issue per field, so an unknown key (zod's `unrecognized_keys` lists them in `keys`) is addressable by `path` like any other. */
 function fromZod(issue: ZodError['issues'][number]): Issue[] {
   const path = issue.path.map((p) => (typeof p === 'symbol' ? String(p) : p));
@@ -31,6 +30,5 @@ function fromZod(issue: ZodError['issues'][number]): Issue[] {
   return [{ path, message: issue.message }];
 }
 
+/** A refused intent names its owner and what would let it through; the GUI shows `hint`. */
 export const conflict = (c: Context, hint: string, owner = 'human') => problem(c, 409, 'Conflict', { owner, hint });
-
-export const malformedJson = (c: Context) => unprocessable(c, [{ path: [], message: 'body must be JSON' }]);

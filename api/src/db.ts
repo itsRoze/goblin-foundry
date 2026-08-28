@@ -64,7 +64,6 @@ async function ensureSchema(db: Db): Promise<void> {
     app_id integer REFERENCES app(id),
     name text NOT NULL,
     description text DEFAULT '' NOT NULL,
-    design text,
     archived_at text,
     trashed_at text,
     trashed_via text,
@@ -74,10 +73,6 @@ async function ensureSchema(db: Db): Promise<void> {
   db.run(sql`CREATE TABLE IF NOT EXISTS ticket (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     title text NOT NULL,
-    description text DEFAULT '' NOT NULL,
-    design text,
-    status text DEFAULT 'backlog' NOT NULL,
-    simple integer DEFAULT false NOT NULL,
     app_id integer REFERENCES app(id),
     project_id integer REFERENCES project(id),
     trashed_at text,

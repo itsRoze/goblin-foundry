@@ -97,6 +97,8 @@ Keyboard first, Linear-style: `j/k` move, `⏎` open, `a` approve, `r` re-arm, `
 
 Authority is visible: transitions the controller owns are never offered as drags; a refused move says who owns it.
 
+**As built (S1, issue 02):** `e` edits the `about` tile inline; in `/trash`, `r` restores (re-arm arrives with runs, S5, and will take `r` on the board — the trash keeps it, the two never share a screen). `⌘⏎` saves any inline form, `esc` cancels it. The bar carries a `trash` link at the right, after the counts, until `⌘K` (issue 10) makes it reachable by name.
+
 ## 9. Voice
 
 Short, plain, sentence case. Kinds and states are single words (`approve`, `re-arm`, `answer`, `needs you`, `building`). Meta lines say what happened, not what it means (`verify failed twice, same failure · $3.80 spent`). Hints are verbs with a key (`A approve`, `⏎ reply`). No exclamation marks. Numbers are honest: `$1.42 / 5.00`, never a pie chart.

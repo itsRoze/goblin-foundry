@@ -32,7 +32,7 @@ export function useAppNamer(): (id: unknown) => string {
  * The `about` tile: key/value facts, `e` to edit inline, and the archive /
  * trash intents as flat buttons. Shared by the App and Project views.
  */
-export function AboutTile({
+export function AboutTile<Body>({
   kind,
   entity,
   facts,
@@ -46,8 +46,8 @@ export function AboutTile({
   facts: ReactNode;
   fields: Field[];
   initial: Record<string, string>;
-  toBody: (v: Record<string, string>) => unknown;
-  patch: (body: never) => Promise<unknown>;
+  toBody: (v: Record<string, string>) => Body;
+  patch: (body: Body) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function AboutTile({
           submitLabel="save"
           onCancel={() => setEditing(false)}
           onSubmit={async (v) => {
-            await patch(toBody(v) as never);
+            await patch(toBody(v));
             setEditing(false);
           }}
         />
