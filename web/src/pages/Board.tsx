@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
-import { TICKET_STATUSES, type Ticket, type TicketStatus } from '@goblin/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { TICKET_STATUSES, structuralRefusal, transitionTo, type Ticket, type TicketStatus } from '@goblin/shared';
 import { useKey } from '../keys';
-import { useTickets } from '../queries';
+import { useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
-import { TicketCard, useNames, useNewTicket } from '../tickets';
-import { Empty, Kbd, Tile, useMinute } from '../ui';
+import { TicketCard, asDraggedCard, useNames, useNewTicket, type DraggedCard } from '../tickets';
+import { Empty, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
 
 /** Per-device display preferences, not filters: a filter chooses which tickets are on the board and lives in the URL (CONTEXT.md). */
 interface View {
@@ -36,6 +37,60 @@ function useView() {
   return { view, toggle };
 }
 
+/** One sentence under the column the drop was refused at (DESIGN.md §6). */
+interface Refusal {
+  status: TicketStatus;
+  text: string;
+}
+
+/**
+ * Dragging a card between columns *is* a transition (CONTEXT.md): the drop
+ * looks the edge up in the table, moves the card optimistically and puts it
+ * back with the API's `hint` if the move is refused. A column the card has no
+ * arrow to says so instead of asking.
+ */
+function useDragToTransition() {
+  const move = useTransition();
+  const [dragging, setDragging] = useState<TicketStatus | null>(null);
+  const { refusal, setRefusal } = useRefusal<Refusal>();
+
+  const drop = useCallback(
+    (card: DraggedCard, to: TicketStatus) => {
+      if (card.status === to) return; // a card dropped back where it came from has not moved — position in a column means nothing
+      const edge = transitionTo(card.status, to);
+      if (!edge) return setRefusal({ status: to, text: structuralRefusal(card.status, to) });
+      move.mutate({ key: card.key, name: edge.name, to }, { onError: (error) => setRefusal({ status: to, text: refusalLine(error) }) });
+    },
+    [move, setRefusal],
+  );
+
+  // the monitor is registered once; the handler it reaches for is always the latest render's
+  const latest = useRef(drop);
+  useEffect(() => {
+    latest.current = drop;
+  }, [drop]);
+
+  useEffect(
+    () =>
+      monitorForElements({
+        canMonitor: ({ source }) => asDraggedCard(source.data) !== null,
+        onDragStart: ({ source }) => {
+          setRefusal(null); // a refusal clears on the next drag (DESIGN.md §6)
+          setDragging(asDraggedCard(source.data)?.status ?? null);
+        },
+        onDrop: ({ source, location }) => {
+          setDragging(null);
+          const card = asDraggedCard(source.data);
+          const to = location.current.dropTargets[0]?.data.status;
+          if (card && typeof to === 'string') latest.current(card, to as TicketStatus);
+        },
+      }),
+    [setRefusal],
+  );
+
+  return { dragging, refusal };
+}
+
 /** The kanban is home (CONTEXT.md): every live ticket, one column per status, in lifecycle order. */
 export function BoardPage() {
   useCrumb('board');
@@ -45,6 +100,7 @@ export function BoardPage() {
   const { view, toggle } = useView();
   const [menu, setMenu] = useState(false);
   const newTicket = useNewTicket({});
+  const { dragging, refusal } = useDragToTransition();
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   const columns = TICKET_STATUSES.filter((s) => s !== 'cancelled' || view.cancelled);
@@ -87,6 +143,9 @@ export function BoardPage() {
             meta={view.meta ? meta : undefined}
             updated={view.updated}
             at={at}
+            // legal columns are marked, never the illegal ones dimmed (DESIGN.md §6)
+            legal={dragging === null ? null : dragging !== status && transitionTo(dragging, status) !== undefined}
+            refusal={refusal?.status === status ? refusal.text : null}
           />
         ))}
       </div>
@@ -103,6 +162,8 @@ function Column({
   meta,
   updated,
   at,
+  legal,
+  refusal,
 }: {
   status: TicketStatus;
   tickets: Ticket[];
@@ -110,9 +171,29 @@ function Column({
   meta: ((t: Ticket) => string) | undefined;
   updated: boolean;
   at: number;
+  /** `null` when no drag is live; otherwise whether the dragged card has an arrow here. */
+  legal: boolean | null;
+  refusal: string | null;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState(false);
+
+  // every column accepts the drop; a column with no arrow refuses it in words rather than swallowing the gesture
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    return dropTargetForElements({
+      element,
+      getData: (): Record<string, unknown> => ({ status }),
+      onDragEnter: () => setOver(true),
+      onDragLeave: () => setOver(false),
+      onDrop: () => setOver(false),
+    });
+  }, [status]);
+
+  const marks = legal === null ? '' : legal ? ' is-legal' : ' is-illegal';
   return (
-    <div className="gf-col" data-testid={`col-${status}`}>
+    <div ref={ref} className={`gf-col${marks}${over ? ' is-over' : ''}`} data-testid={`col-${status}`}>
       <div className="gf-col-head">
         {status}
         <b>{tickets.length}</b>
@@ -121,6 +202,11 @@ function Column({
       {tickets.map((t) => (
         <TicketCard key={t.id} ticket={t} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} />
       ))}
+      {refusal && (
+        <p className="gf-refusal gf-col-refusal" role="alert" data-testid={`refusal-${status}`}>
+          {refusal}
+        </p>
+      )}
     </div>
   );
 }

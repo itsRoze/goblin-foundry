@@ -8,6 +8,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "^3.0.0",
     "@fontsource/ibm-plex-sans": "^5.2.6",
     "@fontsource/jetbrains-mono": "^5.2.6",
     "@goblin/shared": "workspace:*",

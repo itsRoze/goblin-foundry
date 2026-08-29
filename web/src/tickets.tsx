@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import type { Ticket, TicketStatus } from '@goblin/shared';
 import { ProblemError } from './api';
 import { formKeys } from './keys';
@@ -43,10 +44,39 @@ export const StatusChip = ({ status }: { status: TicketStatus }) => (
   </Chip>
 );
 
+/** What a dragged card puts on the wire; the board reads it to pick the edge. */
+export interface DraggedCard {
+  key: string;
+  status: TicketStatus;
+}
+
+/** A drag payload is only ours if it carries both fields; anything else the monitor ignores. */
+export const asDraggedCard = (data: Record<string | symbol, unknown>): DraggedCard | null =>
+  typeof data.key === 'string' && typeof data.status === 'string' ? { key: data.key, status: data.status as TicketStatus } : null;
+
 /** The kanban card: key + status note, title, then whatever the view options ask for (DESIGN.md §6). */
 export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta: string | null; updated: string | null; at: number }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const [lifted, setLifted] = useState(false);
+  // the whole card is the drag handle — no grip (DESIGN.md §6)
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    return draggable({
+      element,
+      getInitialData: (): Record<string, unknown> => ({ key: ticket.key, status: ticket.status }),
+      onDragStart: () => setLifted(true),
+      onDrop: () => setLifted(false),
+    });
+  }, [ticket.key, ticket.status]);
+
   return (
-    <Link className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}`} to={ticketPath(ticket)} data-testid={`card-${ticket.key}`}>
+    <Link
+      ref={ref}
+      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${lifted ? ' is-lifted' : ''}`}
+      to={ticketPath(ticket)}
+      data-testid={`card-${ticket.key}`}
+    >
       <span className="gf-card-id">
         <span className="gf-card-key">{ticket.key}</span>
         <i>{ticket.status}</i>

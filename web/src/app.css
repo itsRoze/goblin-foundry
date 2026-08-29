@@ -136,3 +136,18 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-history li { display: flex; flex-direction: column; gap: 2px; padding: var(--gf-s2) 0; border-bottom: 1px solid var(--gf-rule); }
 .gf-history-what { font: var(--gf-t-body); }
 .gf-history-meta { font: var(--gf-t-meta); color: var(--gf-mute); }
+
+/* the drag (DESIGN.md §6): the legal columns are marked, the illegal ones are never dimmed.
+   The resting column carries the border transparent and the padding already, so a drag paints
+   the mark on without moving a card by a pixel. */
+.gf-col { padding: 0 var(--gf-s1); border: 1px solid transparent; transition: background var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease); }
+.gf-col.is-legal { border-color: var(--gf-system); background: var(--gf-raised); }
+.gf-col.is-legal.is-over { border-color: var(--gf-system); background: var(--gf-rule); }
+.gf-col.is-illegal .gf-col-head { color: var(--gf-mute); }
+.gf-card.is-lifted { border-color: var(--gf-system); }
+.gf-card { cursor: grab; }
+.gf-col-refusal { animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
+@keyframes gf-refusal-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* the state tile: the lifecycle first, the ways of stopping set apart */
+.gf-actions.is-separated { margin-top: var(--gf-s3); padding-top: var(--gf-s3); border-top: 1px solid var(--gf-rule); }

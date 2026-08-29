@@ -1,6 +1,19 @@
 import { Hono } from 'hono';
 import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
-import { CreateTicketBodySchema, PatchTicketBodySchema, parseTicketKey, ticketKey, type Ticket } from '@goblin/shared';
+import {
+  CreateTicketBodySchema,
+  PatchTicketBodySchema,
+  UNCREATABLE_STATUSES,
+  approveGuard,
+  guardHold,
+  isGuarded,
+  parseTicketKey,
+  ticketKey,
+  type ApproveRequirement,
+  type GuardFields,
+  type Ticket,
+  type TicketStatus,
+} from '@goblin/shared';
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
@@ -9,6 +22,7 @@ import { parseBody } from './http';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable } from './schema';
 import { readSettings } from './settings';
+import { transitionRoute } from './transitions';
 
 type TicketRow = typeof ticketTable.$inferSelect;
 
@@ -57,6 +71,41 @@ async function resolvePlacement(db: Db, current: Placement, body: { app_id?: num
   return { app_id: body.app_id, project_id: project?.app_id === body.app_id ? project_id : null };
 }
 
+/**
+ * The guard at creation (ADR-0003): the terminal statuses are earned rather
+ * than declared, and a ticket born in the working end of the lifecycle must
+ * already satisfy the approve guard. Both refusals are on `status`, because
+ * the status is what the body asked for that it cannot have.
+ */
+function bornAt(status: TicketStatus, fields: GuardFields): Issue | null {
+  if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
+    return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
+  if (!isGuarded(status)) return null;
+  const lacks = approveGuard(fields);
+  return lacks.length === 0 ? null : { path: ['status'], message: guardHold(status, lacks) };
+}
+
+/** Which field a missing requirement is the fault of, so the 422 points somewhere the GUI can highlight. */
+const BLAMED: Record<ApproveRequirement, 'app_id' | 'design'> = { app: 'app_id', design: 'design' };
+
+/**
+ * A ticket at `ready` or beyond must go on satisfying the guard, so an edit
+ * that would break it is refused rather than silently dropping the ticket out
+ * of the frontier (ADR-0003). Only newly missing requirements count: a patch
+ * is never blamed for something that was already absent.
+ */
+function wouldBreakGuard(row: TicketRow, next: GuardFields, body: { simple?: boolean }): Issue[] {
+  if (!isGuarded(row.status)) return [];
+  const before = new Set(approveGuard(row));
+  return approveGuard(next)
+    .filter((requirement) => !before.has(requirement))
+    .map((requirement) => ({
+      // un-flagging `simple` is what took the design away, so that is the field to name
+      path: [requirement === 'design' && body.simple === false ? 'simple' : BLAMED[requirement]],
+      message: `${guardHold(row.status, [requirement])} — unapprove it first`,
+    }));
+}
+
 export function ticketsRoutes(db: Db) {
   const r = new Hono<ActorEnv>();
   const prefix = async () => (await readSettings(db)).ticket_prefix;
@@ -95,8 +144,6 @@ export function ticketsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const placement = await resolvePlacement(db, { app_id: null, project_id: null }, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
-    // A ticket born in `ready`/`building`/`review`/`done` runs the approve
-    // guard — that guard is issue 04's; until then every status is accepted.
     const at = now();
     const fields = {
       title: body.data.title,
@@ -106,6 +153,8 @@ export function ticketsRoutes(db: Db) {
       design: null,
       ...placement,
     };
+    const born = bornAt(fields.status, fields);
+    if (born) return unprocessable(c, [born]);
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
@@ -130,6 +179,9 @@ export function ticketsRoutes(db: Db) {
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
     const { title, description, design, simple } = body.data;
+    const next = { ...row, ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
+    const broken = wouldBreakGuard(row, next, body.data);
+    if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });
     if (!change.changed) return c.json(toTicket(row, await prefix()));
     const at = now();
@@ -175,6 +227,9 @@ export function ticketsRoutes(db: Db) {
     }
     return c.json(toTicket(restored, await prefix()));
   });
+
+  // last: `:name` would otherwise swallow `/:key/restore` (ADR-0004)
+  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: async (row) => toTicket(row, await prefix()) });
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;

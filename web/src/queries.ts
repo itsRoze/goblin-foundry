@@ -14,6 +14,9 @@ import {
   type PatchProjectBody,
   type PatchSettingsBody,
   type PatchTicketBody,
+  type Ticket,
+  type TicketStatus,
+  type TransitionName,
 } from '@goblin/shared';
 import * as api from './api';
 
@@ -82,6 +85,39 @@ export const usePatchTicket = (key: string) => useWrite((body: PatchTicketBody) 
 /** A ticket is never archived (CONTEXT.md): trash and restore are all it has. */
 export const useTicketIntent = (key: string) =>
   useWrite((intent: 'trash' | 'restore') => (intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`)));
+
+/** One move: which ticket, which verb, and where it lands so the cache can be patched before the answer. */
+export interface Move {
+  key: string;
+  name: TransitionName;
+  to: TicketStatus;
+}
+
+/**
+ * A named transition (ADR-0004), applied optimistically: the card lands in the
+ * new column before the API answers and snaps back on a refusal, so a drag
+ * feels like moving a thing rather than filing a request. Used by the board's
+ * drop and by the ticket view's state tile, which is the same move by button.
+ */
+export function useTransition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, name }: Move) => api.post(`/api/tickets/${key}/${name}`),
+    async onMutate({ key, to }) {
+      // a poll landing mid-flight would otherwise overwrite the optimistic status with the stale one
+      await qc.cancelQueries({ queryKey: ['tickets'] });
+      await qc.cancelQueries({ queryKey: ['ticket'] });
+      const snapshot = [...qc.getQueriesData<Ticket[]>({ queryKey: ['tickets'] }), ...qc.getQueriesData<Ticket>({ queryKey: ['ticket'] })];
+      qc.setQueriesData<Ticket[]>({ queryKey: ['tickets'] }, (list) => list?.map((t) => (t.key === key ? { ...t, status: to } : t)));
+      qc.setQueriesData<Ticket>({ queryKey: ['ticket'] }, (t) => (t && t.key === key ? { ...t, status: to } : t));
+      return { snapshot };
+    },
+    onError: (_error, _vars, context) => {
+      for (const [queryKey, data] of context?.snapshot ?? []) qc.setQueryData(queryKey, data);
+    },
+    onSettled: () => qc.invalidateQueries(),
+  });
+}
 
 export const useCreateApp = () => useWrite((body: CreateAppBody) => api.post('/api/apps', body).then((r) => AppSchema.parse(r)));
 export const usePatchApp = (id: number) => useWrite((body: PatchAppBody) => api.patch(`/api/apps/${id}`, body));
