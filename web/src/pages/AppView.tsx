@@ -2,9 +2,10 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
 import { useKey } from '../keys';
-import { useApp, useCreateProject, useEvents, usePatchApp, useProjects } from '../queries';
+import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
 import { useCrumb } from '../shell';
-import { Empty, History, InlineForm, Kbd, Kv, Tile } from '../ui';
+import { TicketRows, useNewTicket } from '../tickets';
+import { Empty, History, InlineForm, Kbd, Kv, Plus, Tile, describeEvent } from '../ui';
 import { appBody, appFormFields } from './Apps';
 import { AboutTile, NotFound, useAppNamer, useSlugParam } from './Entity';
 import { ProjectRows, projectBody, projectFormFields } from './Projects';
@@ -23,12 +24,13 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
   const [showArchived, setShowArchived] = useState(false);
   const [creating, setCreating] = useState(false);
   const projects = useProjects({ app_id: app.id, archived: showArchived });
+  const tickets = useTickets({ app_id: app.id });
   const events = useEvents('app', app.id);
   const create = useCreateProject();
   const patch = usePatchApp(app.id);
   const appName = useAppNamer();
   const nav = useNavigate();
-  useKey('n', useCallback(() => setCreating(true), []));
+  const newTicket = useNewTicket({ app_id: app.id });
   if (redirect) return redirect;
 
   return (
@@ -39,11 +41,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
       <Tile
         label="projects"
         subtitle={projects.data ? String(projects.data.length) : undefined}
-        keys={
-          <>
-            <Kbd>n</Kbd> new
-          </>
-        }
+        keys={<Plus label="new project" onClick={() => setCreating(true)} />}
         focus
         testId="projects-tile"
       >
@@ -60,14 +58,24 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
             }}
           />
         )}
-        {projects.data?.length === 0 && !creating && <Empty>no projects — press n</Empty>}
+        {projects.data?.length === 0 && !creating && <Empty>no projects — click +</Empty>}
         {projects.data && <ProjectRows projects={projects.data} />}
         <label className="gf-toggle">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> show archived
         </label>
       </Tile>
-      <Tile label="tickets" subtitle="0">
-        <Empty>tickets arrive with the board</Empty>
+      <Tile
+        label="tickets"
+        subtitle={tickets.data ? String(tickets.data.length) : undefined}
+        keys={
+          <>
+            <Kbd>c</Kbd> new
+          </>
+        }
+        testId="tickets-tile"
+      >
+        {newTicket}
+        <TicketRows tickets={tickets.data} />
       </Tile>
       <AboutTile
         kind="app"
@@ -88,7 +96,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         }
       />
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
-        <History events={events.data} appName={appName} />
+        <History events={events.data} describe={(e) => describeEvent(e, appName)} />
       </Tile>
     </>
   );

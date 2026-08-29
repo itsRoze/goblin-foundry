@@ -93,11 +93,13 @@ Hover/focus/selection: 120ms. Tiles and rows moving: 200ms. One ambient animatio
 
 ## 8. Interaction
 
-Keyboard first, Linear-style: `j/k` move, `⏎` open, `a` approve, `r` re-arm, `s` status, `n` new, `d` deps, `p` plan, `esc` back, `⌘K` anything, `⌘1–6` focus a tile. Every tile header shows its keys. Drag exists for kanban (S1) and claim order (S5); keys always do the same thing. A kanban drag *is* a transition: the board offers only the columns the dragger owns an edge to, and a refused drop shows the transition table's `hint` inline.
+Keyboard first, Linear-style: `j/k` move, `⏎` open, `a` approve, `r` re-arm, `s` status, `c` create a ticket in the current scope, `v` view options, `d` deps, `p` plan, `esc` back, `⌘K` anything, `⌘1–6` focus a tile. Every tile header shows its keys. Drag exists for kanban (S1) and claim order (S5); keys always do the same thing. A kanban drag *is* a transition: the board offers only the columns the dragger owns an edge to, and a refused drop shows the transition table's `hint` inline.
 
 Authority is visible: transitions the controller owns are never offered as drags; a refused move says who owns it.
 
-**As built (S1, issue 02):** `e` edits the `about` tile inline; in `/trash`, `r` restores (re-arm arrives with runs, S5, and will take `r` on the board — the trash keeps it, the two never share a screen). `⌘⏎` saves any inline form, `esc` cancels it. The bar carries a `trash` link at the right, after the counts, until `⌘K` (issue 10) makes it reachable by name.
+**As built (S1, issues 02–03):** `e` edits inline — the `about` tile on an App or Project, the description on a Ticket, the prefix on `/settings`; `c` creates a Ticket in the scope on screen — the top of `backlog` on the board, prefilled on an App or Project view, nothing on the all-apps/all-projects lists; `v` opens the board's view options; `⌘⌫` trashes the Ticket you are looking at, with no confirm (the trash is the undo). In `/trash`, `r` restores (re-arm arrives with runs, S5, and will take `r` on the board — the trash keeps it, the two never share a screen). `⌘⏎` saves any inline form, `esc` cancels it. `n` is retired: an App or Project form opens from a `+` in its tile header until `⌘K` (issue 10) makes creation reachable by name. The bar carries `trash` and `settings` links at the right, after the counts, for the same reason.
+
+**Kanban card, as built:** the note beside the key is the status itself, coloured per §3 — S1 has no approval state, PR or run to say anything more honest. `app / project` (`—` for an orphan) and `updated` are view options; the key and the note never hide.
 
 ## 9. Voice
 

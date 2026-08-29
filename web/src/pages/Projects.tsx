@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath, type App, type Project } from '@goblin/shared';
-import { useKey } from '../keys';
 import { useApps, useCreateProject, useProjects } from '../queries';
 import { useCrumb } from '../shell';
-import { Chip, Empty, InlineForm, Kbd, Row, Tile } from '../ui';
+import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
 
 export const projectFormFields = (apps: App[] | undefined, withApp: boolean) => [
   { name: 'name', label: 'name' },
@@ -45,7 +44,6 @@ export function ProjectsPage() {
   const projects = useProjects({ archived: showArchived });
   const create = useCreateProject();
   const nav = useNavigate();
-  useKey('n', useCallback(() => setCreating(true), []));
 
   const groups: { key: string; label: string; items: Project[] }[] = [];
   if (projects.data && apps.data) {
@@ -61,11 +59,7 @@ export function ProjectsPage() {
     <Tile
       label="projects"
       subtitle={projects.data ? `${projects.data.length} · by app` : undefined}
-      keys={
-        <>
-          <Kbd>n</Kbd> new
-        </>
-      }
+      keys={<Plus label="new project" onClick={() => setCreating(true)} />}
       focus
       testId="projects-tile"
     >
@@ -82,7 +76,7 @@ export function ProjectsPage() {
           }}
         />
       )}
-      {projects.data?.length === 0 && !creating && <Empty>no projects yet — press n</Empty>}
+      {projects.data?.length === 0 && !creating && <Empty>no projects yet — click +</Empty>}
       {groups.map((g) => (
         <div key={g.key} className="gf-group" data-testid={`group-${g.key}`}>
           <div className="gf-group-head">{g.label}</div>

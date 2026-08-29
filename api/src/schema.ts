@@ -1,4 +1,6 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { TICKET_STATUSES } from '@goblin/shared';
 
 /** Installation-wide settings; S1 holds only `ticket_prefix`. */
 export const setting = sqliteTable('setting', {
@@ -33,21 +35,35 @@ export const project = sqliteTable('project', {
   ...lifecycle,
 });
 
+/** The eight names as a SQL list, so the column's CHECK is built from `shared`'s one list and cannot drift from it (`ensureSchema` uses it too). */
+export const statusList = () => sql.raw(TICKET_STATUSES.map((s) => `'${s}'`).join(','));
+
 /**
- * Tickets proper arrive in issue 03; only the columns that App/Project moves
- * and trash touch (`app_id`, `project_id`, `trashed_*`) are here so ADR-0007
- * holds from the start. A ticket is never archived (CONTEXT.md).
+ * A ticket is never archived (CONTEXT.md) — it is `cancelled` (a decision) or
+ * trashed (a mistake). `status` is a checked text column, not an enum table
+ * (ADR-0003); `id` is the ticket's permanent number (ADR-0002) and the key
+ * `GF-<id>` is derived at the edge from the installation prefix.
  */
-export const ticket = sqliteTable('ticket', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  title: text('title').notNull(),
-  app_id: integer('app_id').references(() => app.id),
-  project_id: integer('project_id').references(() => project.id),
-  trashed_at: text('trashed_at'),
-  trashed_via: text('trashed_via'),
-  created_at: text('created_at').notNull(),
-  updated_at: text('updated_at').notNull(),
-});
+export const ticket = sqliteTable(
+  'ticket',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    status: text('status').notNull().default('backlog').$type<(typeof TICKET_STATUSES)[number]>(),
+    /** "straightforward enough to build without a Ticket Design" — the approve guard reads it (issue 04). */
+    simple: integer('simple', { mode: 'boolean' }).notNull().default(false),
+    /** The Ticket Design, a markdown document stored with the ticket (ADR-0005); no editor until issue 07. */
+    design: text('design'),
+    app_id: integer('app_id').references(() => app.id),
+    project_id: integer('project_id').references(() => project.id),
+    trashed_at: text('trashed_at'),
+    trashed_via: text('trashed_via'),
+    created_at: text('created_at').notNull(),
+    updated_at: text('updated_at').notNull(),
+  },
+  (t) => [check('ticket_status', sql`${t.status} IN (${statusList()})`)],
+);
 
 /** One row per write; `prior`/`new` are JSON of only the changed fields. */
 export const event = sqliteTable('event', {

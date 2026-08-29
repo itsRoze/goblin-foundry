@@ -11,6 +11,7 @@ S1 transitions (all human): `backlog/todo/planning` move freely among themselves
 ## Consequences
 
 - Editing a ticket's fields never changes its status.
+- A ticket may be *created* in any status (default `backlog`); creating it in `ready`, `building`, `review` or `done` runs the approve guard, so the guard is the single gate into the frontier whether a ticket walks there or is born there.
 - Blocked is derived (an open blocker), never a status; `cancelled` blockers do not block.
 - The ready frontier in S1 is `ready ∧ no open blocker`; the lease/concurrency clauses arrive in S5.
 - Every mutation writes an `event` row: entity, actor (`human` | `agent`), kind, prior, new, timestamp. No auth in S1; the API binds to localhost and trusts a declared actor.

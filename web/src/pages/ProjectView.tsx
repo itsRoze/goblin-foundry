@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
 import { slugPath } from '@goblin/shared';
-import { useApps, useEvents, usePatchProject, useProject } from '../queries';
+import { useApps, useEvents, usePatchProject, useProject, useTickets } from '../queries';
 import { useCrumb } from '../shell';
-import { Empty, History, Kv, Tile } from '../ui';
+import { TicketRows, useNewTicket } from '../tickets';
+import { Empty, History, Kbd, Kv, Tile, describeEvent } from '../ui';
 import { AboutTile, NotFound, appOptions, useAppNamer, useSlugParam } from './Entity';
 
 export function ProjectView() {
@@ -19,8 +20,10 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
   useCrumb(app ? `${app.name} / ${project.name}` : project.name);
   const { redirect } = useSlugParam('projects', project);
   const events = useEvents('project', project.id);
+  const tickets = useTickets({ project_id: project.id });
   const patch = usePatchProject(project.id);
   const appName = useAppNamer();
+  const newTicket = useNewTicket({ project_id: project.id });
   if (redirect) return redirect;
 
   return (
@@ -36,8 +39,19 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         )}
         {project.name}
       </h1>
-      <Tile label="tickets" subtitle="0" focus>
-        <Empty>tickets arrive with the board</Empty>
+      <Tile
+        label="tickets"
+        subtitle={tickets.data ? String(tickets.data.length) : undefined}
+        keys={
+          <>
+            <Kbd>c</Kbd> new
+          </>
+        }
+        focus
+        testId="tickets-tile"
+      >
+        {newTicket}
+        <TicketRows tickets={tickets.data} />
       </Tile>
       <AboutTile
         kind="project"
@@ -61,7 +75,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         }
       />
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
-        <History events={events.data} appName={appName} />
+        <History events={events.data} describe={(e) => describeEvent(e, appName)} />
       </Tile>
     </>
   );
