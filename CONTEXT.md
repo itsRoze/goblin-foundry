@@ -41,7 +41,7 @@ Workflow state only (never CI or PR review state). S1 statuses, in order:
 - `ready` — plan approved; developable
 - `building` — someone is on it (you by hand; the controller from S5)
 - `review` — PR open / being reviewed
-- `done`
+- `done` — finished, however it got there: shipped out of `review`, or closed because it turned out to be done as a side effect of other work
 - `cancelled` — not doing; blocks nothing
 
 `needs_human` (agent stuck) is added when a controller exists (S5). Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned.
@@ -59,7 +59,7 @@ The controller's atomic hold on a Ticket while a run is alive. Expiry routes to 
 Everything waiting on the human: approvals, re-arms, answers, reviews, design reconciliations. In S1 only approvals exist (Tickets in `planning`); there is no Home screen — the Kanban is home.
 
 ## Simple
-A flag on a Ticket meaning "straightforward enough to build without a Ticket Design". A simple Ticket may go `todo → ready` directly.
+A flag on a Ticket meaning "straightforward enough to build without a Ticket Design". A simple Ticket may go `todo → ready` directly, and may be *created* in `ready`. Simple means no plan is needed, not that no context is needed: a simple Ticket still needs an App, because an orphan can never be `ready`.
 
 ## Lane (risk lane)
 The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spot-check with evidence). Not in S1; set at intake from S2.
@@ -78,4 +78,9 @@ Design. A human's session and an agent's session are always distinct, even back 
 A per-device display preference on the Kanban: which card properties are shown, and whether `cancelled` cards are visible. Distinct from a **Filter**, which chooses *which* Tickets are on the board and lives in the URL so it can be bookmarked. Hiding `cancelled` is a View option, never a Filter.
 
 ## Transition
-One arrow in the Lifecycle: a move of a Ticket from one Status to another (e.g. `ready → running`). Each Transition has an **owner** — who is allowed to trigger it. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
+One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name** and an **owner** — who is allowed to trigger it. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
+
+The S1 verbs: `pick`, `plan`, `shelve` (moving freely among `backlog`/`todo`/`planning`), `approve` and `unapprove`, `start` and `stop`, `submit`, `ship`, `close`, `cancel`, `reopen`. Two of them share a destination: **ship** is a PR merged out of `review`; **close** records a Ticket that turned out to be done without ever being planned. **Reopen** takes a cancelled Ticket back to `backlog` — distinct from *restoring* one, which is un-Trashing it.
+
+## Approve Guard
+What a Ticket must have before it may be `ready` or beyond: an **App**, and a **Ticket Design** unless it is Simple. It is the single gate into the Ready Frontier — the same check whether the Ticket walks there, is created there, or is edited while there. A description is not part of it: intent lives in the title of a Simple Ticket and in the Design of any other.
