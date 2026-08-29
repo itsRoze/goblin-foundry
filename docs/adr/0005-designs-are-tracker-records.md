@@ -12,3 +12,9 @@ The blueprint stored designs as files in the app repo with an append-only `path 
 - No `DesignRevision` table and no sha in S1; history is the `event` log (prior/new bodies).
 - "A PR proposes a design change" (blueprint §3.1, S6+) becomes a proposed tracker edit rather than a file diff.
 - The controller (S5) injects the design into the sandbox prompt; the agent does not read it from the repo.
+- Raw HTML inside the markdown is not a stored derived form but it is still HTML: the editor's
+  schema does not model it, so it is stripped on the next edit and never rendered. Markdown a
+  planning agent wrote is not a trusted document.
+- Because history is the only version history, it has to be legible: an `updated` event is one
+  edit session, not one autosaved write (ADR-0008), and it carries the full body so a design can
+  be recovered from it.

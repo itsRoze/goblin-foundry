@@ -18,7 +18,7 @@ A recoverable deletion of an App, Project or Ticket (something created by accide
 A named grouping of Tickets inside a Project. Not in S1 (wanted later).
 
 ## Design
-A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place; not versioned in S1. *(Later slices snapshot it at claim time so a run is judged against the design it started with.)*
+A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place, always live (there is no draft and no save step); not versioned in S1. *(Later slices snapshot it at claim time so a run is judged against the design it started with.)*
 
 ## Ticket
 A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). A Ticket in a Project always shares that Project's App; a Ticket's App is chosen directly only when it has no Project. Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs no Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
@@ -66,6 +66,13 @@ The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spo
 
 ## Actor
 Who performed a mutation: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
+
+## Edit session
+A stretch of continuous editing of one thing by one Actor, recorded as a single entry in that
+thing's history rather than one entry per keystroke's worth of saving. What it remembers is the
+text as it stood when the sitting began, so an edit session is the unit of recovery for a
+Design. A human's session and an agent's session are always distinct, even back to back.
+(ADR-0008.)
 
 ## View option
 A per-device display preference on the Kanban: which card properties are shown, and whether `cancelled` cards are visible. Distinct from a **Filter**, which chooses *which* Tickets are on the board and lives in the URL so it can be bookmarked. Hiding `cancelled` is a View option, never a Filter.
