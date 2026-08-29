@@ -72,12 +72,13 @@ async function resolvePlacement(db: Db, current: Placement, body: { app_id?: num
 }
 
 /**
- * The guard at creation (ADR-0003): the terminal statuses are earned rather
- * than declared, and a ticket born in the working end of the lifecycle must
- * already satisfy the approve guard. Both refusals are on `status`, because
- * the status is what the body asked for that it cannot have.
+ * Why this ticket may not be created at this status (ADR-0003), or `null` when
+ * it may: the terminal statuses are earned rather than declared, and a ticket
+ * born in the working end of the lifecycle must already satisfy the approve
+ * guard. Both refusals are on `status`, because the status is what the body
+ * asked for that it cannot have.
  */
-function bornAt(status: TicketStatus, fields: GuardFields): Issue | null {
+function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | null {
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
   if (!isGuarded(status)) return null;
@@ -153,8 +154,8 @@ export function ticketsRoutes(db: Db) {
       design: null,
       ...placement,
     };
-    const born = bornAt(fields.status, fields);
-    if (born) return unprocessable(c, [born]);
+    const refused = creationRefusal(fields.status, fields);
+    if (refused) return unprocessable(c, [refused]);
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
