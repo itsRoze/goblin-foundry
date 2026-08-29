@@ -1,4 +1,14 @@
-export { SettingsSchema, type Settings, DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY, DEFAULT_PORT } from './settings';
+export {
+  SettingsSchema,
+  type Settings,
+  PatchSettingsBodySchema,
+  type PatchSettingsBody,
+  TICKET_PREFIX_PATTERN,
+  TICKET_PREFIX_SHAPE,
+  DEFAULT_TICKET_PREFIX,
+  TICKET_PREFIX_KEY,
+  DEFAULT_PORT,
+} from './settings';
 export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
 export { EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';
 export {
@@ -17,4 +27,18 @@ export {
   PatchProjectBodySchema,
   type PatchProjectBody,
 } from './apps';
+export {
+  TICKET_STATUSES,
+  TicketStatusSchema,
+  type TicketStatus,
+  TicketSchema,
+  type Ticket,
+  CreateTicketBodySchema,
+  type CreateTicketBody,
+  PatchTicketBodySchema,
+  type PatchTicketBody,
+  STATUS_IS_NOT_AN_EDIT,
+  ticketKey,
+  parseTicketKey,
+} from './tickets';
 export { slugify, slugPath, parseSlugId } from './slug';

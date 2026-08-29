@@ -37,3 +37,11 @@ A strict object refusing `archived_at` in a body yields one `unrecognized_keys` 
 ## 2026-08-27 — keyboard shortcuts race with route loading in browser tests
 
 `page.keyboard.press('e')` right after clicking a link fires before the view that owns the `e` handler has mounted (the entity is still loading). Smoke tests wait for the owning tile to be visible before pressing a key.
+
+## 2026-08-28 — refusing a field in a strict body needs `z.undefined(...).optional()`
+
+`PATCH /api/tickets/:key` must refuse `status` with a message that says why (ADR-0003), not the generic "unknown field" a strict object gives. Declaring `status: z.undefined(message)` makes the key *required* (zod 4 reports `expected nonoptional` when it is absent), so the schema carries `z.undefined(message).optional()`: absent is fine, present is a 422 with the message on `path: ['status']`.
+
+## 2026-08-28 — the browser suite shares one database, so it runs on one worker
+
+`playwright.config.ts` starts one API process over one temp database. With the default worker-per-file that meant `apps-projects.e2e.ts` (which asserts on `group-app-1`) racing another spec creating apps. The suite is `workers: 1`; specs may assume the ids they made, in file order.

@@ -5,8 +5,8 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await page.goto('/apps');
   await expect(page.getByTestId('apps-tile')).toContainText('no apps yet');
 
-  // n opens the inline create form; ⌘⏎ saves
-  await page.keyboard.press('n');
+  // the tile header's + opens the inline create form; ⌘⏎ saves
+  await page.getByRole('button', { name: 'new app' }).click();
   const appForm = page.getByTestId('new-app-form');
   await appForm.getByLabel('name').fill('Subway Reader');
   await appForm.getByLabel('repository url').fill('https://github.com/itsRoze/subway-reader');
@@ -20,7 +20,7 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await expect(page.getByTestId('history')).toContainText('created');
 
   // a project inside the app
-  await page.keyboard.press('n');
+  await page.getByRole('button', { name: 'new project' }).click();
   const projectForm = page.getByTestId('new-project-form');
   await projectForm.getByLabel('name').fill('MVP');
   await projectForm.getByLabel('description').fill('first cut');
@@ -63,8 +63,9 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await expect(page.getByTestId('apps-tile')).toContainText('no apps yet');
   await page.goto('/trash');
   await expect(page.getByTestId('trash-app-1')).toContainText('Subway Reader');
+  await expect(page.getByTestId('trash-apps-tile')).toBeVisible();
   await page.keyboard.press('r');
-  await expect(page.getByTestId('trash-tile')).toContainText('the trash is empty');
+  await expect(page.getByTestId('trash-apps-tile')).toContainText('no apps in the trash');
   await page.goto('/apps');
   await expect(page.getByRole('link', { name: 'Subway Reader' })).toBeVisible();
   // the project was detached, not trashed, and is not re-attached by the restore

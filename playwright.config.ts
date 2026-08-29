@@ -5,6 +5,8 @@ import { join } from 'node:path';
 
 // One built GUI + API process over a throwaway database. The smoke suite is
 // the exit criterion made executable, not where behaviour is enumerated.
+// One worker: every spec writes to that one database, so they must not
+// interleave (a spec that counts apps cannot share the file with one creating them).
 const port = 4790;
 const dbPath = join(mkdtempSync(join(tmpdir(), 'gf-e2e-')), 'foundry.db');
 
@@ -13,6 +15,7 @@ export default defineConfig({
   testMatch: '**/*.e2e.ts', // *.spec.ts would also be picked up by `bun test`
   timeout: 15_000,
   retries: 0,
+  workers: 1,
   reporter: 'list',
   use: { baseURL: `http://127.0.0.1:${port}` },
   webServer: {

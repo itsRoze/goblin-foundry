@@ -33,12 +33,21 @@ export function Tile({
   );
 }
 
-/** Coloured only when it carries state; `draft` = archived ("not active", DESIGN.md §3). */
-export const Chip = ({ tone, children }: { tone?: 'draft'; children: ReactNode }) => (
-  <span className={`gf-chip${tone ? ` is-${tone}` : ''}`}>{children}</span>
+/** One accent, one meaning (DESIGN.md §3); no tone is the mute default. */
+export type Tone = 'draft' | 'system' | 'review' | 'mute';
+
+export const Chip = ({ tone, struck, children }: { tone?: Tone; struck?: boolean; children: ReactNode }) => (
+  <span className={`gf-chip${tone ? ` is-${tone}` : ''}${struck ? ' is-struck' : ''}`}>{children}</span>
 );
 
 export const Empty = ({ children }: { children: ReactNode }) => <p className="gf-empty">{children}</p>;
+
+/** Opens a tile's inline create form. `n` is retired; `⌘K` takes this over in issue 10. */
+export const Plus = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  <button type="button" className="gf-plus" aria-label={label} onClick={onClick}>
+    +
+  </button>
+);
 
 /** `[title] [meta] [trailing]` — the list row; a link when `to` is given. */
 export function Row({ to, title, meta, trailing, testId }: { to?: string; title: ReactNode; meta?: ReactNode; trailing?: ReactNode; testId?: string }) {
@@ -178,10 +187,41 @@ const when = (iso: string) => {
   return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
 };
 
+const MINUTE = 60_000;
+
+/** `3m`, `2h`, `4d`, then a short date — the ISO stamp lives in the tooltip. */
+export function since(iso: string, at: number = Date.now()): string {
+  const ms = at - new Date(iso).getTime();
+  if (ms < MINUTE) return 'now';
+  if (ms < 60 * MINUTE) return `${Math.floor(ms / MINUTE)}m`;
+  if (ms < 24 * 60 * MINUTE) return `${Math.floor(ms / (60 * MINUTE))}h`;
+  if (ms < 7 * 24 * 60 * MINUTE) return `${Math.floor(ms / (24 * 60 * MINUTE))}d`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** Ticks once a minute so relative times stay honest without a poll. */
+export function useMinute(): number {
+  const [at, setAt] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAt(Date.now()), MINUTE);
+    return () => clearInterval(t);
+  }, []);
+  return at;
+}
+
+export const Since = ({ iso, at }: { iso: string; at: number }) => (
+  <span title={iso} className="gf-since">
+    {since(iso, at)}
+  </span>
+);
+
 const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
+/** The name of a thing an event points at; `#3` once it is gone. */
+export type Namer = (id: unknown) => string;
+
 /** One history line per event: what happened, not what it means (DESIGN.md §9). */
-export function describeEvent(e: Event, appName: (id: unknown) => string): string {
+export function describeEvent(e: Event, appName: Namer): string {
   if (e.kind !== 'updated') return e.kind;
   const keys = Object.keys(e.new);
   const prior = e.prior ?? {};
@@ -191,16 +231,36 @@ export function describeEvent(e: Event, appName: (id: unknown) => string): strin
   return `updated ${keys.join(', ')}`;
 }
 
-export function History({ events, appName }: { events: Event[] | undefined; appName: (id: unknown) => string }) {
+/**
+ * A ticket's history. A description edit is one quiet line — the body is in
+ * the event (S2 wants prior bodies), never on screen here.
+ */
+export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
+  if (e.kind !== 'updated') return e.kind;
+  const prior = e.prior ?? {};
+  const parts: string[] = [];
+  if ('title' in e.new) parts.push(`renamed ${str(prior.title)} → ${str(e.new.title)}`);
+  if ('description' in e.new) parts.push('description edited');
+  if ('design' in e.new) parts.push('design edited');
+  if ('simple' in e.new) parts.push(e.new.simple ? 'flagged simple' : 'no longer simple');
+  const toProject = 'project_id' in e.new && e.new.project_id !== null;
+  if ('project_id' in e.new) parts.push(toProject ? `moved to project ${name.project(e.new.project_id)}` : 'removed from project');
+  if ('app_id' in e.new && !toProject) parts.push(e.new.app_id === null ? 'removed from app' : `moved to app ${name.app(e.new.app_id)}`);
+  return parts.length ? parts.join(' · ') : `updated ${Object.keys(e.new).join(', ')}`;
+}
+
+/** `quietActor` names the actor only when it is not you — an agent edit is worth seeing. */
+export function History({ events, describe, quietActor }: { events: Event[] | undefined; describe: (e: Event) => string; quietActor?: boolean }) {
   if (!events) return <Empty>loading…</Empty>;
   if (events.length === 0) return <Empty>nothing yet</Empty>;
   return (
     <ol className="gf-history" data-testid="history">
       {events.map((e) => (
         <li key={e.id}>
-          <span className="gf-history-what">{describeEvent(e, appName)}</span>
+          <span className="gf-history-what">{describe(e)}</span>
           <span className="gf-history-meta">
-            {e.actor} · {when(e.at)}
+            {quietActor && e.actor === 'human' ? '' : `${e.actor} · `}
+            {when(e.at)}
           </span>
         </li>
       ))}

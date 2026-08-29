@@ -73,6 +73,10 @@ async function ensureSchema(db: Db): Promise<void> {
   db.run(sql`CREATE TABLE IF NOT EXISTS ticket (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     title text NOT NULL,
+    description text DEFAULT '' NOT NULL,
+    status text DEFAULT 'backlog' NOT NULL CHECK (status IN (${schema.statusList()})),
+    simple integer DEFAULT false NOT NULL,
+    design text,
     app_id integer REFERENCES app(id),
     project_id integer REFERENCES project(id),
     trashed_at text,

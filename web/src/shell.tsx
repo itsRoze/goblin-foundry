@@ -50,6 +50,9 @@ export function Shell() {
           <NavLink to="/trash" className={({ isActive }) => (isActive ? 'is-on' : '')}>
             trash
           </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? 'is-on' : '')}>
+            settings
+          </NavLink>
         </span>
       </header>
       <main className="gf-desk">

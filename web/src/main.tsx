@@ -14,11 +14,14 @@ import { AppsPage } from './pages/Apps';
 import { AppView } from './pages/AppView';
 import { ProjectsPage } from './pages/Projects';
 import { ProjectView } from './pages/ProjectView';
+import { TicketView } from './pages/TicketView';
+import { SettingsPage } from './pages/Settings';
 import { TrashPage } from './pages/Trash';
 import { NotFound } from './pages/Entity';
 
-// refetch on focus is the default; the board's 5 s poll arrives with the board (ADR-0004)
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 1_000 } } });
+// Come back to the window and you see what the CLI (or an agent) did while you
+// were away; the board adds a 5 s poll of its own on top (ADR-0004).
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 1_000, refetchOnWindowFocus: true } } });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -31,6 +34,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="apps/:slugId" element={<AppView />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:slugId" element={<ProjectView />} />
+            <Route path="tickets/:key" element={<TicketView />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="trash" element={<TrashPage />} />
             <Route path="*" element={<NotFound what="page" />} />
           </Route>

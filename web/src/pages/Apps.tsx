@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
-import { useKey } from '../keys';
 import { useApps, useCreateApp } from '../queries';
 import { useCrumb } from '../shell';
-import { Chip, Empty, InlineForm, Kbd, Row, Tile } from '../ui';
+import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
 
 export const appFormFields = [
   { name: 'name', label: 'name' },
@@ -27,17 +26,12 @@ export function AppsPage() {
   const apps = useApps(showArchived);
   const create = useCreateApp();
   const nav = useNavigate();
-  useKey('n', useCallback(() => setCreating(true), []));
 
   return (
     <Tile
       label="apps"
       subtitle={apps.data ? `${apps.data.length}` : undefined}
-      keys={
-        <>
-          <Kbd>n</Kbd> new
-        </>
-      }
+      keys={<Plus label="new app" onClick={() => setCreating(true)} />}
       focus
       testId="apps-tile"
     >
@@ -54,7 +48,7 @@ export function AppsPage() {
           }}
         />
       )}
-      {apps.data?.length === 0 && !creating && <Empty>no apps yet — press n</Empty>}
+      {apps.data?.length === 0 && !creating && <Empty>no apps yet — click +</Empty>}
       <div className="gf-rows" data-testid="apps-list">
         {apps.data?.map((a) => (
           <Row
