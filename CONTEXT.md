@@ -67,5 +67,8 @@ The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spo
 ## Actor
 Who performed a mutation: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
 
+## View option
+A per-device display preference on the Kanban: which card properties are shown, and whether `cancelled` cards are visible. Distinct from a **Filter**, which chooses *which* Tickets are on the board and lives in the URL so it can be bookmarked. Hiding `cancelled` is a View option, never a Filter.
+
 ## Transition
 One arrow in the Lifecycle: a move of a Ticket from one Status to another (e.g. `ready → running`). Each Transition has an **owner** — who is allowed to trigger it. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
