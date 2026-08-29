@@ -41,4 +41,27 @@ export {
   ticketKey,
   parseTicketKey,
 } from './tickets';
+export {
+  TRANSITIONS,
+  TRANSITION_NAMES,
+  type TransitionName,
+  TRANSITION_OWNERS,
+  type TransitionOwner,
+  type Transition,
+  isTransitionName,
+  destinationOf,
+  transitionsFrom,
+  findTransition,
+  transitionTo,
+  type ApproveRequirement,
+  type GuardFields,
+  TRANSITION_PAST,
+  GUARDED_STATUSES,
+  isGuarded,
+  UNCREATABLE_STATUSES,
+  approveGuard,
+  guardRefusal,
+  guardHold,
+  structuralRefusal,
+} from './transitions';
 export { slugify, slugPath, parseSlugId } from './slug';

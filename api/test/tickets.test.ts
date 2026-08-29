@@ -56,8 +56,9 @@ describe('/api/tickets', () => {
     expect((await newTicket({ title: 'two' })).key).toBe('GF-2');
   });
 
+  // the approve guard on a ticket born at `ready` or beyond is `transitions.test.ts`'s business
   test('a status may be chosen at creation; an unknown one is refused', async () => {
-    expect((await newTicket({ title: 'born ready', status: 'ready' })).status).toBe('ready');
+    expect((await newTicket({ title: 'born planning', status: 'planning' })).status).toBe('planning');
     const bad = await post('/api/tickets', { title: 'x', status: 'needs_human' });
     expect(bad.status).toBe(422);
     expect((await bad.json()).issues[0].path).toEqual(['status']);

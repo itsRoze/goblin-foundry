@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
-import { slugPath, type Ticket } from '@goblin/shared';
-import { ProblemError } from '../api';
+import { slugPath, transitionsFrom, type Ticket, type Transition } from '@goblin/shared';
 import { formKeys, useKey } from '../keys';
-import { useApps, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent } from '../queries';
+import { useApps, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTransition } from '../queries';
 import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Empty, History, Kbd, Kv, Since, Tile, describeTicketEvent, useMinute } from '../ui';
+import { Empty, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 
 export function TicketView() {
@@ -19,8 +18,8 @@ export function TicketView() {
 
 /**
  * One ticket: what it says, where it lives, what state it is in, what has
- * happened to it. Status is read-only here — moving it is a transition, which
- * arrives with its table in issue 04 (ADR-0003).
+ * happened to it. The state tile's buttons are the transition table read from
+ * the other end — the same arrows the board's drag offers (ADR-0003).
  */
 function TicketLoaded({ ticket }: { ticket: Ticket }) {
   const { key = '' } = useParams();
@@ -34,20 +33,35 @@ function TicketLoaded({ ticket }: { ticket: Ticket }) {
   const at = useMinute();
   const patch = usePatchTicket(ticket.key);
   const intent = useTicketIntent(ticket.key);
+  const move = useTransition();
   const [editing, setEditing] = useState(false);
+  // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
   const [refusal, setRefusal] = useState<string | null>(null);
+  const state = useRefusal<string>();
   const nav = useNavigate();
+  const { setRefusal: setStateRefusal } = state;
+  /** Every write the state tile makes reports its refusal in the tile's one line. */
+  const inState = useCallback(
+    async (write: () => Promise<unknown>) => {
+      setStateRefusal(null);
+      try {
+        await write();
+      } catch (e) {
+        setStateRefusal(refusalLine(e));
+      }
+    },
+    [setStateRefusal],
+  );
   useKey('e', useCallback(() => setEditing(true), []));
 
-  const trash = useCallback(async () => {
-    setRefusal(null);
-    try {
-      await intent.mutateAsync('trash');
-      nav('/');
-    } catch (e) {
-      setRefusal(e instanceof ProblemError ? e.line : String(e));
-    }
-  }, [intent, nav]);
+  const trash = useCallback(
+    () =>
+      inState(async () => {
+        await intent.mutateAsync('trash');
+        nav('/');
+      }),
+    [inState, intent, nav],
+  );
   useKey('Backspace', trash, { meta: true });
 
   // the number is the identity; a bare number or a stale prefix lands on the canonical key (ADR-0002)
@@ -58,7 +72,7 @@ function TicketLoaded({ ticket }: { ticket: Ticket }) {
     try {
       await patch.mutateAsync(body);
     } catch (e) {
-      setRefusal(e instanceof ProblemError ? e.line : String(e));
+      setRefusal(refusalLine(e));
     }
   };
 
@@ -146,19 +160,74 @@ function TicketLoaded({ ticket }: { ticket: Ticket }) {
         )}
       </Tile>
 
-      <Tile label="state" testId="state-tile">
-        <Kv rows={[['status', <StatusChip status={ticket.status} />]]} />
-        <div className="gf-actions">
-          <button className="gf-btn is-danger" onClick={() => void trash()}>
-            trash <Kbd>⌘⌫</Kbd>
-          </button>
-        </div>
-      </Tile>
+      <StateTile
+        ticket={ticket}
+        onMove={(edge) => inState(() => move.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))}
+        onSimple={(simple) => inState(() => patch.mutateAsync({ simple }))}
+        onTrash={() => void trash()}
+        refusal={state.refusal}
+      />
 
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
         <History events={events.data} describe={(e) => describeTicketEvent(e, names)} quietActor />
       </Tile>
     </>
+  );
+}
+
+/**
+ * The lifecycle by button rather than by drag. `approve` is offered even when
+ * its guard will refuse — the refusal is how you learn what is missing, and
+ * hiding it would leave a ready-looking ticket with no way forward and no
+ * explanation. `cancel` sits with `trash` because both are ways of stopping.
+ */
+function StateTile({
+  ticket,
+  onMove,
+  onSimple,
+  onTrash,
+  refusal,
+}: {
+  ticket: Ticket;
+  onMove: (edge: Transition) => Promise<void>;
+  onSimple: (simple: boolean) => Promise<void>;
+  onTrash: () => void;
+  refusal: string | null;
+}) {
+  const edges = transitionsFrom(ticket.status);
+  return (
+    <Tile label="state" testId="state-tile">
+      <Kv rows={[['status', <StatusChip status={ticket.status} />]]} />
+      <div className="gf-actions">
+        {edges
+          .filter((e) => e.name !== 'cancel')
+          .map((e) => (
+            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => void onMove(e)}>
+              {e.name}
+            </button>
+          ))}
+      </div>
+      <div className="gf-actions is-separated">
+        {edges
+          .filter((e) => e.name === 'cancel')
+          .map((e) => (
+            <button key={e.name} className="gf-btn is-danger" data-testid="move-cancel" onClick={() => void onMove(e)}>
+              cancel
+            </button>
+          ))}
+        <button className="gf-btn is-danger" onClick={onTrash}>
+          trash <Kbd>⌘⌫</Kbd>
+        </button>
+      </div>
+      <label className="gf-toggle">
+        <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — no ticket design needed
+      </label>
+      {refusal && (
+        <p className="gf-refusal" role="alert" data-testid="state-refusal">
+          {refusal}
+        </p>
+      )}
+    </Tile>
   );
 }
 

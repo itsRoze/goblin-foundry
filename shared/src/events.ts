@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { ActorSchema } from './actor';
 
-/** Every write records one event. `transitioned` arrives with the transition table (issue 04). */
-export const EventKindSchema = z.enum(['created', 'updated', 'archived', 'unarchived', 'trashed', 'restored']);
+/** Every write records one event; a status move is `transitioned`, carrying the verb as well as the status pair (ADR-0003). */
+export const EventKindSchema = z.enum(['created', 'updated', 'archived', 'unarchived', 'trashed', 'restored', 'transitioned']);
 export type EventKind = z.infer<typeof EventKindSchema>;
 
 /** `setting` is the installation itself (entity_id 0) — the prefix change is a write like any other. */

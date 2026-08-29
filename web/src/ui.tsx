@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { Event } from '@goblin/shared';
+import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError } from './api';
 import { formKeys } from './keys';
 
@@ -11,6 +11,7 @@ export function Tile({
   subtitle,
   keys,
   focus,
+  span,
   children,
   testId,
 }: {
@@ -18,11 +19,13 @@ export function Tile({
   subtitle?: ReactNode;
   keys?: ReactNode;
   focus?: boolean;
+  /** The whole width of the desk. For a page that is one tile — the kanban needs every column it has (DESIGN.md §5). */
+  span?: boolean;
   children: ReactNode;
   testId?: string;
 }) {
   return (
-    <section className={`gf-tile${focus ? ' is-focus' : ''}`} aria-label={label} data-testid={testId}>
+    <section className={`gf-tile${focus ? ' is-focus' : ''}${span ? ' is-span' : ''}`} aria-label={label} data-testid={testId}>
       <div className="gf-tile-head">
         <span>{label}</span>
         {subtitle && <span className="gf-tile-sub">{subtitle}</span>}
@@ -215,6 +218,32 @@ export const Since = ({ iso, at }: { iso: string; at: number }) => (
   </span>
 );
 
+const REFUSAL_MS = 4_000;
+
+/** What a refused write says: a `409`'s hint, a `422`'s issues, or whatever else went wrong. */
+export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.line : String(e));
+
+/**
+ * A refusal message is one sentence that clears itself: on the next click, or
+ * after four seconds (DESIGN.md §6). Every surface that refuses — the board's
+ * drop, the state tile's buttons — holds one of these, so the sentence never
+ * outlives the situation that produced it.
+ */
+export function useRefusal<T>() {
+  const [refusal, setRefusal] = useState<T | null>(null);
+  useEffect(() => {
+    if (refusal === null) return;
+    const clear = () => setRefusal(null);
+    const timer = setTimeout(clear, REFUSAL_MS);
+    window.addEventListener('click', clear);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('click', clear);
+    };
+  }, [refusal]);
+  return { refusal, setRefusal };
+}
+
 const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
 /** The name of a thing an event points at; `#3` once it is gone. */
@@ -231,11 +260,15 @@ export function describeEvent(e: Event, appName: Namer): string {
   return `updated ${keys.join(', ')}`;
 }
 
+const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_PAST ? TRANSITION_PAST[name as TransitionName] : String(name));
+
 /**
  * A ticket's history. A description edit is one quiet line — the body is in
  * the event (S2 wants prior bodies), never on screen here.
  */
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
+  // `approved · planning → ready`: the decision first, the state pair after it
+  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}`;
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];
