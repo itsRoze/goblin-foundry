@@ -117,6 +117,7 @@ export function BoardPage() {
         </>
       }
       focus
+      span
       testId="board-tile"
     >
       {tickets.isError && <p className="gf-refusal">could not reach the API: {tickets.error.message}</p>}

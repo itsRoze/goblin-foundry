@@ -11,6 +11,7 @@ export function Tile({
   subtitle,
   keys,
   focus,
+  span,
   children,
   testId,
 }: {
@@ -18,11 +19,13 @@ export function Tile({
   subtitle?: ReactNode;
   keys?: ReactNode;
   focus?: boolean;
+  /** The whole width of the desk. For a page that is one tile — the kanban needs every column it has (DESIGN.md §5). */
+  span?: boolean;
   children: ReactNode;
   testId?: string;
 }) {
   return (
-    <section className={`gf-tile${focus ? ' is-focus' : ''}`} aria-label={label} data-testid={testId}>
+    <section className={`gf-tile${focus ? ' is-focus' : ''}${span ? ' is-span' : ''}`} aria-label={label} data-testid={testId}>
       <div className="gf-tile-head">
         <span>{label}</span>
         {subtitle && <span className="gf-tile-sub">{subtitle}</span>}
