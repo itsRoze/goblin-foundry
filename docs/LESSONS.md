@@ -90,3 +90,28 @@ Pulling `description` out of the App/Project `about` form left `appBody`'s
 `description: v.description ?? ''` behind, so renaming an app would have blanked its
 description. Body builders shared between a create form and an edit form send a field only when
 the form actually had it.
+
+## 2026-08-30 — chrome that appears on focus must not be part of the layout
+
+The editor's mode line was rendered in flow, so focusing a field pushed everything below it down.
+Clicking a button under the field then failed: the mousedown focused the editor, the line appeared,
+the button moved, and the mouseup landed somewhere else — no click ever fired. A browser test caught
+it as "the ticket never left `backlog`". Chrome that comes and goes with focus is positioned
+absolutely with its space reserved, so the page never moves under a press in progress.
+
+## 2026-08-30 — a live field is owned by the field, not by its document
+
+Clicking from the editor into the mode line's own URL or language input blurs the *document*. The
+flush-and-reconcile that hangs off that blur then saved, refetched and replaced the document under
+the control being used, throwing the change away. Focus is tracked with `focusin`/`focusout` on the
+field's container instead, so the caret can visit the field's own chrome without the field deciding
+you have left.
+
+## 2026-08-30 — moving focus out of ProseMirror collapses the selection
+
+`⌘K` on a selected phrase opened a URL field, and by the time the URL was submitted the link landed
+on an empty caret instead of the phrase. Focusing anything outside the editor collapses
+`state.selection`, so a command that needs the old range has to carry it: the range is captured when
+the slot opens and restored with `setTextSelection` before the command runs. A code fence's language
+is worse — the caret is gone, so the block is addressed by its own node position and rewritten with
+`setNodeMarkup`.

@@ -240,29 +240,88 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 
 /* the markdown editor — also the read view, because markdown is the only stored form (ADR-0005) */
 .gf-md { position: relative; }
+/*
+ * The mode line comes and goes with the caret, so it must never be part of the
+ * layout: a line that appears between a mousedown and its mouseup moves
+ * whatever you were aiming at out from under you. It is absolutely placed, and
+ * a block field keeps its seat reserved whether or not it is sitting.
+ */
+.gf-md.is-block { padding-bottom: 30px; }
 .gf-md .tiptap { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
-.gf-md.is-block .tiptap { min-height: 3em; }
-.gf-md .tiptap:focus-visible { outline: none; }
-.gf-md:focus-within { box-shadow: inset 0 0 0 1px var(--gf-rule-2); }
+/* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
+.gf-md.is-block .tiptap { min-height: 1.5em; }
+.gf-md.is-block.is-empty .tiptap { min-height: 3em; }
 .gf-md.is-empty::before {
   content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
-  font: var(--gf-t-meta); color: var(--gf-mute);
+  font: var(--gf-t-body); color: var(--gf-dim);
 }
+
+/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
+.gf-md .tiptap:focus, .gf-md .tiptap:focus-visible { outline: none; box-shadow: none; }
+
 .gf-md .tiptap > * { margin: 0 0 var(--gf-s3); }
 .gf-md .tiptap > :last-child { margin-bottom: 0; }
-.gf-md .tiptap h1, .gf-md .tiptap h2, .gf-md .tiptap h3,
-.gf-md .tiptap h4, .gf-md .tiptap h5, .gf-md .tiptap h6 { font: var(--gf-t-h); color: var(--gf-ink); }
-.gf-md .tiptap h1 { font-size: 16px; }
-.gf-md .tiptap ul, .gf-md .tiptap ol { padding-left: var(--gf-s5); }
-.gf-md .tiptap li > p { margin: 0; }
+
+/*
+ * Six headings, six steps. Size carries the first four; below that the
+ * differentiator becomes weight, then colour, then tracking — an h6 inside a
+ * ticket design is a label, so it is set like one (DESIGN.md §4).
+ */
+.gf-md .tiptap :is(h1, h2, h3, h4, h5, h6) { font-family: var(--gf-sans); color: var(--gf-ink); line-height: 1.25; }
+.gf-md .tiptap :is(h1, h2, h3, h4, h5, h6):not(:first-child) { margin-top: var(--gf-s5); }
+.gf-md .tiptap h1 { font-size: 19px; font-weight: 600; }
+.gf-md .tiptap h2 { font-size: 16.5px; font-weight: 600; }
+.gf-md .tiptap h3 { font-size: 14.5px; font-weight: 600; }
+.gf-md .tiptap h4 { font-size: 13.5px; font-weight: 600; }
+.gf-md .tiptap h5 { font-size: 13.5px; font-weight: 500; color: var(--gf-mute); }
+.gf-md .tiptap h6 { font-size: 11.5px; font-weight: 500; color: var(--gf-mute); text-transform: uppercase; letter-spacing: var(--gf-track); }
+
+.gf-md .tiptap :is(ul, ol) { padding-left: var(--gf-s5); }
+.gf-md .tiptap li { margin-bottom: var(--gf-s1); }
+.gf-md .tiptap li p { margin: 0; }
+.gf-md .tiptap li::marker { color: var(--gf-dim); }
 .gf-md .tiptap ul[data-type='taskList'] { list-style: none; padding-left: 0; }
 .gf-md .tiptap ul[data-type='taskList'] li { display: flex; gap: var(--gf-s2); align-items: baseline; }
+.gf-md .tiptap ul[data-type='taskList'] input[type='checkbox'] { accent-color: var(--gf-system); margin: 0; }
 .gf-md .tiptap blockquote { border-left: 2px solid var(--gf-rule-2); padding-left: var(--gf-s3); color: var(--gf-mute); }
 .gf-md .tiptap code { font: var(--gf-t-meta); color: var(--gf-link); }
 .gf-md .tiptap pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
 .gf-md .tiptap pre code { color: var(--gf-ink); }
-.gf-md .tiptap a { color: var(--gf-link); }
+.gf-md .tiptap a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
 .gf-md .tiptap hr { border: 0; border-top: 1px solid var(--gf-rule); }
+
+/*
+ * The mode line: a status bar on the field while the caret is in it, in the
+ * tiling-WM vernacular the rest of the GUI speaks. Every control names its key
+ * in its tooltip, so clicking teaches the keyboard rather than replacing it.
+ */
+.gf-mode {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: var(--gf-s3); flex-wrap: wrap;
+  padding: var(--gf-s1) var(--gf-s2); min-height: 26px;
+  background: var(--gf-raised); border-top: 1px solid var(--gf-rule);
+}
+/* a field that owns the tile's width runs its line to the tile's edges, like the bar does */
+.gf-md.is-block > .gf-mode { left: calc(-1 * var(--gf-pad-x)); right: calc(-1 * var(--gf-pad-x)); padding-left: var(--gf-pad-x); padding-right: var(--gf-pad-x); }
+/* an inline field is one row in a kv list: its line hangs below rather than taking a row of its own */
+.gf-md.is-inline > .gf-mode { top: 100%; bottom: auto; border: 1px solid var(--gf-rule); }
+.gf-mode-group { display: flex; align-items: center; gap: 1px; }
+.gf-mode-group + .gf-mode-group { padding-left: var(--gf-s3); border-left: 1px solid var(--gf-rule-2); }
+.gf-mode-btn {
+  font: var(--gf-t-label); letter-spacing: 0; color: var(--gf-mute); background: none;
+  border: 1px solid transparent; border-radius: var(--gf-radius); padding: 2px 5px; min-width: 20px; cursor: pointer;
+  transition: color var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease);
+}
+.gf-mode-btn:hover { color: var(--gf-ink); border-color: var(--gf-rule-2); }
+.gf-mode-btn.is-on { color: var(--gf-system); border-color: var(--gf-system); }
+.gf-mode-slot { margin-left: auto; display: flex; align-items: center; min-width: 0; }
+.gf-mode-hint { font: var(--gf-t-meta); color: var(--gf-dim); display: flex; align-items: center; gap: var(--gf-s2); }
+.gf-mode-input {
+  font: var(--gf-t-meta); color: var(--gf-ink); background: var(--gf-page);
+  border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; width: 22ch; max-width: 100%;
+}
+.gf-mode-input.is-lang { width: 10ch; color: var(--gf-link); }
+.gf-mode-input:focus { outline: none; border-color: var(--gf-system); }
 
 /* what a field that saves itself says in its tile header (DESIGN.md §8) */
 .gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }

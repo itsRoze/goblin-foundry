@@ -116,3 +116,60 @@ test('a project design lives on the project view and is the same editor', async 
   await expect(design(page).locator('strong')).toHaveText('weight');
   await expect(page.getByTestId('history').locator('li').first()).toContainText('design edited');
 });
+
+test('the mode line formats what is selected, links it, and is the only way back to a fence', async ({ page }) => {
+  await newTicket(page, 'Format me');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+
+  // the line is not chrome you have to live with: it is there while the caret is, and not before
+  await expect(tile.getByTestId('mode-line')).toHaveCount(0);
+  await field.click();
+  await expect(tile.getByTestId('mode-line')).toBeVisible();
+
+  await page.keyboard.type('the shape of it');
+  await page.keyboard.press('ControlOrMeta+A');
+  await tile.getByTestId('fmt-bold').click();
+  await expect(field.locator('strong')).toHaveText('the shape of it');
+  await expect(tile.getByTestId('fmt-bold')).toHaveAttribute('aria-pressed', 'true');
+
+  // `link` turns the right slot into a URL field; the selection has to survive the caret leaving the document for it
+  // (the same slot opens on `⌘K`, which Chrome reserves and Playwright's synthetic dispatch never delivers to the page)
+  await tile.getByTestId('fmt-link').click();
+  await tile.getByLabel('link url').fill('https://goblin.dev');
+  await tile.getByLabel('link url').press('Enter');
+  await expect(field.locator('a')).toHaveAttribute('href', 'https://goblin.dev');
+});
+
+test('every heading level is reachable, and a fence can be opened, named and taken back off', async ({ page }) => {
+  await newTicket(page, 'Six levels and a fence');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+  const url = page.url();
+  await field.click();
+
+  for (const level of [1, 2, 3, 4, 5, 6]) {
+    if (level > 1) await page.keyboard.press('Enter');
+    await tile.getByTestId(`fmt-h${level}`).click();
+    await page.keyboard.type(`level ${level}`);
+    await expect(field.locator(`h${level}`)).toHaveText(`level ${level}`);
+  }
+
+  // a fence swallows its own ``` — the mode line is where its language lives, and where you leave it
+  await page.keyboard.press('Enter');
+  await tile.getByTestId('fmt-codeBlock').click();
+  await page.keyboard.type('const slice = 1;');
+  await tile.getByLabel('code language').fill('ts');
+  await expect(field.locator('pre code')).toHaveText('const slice = 1;');
+
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(tile.getByTestId('saving')).toHaveText('saved');
+  const stored: string = await page.request.get(`/api/tickets/${url.split('/').pop()}`).then((r) => r.json()).then((t) => t.design);
+  for (const level of [1, 2, 3, 4, 5, 6]) expect(stored).toContain(`${'#'.repeat(level)} level ${level}`);
+  expect(stored).toContain('```ts');
+
+  // and back off again: the only exit from a fence that is neither empty nor first in the document
+  await field.locator('pre').click();
+  await tile.getByTestId('fmt-codeBlock').click();
+  await expect(field.locator('pre')).toHaveCount(0);
+});
