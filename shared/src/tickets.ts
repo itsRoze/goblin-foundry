@@ -22,8 +22,45 @@ export const TicketSchema = z.object({
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** The keys of the blockers that are still *open* — a derived condition, never a status (CONTEXT.md "Blocked"). */
+  blocked_by: z.array(z.string()),
 });
 export type Ticket = z.infer<typeof TicketSchema>;
+
+/** Enough of the other end of an edge to render a chip without a second read. */
+export const DependencyRefSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  status: TicketStatusSchema,
+});
+export type DependencyRef = z.infer<typeof DependencyRefSchema>;
+
+/** Both directions of a ticket's declared edges — *every* one of them, satisfied or not (ADR-0009). */
+export const TicketDependenciesSchema = z.object({
+  depends_on: z.array(DependencyRefSchema),
+  blocks: z.array(DependencyRefSchema),
+});
+export type TicketDependencies = z.infer<typeof TicketDependenciesSchema>;
+
+/** What a single-ticket read answers: the ticket plus the neighbourhood a list read cannot afford. */
+export const TicketDetailSchema = TicketSchema.extend({ dependencies: TicketDependenciesSchema });
+export type TicketDetail = z.infer<typeof TicketDetailSchema>;
+
+/** The blocker is named by key, because the ticket view's picker deals in keys (ADR-0002). */
+export const AddDependencyBodySchema = z.strictObject({ blocker: z.string().trim().min(1) });
+export type AddDependencyBody = z.infer<typeof AddDependencyBodySchema>;
+
+/**
+ * Blockedness is a property of a *non-terminal* ticket: `done` and `cancelled`
+ * have nowhere left to proceed to, so they are never blocked however many open
+ * blockers they still name (CONTEXT.md "Blocked").
+ */
+export const isBlocked = (t: Pick<Ticket, 'status' | 'blocked_by'>): boolean =>
+  t.blocked_by.length > 0 && t.status !== 'done' && t.status !== 'cancelled';
+
+/** *GF-3 and GF-7 still block this* — the one sentence the `start` confirm asks with. */
+export const blockedWarning = (keys: string[]): string =>
+  `${keys.length === 1 ? keys[0] : `${keys.slice(0, -1).join(', ')} and ${keys[keys.length - 1]}`} still ${keys.length === 1 ? 'blocks' : 'block'} this`;
 
 const ticketFields = {
   title: z.string().trim().min(1).max(200),

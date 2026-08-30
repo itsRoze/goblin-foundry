@@ -40,6 +40,16 @@ export {
   STATUS_IS_NOT_AN_EDIT,
   ticketKey,
   parseTicketKey,
+  DependencyRefSchema,
+  type DependencyRef,
+  TicketDependenciesSchema,
+  type TicketDependencies,
+  TicketDetailSchema,
+  type TicketDetail,
+  AddDependencyBodySchema,
+  type AddDependencyBody,
+  isBlocked,
+  blockedWarning,
 } from './tickets';
 export {
   TRANSITIONS,

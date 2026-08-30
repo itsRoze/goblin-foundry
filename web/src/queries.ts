@@ -5,6 +5,7 @@ import {
   EventSchema,
   ProjectSchema,
   SettingsSchema,
+  TicketDetailSchema,
   TicketSchema,
   type CreateAppBody,
   type CreateProjectBody,
@@ -63,9 +64,19 @@ export const useTickets = (filter: { app_id?: number | null; project_id?: number
   });
 };
 
-/** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one. */
+/** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one, and its edges in both directions. */
 export const useTicket = (key: string) =>
-  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketSchema), retry: false });
+  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketDetailSchema), retry: false });
+
+/**
+ * Declaring and undeclaring a blocker. Both hang off the *blocked* ticket
+ * (ADR-0004) and both answer with that ticket, edges and all.
+ */
+export const useDependencies = (key: string) => {
+  const add = useWrite((blocker: string) => api.post(`/api/tickets/${key}/dependencies`, { blocker }));
+  const remove = useWrite((blocker: string) => api.del(`/api/tickets/${key}/dependencies/${blocker}`));
+  return { add, remove };
+};
 
 export const useEvents = (kind: EntityKind, id: number) =>
   useQuery({ queryKey: ['events', kind, id], queryFn: () => api.get(`/api/${kind}s/${id}/events`, Events) });

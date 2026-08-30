@@ -69,7 +69,8 @@ describe('/api/tickets', () => {
     for (const key of ['GF-1', 'SR-1', 'gf-1', '1']) {
       const res = await req(`/api/tickets/${key}`);
       expect(res.status).toBe(200);
-      expect(await res.json()).toEqual(t);
+      // the single read adds the ticket's edges; everything else is the created ticket verbatim
+      expect(await res.json()).toEqual({ ...t, dependencies: { depends_on: [], blocks: [] } });
     }
     const missing = await req('/api/tickets/GF-99');
     expect(missing.status).toBe(404);

@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
-import { slugPath, transitionsFrom, type Ticket, type Transition } from '@goblin/shared';
+import {
+  blockedWarning,
+  isBlocked,
+  slugPath,
+  transitionsFrom,
+  type DependencyRef,
+  type Ticket,
+  type TicketDetail,
+  type Transition,
+} from '@goblin/shared';
 import { formKeys, useKey } from '../keys';
-import { useApps, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTransition } from '../queries';
+import { useApps, useDependencies, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Empty, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, History, Kbd, Kv, Plus, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 
 export function TicketView() {
@@ -21,7 +30,7 @@ export function TicketView() {
  * happened to it. The state tile's buttons are the transition table read from
  * the other end — the same arrows the board's drag offers (ADR-0003).
  */
-function TicketLoaded({ ticket }: { ticket: Ticket }) {
+function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const { key = '' } = useParams();
   const apps = useApps();
   const projects = useProjects();
@@ -160,6 +169,8 @@ function TicketLoaded({ ticket }: { ticket: Ticket }) {
         )}
       </Tile>
 
+      <DependenciesTile ticket={ticket} />
+
       <StateTile
         ticket={ticket}
         onMove={(edge) => inState(() => move.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))}
@@ -176,6 +187,157 @@ function TicketLoaded({ ticket }: { ticket: Ticket }) {
 }
 
 /**
+ * The ticket's edges, both ways round. Only the *blocked* side can be edited
+ * here, because that is where the intent hangs (ADR-0004) — the tickets this
+ * one blocks are edited from their own pages. Every declared blocker is shown,
+ * satisfied ones struck rather than dropped: the edge is still a true fact,
+ * and it bites again if the blocker reopens (ADR-0009).
+ */
+function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
+  const { add, remove } = useDependencies(ticket.key);
+  const [picking, setPicking] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const { depends_on, blocks } = ticket.dependencies;
+  const open = new Set(ticket.blocked_by);
+
+  const write = async (run: () => Promise<unknown>) => {
+    setRefusal(null);
+    try {
+      await run();
+    } catch (e) {
+      setRefusal(refusalLine(e));
+    }
+  };
+
+  return (
+    <Tile label="dependencies" testId="dependencies-tile">
+      <Kv
+        rows={[
+          [
+            'depends on',
+            <span className="gf-deps" data-testid="depends-on">
+              {depends_on.map((d) => (
+                <DependencyChip
+                  key={d.key}
+                  dep={d}
+                  satisfied={!open.has(d.key)}
+                  onRemove={() => void write(() => remove.mutateAsync(d.key))}
+                />
+              ))}
+              {picking ? null : <Plus label="add a blocker" onClick={() => setPicking(true)} />}
+            </span>,
+          ],
+          [
+            'blocks',
+            <span className="gf-deps" data-testid="blocks">
+              {blocks.length === 0 ? (
+                <span className="gf-since">nothing</span>
+              ) : (
+                // a ticket that reached a terminal status is no longer waiting on anything, so this edge is spent too
+                blocks.map((d) => <DependencyChip key={d.key} dep={d} satisfied={d.status === 'done' || d.status === 'cancelled'} />)
+              )}
+            </span>,
+          ],
+        ]}
+      />
+      {picking && (
+        <BlockerPicker
+          ticket={ticket}
+          onCancel={() => setPicking(false)}
+          onPick={async (key) => {
+            await write(() => add.mutateAsync(key));
+            setPicking(false);
+          }}
+        />
+      )}
+      {refusal && (
+        <p className="gf-refusal" role="alert" data-testid="dependencies-refusal">
+          {refusal}
+        </p>
+      )}
+    </Tile>
+  );
+}
+
+/** One edge as a chip: the key, the other ticket's title, and — on the blocked side — the way to undo it. */
+function DependencyChip({ dep, satisfied, onRemove }: { dep: DependencyRef; satisfied: boolean; onRemove?: () => void }) {
+  return (
+    <span className={`gf-dep${satisfied ? ' is-satisfied' : ''}`} data-testid={`dep-${dep.key}`}>
+      <Link className="gf-dep-link" to={ticketPath(dep)}>
+        <span className="gf-key">{dep.key}</span>
+        <span className="gf-dep-title">{dep.title}</span>
+      </Link>
+      {onRemove && (
+        <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} onClick={onRemove}>
+          ×
+        </button>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Typeahead over key and title. It offers what could sensibly be declared:
+ * never this ticket, never a blocker already declared, never anything in the
+ * trash (the list read has none) — and `done`/`cancelled` tickets last and
+ * de-emphasised, since declaring one is legal but rarely what you meant.
+ */
+function BlockerPicker({ ticket, onPick, onCancel }: { ticket: TicketDetail; onPick: (key: string) => Promise<void>; onCancel: () => void }) {
+  const all = useTickets();
+  const [query, setQuery] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.focus(), []);
+
+  const declared = new Set(ticket.dependencies.depends_on.map((d) => d.key));
+  const needle = query.trim().toLowerCase();
+  const hits = (all.data ?? [])
+    .filter((t) => t.key !== ticket.key && !declared.has(t.key))
+    .filter((t) => needle === '' || t.key.toLowerCase().includes(needle) || t.title.toLowerCase().includes(needle))
+    .sort((a, b) => Number(isSatisfiedStatus(a)) - Number(isSatisfiedStatus(b)))
+    .slice(0, 8);
+
+  return (
+    <div className="gf-picker" data-testid="blocker-picker">
+      <input
+        ref={input}
+        type="text"
+        aria-label="blocked by"
+        placeholder="blocked by — key or title"
+        autoComplete="off"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={formKeys(() => {
+          const first = hits[0];
+          if (first) void onPick(first.key);
+        }, onCancel)}
+      />
+      <div className="gf-picker-hits">
+        {hits.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`gf-picker-hit${isSatisfiedStatus(t) ? ' is-satisfied' : ''}`}
+            data-testid={`pick-${t.key}`}
+            onClick={() => void onPick(t.key)}
+          >
+            <span className="gf-key">{t.key}</span>
+            <span className="gf-dep-title">{t.title}</span>
+            <i>{t.status}</i>
+          </button>
+        ))}
+        {hits.length === 0 && <Empty>nothing to declare</Empty>}
+      </div>
+      <span className="gf-tile-keys">
+        <Kbd>⌘⏎</Kbd> first hit <Kbd>esc</Kbd> cancel
+      </span>
+    </div>
+  );
+}
+
+/** A blocker in one of these is inert — declarable, but not in anyone's way (CONTEXT.md "Blocked"). */
+const isSatisfiedStatus = (t: Ticket) => t.status === 'done' || t.status === 'cancelled';
+
+/**
  * The lifecycle by button rather than by drag. `approve` is offered even when
  * its guard will refuse — the refusal is how you learn what is missing, and
  * hiding it would leave a ready-looking ticket with no way forward and no
@@ -188,13 +350,19 @@ function StateTile({
   onTrash,
   refusal,
 }: {
-  ticket: Ticket;
+  ticket: TicketDetail;
   onMove: (edge: Transition) => Promise<void>;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
   refusal: string | null;
 }) {
   const edges = transitionsFrom(ticket.status);
+  // blockedness gates nothing (ADR-0009); `start` is the one verb that means "proceeding despite the blocker", so it asks first
+  const [confirming, setConfirming] = useState(false);
+  const press = (edge: Transition) => {
+    if (edge.name === 'start' && isBlocked(ticket)) return setConfirming(true);
+    void onMove(edge);
+  };
   return (
     <Tile label="state" testId="state-tile">
       <Kv rows={[['status', <StatusChip status={ticket.status} />]]} />
@@ -202,11 +370,24 @@ function StateTile({
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
-            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => void onMove(e)}>
+            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => press(e)}>
               {e.name}
             </button>
           ))}
       </div>
+      {confirming && (
+        <Confirm
+          text={blockedWarning(ticket.blocked_by)}
+          verb="start"
+          testId="confirm-start"
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            const start = edges.find((e) => e.name === 'start');
+            if (start) void onMove(start);
+          }}
+        />
+      )}
       <div className="gf-actions is-separated">
         {edges
           .filter((e) => e.name === 'cancel')

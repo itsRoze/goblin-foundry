@@ -8,16 +8,16 @@ Blockedness never gates a transition (the human is the authority in S1; the fron
 
 **Blocked by:** 04 (Lifecycle — transition table, intent endpoints, drag-and-drop)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `dependency(blocker_id, blocked_id, created_at)`, unique pair — in `schema.ts` **and** `ensureSchema` (`api/src/db.ts` keeps its own DDL)
-- [ ] `POST /api/tickets/:key/dependencies {blocker}`, `DELETE /api/tickets/:key/dependencies/:blockerKey` (intent hangs off the blocked ticket, ADR-0004); duplicate is idempotent; cycle (incl. self) → `409` problem+json with a one-line hint; either end trashed → refused; done/cancelled blocker accepted
-- [ ] cycle walk is iterative `select()`s through the db seam (no raw SQL, ADR-0001), over all edges, statuses ignored
-- [ ] events on **both** tickets for add and remove (`dependency_added` / `dependency_removed`, payload naming the other key; `EventKind` grows); `describeTicketEvent` renders "blocked by GF-a" on the blocked side, "blocking GF-b" on the blocker side, and the removals
-- [ ] `blocked_by` (keys) on ticket reads via one joined query — no per-row N+1; `/api/trash` tickets skip it; single-ticket read adds `dependencies: {depends_on, blocks}`; `TicketSchema` updated
-- [ ] trashing keeps edges — delete the detach-plan comment at `api/src/tickets.ts:202`; trashed blocker doesn't block; cancelling a blocker unblocks; completing unblocks; restoring re-blocks
-- [ ] `GET /api/frontier` correct under: no deps, done blocker, cancelled blocker, trashed blocker, open blocker, chain of two; `updated_at` asc
-- [ ] transitions never gated; web confirm dialog on `start` of a blocked ticket, only there
-- [ ] board: ◇ glyph + strikethrough on blocked cards in non-terminal columns (mirror the `is-cancelled` strike, `web/src/app.css:87`); never colour/opacity; `done`/`cancelled` never struck as blocked
-- [ ] ticket view: add/remove UI; picker omits self, existing blockers, trashed; offers done/cancelled de-emphasized; "depends on" chips show *all* declared blockers (satisfied ones in the done style), "blocks" chips likewise
-- [ ] browser smoke: add a dependency, see the strikethrough; ship the blocker, see it clear
+- [x] `dependency(blocker_id, blocked_id, created_at)`, unique pair — in `schema.ts` **and** `ensureSchema` (`api/src/db.ts` keeps its own DDL)
+- [x] `POST /api/tickets/:key/dependencies {blocker}`, `DELETE /api/tickets/:key/dependencies/:blockerKey` (intent hangs off the blocked ticket, ADR-0004); duplicate is idempotent; cycle (incl. self) → `409` problem+json with a one-line hint; either end trashed → refused; done/cancelled blocker accepted
+- [x] cycle walk is iterative `select()`s through the db seam (no raw SQL, ADR-0001), over all edges, statuses ignored
+- [x] events on **both** tickets for add and remove (`dependency_added` / `dependency_removed`, payload naming the other key; `EventKind` grows); `describeTicketEvent` renders "blocked by GF-a" on the blocked side, "blocking GF-b" on the blocker side, and the removals
+- [x] `blocked_by` (keys) on ticket reads via one joined query — no per-row N+1; `/api/trash` tickets skip it; single-ticket read adds `dependencies: {depends_on, blocks}`; `TicketSchema` updated
+- [x] trashing keeps edges — delete the detach-plan comment at `api/src/tickets.ts:202`; trashed blocker doesn't block; cancelling a blocker unblocks; completing unblocks; restoring re-blocks
+- [x] `GET /api/frontier` correct under: no deps, done blocker, cancelled blocker, trashed blocker, open blocker, chain of two; `updated_at` asc
+- [x] transitions never gated; web confirm dialog on `start` of a blocked ticket, only there
+- [x] board: ◇ glyph + strikethrough on blocked cards in non-terminal columns (mirror the `is-cancelled` strike, `web/src/app.css:87`); never colour/opacity; `done`/`cancelled` never struck as blocked
+- [x] ticket view: add/remove UI; picker omits self, existing blockers, trashed; offers done/cancelled de-emphasized; "depends on" chips show *all* declared blockers (satisfied ones in the done style), "blocks" chips likewise
+- [x] browser smoke: add a dependency, see the strikethrough; ship the blocker, see it clear

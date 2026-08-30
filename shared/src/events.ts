@@ -2,7 +2,18 @@ import { z } from 'zod';
 import { ActorSchema } from './actor';
 
 /** Every write records one event; a status move is `transitioned`, carrying the verb as well as the status pair (ADR-0003). */
-export const EventKindSchema = z.enum(['created', 'updated', 'archived', 'unarchived', 'trashed', 'restored', 'transitioned']);
+export const EventKindSchema = z.enum([
+  'created',
+  'updated',
+  'archived',
+  'unarchived',
+  'trashed',
+  'restored',
+  'transitioned',
+  // an edge is written on both its ends, so either ticket's history tells the whole story (ADR-0009)
+  'dependency_added',
+  'dependency_removed',
+]);
 export type EventKind = z.infer<typeof EventKindSchema>;
 
 /** `setting` is the installation itself (entity_id 0) — the prefix change is a write like any other. */

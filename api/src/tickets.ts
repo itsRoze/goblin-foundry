@@ -12,11 +12,13 @@ import {
   type ApproveRequirement,
   type GuardFields,
   type Ticket,
+  type TicketDetail,
   type TicketStatus,
 } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
+import { dependenciesOf, dependencyRoutes, openBlockers } from './dependencies';
 import { diff, listEvents, now, recordEvent } from './events';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
@@ -26,8 +28,17 @@ import { transitionRoute } from './transitions';
 
 type TicketRow = typeof ticketTable.$inferSelect;
 
-/** The wire ticket carries the canonical key; `trashed_via` is bookkeeping and stays inside. */
-export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string): Ticket => ({ ...row, key: ticketKey(prefix, row.id) });
+/**
+ * The wire ticket carries the canonical key; `trashed_via` is bookkeeping and
+ * stays inside. `blocked_by` defaults to none for the reads that do not ask —
+ * `/api/trash` has no use for a derived condition on something nobody is
+ * working on.
+ */
+export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, blocked_by: string[] = []): Ticket => ({
+  ...row,
+  key: ticketKey(prefix, row.id),
+  blocked_by,
+});
 
 /** Where a ticket lives. `app_id` is stored as well as `project_id` so the board's commonest filter needs no join (ADR-0007). */
 interface Placement {
@@ -123,6 +134,18 @@ export function ticketsRoutes(db: Db) {
     return rows[0];
   }
 
+  /** One live ticket on the wire, with the blockers still standing in its way. */
+  async function one(row: TicketRow): Promise<Ticket> {
+    const p = await prefix();
+    return toTicket(row, p, (await openBlockers(db, p)).get(row.id) ?? []);
+  }
+
+  /** The single-ticket read: the ticket, plus every edge it has declared in either direction. */
+  async function detail(row: TicketRow): Promise<TicketDetail> {
+    const p = await prefix();
+    return { ...(await one(row)), dependencies: await dependenciesOf(db, row.id, p) };
+  }
+
   r.get('/', async (c) => {
     const filters = [isNull(ticketTable.trashed_at)];
     for (const [name, column] of [
@@ -137,7 +160,9 @@ export function ticketsRoutes(db: Db) {
     }
     const rows = await db.select().from(ticketTable).where(and(...filters)).orderBy(asc(ticketTable.id));
     const p = await prefix();
-    return c.json(rows.map((row) => toTicket(row, p)));
+    // one joined query for the whole list, never one per row
+    const blockers = await openBlockers(db, p);
+    return c.json(rows.map((row) => toTicket(row, p, blockers.get(row.id) ?? [])));
   });
 
   r.post('/', async (c) => {
@@ -159,6 +184,7 @@ export function ticketsRoutes(db: Db) {
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
+    // a ticket one statement old has no edges; `blocked_by` is empty by construction
     return c.json(toTicket(row, await prefix()), 201);
   });
 
@@ -169,7 +195,7 @@ export function ticketsRoutes(db: Db) {
 
   r.get('/:key', async (c) => {
     const row = await find(c, false);
-    return row ? c.json(toTicket(row, await prefix())) : missing(c);
+    return row ? c.json(await detail(row)) : missing(c);
   });
 
   r.patch('/:key', async (c) => {
@@ -184,12 +210,12 @@ export function ticketsRoutes(db: Db) {
     const broken = wouldBreakGuard(row, next, body.data);
     if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });
-    if (!change.changed) return c.json(toTicket(row, await prefix()));
+    if (!change.changed) return c.json(await one(row));
     const at = now();
     const [updated] = await db.update(ticketTable).set({ ...change.new, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
     if (!updated) throw new Error('update returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at });
-    return c.json(toTicket(updated, await prefix()));
+    return c.json(await one(updated));
   });
 
   r.delete('/:key', async (c) => {
@@ -199,7 +225,7 @@ export function ticketsRoutes(db: Db) {
       return trashed ? conflict(c, `ticket ${ticketKey(await prefix(), trashed.id)} is already in the trash`) : missing(c);
     }
     const at = now();
-    // Dependencies pointing at a trashed ticket are detached here from issue 05; there are none yet.
+    // edges are left alone: a trashed blocker simply stops blocking, and restoring it re-blocks (ADR-0009)
     const [updated] = await db.update(ticketTable).set({ trashed_at: at, trashed_via: null, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
     if (!updated) throw new Error('update returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at });
@@ -226,11 +252,13 @@ export function ticketsRoutes(db: Db) {
       restored = await set(row.id, change.new, at);
       await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'updated', prior: change.prior, new: change.new, at });
     }
-    return c.json(toTicket(restored, await prefix()));
+    return c.json(await one(restored));
   });
 
-  // last: `:name` would otherwise swallow `/:key/restore` (ADR-0004)
-  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: async (row) => toTicket(row, await prefix()) });
+  dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
+
+  // last: `:name` would otherwise swallow `/:key/restore` and `/:key/dependencies` (ADR-0004)
+  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;
