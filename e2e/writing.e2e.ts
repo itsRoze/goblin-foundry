@@ -195,3 +195,32 @@ test('a mark can be taken off from inside it, with nothing selected', async ({ p
   await tile.getByTestId('fmt-bold').click();
   await expect(field.locator('strong')).toHaveText('call parse now');
 });
+
+test('the markdown around a span shows itself when the caret is on it', async ({ page }) => {
+  await newTicket(page, 'Show me the backticks');
+  const field = design(page);
+  await field.click();
+  await page.keyboard.type('call `parse` and **hold** now');
+
+  // rendered, the span hides where it begins and ends; markdown is the stored form, so say so
+  const line = field.locator('p').first();
+  await expect(line).toHaveText('call parse and hold now');
+
+  await field.locator('code').dblclick();
+  await expect(line).toHaveText('call `parse` and hold now');
+
+  await field.locator('strong').dblclick();
+  await expect(line).toHaveText('call parse and **hold** now');
+
+  // they are decorations, not text: what is stored has exactly one pair of each
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('design-tile').getByTestId('saving')).toHaveText('saved');
+  const stored: string = await page.request
+    .get(`/api/tickets/${page.url().split('/').pop()}`)
+    .then((r) => r.json())
+    .then((t) => t.design);
+  expect(stored.trim()).toBe('call `parse` and **hold** now');
+
+  // and with the caret away from both, the line reads as prose again
+  await expect(field.locator('.gf-syntax')).toHaveCount(0);
+});

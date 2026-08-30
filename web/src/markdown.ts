@@ -2,6 +2,7 @@ import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
+import { RevealSyntax } from './reveal';
 import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
 /**
@@ -60,7 +61,7 @@ const WholeMarks = Extension.create({
 });
 
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
-  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks] : [inlineKit(), Markdown, WholeMarks];
+  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks, RevealSyntax] : [inlineKit(), Markdown, WholeMarks, RevealSyntax];
 
 const managers = new Map<EditorShape, MarkdownManager>();
 

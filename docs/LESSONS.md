@@ -124,3 +124,25 @@ undo the input rule was to select the word first. Markdown's backticks are not i
 the span is the only thing a caret can point at: a collapsed selection now runs `extendMarkRange`
 before the toggle, from the mode line and from `⌘B`/`⌘I`/`⌘E` alike. A real selection is left
 alone, since there you did say what you meant.
+
+## 2026-08-30 — Slack does not reveal its backticks; the pattern still earns its place
+
+Asked to match "Linear and Slack", the research did not support the premise: a primary account of
+Slack's WYSIWYG composer says the raw characters are never exposed, and Linear's editor docs do not
+mention it either way. (A search engine's summary claimed the opposite; the linked source said the
+reverse — read the source.) The pattern is real elsewhere — Obsidian and Typora do it, and
+`prosemirror-codemark` solves the neighbouring "will the next character be code" problem with a
+drawn cursor — so it was built anyway, on its own merits.
+
+The structural difference matters and is worth remembering: in Obsidian the document *is* markdown,
+so the revealed characters are real and editable. Here the document is rich text and markdown is the
+serialisation, so the markers can only be decorations — visible, but not something to put a caret
+between. Anything that promises otherwise would be a source mode, which is a different feature.
+
+## 2026-08-30 — `selectionchange` is async, so a decoration test must retry
+
+A probe of the reveal read the DOM straight after `dblclick()` and saw the *previous* selection's
+markers — the code span's backticks while the caret was on the bold. Chrome dispatches
+`selectionchange` asynchronously, so ProseMirror has not re-run its decorations yet. Browser tests
+assert with `expect(locator).toHaveText(...)`, which retries; a bare `innerText()` reads one
+selection behind and looks like an off-by-one bug in the plugin.

@@ -288,6 +288,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-md .tiptap pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
 .gf-md .tiptap pre code { color: var(--gf-ink); }
 .gf-md .tiptap a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
+/* the markdown around the span the caret is on: a handle, which is what --gf-dim is for (DESIGN.md §3) */
+.gf-syntax { color: var(--gf-dim); font: var(--gf-t-meta); user-select: none; }
 .gf-md .tiptap hr { border: 0; border-top: 1px solid var(--gf-rule); }
 
 /*
