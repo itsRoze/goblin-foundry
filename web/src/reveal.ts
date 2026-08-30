@@ -51,6 +51,19 @@ function touchedRuns(block: Node, blockPos: number, mark: string, from: number, 
   return runs;
 }
 
+/**
+ * The run of `mark` whose revealed marker sits right at `pos` — the caret is
+ * against the opening one or just past the closing one — or `null`. What the
+ * decorations draw and what `backspace` deletes have to be the same thing, so
+ * both ask this.
+ */
+export function markerAt(state: EditorState, mark: string, pos: number): [number, number] | null {
+  const $pos = state.doc.resolve(pos);
+  if (!$pos.parent.isTextblock) return null;
+  for (const [start, end] of touchedRuns($pos.parent, $pos.before($pos.depth), mark, pos, pos)) if (pos === start || pos === end) return [start, end];
+  return null;
+}
+
 function decorate(state: EditorState): DecorationSet {
   const { from, to } = state.selection;
   const decorations: Decoration[] = [];

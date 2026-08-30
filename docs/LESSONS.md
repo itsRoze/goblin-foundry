@@ -170,3 +170,11 @@ that opens the document (`if (before > 0) return false` — so `before === 0` pr
 in practice. The conclusion "the source says it is handled" was wrong and a review caught it; a probe
 would have caught it sooner. `OpenFence` in `web/src/markdown.ts` now does the job, with a browser test
 that would fail if the extension ever started doing it instead.
+
+## 2026-08-30 — `EditorContent` puts a div between you and the document
+
+Making the design field fill its tile (`flex: 1` down the chain) did nothing: `@tiptap/react`'s
+`EditorContent` renders its own wrapper div around `editor.view.dom`, so `flex: 1` on `.tiptap` was
+being applied inside a parent that was not a flex container and had auto height. The wrapper takes a
+`className`, so the growth is handed down through `.gf-md-content` explicitly. Measuring the boxes
+found it in one pass; guessing at the CSS would not have.

@@ -2,7 +2,7 @@ import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
-import { RevealSyntax } from './reveal';
+import { RevealSyntax, markerAt } from './reveal';
 import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
 /**
@@ -63,13 +63,37 @@ export const toggleWholeMark = (editor: Editor, name: string): boolean => {
   return (editor.state.selection.empty ? chain.extendMarkRange(name) : chain).toggleMark(name).run();
 };
 
-/** The same rule from the keyboard, so `⌘E` and the mode line's `code` are one behaviour with two triggers. */
+/**
+ * The keys that act on a whole span: `⌘B`/`⌘I`/`⌘E`/`⌘⇧X`, so a key and the
+ * mode line's button are one behaviour; and `backspace` against a revealed
+ * marker, which deletes the marker — that is, takes the mark off the run.
+ * The markers are drawn, so deleting one has to do what deleting it looks
+ * like it should; a second press then deletes the character underneath.
+ */
 const WholeMarks = Extension.create({
   name: 'wholeMarks',
   // ahead of StarterKit's own bindings, which act on the caret rather than the span
   priority: 1000,
   addKeyboardShortcuts() {
-    return Object.fromEntries(INLINE_MARKS.map(({ name, binding }) => [binding, () => toggleWholeMark(this.editor, name)]));
+    return {
+      ...Object.fromEntries(INLINE_MARKS.map(({ name, binding }) => [binding, () => toggleWholeMark(this.editor, name)])),
+      Backspace: () => {
+        const { state } = this.editor;
+        const { empty, $from } = state.selection;
+        if (!empty) return false;
+        for (const { name } of INLINE_MARKS) {
+          const run = markerAt(state, name, $from.pos);
+          if (run)
+            return this.editor
+              .chain()
+              .setTextSelection({ from: run[0], to: run[1] })
+              .unsetMark(name)
+              .setTextSelection($from.pos)
+              .run();
+        }
+        return false;
+      },
+    };
   },
 });
 

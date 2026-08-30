@@ -124,6 +124,7 @@ export function MarkdownField({
   label,
   placeholder,
   onSave,
+  fill,
   testId,
 }: {
   shape: EditorShape;
@@ -133,6 +134,8 @@ export function MarkdownField({
   placeholder: string;
   /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. */
   onSave: (markdown: string) => Promise<unknown>;
+  /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
+  fill?: boolean;
   testId?: string;
 }) {
   const server = value ?? '';
@@ -310,7 +313,7 @@ export function MarkdownField({
 
   return (
     <div
-      className={`gf-md is-${shape}${empty ? ' is-empty' : ''}`}
+      className={`gf-md is-${shape}${empty ? ' is-empty' : ''}${fill ? ' is-fill' : ''}`}
       data-testid={testId}
       data-placeholder={placeholder}
       onFocus={() => {
@@ -321,7 +324,7 @@ export function MarkdownField({
         if (!e.currentTarget.contains(e.relatedTarget)) release();
       }}
     >
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="gf-md-content" />
       {editor && engaged && (
         <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} />
       )}

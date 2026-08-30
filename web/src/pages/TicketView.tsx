@@ -192,6 +192,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           placeholder="no ticket design — the plan for this slice goes here"
           value={ticket.design}
           onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          fill
           testId="design"
         />
       </Tile>

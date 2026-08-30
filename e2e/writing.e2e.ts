@@ -298,3 +298,48 @@ test('a fence that opens the document can still be got out of, upwards', async (
   await expect(field.locator('p').first()).toHaveText('a line above it');
   await expect(field.locator('pre code')).toHaveText('const first = 1;');
 });
+
+test('backspace against a revealed marker deletes the marker, then the character under it', async ({ page }) => {
+  await newTicket(page, 'Backspace the backtick');
+  const field = design(page);
+  await field.click();
+  await page.keyboard.type('call `parse` now');
+  await expect(field.locator('code')).toHaveText('parse');
+
+  // the caret goes against the opening backtick, where the marker is drawn (clicked, not arrowed — `selectionchange` is async)
+  await field.locator('code').click({ position: { x: 0, y: 6 } });
+  await page.waitForTimeout(120);
+
+  // the first press deletes the marker, which is to say it takes the mark off the run; no text goes
+  await page.keyboard.press('Backspace');
+  await expect(field.locator('code')).toHaveCount(0);
+  await expect(field.locator('p').first()).toHaveText('call parse now');
+
+  // the second is an ordinary backspace again
+  await page.keyboard.press('Backspace');
+  await expect(field.locator('p').first()).toHaveText('callparse now');
+});
+
+test('the design field owns its tile: the mode line sits on the tile edge, not under the last line written', async ({ page }) => {
+  // two columns, so the design tile is stretched by the row and has room to fill (DESIGN.md §5)
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await newTicket(page, 'Fills its tile');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+
+  await field.click();
+  await page.keyboard.type('one line');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(tile.getByTestId('mode-line')).toHaveCount(0);
+
+  // the tile is all field: clicking far below the only line still puts the caret in it
+  const box = (await field.boundingBox())!;
+  expect(box.height).toBeGreaterThan(100);
+  await page.mouse.click(box.x + 200, box.y + box.height - 8);
+  await expect(tile.getByTestId('mode-line')).toBeVisible();
+
+  // and the line is on the tile's bottom edge rather than crowding the text
+  const tileBox = (await tile.boundingBox())!;
+  const lineBox = (await tile.getByTestId('mode-line').boundingBox())!;
+  expect(tileBox.y + tileBox.height - (lineBox.y + lineBox.height)).toBeLessThan(24);
+});

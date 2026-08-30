@@ -52,7 +52,7 @@ a:hover { text-decoration: underline; }
 }
 .gf-tile-sub { color: var(--gf-mute); }
 .gf-tile-keys { margin-left: auto; color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; text-transform: none; letter-spacing: 0; }
-.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); }
+.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); flex: 1; min-height: 0; }
 .gf-kbd { font: var(--gf-t-kbd); color: var(--gf-mute); border: 1px solid var(--gf-rule-2); padding: 0 5px; letter-spacing: .05em; }
 .gf-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }
 
@@ -251,6 +251,15 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
 .gf-md.is-block .tiptap { min-height: 1.5em; }
 .gf-md.is-block.is-empty .tiptap { min-height: 3em; }
+/*
+ * A field that is what its tile is for takes all of it: the mode line then
+ * sits on the tile's bottom edge rather than crowding the last line written,
+ * and the whole tile is somewhere to click and start typing.
+ */
+.gf-md.is-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* `EditorContent` puts its own div between us and the document, so the growth has to be handed down through it */
+.gf-md.is-fill .gf-md-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gf-md.is-fill .gf-md-content .tiptap { flex: 1; }
 .gf-md.is-empty::before {
   content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
   font: var(--gf-t-body); color: var(--gf-mute);

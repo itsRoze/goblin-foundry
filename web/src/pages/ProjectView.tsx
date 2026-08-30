@@ -63,6 +63,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
           placeholder="no project design — the shape of this project goes here"
           value={project.design}
           onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          fill
           testId="design"
         />
       </Tile>
