@@ -43,7 +43,7 @@ test('a declared blocker strikes the card through, and shipping the blocker clea
   await makeReady(page, 'The thing that waits', 'Dependencies');
   await page.getByRole('button', { name: 'add a blocker' }).click();
   await page.getByLabel('blocked by').fill('groundwork');
-  await page.getByTestId('blocker-picker').getByRole('button', { hasText: 'The groundwork' }).click();
+  await page.getByTestId('blocker-picker').getByRole('button').filter({ hasText: 'The groundwork' }).click();
   await expect(page.getByTestId('depends-on')).toContainText('The groundwork');
   await expect(page.getByTestId('history')).toContainText('blocked by GF-');
 

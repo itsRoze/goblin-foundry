@@ -18,7 +18,7 @@ import {
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
-import { dependenciesOf, dependencyRoutes, openBlockers } from './dependencies';
+import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { diff, listEvents, now, recordEvent } from './events';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
@@ -137,7 +137,7 @@ export function ticketsRoutes(db: Db) {
   /** One live ticket on the wire, with the blockers still standing in its way. */
   async function one(row: TicketRow): Promise<Ticket> {
     const p = await prefix();
-    return toTicket(row, p, (await openBlockers(db, p)).get(row.id) ?? []);
+    return toTicket(row, p, await openBlockersOf(db, row.id, p));
   }
 
   /** The single-ticket read: the ticket, plus every edge it has declared in either direction. */

@@ -54,10 +54,10 @@ describe('dependencies', () => {
     const body = await added.json();
     expect(body.blocked_by).toEqual([a.key]);
     expect(body.dependencies).toEqual({
-      depends_on: [{ key: a.key, title: 'the blocker', status: 'backlog' }],
+      depends_on: [{ key: a.key, title: 'the blocker', status: 'backlog', trashed: false }],
       blocks: [],
     });
-    expect((await read(a.key)).dependencies.blocks).toEqual([{ key: b.key, title: 'the waiter', status: 'backlog' }]);
+    expect((await read(a.key)).dependencies.blocks).toEqual([{ key: b.key, title: 'the waiter', status: 'backlog', trashed: false }]);
     expect((await read(a.key)).blocked_by).toEqual([]);
 
     const removed = await del(`/api/tickets/${b.key}/dependencies/${a.key}`);
@@ -144,7 +144,8 @@ describe('dependencies', () => {
     await del(`/api/tickets/${a.key}`);
 
     expect((await read(b.key)).blocked_by).toEqual([]);
-    expect((await read(b.key)).dependencies.depends_on.map((d: { key: string }) => d.key)).toEqual([a.key]);
+    // still declared, and marked as suspended rather than settled: it re-blocks on restore
+    expect((await read(b.key)).dependencies.depends_on).toEqual([{ key: a.key, title: 'a', status: 'backlog', trashed: true }]);
 
     const trashedBlocker = await post(`/api/tickets/${b.key}/dependencies`, { blocker: a.key });
     expect(trashedBlocker.status).toBe(422);

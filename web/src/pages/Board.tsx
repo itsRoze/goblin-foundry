@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { TICKET_STATUSES, blockedWarning, isBlocked, structuralRefusal, transitionTo, type Ticket, type TicketStatus } from '@goblin/shared';
+import { TICKET_STATUSES, asksBeforeBlocked, blockedWarning, structuralRefusal, transitionTo, type Ticket, type TicketStatus } from '@goblin/shared';
 import { useKey } from '../keys';
 import { useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
@@ -70,9 +70,8 @@ function useDragToTransition(lookup: (key: string) => Ticket | undefined) {
         setPending(null);
         move.mutate({ key: card.key, name: edge.name, to }, { onError: (error) => setRefusal({ status: to, text: refusalLine(error) }) });
       };
-      // blockedness forbids nothing (ADR-0009); `start` is the one verb that means "despite the blocker", so it asks
       const ticket = lookup(card.key);
-      if (edge.name === 'start' && ticket && isBlocked(ticket)) return setPending({ status: to, text: blockedWarning(ticket.blocked_by), go });
+      if (ticket && asksBeforeBlocked(edge.name, ticket)) return setPending({ status: to, text: blockedWarning(ticket.blocked_by), go });
       go();
     },
     [lookup, move, setRefusal],

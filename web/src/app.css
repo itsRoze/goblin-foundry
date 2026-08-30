@@ -169,6 +169,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-dep-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch; }
 /* a blocker that is no longer in the way reads like a done thing: struck and mute, still declared */
 .gf-dep.is-satisfied .gf-dep-title { text-decoration: line-through; color: var(--gf-mute); }
+.gf-dep-note { font-style: normal; color: var(--gf-mute); }
 .gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); padding: 0 2px; }
 .gf-dep-drop:hover { color: var(--gf-ink); }
 .gf-picker { display: flex; flex-direction: column; gap: var(--gf-s1); }

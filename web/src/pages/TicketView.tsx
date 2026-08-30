@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import {
+  asksBeforeBlocked,
   blockedWarning,
-  isBlocked,
+  isTerminal,
   slugPath,
   transitionsFrom,
   type DependencyRef,
-  type Ticket,
   type TicketDetail,
   type Transition,
 } from '@goblin/shared';
@@ -234,7 +234,7 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
                 <span className="gf-since">nothing</span>
               ) : (
                 // a ticket that reached a terminal status is no longer waiting on anything, so this edge is spent too
-                blocks.map((d) => <DependencyChip key={d.key} dep={d} satisfied={d.status === 'done' || d.status === 'cancelled'} />)
+                blocks.map((d) => <DependencyChip key={d.key} dep={d} satisfied={isTerminal(d.status)} />)
               )}
             </span>,
           ],
@@ -259,14 +259,20 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
   );
 }
 
-/** One edge as a chip: the key, the other ticket's title, and — on the blocked side — the way to undo it. */
+/**
+ * One edge as a chip: the key, the other ticket's title, and — on the blocked
+ * side — the way to undo it. A trashed end is *not* struck: it is suspended,
+ * not settled, and says so, because restoring it puts the block straight back
+ * (ADR-0009).
+ */
 function DependencyChip({ dep, satisfied, onRemove }: { dep: DependencyRef; satisfied: boolean; onRemove?: () => void }) {
   return (
-    <span className={`gf-dep${satisfied ? ' is-satisfied' : ''}`} data-testid={`dep-${dep.key}`}>
+    <span className={`gf-dep${satisfied && !dep.trashed ? ' is-satisfied' : ''}`} data-testid={`dep-${dep.key}`}>
       <Link className="gf-dep-link" to={ticketPath(dep)}>
         <span className="gf-key">{dep.key}</span>
         <span className="gf-dep-title">{dep.title}</span>
       </Link>
+      {dep.trashed && <i className="gf-dep-note">in the trash</i>}
       {onRemove && (
         <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} onClick={onRemove}>
           ×
@@ -293,7 +299,7 @@ function BlockerPicker({ ticket, onPick, onCancel }: { ticket: TicketDetail; onP
   const hits = (all.data ?? [])
     .filter((t) => t.key !== ticket.key && !declared.has(t.key))
     .filter((t) => needle === '' || t.key.toLowerCase().includes(needle) || t.title.toLowerCase().includes(needle))
-    .sort((a, b) => Number(isSatisfiedStatus(a)) - Number(isSatisfiedStatus(b)))
+    .sort((a, b) => Number(isTerminal(a.status)) - Number(isTerminal(b.status)))
     .slice(0, 8);
 
   return (
@@ -316,7 +322,7 @@ function BlockerPicker({ ticket, onPick, onCancel }: { ticket: TicketDetail; onP
           <button
             key={t.key}
             type="button"
-            className={`gf-picker-hit${isSatisfiedStatus(t) ? ' is-satisfied' : ''}`}
+            className={`gf-picker-hit${isTerminal(t.status) ? ' is-satisfied' : ''}`}
             data-testid={`pick-${t.key}`}
             onClick={() => void onPick(t.key)}
           >
@@ -333,9 +339,6 @@ function BlockerPicker({ ticket, onPick, onCancel }: { ticket: TicketDetail; onP
     </div>
   );
 }
-
-/** A blocker in one of these is inert — declarable, but not in anyone's way (CONTEXT.md "Blocked"). */
-const isSatisfiedStatus = (t: Ticket) => t.status === 'done' || t.status === 'cancelled';
 
 /**
  * The lifecycle by button rather than by drag. `approve` is offered even when
@@ -357,10 +360,9 @@ function StateTile({
   refusal: string | null;
 }) {
   const edges = transitionsFrom(ticket.status);
-  // blockedness gates nothing (ADR-0009); `start` is the one verb that means "proceeding despite the blocker", so it asks first
   const [confirming, setConfirming] = useState(false);
   const press = (edge: Transition) => {
-    if (edge.name === 'start' && isBlocked(ticket)) return setConfirming(true);
+    if (asksBeforeBlocked(edge.name, ticket)) return setConfirming(true);
     void onMove(edge);
   };
   return (

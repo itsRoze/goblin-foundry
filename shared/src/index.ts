@@ -48,6 +48,8 @@ export {
   type TicketDetail,
   AddDependencyBodySchema,
   type AddDependencyBody,
+  TERMINAL_STATUSES,
+  isTerminal,
   isBlocked,
   blockedWarning,
 } from './tickets';
@@ -63,6 +65,7 @@ export {
   transitionsFrom,
   findTransition,
   transitionTo,
+  asksBeforeBlocked,
   type ApproveRequirement,
   type GuardFields,
   TRANSITION_PAST,
