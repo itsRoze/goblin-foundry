@@ -160,6 +160,21 @@ describe('dependencies', () => {
     expect((await read(b.key)).blocked_by).toEqual([a.key]);
   });
 
+  test('an edge whose *blocked* end is trashed cannot be undone: the DELETE addresses that end', async () => {
+    const a = await ticket('a');
+    const b = await ticket('b');
+    await block(a, b);
+    await del(`/api/tickets/${b.key}`);
+
+    // from a's side the edge is still declared and its other end says it is in the trash
+    expect((await read(a.key)).dependencies.blocks).toEqual([{ key: b.key, title: 'b', status: 'backlog', trashed: true }]);
+    // ...but nothing can be done to it from here, which is why the GUI offers no remove control on such a row
+    expect((await del(`/api/tickets/${b.key}/dependencies/${a.key}`)).status).toBe(404);
+
+    await post(`/api/tickets/${b.key}/restore`);
+    expect((await del(`/api/tickets/${b.key}/dependencies/${a.key}`)).status).toBe(200);
+  });
+
   test('a blocker that is not a ticket, and a removal of an edge that was never declared', async () => {
     const b = await ticket('b');
     const nonsense = await post(`/api/tickets/${b.key}/dependencies`, { blocker: 'not-a-key' });

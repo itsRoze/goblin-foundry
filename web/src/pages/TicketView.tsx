@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import {
   asksBeforeBlocked,
@@ -216,22 +216,25 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
 
   /** Which end of the new edge this ticket is; the picker supplies the other. */
   const edgeWith = (direction: Direction, other: string) =>
-    direction === 'blocked_by' ? { blocker: other, blocked: ticket.key } : { blocker: ticket.key, blocked: other };
+    direction === 'depends_on' ? { blocker: other, blocked: ticket.key } : { blocker: ticket.key, blocked: other };
 
   const section = (direction: Direction, deps: DependencyRef[], empty: string) => (
     <DependencySection
       direction={direction}
       deps={deps}
       empty={empty}
-      // a blocker is spent when it is no longer in the way; a blocked ticket is spent when it has nowhere left to go
-      spent={(d) => (direction === 'blocked_by' ? !stillOpen.has(d.key) : isTerminal(d.status))}
+      // a blocker is inert once it is out of the way; a ticket this one blocks is inert once it has nowhere left to go
+      inert={(d) => (direction === 'depends_on' ? !stillOpen.has(d.key) : isTerminal(d.status))}
+      // the DELETE addresses the blocked end, and a trashed ticket is not addressable — restore it to undo that edge
+      removable={(d) => direction === 'depends_on' || !d.trashed}
       picking={picking === direction}
       onOpen={() => {
         setRefusal(null);
         setPicking(picking === direction ? null : direction);
       }}
       onClose={() => setPicking(null)}
-      taken={[ticket.key, ...deps.map((d) => d.key)]}
+      // both sides, so the picker never offers the one-hop cycle the server would only refuse after a round trip
+      taken={[ticket.key, ...depends_on.map((d) => d.key), ...blocks.map((d) => d.key)]}
       refusal={refusal?.direction === direction ? refusal.text : null}
       onPick={async (other) => {
         if (await write(direction, () => add.mutateAsync(edgeWith(direction, other)))) setPicking(null);
@@ -242,15 +245,15 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
 
   return (
     <Tile label="dependencies" testId="dependencies-tile">
-      {section('blocked_by', depends_on, 'nothing in the way')}
+      {section('depends_on', depends_on, 'nothing in the way')}
       {section('blocks', blocks, 'nothing waiting on this')}
     </Tile>
   );
 }
 
 /** The two ends of an edge, as the tile labels them. */
-type Direction = 'blocked_by' | 'blocks';
-const DIRECTION_LABEL: Record<Direction, string> = { blocked_by: 'blocked by', blocks: 'blocks' };
+type Direction = 'depends_on' | 'blocks';
+const DIRECTION_LABEL: Record<Direction, string> = { depends_on: 'blocked by', blocks: 'blocks' };
 
 /**
  * One direction: a labelled rule, the edges as rows, and the picker that adds
@@ -261,7 +264,8 @@ function DependencySection({
   direction,
   deps,
   empty,
-  spent,
+  inert,
+  removable,
   picking,
   taken,
   refusal,
@@ -273,11 +277,13 @@ function DependencySection({
   direction: Direction;
   deps: DependencyRef[];
   empty: string;
-  spent: (d: DependencyRef) => boolean;
+  inert: (d: DependencyRef) => boolean;
+  /** Whether this row's edge can be undone from here at all. */
+  removable: (d: DependencyRef) => boolean;
   picking: boolean;
   /** Why the last write on this side was refused — shown here, not at the foot of the tile. */
   refusal: string | null;
-  /** Keys the picker must not offer: this ticket, and whatever this side already names. */
+  /** Keys the picker must not offer: this ticket, and whatever either side already names. */
   taken: string[];
   onOpen: () => void;
   onClose: () => void;
@@ -301,11 +307,11 @@ function DependencySection({
         </p>
       )}
       {deps.length === 0 && !picking ? (
-        <p className="gf-dep-empty">{empty}</p>
+        <Empty>{empty}</Empty>
       ) : (
         <div className="gf-rows">
           {deps.map((d) => (
-            <DependencyRow key={d.key} dep={d} spent={spent(d)} onRemove={() => onRemove(d.key)} />
+            <DependencyRow key={d.key} dep={d} inert={inert(d)} removable={removable(d)} onRemove={() => onRemove(d.key)} />
           ))}
         </div>
       )}
@@ -319,9 +325,9 @@ function DependencySection({
  * it is suspended rather than settled, and says so, because restoring it puts
  * the block straight back (ADR-0009).
  */
-function DependencyRow({ dep, spent, onRemove }: { dep: DependencyRef; spent: boolean; onRemove: () => void }) {
+function DependencyRow({ dep, inert, removable, onRemove }: { dep: DependencyRef; inert: boolean; removable: boolean; onRemove: () => void }) {
   return (
-    <div className={`gf-row gf-dep-row${spent && !dep.trashed ? ' is-spent' : ''}`} data-testid={`dep-${dep.key}`}>
+    <div className={`gf-row gf-dep-row${inert && !dep.trashed ? ' is-inert' : ''}`} data-testid={`dep-${dep.key}`}>
       <Link className="gf-row-title" to={ticketPath(dep)}>
         <span className="gf-key">{dep.key}</span>
         {dep.title}
@@ -329,9 +335,11 @@ function DependencyRow({ dep, spent, onRemove }: { dep: DependencyRef; spent: bo
       <span className="gf-row-trail">
         {dep.trashed && <span className="gf-dep-note">in the trash</span>}
         <StatusChip status={dep.status} />
-        <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} title={`remove ${dep.key}`} onClick={onRemove}>
-          ×
-        </button>
+        {removable && (
+          <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} title={`remove ${dep.key}`} onClick={onRemove}>
+            ×
+          </button>
+        )}
       </span>
     </div>
   );
@@ -366,6 +374,8 @@ function TicketPicker({
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
+  const listId = useId();
+  const optionId = (key: string) => `${listId}-${key}`;
 
   const spoken = new Set(taken);
   const needle = query.trim().toLowerCase();
@@ -393,11 +403,14 @@ function TicketPicker({
 
   return (
     <div className="gf-picker" data-testid={testId}>
+      {/* focus stays in the input and `aria-activedescendant` moves instead, which is what lets `↑↓` be announced at all */}
       <input
         ref={input}
         type="text"
         role="combobox"
-        aria-expanded
+        aria-expanded={hits.length > 0}
+        aria-controls={listId}
+        aria-activedescendant={hits[at] ? optionId(hits[at].key) : undefined}
         aria-label={`${label} — search tickets`}
         placeholder="search by key or title"
         autoComplete="off"
@@ -409,18 +422,19 @@ function TicketPicker({
         onKeyDown={onKeyDown}
       />
       {hits.length === 0 ? (
-        <p className="gf-dep-empty">no ticket matches</p>
+        <Empty>no ticket matches</Empty>
       ) : (
-        <div className="gf-rows gf-picker-hits" role="listbox">
+        <div id={listId} className="gf-rows gf-picker-hits" role="listbox" aria-label={`${label} — candidates`}>
+          {/* options are divs, not buttons: a listbox child must not be tab-focusable when the input holds focus */}
           {hits.map((t, i) => (
-            <button
+            <div
               key={t.key}
-              type="button"
+              id={optionId(t.key)}
               role="option"
               aria-selected={i === at}
-              className={`gf-row gf-dep-row gf-picker-hit${i === at ? ' is-on' : ''}${isTerminal(t.status) ? ' is-spent' : ''}`}
+              className={`gf-row gf-dep-row gf-picker-hit${i === at ? ' is-on' : ''}${isTerminal(t.status) ? ' is-inert' : ''}`}
               data-testid={`pick-${t.key}`}
-              onMouseEnter={() => setCursor(i)}
+              onMouseMove={() => setCursor(i)}
               onClick={() => void onPick(t.key)}
             >
               <span className="gf-row-title">
@@ -430,7 +444,7 @@ function TicketPicker({
               <span className="gf-row-trail">
                 <StatusChip status={t.status} />
               </span>
-            </button>
+            </div>
           ))}
         </div>
       )}

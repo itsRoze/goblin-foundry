@@ -177,17 +177,19 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   transition: color var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease);
 }
 .gf-dep-add:hover, .gf-dep-add[aria-expanded='true'] { color: var(--gf-system); border-color: var(--gf-system); }
-.gf-dep-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }
-
 .gf-dep-row .gf-row-title { display: flex; align-items: baseline; gap: 0; min-width: 0; color: var(--gf-ink); }
-.gf-dep-row .gf-row-title:hover { text-decoration: none; color: var(--gf-link); }
 .gf-dep-row .gf-row-trail { gap: var(--gf-s3); }
-/* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009) */
-.gf-dep-row.is-spent .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
+/* only the declared edges are links; a picker candidate carries the same classes but is not one */
+.gf-dep-section > .gf-rows > .gf-dep-row .gf-row-title:hover { text-decoration: none; color: var(--gf-link); }
+/* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009). Scoped to the
+   declared list so it cannot reach a picker candidate that happens to be done — those are muted,
+   not struck, and relying on source order to undo a strike is how the two rules would drift apart. */
+.gf-dep-section > .gf-rows > .gf-dep-row.is-inert .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
 .gf-dep-note { font: var(--gf-t-meta); color: var(--gf-mute); }
+/* `--gf-human` is reserved for "your attention is required" and nothing else (DESIGN.md §3), so
+   removing an edge brightens to ink rather than inventing a destructive red */
 .gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); line-height: 1; padding: 2px 5px; }
-/* removing an edge is the one destructive thing in this tile, so it is the one thing that goes human-red on hover */
-.gf-dep-drop:hover { color: var(--gf-human); }
+.gf-dep-drop:hover { color: var(--gf-ink); }
 
 /* the picker: an open input over candidate rows, the highlighted one wearing
    the selected-row treatment from DESIGN.md §6 — that inset is what says these
@@ -197,7 +199,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
-.gf-picker-hits { max-height: 190px; overflow-y: auto; }
+/* rows bleed past the tile's padding, so the vertical scroll must not imply a horizontal one */
+.gf-picker-hits { max-height: 190px; overflow-y: auto; overflow-x: hidden; }
 /* the marker is a border rather than an inset shadow: the row bleeds past the tile's
    padding, and a shadow at that outer edge gets clipped where a border does not */
 .gf-picker-hit {
@@ -207,4 +210,4 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 }
 .gf-picker-hit.is-on { background: var(--gf-raised); border-left-color: var(--gf-system); }
 /* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
-.gf-picker-hit.is-spent .gf-row-title { color: var(--gf-mute); text-decoration: none; }
+.gf-picker-hit.is-inert .gf-row-title { color: var(--gf-mute); }

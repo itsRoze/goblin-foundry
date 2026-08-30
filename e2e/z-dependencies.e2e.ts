@@ -41,10 +41,10 @@ test('a declared blocker strikes the card through, and shipping the blocker clea
 
   // declare it from the waiting ticket — the intent hangs off the blocked end (ADR-0004)
   await makeReady(page, 'The thing that waits', 'Dependencies');
-  await page.getByTestId('add-blocked_by').click();
+  await page.getByTestId('add-depends_on').click();
   await page.getByRole('combobox', { name: 'blocked by — search tickets' }).fill('groundwork');
-  await page.getByTestId('picker-blocked_by').getByRole('option').filter({ hasText: 'The groundwork' }).click();
-  await expect(page.getByTestId('deps-blocked_by')).toContainText('The groundwork');
+  await page.getByTestId('picker-depends_on').getByRole('option').filter({ hasText: 'The groundwork' }).click();
+  await expect(page.getByTestId('deps-depends_on')).toContainText('The groundwork');
   await expect(page.getByTestId('history')).toContainText('blocked by GF-');
 
   // the board says so with the outline glyph and a struck title — never a colour (DESIGN.md §3)
@@ -88,11 +88,11 @@ test('the same edge can be declared from the blocking end, and the picker is dri
   await page.goto('/');
   await expect(card(page, 'The dependent')).toHaveClass(/is-blocked/);
   await card(page, 'The dependent').click();
-  await expect(page.getByTestId('deps-blocked_by')).toContainText('The prerequisite');
+  await expect(page.getByTestId('deps-depends_on')).toContainText('The prerequisite');
 
   // removing it from this end removes the same edge
-  await page.getByTestId('deps-blocked_by').getByRole('button', { name: /^remove GF-/ }).click();
-  await expect(page.getByTestId('deps-blocked_by')).toContainText('nothing in the way');
+  await page.getByTestId('deps-depends_on').getByRole('button', { name: /^remove GF-/ }).click();
+  await expect(page.getByTestId('deps-depends_on')).toContainText('nothing in the way');
   await page.goto('/');
   await expect(card(page, 'The dependent')).not.toHaveClass(/is-blocked/);
 });

@@ -27,8 +27,8 @@ import { readSettings } from './settings';
 
 type TicketRow = typeof ticketTable.$inferSelect;
 
-/** A blocker in a terminal status blocks nothing: it is finished or abandoned, and either way out of the way (CONTEXT.md "Blocked"). */
-const SATISFIED: TicketStatus[] = [...TERMINAL_STATUSES];
+/** A blocker in a terminal status is *inert* (ADR-0009's word): finished or abandoned, either way out of the way. */
+const INERT: TicketStatus[] = [...TERMINAL_STATUSES];
 
 /** ADR-0001 warns off `IN` lists over 100 params, so an iterative walk goes a batch at a time. */
 const BATCH = 100;
@@ -59,7 +59,7 @@ export async function openBlockersOf(db: Db, id: number, prefix: string): Promis
 
 /** Every edge whose blocker is still in the way, blocked ticket first — the one join both readers share. */
 function openEdges(db: Db, blocked?: number) {
-  const live = and(isNull(ticketTable.trashed_at), notInArray(ticketTable.status, SATISFIED));
+  const live = and(isNull(ticketTable.trashed_at), notInArray(ticketTable.status, INERT));
   return db
     .select({ blocked_id: dependency.blocked_id, blocker_id: dependency.blocker_id })
     .from(dependency)
