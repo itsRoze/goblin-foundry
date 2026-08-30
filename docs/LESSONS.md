@@ -59,3 +59,34 @@ The `simple` toggle is controlled by the ticket the API answered with, so the cl
 ## 2026-08-29 — an intent route `/:key/:name` must be registered last
 
 Hono matches in registration order, so `POST /tickets/:key/:name` registered before `POST /tickets/:key/restore` swallows the un-trash. The transition route goes on at the end of `ticketsRoutes`, after every named route, and `restore` is deliberately not a transition name (`reopen` is the one that brings a `cancelled` ticket back).
+
+## 2026-08-30 — `@tiptap/markdown` parses and serialises without a DOM
+
+The canonical-form rule ("`serialize(parse(x))` is a fixed point") is the whole contract of
+storing markdown only, and it needed a test that is not a browser test. `MarkdownManager` from
+`@tiptap/markdown` takes a list of extensions and exposes `parse`/`serialize` on plain JSON —
+no editor, no `document`. So `web/src/markdown.ts` is a pure seam over it and
+`web/test/markdown.test.ts` runs under `bun test` with the rest. The React editor imports the
+same seam, so what the test proves is what the field stores.
+
+## 2026-08-30 — raw HTML in markdown comes back as the text of itself, not as nothing
+
+ADR-0005 says raw HTML is "stripped on the next edit and never rendered". What the editor's
+schema actually does is keep it as literal text, entity-escaped: `<script>alert(1)</script>`
+round-trips to `&lt;script&gt;alert(1)&lt;/script&gt;` and stays there. The invariant that
+matters — it is never markup, and it is a fixed point — holds; nothing is silently deleted,
+which is the better half of the trade when the markdown came from a planning agent.
+
+## 2026-08-30 — an inline-only schema drops pasted blocks in silence
+
+App and Project descriptions use the inline configuration (emphasis, code, links). Parsing
+`# Heading\n\n- one` against it produced a document with nothing in it — the block nodes have
+no renderer, so the words went with the bullets. `flattenBlocks` in `web/src/markdown.ts` strips
+block markers before parsing so an inline field loses its formatting but never its words.
+
+## 2026-08-30 — a form that no longer carries a field must not send it as `''`
+
+Pulling `description` out of the App/Project `about` form left `appBody`'s
+`description: v.description ?? ''` behind, so renaming an app would have blanked its
+description. Body builders shared between a create form and an edit form send a field only when
+the form actually had it.

@@ -122,9 +122,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-inline-title { font: var(--gf-t-h); color: var(--gf-ink); background: none; border: 1px solid transparent; border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; text-align: left; cursor: text; }
 .gf-inline-title:hover { border-color: var(--gf-rule-2); }
 .gf-inline-title-input { font: var(--gf-t-h); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; width: 100%; box-sizing: border-box; }
-.gf-prose { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .gf-since { font: var(--gf-t-meta); color: var(--gf-mute); }
-.gf-field.is-stacked { grid-template-columns: 1fr; }
 .gf-plus { font: var(--gf-t-meta); color: var(--gf-mute); background: none; border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 0 7px; cursor: pointer; line-height: 17px; }
 .gf-plus:hover { color: var(--gf-system); border-color: var(--gf-system); }
 
@@ -239,3 +237,33 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-pick-title { grid-column: 1; font: var(--gf-t-h); display: flex; align-items: baseline; min-width: 0; color: var(--gf-ink); }
 /* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
 .gf-picker-hit.is-inert .gf-pick-title { color: var(--gf-mute); }
+
+/* the markdown editor — also the read view, because markdown is the only stored form (ADR-0005) */
+.gf-md { position: relative; }
+.gf-md .tiptap { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
+.gf-md.is-block .tiptap { min-height: 3em; }
+.gf-md .tiptap:focus-visible { outline: none; }
+.gf-md:focus-within { box-shadow: inset 0 0 0 1px var(--gf-rule-2); }
+.gf-md.is-empty::before {
+  content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
+  font: var(--gf-t-meta); color: var(--gf-mute);
+}
+.gf-md .tiptap > * { margin: 0 0 var(--gf-s3); }
+.gf-md .tiptap > :last-child { margin-bottom: 0; }
+.gf-md .tiptap h1, .gf-md .tiptap h2, .gf-md .tiptap h3,
+.gf-md .tiptap h4, .gf-md .tiptap h5, .gf-md .tiptap h6 { font: var(--gf-t-h); color: var(--gf-ink); }
+.gf-md .tiptap h1 { font-size: 16px; }
+.gf-md .tiptap ul, .gf-md .tiptap ol { padding-left: var(--gf-s5); }
+.gf-md .tiptap li > p { margin: 0; }
+.gf-md .tiptap ul[data-type='taskList'] { list-style: none; padding-left: 0; }
+.gf-md .tiptap ul[data-type='taskList'] li { display: flex; gap: var(--gf-s2); align-items: baseline; }
+.gf-md .tiptap blockquote { border-left: 2px solid var(--gf-rule-2); padding-left: var(--gf-s3); color: var(--gf-mute); }
+.gf-md .tiptap code { font: var(--gf-t-meta); color: var(--gf-link); }
+.gf-md .tiptap pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
+.gf-md .tiptap pre code { color: var(--gf-ink); }
+.gf-md .tiptap a { color: var(--gf-link); }
+.gf-md .tiptap hr { border: 0; border-top: 1px solid var(--gf-rule); }
+
+/* what a field that saves itself says in its tile header (DESIGN.md §8) */
+.gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-saving[data-state='saved'] { color: var(--gf-system); }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { designBody, designField } from './design';
 
 /**
  * Workflow state only, in lifecycle order (ADR-0003). `needs_human` arrives
@@ -16,7 +17,7 @@ export const TicketSchema = z.object({
   description: z.string(),
   status: TicketStatusSchema,
   simple: z.boolean(),
-  design: z.string().nullable(),
+  design: designField,
   app_id: z.number().int().nullable(),
   project_id: z.number().int().nullable(),
   trashed_at: z.string().nullable(),
@@ -76,7 +77,7 @@ export function blockedWarning(keys: string[]): string {
 const ticketFields = {
   title: z.string().trim().min(1).max(200),
   description: z.string().max(100_000),
-  design: z.string().max(200_000).nullable(),
+  design: designBody,
   simple: z.boolean(),
   app_id: z.number().int().nullable(),
   project_id: z.number().int().nullable(),

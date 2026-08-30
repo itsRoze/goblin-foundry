@@ -12,25 +12,25 @@ the API.
 
 **Status:** ready-for-agent
 
-- [ ] `design` markdown column on project (ticket already has one), editable via `PATCH`;
+- [x] `design` markdown column on project (ticket already has one), editable via `PATCH`;
       `''` normalises to `null`; events record prior/new bodies
-- [ ] Editor round-trips markdown to an **idempotent canonical form**: the first save may
+- [x] Editor round-trips markdown to an **idempotent canonical form**: the first save may
       normalise an agent's markdown into the editor's dialect, and every save after that is
       byte-stable. Tests assert `serialize(parse(x))` is a fixed point over a golden fixture
       (headings, lists, task lists, code fences, links, emphasis, blockquote) — *not* that
       stored markdown equals what was submitted
-- [ ] Two configurations of one component: full block schema (StarterKit + task lists; no
+- [x] Two configurations of one component: full block schema (StarterKit + task lists; no
       tables) for ticket description and both Designs; inline-only (emphasis, code, links)
       for app and project descriptions. Input rules on, no slash menu. Plain-text paste is
       always parsed as markdown. Raw HTML in markdown is stripped on edit, never rendered
-- [ ] Live editing: debounced idle write (~750ms) plus a flush on blur and on navigate-away,
+- [x] Live editing: debounced idle write (~750ms) plus a flush on blur and on navigate-away,
       with a `saving…`/`saved` indicator in the tile header. No save button and **no cancel** —
       undo is `⌘Z`, recovery is the event log. `⌘⏎` flushes and blurs, `esc` blurs, `e` focuses
       the focused tile's editor (a jump, not a mode). Create forms stay explicit-submit, title only
-- [ ] A focused editor owns its field: refetches (focus, poll, an agent's write) are held and
+- [x] A focused editor owns its field: refetches (focus, poll, an agent's write) are held and
       reconciled on blur, never applied under the caret
-- [ ] The `updated` event coalesces per edit session — same entity, same actor, overlapping
-      field set, within 5 minutes (ADR-0008), so a writing sitting is one history line
-- [ ] Approve guard (04) recognises a non-empty design: `design !== null && design.trim() !== ''`
-- [ ] Browser smoke: write a design with a list and a code block, click away, reload, see it
+- [x] The `updated` event coalesces per edit session — same entity, same actor, within 5
+      minutes (ADR-0008), so a writing sitting is one history line
+- [x] Approve guard (04) recognises a non-empty design: `design !== null && design.trim() !== ''`
+- [x] Browser smoke: write a design with a list and a code block, click away, reload, see it
       rendered identically; paste the markdown of an existing issue file and see it parse

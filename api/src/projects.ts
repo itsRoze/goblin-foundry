@@ -68,7 +68,7 @@ export function projectsRoutes(db: Db) {
     const issue = await appIssue(body.data.app_id);
     if (issue) return unprocessable(c, [issue]);
     const at = now();
-    const fields = { name: body.data.name, description: body.data.description ?? '', app_id: body.data.app_id ?? null };
+    const fields = { name: body.data.name, description: body.data.description ?? '', design: body.data.design ?? null, app_id: body.data.app_id ?? null };
     const [row] = await db.insert(projectTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
     await recordEvent(db, { entity_kind: 'project', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
@@ -87,7 +87,7 @@ export function projectsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const change = diff(row, body.data);
     if (!change.changed) return c.json(toProject(row));
-    const { app_id, ...fields } = change.new as { app_id?: number | null; name?: string; description?: string };
+    const { app_id, ...fields } = change.new as { app_id?: number | null; name?: string; description?: string; design?: string | null };
     if (app_id !== undefined) {
       const issue = await appIssue(app_id);
       if (issue) return unprocessable(c, [issue]);

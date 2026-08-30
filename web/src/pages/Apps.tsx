@@ -12,11 +12,12 @@ export const appFormFields = [
   { name: 'description', label: 'description', kind: 'textarea' as const },
 ];
 
+/** A form that does not carry the description leaves it alone — the about tile's description saves itself. */
 export const appBody = (v: Record<string, string>) => ({
   name: v.name ?? '',
   repository_url: v.repository_url ? v.repository_url : null,
   default_branch: v.default_branch ? v.default_branch : null,
-  description: v.description ?? '',
+  ...(v.description === undefined ? {} : { description: v.description }),
 });
 
 export function AppsPage() {

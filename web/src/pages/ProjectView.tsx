@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { slugPath } from '@goblin/shared';
+import { MarkdownField, Saving, useSaving } from '../editor';
 import { useApps, useEvents, usePatchProject, useProject, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
@@ -24,6 +25,8 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
   const patch = usePatchProject(project.id);
   const appName = useAppNamer();
   const newTicket = useNewTicket({ project_id: project.id });
+  const about = useSaving();
+  const design = useSaving();
   if (redirect) return redirect;
 
   return (
@@ -53,23 +56,43 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         {newTicket}
         <TicketRows tickets={tickets.data} />
       </Tile>
+      <Tile label="design" keys={<Saving state={design.state} />} testId="design-tile">
+        <MarkdownField
+          shape="block"
+          label="project design"
+          placeholder="no project design — the shape of this project goes here"
+          value={project.design}
+          onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          testId="design"
+        />
+      </Tile>
       <AboutTile
         kind="project"
         entity={project}
         fields={[
           { name: 'name', label: 'name' },
-          { name: 'description', label: 'description', kind: 'textarea' },
           { name: 'app_id', label: 'app', kind: 'select', options: appOptions(apps.data) },
         ]}
-        initial={{ name: project.name, description: project.description, app_id: project.app_id === null ? '' : String(project.app_id) }}
-        toBody={(v) => ({ name: v.name ?? '', description: v.description ?? '', app_id: v.app_id ? Number(v.app_id) : null })}
+        initial={{ name: project.name, app_id: project.app_id === null ? '' : String(project.app_id) }}
+        toBody={(v) => ({ name: v.name ?? '', app_id: v.app_id ? Number(v.app_id) : null })}
+        saving={about.state}
         patch={(b) => patch.mutateAsync(b)}
         facts={
           <Kv
             rows={[
               ['name', project.name],
               ['app', app ? <Link to={slugPath('apps', app)}>{app.name}</Link> : 'no app yet'],
-              ['description', project.description || '—'],
+              [
+                'description',
+                <MarkdownField
+                  shape="inline"
+                  label="description"
+                  placeholder="what this project is"
+                  value={project.description}
+                  onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
+                  testId="project-description"
+                />,
+              ],
             ]}
           />
         }

@@ -276,6 +276,9 @@ export function describeEvent(e: Event, appName: Namer): string {
   if (keys.length === 1 && keys[0] === 'name') return `renamed ${str(prior.name)} → ${str(e.new.name)}`;
   if (keys.length === 1 && keys[0] === 'app_id') return e.new.app_id === null ? `detached from ${appName(prior.app_id)}` : `moved to ${appName(e.new.app_id)}`;
   if (keys.length === 1 && keys[0] === 'project_id') return e.new.project_id === null ? 'left its project' : 'moved to a project';
+  // the bodies are in the event (recovery is the edit session, ADR-0008); the history says only that a sitting happened
+  if (keys.length === 1 && keys[0] === 'design') return 'design edited';
+  if (keys.length === 1 && keys[0] === 'description') return 'description edited';
   return `updated ${keys.join(', ')}`;
 }
 

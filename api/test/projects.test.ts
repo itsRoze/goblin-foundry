@@ -46,7 +46,7 @@ describe('/api/projects', () => {
     expect(await req('/api/projects?app_id=null').then((r) => r.json())).toEqual([orphan]);
 
     const events = await req(`/api/projects/${mvp.id}/events`).then((r) => r.json());
-    expect(events).toEqual([expect.objectContaining({ entity_kind: 'project', entity_id: mvp.id, kind: 'created', prior: null, new: { name: 'MVP', description: 'first cut', app_id: app.id } })]);
+    expect(events).toEqual([expect.objectContaining({ entity_kind: 'project', entity_id: mvp.id, kind: 'created', prior: null, new: { name: 'MVP', description: 'first cut', design: null, app_id: app.id } })]);
   });
 
   test('a project cannot point at an app that does not exist or is trashed', async () => {
@@ -99,7 +99,7 @@ describe('/api/projects', () => {
     expect(pEvents.map((e: { kind: string; prior: unknown; new: unknown }) => [e.kind, e.prior, e.new])).toEqual([
       ['updated', { app_id: a.id }, { app_id: b.id }],
       ['updated', { app_id: null }, { app_id: a.id }],
-      ['created', null, { name: 'Roaming', description: '', app_id: null }],
+      ['created', null, { name: 'Roaming', description: '', design: null, app_id: null }],
     ]);
   });
 

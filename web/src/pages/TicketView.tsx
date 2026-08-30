@@ -10,6 +10,7 @@ import {
   type TicketDetail,
   type Transition,
 } from '@goblin/shared';
+import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { formKeys, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
@@ -43,7 +44,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const patch = usePatchTicket(ticket.key);
   const intent = useTicketIntent(ticket.key);
   const move = useTransition();
-  const [editing, setEditing] = useState(false);
+  const about = useSaving();
+  const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = useRefusal<string>();
@@ -61,7 +63,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     },
     [setStateRefusal],
   );
-  useKey('e', useCallback(() => setEditing(true), []));
+  // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md §8)
+  useKey('e', focusEditor);
 
   const trash = useCallback(
     () =>
@@ -111,17 +114,22 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         label="about"
         keys={
           <>
+            <Saving state={about.state} />
             <Kbd>e</Kbd> edit
           </>
         }
         focus
         testId="about-tile"
       >
-        <InlineTitle value={ticket.title} onSave={(title) => save({ title })} />
-        <Description value={ticket.description} editing={editing} onCancel={() => setEditing(false)} onSave={async (description) => {
-          await save({ description });
-          setEditing(false);
-        }} />
+        <InlineTitle value={ticket.title} onSave={(title) => about.run(() => save({ title }))} />
+        <MarkdownField
+          shape="block"
+          label="description"
+          placeholder="no description — press e"
+          value={ticket.description}
+          onSave={(description) => about.run(() => save({ description }))}
+          testId="description"
+        />
         <Kv
           rows={[
             [
@@ -167,6 +175,22 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
             {refusal}
           </p>
         )}
+      </Tile>
+
+      <Tile
+        label="design"
+        subtitle={ticket.simple ? 'not needed — simple' : undefined}
+        keys={<Saving state={design.state} />}
+        testId="design-tile"
+      >
+        <MarkdownField
+          shape="block"
+          label="ticket design"
+          placeholder="no ticket design — the plan for this slice goes here"
+          value={ticket.design}
+          onSave={(body) => design.run(() => save({ design: body }))}
+          testId="design"
+        />
       </Tile>
 
       <DependenciesTile ticket={ticket} />
@@ -572,37 +596,5 @@ function InlineTitle({ value, onSave }: { value: string; onSave: (title: string)
         () => setEditing(false),
       )}
     />
-  );
-}
-
-/**
- * Plain text for now — issue 07 swaps the widget in without changing the keys.
- * The editor is a separate component so its draft is seeded once, when it
- * mounts: a refetch (focus, or a write elsewhere) must not overwrite typing.
- */
-function Description({ value, editing, onSave, onCancel }: { value: string; editing: boolean; onSave: (description: string) => Promise<void>; onCancel: () => void }) {
-  if (editing) return <DescriptionEditor initial={value} onSave={onSave} onCancel={onCancel} />;
-  return value ? (
-    <p className="gf-prose" data-testid="description">
-      {value}
-    </p>
-  ) : (
-    <Empty>no description — press e</Empty>
-  );
-}
-
-function DescriptionEditor({ initial, onSave, onCancel }: { initial: string; onSave: (description: string) => Promise<void>; onCancel: () => void }) {
-  const [text, setText] = useState(initial);
-  const area = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => area.current?.focus(), []);
-
-  return (
-    <label className="gf-field is-stacked">
-      <span>description</span>
-      <textarea ref={area} aria-label="description" rows={6} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={formKeys(() => void onSave(text), onCancel)} />
-      <span className="gf-tile-keys">
-        <Kbd>⌘⏎</Kbd> save <Kbd>esc</Kbd> cancel
-      </span>
-    </label>
   );
 }

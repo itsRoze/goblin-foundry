@@ -37,7 +37,8 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await page.getByRole('link', { name: 'MVP' }).click();
   await expect(page.getByTestId('about-tile')).toBeVisible();
   const projectUrl = page.url();
-  await page.keyboard.press('e');
+  // `e` belongs to the always-live description now (issue 07); the rest of the about tile edits from its button
+  await page.getByRole('button', { name: 'edit project' }).click();
   await page.getByTestId('edit-form').getByLabel('name').fill('Subway Reader MVP');
   await page.getByTestId('edit-form').getByLabel('name').press('ControlOrMeta+Enter');
   await expect(page.getByTestId('page-title')).toContainText('Subway Reader MVP');

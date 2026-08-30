@@ -78,3 +78,4 @@ export {
   structuralRefusal,
 } from './transitions';
 export { slugify, slugPath, parseSlugId } from './slug';
+export { designField, designBody, hasDesign } from './design';

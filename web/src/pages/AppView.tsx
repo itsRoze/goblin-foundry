@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
-import { useKey } from '../keys';
+import { MarkdownField, useSaving } from '../editor';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
@@ -31,6 +31,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
   const appName = useAppNamer();
   const nav = useNavigate();
   const newTicket = useNewTicket({ app_id: app.id });
+  const about = useSaving();
   if (redirect) return redirect;
 
   return (
@@ -80,9 +81,10 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
       <AboutTile
         kind="app"
         entity={app}
-        fields={appFormFields}
-        initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '', description: app.description }}
+        fields={appFormFields.filter((f) => f.name !== 'description')}
+        initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '' }}
         toBody={appBody}
+        saving={about.state}
         patch={(b) => patch.mutateAsync(b)}
         facts={
           <Kv
@@ -90,7 +92,17 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
               ['name', app.name],
               ['repository', app.repository_url ? <a href={app.repository_url}>{app.repository_url}</a> : '—'],
               ['branch', app.default_branch ?? '—'],
-              ['description', app.description || '—'],
+              [
+                'description',
+                <MarkdownField
+                  shape="inline"
+                  label="description"
+                  placeholder="what this product is"
+                  value={app.description}
+                  onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
+                  testId="app-description"
+                />,
+              ],
             ]}
           />
         }
