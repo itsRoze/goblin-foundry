@@ -11,10 +11,10 @@ import {
   type Transition,
 } from '@goblin/shared';
 import { formKeys, useKey } from '../keys';
-import { useApps, useDependencies, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
+import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Confirm, Empty, History, Kbd, Kv, Plus, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 
 export function TicketView() {
@@ -187,154 +187,256 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
 }
 
 /**
- * The ticket's edges, both ways round. Only the *blocked* side can be edited
- * here, because that is where the intent hangs (ADR-0004) — the tickets this
- * one blocks are edited from their own pages. Every declared blocker is shown,
- * satisfied ones struck rather than dropped: the edge is still a true fact,
- * and it bites again if the blocker reopens (ADR-0009).
+ * The ticket's edges, both ways round and both editable. An edge is one fact
+ * with two ends, so "blocked by GF-3" and "blocks GF-9" are the same
+ * declaration seen from either side; the endpoint always addresses the blocked
+ * ticket (ADR-0004), which for the `blocks` side is the *other* one. Every
+ * declared edge is shown, satisfied ones struck rather than dropped: the edge
+ * is still a true fact, and it bites again if the blocker reopens (ADR-0009).
  */
 function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
-  const { add, remove } = useDependencies(ticket.key);
-  const [picking, setPicking] = useState(false);
-  const [refusal, setRefusal] = useState<string | null>(null);
+  const { add, remove } = useDependencyEdges();
+  // one picker at a time: opening the other side closes this one, so the tile never asks two questions at once
+  const [picking, setPicking] = useState<Direction | null>(null);
+  // a refusal belongs beside the control that earned it (DESIGN.md §6), so it is filed by direction
+  const [refusal, setRefusal] = useState<{ direction: Direction; text: string } | null>(null);
   const { depends_on, blocks } = ticket.dependencies;
-  const open = new Set(ticket.blocked_by);
+  const stillOpen = new Set(ticket.blocked_by);
 
-  const write = async (run: () => Promise<unknown>) => {
+  const write = async (direction: Direction, run: () => Promise<unknown>) => {
     setRefusal(null);
     try {
       await run();
+      return true;
     } catch (e) {
-      setRefusal(refusalLine(e));
+      setRefusal({ direction, text: refusalLine(e) });
+      return false;
     }
   };
 
+  /** Which end of the new edge this ticket is; the picker supplies the other. */
+  const edgeWith = (direction: Direction, other: string) =>
+    direction === 'blocked_by' ? { blocker: other, blocked: ticket.key } : { blocker: ticket.key, blocked: other };
+
+  const section = (direction: Direction, deps: DependencyRef[], empty: string) => (
+    <DependencySection
+      direction={direction}
+      deps={deps}
+      empty={empty}
+      // a blocker is spent when it is no longer in the way; a blocked ticket is spent when it has nowhere left to go
+      spent={(d) => (direction === 'blocked_by' ? !stillOpen.has(d.key) : isTerminal(d.status))}
+      picking={picking === direction}
+      onOpen={() => {
+        setRefusal(null);
+        setPicking(picking === direction ? null : direction);
+      }}
+      onClose={() => setPicking(null)}
+      taken={[ticket.key, ...deps.map((d) => d.key)]}
+      refusal={refusal?.direction === direction ? refusal.text : null}
+      onPick={async (other) => {
+        if (await write(direction, () => add.mutateAsync(edgeWith(direction, other)))) setPicking(null);
+      }}
+      onRemove={(other) => void write(direction, () => remove.mutateAsync(edgeWith(direction, other)))}
+    />
+  );
+
   return (
     <Tile label="dependencies" testId="dependencies-tile">
-      <Kv
-        rows={[
-          [
-            'depends on',
-            <span className="gf-deps" data-testid="depends-on">
-              {depends_on.map((d) => (
-                <DependencyChip
-                  key={d.key}
-                  dep={d}
-                  satisfied={!open.has(d.key)}
-                  onRemove={() => void write(() => remove.mutateAsync(d.key))}
-                />
-              ))}
-              {picking ? null : <Plus label="add a blocker" onClick={() => setPicking(true)} />}
-            </span>,
-          ],
-          [
-            'blocks',
-            <span className="gf-deps" data-testid="blocks">
-              {blocks.length === 0 ? (
-                <span className="gf-since">nothing</span>
-              ) : (
-                // a ticket that reached a terminal status is no longer waiting on anything, so this edge is spent too
-                blocks.map((d) => <DependencyChip key={d.key} dep={d} satisfied={isTerminal(d.status)} />)
-              )}
-            </span>,
-          ],
-        ]}
-      />
-      {picking && (
-        <BlockerPicker
-          ticket={ticket}
-          onCancel={() => setPicking(false)}
-          onPick={async (key) => {
-            await write(() => add.mutateAsync(key));
-            setPicking(false);
-          }}
-        />
-      )}
-      {refusal && (
-        <p className="gf-refusal" role="alert" data-testid="dependencies-refusal">
-          {refusal}
-        </p>
-      )}
+      {section('blocked_by', depends_on, 'nothing in the way')}
+      {section('blocks', blocks, 'nothing waiting on this')}
     </Tile>
   );
 }
 
+/** The two ends of an edge, as the tile labels them. */
+type Direction = 'blocked_by' | 'blocks';
+const DIRECTION_LABEL: Record<Direction, string> = { blocked_by: 'blocked by', blocks: 'blocks' };
+
 /**
- * One edge as a chip: the key, the other ticket's title, and — on the blocked
- * side — the way to undo it. A trashed end is *not* struck: it is suspended,
- * not settled, and says so, because restoring it puts the block straight back
- * (ADR-0009).
+ * One direction: a labelled rule, the edges as rows, and the picker that adds
+ * to *this* side — opened underneath its own heading, so there is never a
+ * question which way round the new edge goes.
  */
-function DependencyChip({ dep, satisfied, onRemove }: { dep: DependencyRef; satisfied: boolean; onRemove?: () => void }) {
+function DependencySection({
+  direction,
+  deps,
+  empty,
+  spent,
+  picking,
+  taken,
+  refusal,
+  onOpen,
+  onClose,
+  onPick,
+  onRemove,
+}: {
+  direction: Direction;
+  deps: DependencyRef[];
+  empty: string;
+  spent: (d: DependencyRef) => boolean;
+  picking: boolean;
+  /** Why the last write on this side was refused — shown here, not at the foot of the tile. */
+  refusal: string | null;
+  /** Keys the picker must not offer: this ticket, and whatever this side already names. */
+  taken: string[];
+  onOpen: () => void;
+  onClose: () => void;
+  onPick: (key: string) => Promise<void>;
+  onRemove: (key: string) => void;
+}) {
+  const label = DIRECTION_LABEL[direction];
   return (
-    <span className={`gf-dep${satisfied && !dep.trashed ? ' is-satisfied' : ''}`} data-testid={`dep-${dep.key}`}>
-      <Link className="gf-dep-link" to={ticketPath(dep)}>
-        <span className="gf-key">{dep.key}</span>
-        <span className="gf-dep-title">{dep.title}</span>
-      </Link>
-      {dep.trashed && <i className="gf-dep-note">in the trash</i>}
-      {onRemove && (
-        <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} onClick={onRemove}>
-          ×
+    <section className="gf-dep-section" data-testid={`deps-${direction}`}>
+      <h3 className="gf-dep-head">
+        <span>{label}</span>
+        <span className="gf-dep-rule" />
+        <button type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onClick={onOpen}>
+          {picking ? 'close' : '+ add'}
         </button>
+      </h3>
+      {picking && <TicketPicker label={label} taken={taken} onPick={onPick} onCancel={onClose} testId={`picker-${direction}`} />}
+      {refusal && (
+        <p className="gf-refusal" role="alert" data-testid={`refusal-${direction}`}>
+          {refusal}
+        </p>
       )}
-    </span>
+      {deps.length === 0 && !picking ? (
+        <p className="gf-dep-empty">{empty}</p>
+      ) : (
+        <div className="gf-rows">
+          {deps.map((d) => (
+            <DependencyRow key={d.key} dep={d} spent={spent(d)} onRemove={() => onRemove(d.key)} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
 /**
- * Typeahead over key and title. It offers what could sensibly be declared:
- * never this ticket, never a blocker already declared, never anything in the
- * trash (the list read has none) — and `done`/`cancelled` tickets last and
- * de-emphasised, since declaring one is legal but rarely what you meant.
+ * One edge, in the same row shape the App and Project views use for tickets,
+ * so what you picked looks like what you got. A trashed end is *not* struck:
+ * it is suspended rather than settled, and says so, because restoring it puts
+ * the block straight back (ADR-0009).
  */
-function BlockerPicker({ ticket, onPick, onCancel }: { ticket: TicketDetail; onPick: (key: string) => Promise<void>; onCancel: () => void }) {
+function DependencyRow({ dep, spent, onRemove }: { dep: DependencyRef; spent: boolean; onRemove: () => void }) {
+  return (
+    <div className={`gf-row gf-dep-row${spent && !dep.trashed ? ' is-spent' : ''}`} data-testid={`dep-${dep.key}`}>
+      <Link className="gf-row-title" to={ticketPath(dep)}>
+        <span className="gf-key">{dep.key}</span>
+        {dep.title}
+      </Link>
+      <span className="gf-row-trail">
+        {dep.trashed && <span className="gf-dep-note">in the trash</span>}
+        <StatusChip status={dep.status} />
+        <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} title={`remove ${dep.key}`} onClick={onRemove}>
+          ×
+        </button>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Search by key or title, arrow keys to move, `⏎` to declare. The candidates
+ * wear the same row shape as the edges above them and the highlighted one
+ * takes the selected-row treatment (DESIGN.md §6), which is what says "these
+ * are choices" rather than "this is a list of things".
+ *
+ * It offers what could sensibly be declared: never this ticket, never an edge
+ * this side already names, never anything trashed (the list read has none) —
+ * and `done`/`cancelled` tickets last, since declaring one is legal but rarely
+ * what you meant.
+ */
+function TicketPicker({
+  label,
+  taken,
+  onPick,
+  onCancel,
+  testId,
+}: {
+  label: string;
+  taken: string[];
+  onPick: (key: string) => Promise<void>;
+  onCancel: () => void;
+  testId: string;
+}) {
   const all = useTickets();
   const [query, setQuery] = useState('');
+  const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
 
-  const declared = new Set(ticket.dependencies.depends_on.map((d) => d.key));
+  const spoken = new Set(taken);
   const needle = query.trim().toLowerCase();
   const hits = (all.data ?? [])
-    .filter((t) => t.key !== ticket.key && !declared.has(t.key))
+    .filter((t) => !spoken.has(t.key))
     .filter((t) => needle === '' || t.key.toLowerCase().includes(needle) || t.title.toLowerCase().includes(needle))
     .sort((a, b) => Number(isTerminal(a.status)) - Number(isTerminal(b.status)))
-    .slice(0, 8);
+    .slice(0, 6);
+  const at = Math.min(cursor, Math.max(hits.length - 1, 0));
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') return e.preventDefault(), onCancel();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const chosen = hits[at];
+      if (chosen) void onPick(chosen.key);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCursor((c) => {
+        const next = Math.min(c, Math.max(hits.length - 1, 0)) + (e.key === 'ArrowDown' ? 1 : -1);
+        return (next + hits.length) % Math.max(hits.length, 1);
+      });
+    }
+  };
 
   return (
-    <div className="gf-picker" data-testid="blocker-picker">
+    <div className="gf-picker" data-testid={testId}>
       <input
         ref={input}
         type="text"
-        aria-label="blocked by"
-        placeholder="blocked by — key or title"
+        role="combobox"
+        aria-expanded
+        aria-label={`${label} — search tickets`}
+        placeholder="search by key or title"
         autoComplete="off"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={formKeys(() => {
-          const first = hits[0];
-          if (first) void onPick(first.key);
-        }, onCancel)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setCursor(0);
+        }}
+        onKeyDown={onKeyDown}
       />
-      <div className="gf-picker-hits">
-        {hits.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={`gf-picker-hit${isTerminal(t.status) ? ' is-satisfied' : ''}`}
-            data-testid={`pick-${t.key}`}
-            onClick={() => void onPick(t.key)}
-          >
-            <span className="gf-key">{t.key}</span>
-            <span className="gf-dep-title">{t.title}</span>
-            <i>{t.status}</i>
-          </button>
-        ))}
-        {hits.length === 0 && <Empty>nothing to declare</Empty>}
-      </div>
+      {hits.length === 0 ? (
+        <p className="gf-dep-empty">no ticket matches</p>
+      ) : (
+        <div className="gf-rows gf-picker-hits" role="listbox">
+          {hits.map((t, i) => (
+            <button
+              key={t.key}
+              type="button"
+              role="option"
+              aria-selected={i === at}
+              className={`gf-row gf-dep-row gf-picker-hit${i === at ? ' is-on' : ''}${isTerminal(t.status) ? ' is-spent' : ''}`}
+              data-testid={`pick-${t.key}`}
+              onMouseEnter={() => setCursor(i)}
+              onClick={() => void onPick(t.key)}
+            >
+              <span className="gf-row-title">
+                <span className="gf-key">{t.key}</span>
+                {t.title}
+              </span>
+              <span className="gf-row-trail">
+                <StatusChip status={t.status} />
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {/* `esc` also closes, but the heading already carries a `close` — one way out on screen is enough */}
       <span className="gf-tile-keys">
-        <Kbd>⌘⏎</Kbd> first hit <Kbd>esc</Kbd> cancel
+        <Kbd>↑↓</Kbd> move <Kbd>⏎</Kbd> add
       </span>
     </div>
   );

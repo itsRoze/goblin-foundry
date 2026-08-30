@@ -68,13 +68,20 @@ export const useTickets = (filter: { app_id?: number | null; project_id?: number
 export const useTicket = (key: string) =>
   useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketDetailSchema), retry: false });
 
+/** One edge, named from both ends, so a caller can declare it from whichever ticket it is standing on. */
+export interface Edge {
+  blocker: string;
+  blocked: string;
+}
+
 /**
- * Declaring and undeclaring a blocker. Both hang off the *blocked* ticket
- * (ADR-0004) and both answer with that ticket, edges and all.
+ * Declaring and undeclaring an edge. The endpoint always hangs off the
+ * *blocked* ticket (ADR-0004) — saying "this blocks GF-9" from GF-3 is the
+ * same edge written from the other end, so it addresses GF-9.
  */
-export const useDependencies = (key: string) => {
-  const add = useWrite((blocker: string) => api.post(`/api/tickets/${key}/dependencies`, { blocker }));
-  const remove = useWrite((blocker: string) => api.del(`/api/tickets/${key}/dependencies/${blocker}`));
+export const useDependencyEdges = () => {
+  const add = useWrite(({ blocker, blocked }: Edge) => api.post(`/api/tickets/${blocked}/dependencies`, { blocker }));
+  const remove = useWrite(({ blocker, blocked }: Edge) => api.del(`/api/tickets/${blocked}/dependencies/${blocker}`));
   return { add, remove };
 };
 

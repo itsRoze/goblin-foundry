@@ -159,26 +159,52 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* the state tile: the lifecycle first, the ways of stopping set apart */
 .gf-actions.is-separated { margin-top: var(--gf-s3); padding-top: var(--gf-s3); border-top: 1px solid var(--gf-rule); }
 
-/* the dependencies tile: chips both ways, the satisfied ones struck rather than hidden (ADR-0009) */
-.gf-deps { display: flex; gap: var(--gf-s2); flex-wrap: wrap; align-items: center; }
-.gf-dep { display: inline-flex; gap: var(--gf-s2); align-items: center; border: 1px solid var(--gf-rule-2); padding: 2px 6px; color: var(--gf-ink); font: var(--gf-t-meta); }
-.gf-dep:hover { border-color: var(--gf-mute); }
-.gf-dep-link { display: inline-flex; gap: var(--gf-s2); align-items: baseline; color: var(--gf-ink); }
-.gf-dep-link:hover { text-decoration: none; }
-.gf-dep .gf-key { margin-right: 0; }
-.gf-dep-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch; }
-/* a blocker that is no longer in the way reads like a done thing: struck and mute, still declared */
-.gf-dep.is-satisfied .gf-dep-title { text-decoration: line-through; color: var(--gf-mute); }
-.gf-dep-note { font-style: normal; color: var(--gf-mute); }
-.gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); padding: 0 2px; }
-.gf-dep-drop:hover { color: var(--gf-ink); }
-.gf-picker { display: flex; flex-direction: column; gap: var(--gf-s1); }
+/* the dependencies tile (ADR-0009). Two peer sections, each a labelled hairline
+   over the row idiom the App and Project tiles already use for tickets — so what
+   the picker offers looks like what you get. */
+.gf-dep-section { display: flex; flex-direction: column; gap: var(--gf-s2); }
+/* the two directions are peers, not a continuous list — give the second one air to be its own group */
+.gf-dep-section + .gf-dep-section { margin-top: var(--gf-s3); }
+.gf-dep-head {
+  display: flex; align-items: center; gap: var(--gf-s3); margin: 0;
+  font: var(--gf-t-label); font-weight: 400; letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute);
+}
+/* the rule runs from the label to the control, which is what gives `+ add` a home */
+.gf-dep-rule { flex: 1; height: 1px; background: var(--gf-rule); }
+.gf-dep-add {
+  font: var(--gf-t-meta); color: var(--gf-mute); background: none; border: 1px solid var(--gf-rule-2);
+  border-radius: var(--gf-radius); padding: 1px 7px; cursor: pointer; text-transform: none; letter-spacing: 0;
+  transition: color var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease);
+}
+.gf-dep-add:hover, .gf-dep-add[aria-expanded='true'] { color: var(--gf-system); border-color: var(--gf-system); }
+.gf-dep-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }
+
+.gf-dep-row .gf-row-title { display: flex; align-items: baseline; gap: 0; min-width: 0; color: var(--gf-ink); }
+.gf-dep-row .gf-row-title:hover { text-decoration: none; color: var(--gf-link); }
+.gf-dep-row .gf-row-trail { gap: var(--gf-s3); }
+/* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009) */
+.gf-dep-row.is-spent .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
+.gf-dep-note { font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); line-height: 1; padding: 2px 5px; }
+/* removing an edge is the one destructive thing in this tile, so it is the one thing that goes human-red on hover */
+.gf-dep-drop:hover { color: var(--gf-human); }
+
+/* the picker: an open input over candidate rows, the highlighted one wearing
+   the selected-row treatment from DESIGN.md §6 — that inset is what says these
+   are choices rather than a list of things. */
+.gf-picker { display: flex; flex-direction: column; gap: var(--gf-s2); padding-bottom: var(--gf-s2); }
 .gf-picker input {
   font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
-.gf-picker-hits { display: flex; flex-direction: column; max-height: 180px; overflow-y: auto; }
-.gf-picker-hit { display: flex; gap: var(--gf-s2); align-items: baseline; text-align: left; background: none; border: none; cursor: pointer; color: var(--gf-ink); font: var(--gf-t-meta); padding: var(--gf-s1) 2px; }
-.gf-picker-hit:hover { background: var(--gf-raised); }
-/* a done or cancelled ticket is still a true blocker to declare, just not one you usually mean */
-.gf-picker-hit.is-satisfied { color: var(--gf-mute); }
+.gf-picker-hits { max-height: 190px; overflow-y: auto; }
+/* the marker is a border rather than an inset shadow: the row bleeds past the tile's
+   padding, and a shadow at that outer edge gets clipped where a border does not */
+.gf-picker-hit {
+  width: 100%; text-align: left; background: none; cursor: pointer; font: inherit;
+  border: none; border-bottom: 1px solid var(--gf-rule);
+  border-left: 2px solid transparent; padding-left: calc(var(--gf-s2) - 2px);
+}
+.gf-picker-hit.is-on { background: var(--gf-raised); border-left-color: var(--gf-system); }
+/* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
+.gf-picker-hit.is-spent .gf-row-title { color: var(--gf-mute); text-decoration: none; }
