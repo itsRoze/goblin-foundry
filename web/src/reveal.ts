@@ -68,11 +68,31 @@ export function markPending(state: EditorState, mark: string): boolean {
   return type ? type.isInSet(state.storedMarks ?? state.selection.$from.marks()) !== undefined : false;
 }
 
+/**
+ * The run of `mark` with an edge exactly at `pos` — the caret is against one of
+ * its markers, on one side or the other — or `null`.
+ */
 export function markerAt(state: EditorState, mark: string, pos: number): [number, number] | null {
   const $pos = state.doc.resolve(pos);
-  if (!$pos.parent.isTextblock) return null;
+  // a fence holds no marks, and `decorate` skips it for the same reason: the rule belongs here, where everything asks
+  if (!$pos.parent.isTextblock || $pos.parent.type.spec.code) return null;
   for (const [start, end] of touchedRuns($pos.parent, $pos.before($pos.depth), mark, pos, pos)) if (pos === start || pos === end) return [start, end];
   return null;
+}
+
+/**
+ * The run whose marker is drawn immediately *behind* the caret — the one
+ * `backspace` would be deleting if these were characters. A marker sits behind
+ * the caret at a run's opening edge when the caret is inside the run, and at
+ * its closing edge when the caret is outside it; the other two combinations
+ * put it ahead, where backspace has an ordinary character to eat instead.
+ * `decorate` draws the sides from the same rule.
+ */
+export function markerBehindCaret(state: EditorState, mark: string): [number, number] | null {
+  const { empty, $from } = state.selection;
+  if (!empty) return null;
+  const run = markerAt(state, mark, $from.pos);
+  return run && markPending(state, mark) === ($from.pos === run[0]) ? run : null;
 }
 
 function decorate(state: EditorState): DecorationSet {
@@ -94,7 +114,7 @@ function decorate(state: EditorState): DecorationSet {
         const pending = markPending(state, name);
         const openSide = caret && from === start && !pending ? 1 : -1;
         const closeSide = caret && from === end && !pending ? -1 : 1;
-        // a marker the caret has stepped past has to render on the far side of it, which means inside the run's own element
+        // `marks: []` wherever the marker falls outside the run's element; where it falls inside — an opening marker the caret has stepped past, a closing one it has not reached — it inherits the mark and renders there
         decorations.push(Decoration.widget(start, () => token(text), { side: openSide, ...(openSide < 0 ? { marks: [] } : {}), key: `${name}:${start}:open:${openSide}` }));
         decorations.push(Decoration.widget(end, () => token(text), { side: closeSide, ...(closeSide > 0 ? { marks: [] } : {}), key: `${name}:${end}:close:${closeSide}` }));
       }

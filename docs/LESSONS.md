@@ -136,8 +136,10 @@ drawn cursor — so it was built anyway, on its own merits.
 
 The structural difference matters and is worth remembering: in Obsidian the document *is* markdown,
 so the revealed characters are real and editable. Here the document is rich text and markdown is the
-serialisation, so the markers can only be decorations — visible, but not something to put a caret
-between. Anything that promises otherwise would be a source mode, which is a different feature.
+serialisation, so the markers can only be decorations. *(Amended 2026-08-30: this entry went on to
+say they are "not something to put a caret between". The caret cannot literally go there, but the
+arrow and backspace models below simulate it convincingly, which is the point of `stepMark`. What
+remains true is that a real source mode — editing the markers as text — is a different feature.)*
 
 ## 2026-08-30 — `selectionchange` is async, so a decoration test must retry
 
@@ -185,11 +187,35 @@ Showing which side of a revealed marker the caret is on needs the marker's DOM t
 it. Flipping the widget's `side` did nothing: with `marks: []` — added so a backtick does not render
 *as* code — ProseMirror keeps the widget outside the run's element either way, so all four states
 produced identical DOM. The marker only crosses the caret when it is allowed to inherit the run's
-mark and render *inside* `<code>`. So `marks: []` is right for a marker before the caret and wrong
-for one after it, and the decoration picks per side. Two consequences: the run's element text then
+mark and render *inside* `<code>`. The rule is `marks: []` wherever the marker falls *outside* the
+run's element — which is an opening marker the caret has not passed, and a closing one it has —
+and inherited marks wherever it falls inside. The decoration picks per side. Two consequences: the run's element text then
 includes the marker (assert with the caret away), and `.gf-syntax` has to outrank the run's own
 colour rule.
 
 This is the part `prosemirror-codemark` solves with a drawn fake cursor. Letting the real caret do
 the work is cheaper and has no second cursor to keep in sync, but it only works because there is a
 marker there to move — it would not generalise to marks we do not reveal.
+
+## 2026-08-30 — Obsidian does not need a `stepMark`, and that is the whole difference
+
+Asked to research Linear and Obsidian for the caret-at-a-marker problem. Obsidian's Live Preview
+states its goal as "only displaying Markdown syntax around the cursor", which is the behaviour we
+copied — but it needs no arrow-key model at all, because its document *is* markdown: the backticks
+are characters, so arrows move through them and backspace deletes them without anyone writing code.
+Everything in `stepMark` and the backspace rule exists only because our document is rich text and
+the markers are drawn. That is why the ProseMirror ecosystem has `prosemirror-codemark` and Obsidian
+has no equivalent.
+
+Linear's behaviour could not be confirmed this round either — its editor docs say only that markdown
+"will be converted into rich text automatically". Two rounds of looking have now failed to verify
+anything about Linear specifically; the design rests on codemark and Obsidian, not on it.
+
+## 2026-08-30 — the arrow model has four stops going right and three going left
+
+`stepMark` gives a run four visible positions, but only rightward. Arrowing *left* off the first
+character lands on the run's opening edge, where ProseMirror takes the marks of the *preceding* text
+— so the caret is already "outside" and the inside-the-opening-marker stop is skipped. It is a
+missing stop rather than a trap: leftward you end up outside the mark, which is where you were
+going. Making it symmetric would mean intercepting an ordinary move to set `storedMarks`, which is
+more machinery than the asymmetry costs.

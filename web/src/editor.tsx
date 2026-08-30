@@ -87,13 +87,15 @@ interface Control {
 const title = (c: Control) => (c.key ? `${c.name} · ${c.key}` : c.name);
 
 /** Words, not glyphs: kinds and states are single words in this GUI (DESIGN.md §9). */
-const MARK_LABEL: Record<string, ReactNode> = { bold: <b>b</b>, italic: <i>i</i>, code: 'code', strike: <s>s</s> };
-const MARK_NAME: Record<string, string> = { bold: 'bold', italic: 'italic', code: 'code', strike: 'strikethrough' };
+/** Keyed by the table's own names, so a mark added there is a type error here until it is given a face. */
+type MarkName = (typeof INLINE_MARKS)[number]['name'];
+const MARK_LABEL: Record<MarkName, ReactNode> = { bold: <b>b</b>, italic: <i>i</i>, code: 'code', strike: <s>s</s> };
+const MARK_NAME: Record<MarkName, string> = { bold: 'bold', italic: 'italic', code: 'code', strike: 'strikethrough' };
 
 const MARKS: Control[] = INLINE_MARKS.map(({ name, key }) => ({
   id: name,
   label: MARK_LABEL[name],
-  name: MARK_NAME[name] ?? name,
+  name: MARK_NAME[name],
   key,
   active: (e: Editor) => e.isActive(name),
   run: (e: Editor) => toggleWholeMark(e, name),

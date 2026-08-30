@@ -303,21 +303,21 @@ test('backspace against a revealed marker deletes the marker, then the character
   await newTicket(page, 'Backspace the backtick');
   const field = design(page);
   await field.click();
-  await page.keyboard.type('call `parse` now');
+  // the run opens the line, so at its opening edge the caret is inside it and the marker is drawn behind
+  await page.keyboard.type('`parse` now');
   await expect(field.locator('code')).toHaveText('parse');
-
-  // the caret goes against the opening backtick, where the marker is drawn (clicked, not arrowed — `selectionchange` is async)
   await field.locator('code').click({ position: { x: 0, y: 6 } });
   await page.waitForTimeout(120);
 
   // the first press deletes the marker, which is to say it takes the mark off the run; no text goes
   await page.keyboard.press('Backspace');
   await expect(field.locator('code')).toHaveCount(0);
-  await expect(field.locator('p').first()).toHaveText('call parse now');
+  await expect(field.locator('p').first()).toHaveText('parse now');
 
-  // the second is an ordinary backspace again
+  // the second is an ordinary backspace again — and there is nothing before it, so nothing happens
+  await page.keyboard.type('X');
   await page.keyboard.press('Backspace');
-  await expect(field.locator('p').first()).toHaveText('callparse now');
+  await expect(field.locator('p').first()).toHaveText('parse now');
 });
 
 test('the design field owns its tile: the mode line sits on the tile edge, not under the last line written', async ({ page }) => {
@@ -342,6 +342,29 @@ test('the design field owns its tile: the mode line sits on the tile edge, not u
   const tileBox = (await tile.boundingBox())!;
   const lineBox = (await tile.getByTestId('mode-line').boundingBox())!;
   expect(tileBox.y + tileBox.height - (lineBox.y + lineBox.height)).toBeLessThan(24);
+});
+
+test('backspace inside a run deletes a character, not the whole run', async ({ page }) => {
+  await newTicket(page, 'Backspace inside');
+  const field = design(page);
+  await field.click();
+  await page.keyboard.type('call `parse` now');
+
+  // the caret sits after the last character of the run, where the closing marker is drawn on its far side:
+  // there is no marker against it, so backspace is an ordinary backspace
+  const run = (await field.locator('code').boundingBox())!;
+  await page.mouse.click(run.x + run.width - 1, run.y + run.height / 2);
+  await page.waitForTimeout(120);
+
+  await page.keyboard.press('Backspace');
+  await expect(field.locator('code')).toContainText('pars');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('design-tile').getByTestId('saving')).toHaveText('saved');
+  const stored: string = await page.request
+    .get(`/api/tickets/${page.url().split('/').pop()}`)
+    .then((r) => r.json())
+    .then((t) => t.design);
+  expect(stored.trim()).toBe('call `pars` now');
 });
 
 test('a run that opens the line can be arrowed out of, and typing there is plain again', async ({ page }) => {

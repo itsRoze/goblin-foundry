@@ -246,7 +246,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  * whatever you were aiming at out from under you. It is absolutely placed, and
  * a block field keeps its seat reserved whether or not it is sitting.
  */
-.gf-md.is-block { padding-bottom: 30px; }
+.gf-md.is-block { padding-bottom: 42px; }
 .gf-md .tiptap { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
 /* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
 .gf-md.is-block .tiptap { min-height: 1.5em; }

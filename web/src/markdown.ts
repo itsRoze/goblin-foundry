@@ -2,7 +2,7 @@ import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
-import { RevealSyntax, markPending, markerAt } from './reveal';
+import { RevealSyntax, markPending, markerAt, markerBehindCaret } from './reveal';
 import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
 /**
@@ -81,7 +81,7 @@ function stepMark(editor: Editor, towards: 'left' | 'right'): boolean {
   const { state } = editor;
   const { empty, $from } = state.selection;
   if (!empty) return false;
-  for (const { name } of INLINE_MARKS) {
+  for (const { name } of [...INLINE_MARKS].reverse()) {
     const type = state.schema.marks[name];
     const run = type && markerAt(state, name, $from.pos);
     if (!run) continue;
@@ -117,10 +117,10 @@ const WholeMarks = Extension.create({
       ArrowRight: () => stepMark(this.editor, 'right'),
       Backspace: () => {
         const { state } = this.editor;
-        const { empty, $from } = state.selection;
-        if (!empty) return false;
-        for (const { name } of INLINE_MARKS) {
-          const run = markerAt(state, name, $from.pos);
+        const { $from } = state.selection;
+        // innermost first: nested runs draw their markers outside-in, so the one against the caret is the last of them
+        for (const { name } of [...INLINE_MARKS].reverse()) {
+          const run = markerBehindCaret(state, name);
           if (run)
             return this.editor
               .chain()
