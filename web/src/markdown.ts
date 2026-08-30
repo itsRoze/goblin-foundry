@@ -2,7 +2,7 @@ import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
-import { RevealSyntax, markerAt } from './reveal';
+import { RevealSyntax, markPending, markerAt } from './reveal';
 import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
 /**
@@ -64,6 +64,41 @@ export const toggleWholeMark = (editor: Editor, name: string): boolean => {
 };
 
 /**
+ * Arrowing across a run's edge, the way an editor that shows its markdown has
+ * to (the model `prosemirror-codemark` established): a run `` `test` `` has
+ * four positions you can see — outside the opening marker, inside it, inside
+ * the closing one, outside it — and only two the document knows about. So at
+ * an edge the arrow does not move the caret; it steps the caret across the
+ * marker by turning the mark on or off for whatever you type next, and the
+ * marker swaps sides to show where you now are. Everywhere else it is an
+ * ordinary arrow.
+ *
+ * This is what makes a run that opens a block escapable at all: there is no
+ * position to its left to arrow into, so without this the caret can never get
+ * out from under the mark.
+ */
+function stepMark(editor: Editor, towards: 'left' | 'right'): boolean {
+  const { state } = editor;
+  const { empty, $from } = state.selection;
+  if (!empty) return false;
+  for (const { name } of INLINE_MARKS) {
+    const type = state.schema.marks[name];
+    const run = type && markerAt(state, name, $from.pos);
+    if (!run) continue;
+    const pending = markPending(state, name);
+    // stepping in at the edge you are arriving at, and out at the edge you are leaving by
+    const inward = towards === 'left' ? $from.pos === run[1] : $from.pos === run[0];
+    if (pending === inward) continue;
+    const marks = state.storedMarks ?? $from.marks();
+    return editor.commands.command(({ tr, dispatch }) => {
+      if (dispatch) dispatch(tr.setStoredMarks(inward ? type.create().addToSet(marks) : marks.filter((m) => m.type !== type)));
+      return true;
+    });
+  }
+  return false;
+}
+
+/**
  * The keys that act on a whole span: `⌘B`/`⌘I`/`⌘E`/`⌘⇧X`, so a key and the
  * mode line's button are one behaviour; and `backspace` against a revealed
  * marker, which deletes the marker — that is, takes the mark off the run.
@@ -77,6 +112,9 @@ const WholeMarks = Extension.create({
   addKeyboardShortcuts() {
     return {
       ...Object.fromEntries(INLINE_MARKS.map(({ name, binding }) => [binding, () => toggleWholeMark(this.editor, name)])),
+      // the four visual positions a run's edges have, and the two document positions they share (see `stepMark`)
+      ArrowLeft: () => stepMark(this.editor, 'left'),
+      ArrowRight: () => stepMark(this.editor, 'right'),
       Backspace: () => {
         const { state } = this.editor;
         const { empty, $from } = state.selection;

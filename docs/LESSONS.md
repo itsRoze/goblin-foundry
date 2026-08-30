@@ -178,3 +178,18 @@ Making the design field fill its tile (`flex: 1` down the chain) did nothing: `@
 being applied inside a parent that was not a flex container and had auto height. The wrapper takes a
 `className`, so the growth is handed down through `.gf-md-content` explicitly. Measuring the boxes
 found it in one pass; guessing at the CSS would not have.
+
+## 2026-08-30 — a widget only moves across the caret if it inherits the mark
+
+Showing which side of a revealed marker the caret is on needs the marker's DOM to move relative to
+it. Flipping the widget's `side` did nothing: with `marks: []` — added so a backtick does not render
+*as* code — ProseMirror keeps the widget outside the run's element either way, so all four states
+produced identical DOM. The marker only crosses the caret when it is allowed to inherit the run's
+mark and render *inside* `<code>`. So `marks: []` is right for a marker before the caret and wrong
+for one after it, and the decoration picks per side. Two consequences: the run's element text then
+includes the marker (assert with the caret away), and `.gf-syntax` has to outrank the run's own
+colour rule.
+
+This is the part `prosemirror-codemark` solves with a drawn fake cursor. Letting the real caret do
+the work is cheaper and has no second cursor to keep in sync, but it only works because there is a
+marker there to move — it would not generalise to marks we do not reveal.

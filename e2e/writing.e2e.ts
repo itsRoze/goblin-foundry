@@ -343,3 +343,30 @@ test('the design field owns its tile: the mode line sits on the tile edge, not u
   const lineBox = (await tile.getByTestId('mode-line').boundingBox())!;
   expect(tileBox.y + tileBox.height - (lineBox.y + lineBox.height)).toBeLessThan(24);
 });
+
+test('a run that opens the line can be arrowed out of, and typing there is plain again', async ({ page }) => {
+  await newTicket(page, 'Escape the backtick');
+  const field = design(page);
+  await field.click();
+
+  // the whole line is one code span, so there is no position to its left to arrow into
+  await page.keyboard.type('`test` ');
+  await expect(field.locator('code')).toHaveText('test');
+  await field.locator('code').click({ position: { x: 0, y: 6 } });
+  await page.waitForTimeout(120);
+
+  // the arrow does not move the caret, it steps it outside the mark: what comes next is no longer code
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.type('call ');
+
+  // asserted with the caret away, because a revealed marker is part of what the run renders as
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(field.locator('.gf-syntax')).toHaveCount(0);
+  await expect(field.locator('code')).toHaveText('test');
+  await expect(page.getByTestId('design-tile').getByTestId('saving')).toHaveText('saved');
+  const after: string = await page.request
+    .get(`/api/tickets/${page.url().split('/').pop()}`)
+    .then((r) => r.json())
+    .then((t) => t.design);
+  expect(after.trim()).toBe('call `test`');
+});

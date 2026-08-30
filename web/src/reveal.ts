@@ -57,6 +57,17 @@ function touchedRuns(block: Node, blockPos: number, mark: string, from: number, 
  * decorations draw and what `backspace` deletes have to be the same thing, so
  * both ask this.
  */
+/**
+ * Whether what you type at the caret would carry `mark`. At a run's edge the
+ * document cannot say on its own — the position is both just inside and just
+ * outside — so the answer is the stored marks when there are any, and what the
+ * position implies when there are not.
+ */
+export function markPending(state: EditorState, mark: string): boolean {
+  const type = state.schema.marks[mark];
+  return type ? type.isInSet(state.storedMarks ?? state.selection.$from.marks()) !== undefined : false;
+}
+
 export function markerAt(state: EditorState, mark: string, pos: number): [number, number] | null {
   const $pos = state.doc.resolve(pos);
   if (!$pos.parent.isTextblock) return null;
@@ -73,8 +84,19 @@ function decorate(state: EditorState): DecorationSet {
     if (node.type.spec.code) return false;
     for (const { name, token: text } of INLINE_MARKS)
       for (const [start, end] of touchedRuns(node, pos, name, from, to)) {
-        decorations.push(Decoration.widget(start, () => token(text), { side: -1, key: `${name}:${start}:open` }));
-        decorations.push(Decoration.widget(end, () => token(text), { side: 1, key: `${name}:${end}:close` }));
+        /*
+         * A marker sits between the caret and the run when the caret is
+         * outside, and beyond the caret when it is inside — which is how the
+         * two visual positions that share one document position tell
+         * themselves apart (see `stepMark`).
+         */
+        const caret = from === to;
+        const pending = markPending(state, name);
+        const openSide = caret && from === start && !pending ? 1 : -1;
+        const closeSide = caret && from === end && !pending ? -1 : 1;
+        // a marker the caret has stepped past has to render on the far side of it, which means inside the run's own element
+        decorations.push(Decoration.widget(start, () => token(text), { side: openSide, ...(openSide < 0 ? { marks: [] } : {}), key: `${name}:${start}:open:${openSide}` }));
+        decorations.push(Decoration.widget(end, () => token(text), { side: closeSide, ...(closeSide > 0 ? { marks: [] } : {}), key: `${name}:${end}:close:${closeSide}` }));
       }
     return false;
   });
