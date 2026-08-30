@@ -19,11 +19,27 @@ a:hover { text-decoration: underline; }
 .gf-counts { display: flex; gap: var(--gf-s4); align-items: center; }
 .gf-counts b { color: var(--gf-ink); font-weight: 400; font-size: 15px; margin-right: 4px; }
 
+/* the bar collapses to workspace numbers + counts when it runs out of room (DESIGN.md §5) */
+@media (max-width: 899px) {
+  .gf-bar { gap: var(--gf-s3); padding: 0 var(--gf-s2); }
+  .gf-ws-label, .gf-count-label { display: none; }
+  .gf-ws a, .gf-counts a { padding: 3px 6px; }
+  .gf-counts { gap: var(--gf-s3); }
+}
+/* narrower still, the crumb is the first thing to go: the page itself says where you are */
+@media (max-width: 599px) { .gf-crumb { display: none; } }
+
 /* the desk: a single column, a tile grid at laptop width and up (DESIGN.md §5) */
 .gf-desk { padding: var(--gf-gap); display: grid; gap: var(--gf-gap); grid-template-columns: 1fr; align-content: start; }
 .gf-title { grid-column: 1 / -1; margin: 0; font: var(--gf-t-title); }
 .gf-title-parent { color: var(--gf-mute); }
-@media (min-width: 1440px) { .gf-desk { grid-template-columns: 1fr 1fr; } }
+/* DESIGN.md §5: past laptop width the desk gains columns so more tiles open, rather than the
+   same tiles getting bigger. Without the tiers above 1440 an ultrawide gets two ~1250px tiles,
+   which is exactly the failure mode §5 names. The 1920 tier is drift from §5's single 2560 step:
+   two columns already stretch past comfort well before 2560. */
+@media (min-width: 1440px) { .gf-desk { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1920px) { .gf-desk { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 2560px) { .gf-desk { grid-template-columns: repeat(4, 1fr); } }
 
 /* tile */
 .gf-tile { background: var(--gf-tile); border: 1px solid var(--gf-rule); border-radius: var(--gf-radius); display: flex; flex-direction: column; min-width: 0; transition: border-color var(--gf-fast) var(--gf-ease); }

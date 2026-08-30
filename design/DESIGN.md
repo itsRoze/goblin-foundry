@@ -67,10 +67,10 @@ IBM Plex Sans for words, JetBrains Mono for identifiers and telemetry. Mono is a
 ## 5. Layout
 
 - The **bar** (32px): workspaces left, breadcrumb centre (`app / project`), counts right. Active workspace: `--gf-system` border. **S1 workspaces:** `1 board · 2 project · 3 app` — the kanban *is* home; there is no separate Home/attention screen until runs exist. `runs` and `evidence` workspaces and the live-run mini meter arrive with the controller (S5/S6). No `design rN @sha` in the breadcrumb: designs are edited in place in S1 (ADR-0005).
-- The **desk**: a CSS grid of tiles with `--gf-gap` between them. Laptop (1440): 2×2. Wide (2560): 3×2, and more tiles open (ticket detail, planning) rather than the same tiles getting bigger.
+- The **desk**: a CSS grid of tiles with `--gf-gap` between them. Laptop (1440): 2 columns. Wide: 3 at 1920, 4 at 2560 — more tiles open (ticket detail, planning) rather than the same tiles getting bigger. The 1920 step is drift from the original single 2560 step: two columns already stretch a tile past 900px well before 2560, which is the failure mode this rule exists to prevent. `e2e/z-responsive.e2e.ts` holds the tiers and the no-sideways-scroll rule.
 - A **tile**: header (label + subtitle + key hints, on `--gf-raised`) and body (`--gf-pad-y` / `--gf-pad-x`). One tile is focused.
 - Inside tiles, content is **rows** (grid columns, 1px rule between) or **cards** (kanban only).
-- **Small layouts** (mobile-first): below laptop width the desk is a single column and tiles stack in workspace order; the kanban scrolls horizontally *inside* its tile, never the page; drag works on touch (long-press to lift); the bar collapses to workspace numbers + counts. The tile grid appears at ≥1440.
+- **Small layouts** (mobile-first): below laptop width the desk is a single column and tiles stack in workspace order; the kanban scrolls horizontally *inside* its tile, never the page; drag works on touch (long-press to lift); the bar collapses to workspace numbers + counts (below 900px; the crumb goes at 600px, but `trash` and `settings` never do — they are the only way to reach those pages). The tile grid appears at ≥1440.
 
 ## 6. Components (as built in the mockups)
 
