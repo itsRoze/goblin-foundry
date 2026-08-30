@@ -1,0 +1,79 @@
+{
+  "extends": [
+    "stylelint-config-standard"
+  ],
+  "rules": {
+    "declaration-block-single-line-max-declarations": null,
+    "rule-empty-line-before": null,
+    "comment-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "custom-property-empty-line-before": null,
+    "declaration-empty-line-before": null,
+    "media-feature-range-notation": "prefix",
+    "value-keyword-case": [
+      "lower",
+      {
+        "ignoreProperties": [
+          "font-family",
+          "font",
+          "/^--gf-/"
+        ]
+      }
+    ],
+    "selector-class-pattern": "^gf-[a-z0-9-]+$|^is-[a-z0-9-]+$",
+    "custom-property-pattern": "^gf-[a-z0-9-]+$",
+    "color-no-hex": [
+      true,
+      {
+        "message": "DESIGN.md \u00a72/\u00a73: colour is a token \u2014 use var(--gf-*). The hexes live in design/tokens.css."
+      }
+    ],
+    "declaration-property-value-disallowed-list": {
+      "border-radius": [
+        "/^(?!0$|var\\(--gf-radius\\)$).+/"
+      ],
+      "background": [
+        "/gradient/"
+      ],
+      "background-image": [
+        "/gradient/"
+      ],
+      "backdrop-filter": [
+        "/.+/"
+      ],
+      "filter": [
+        "/blur/"
+      ],
+      "box-shadow": [
+        "/^(?!inset ).+/"
+      ],
+      "opacity": [
+        "/^0?\\.[0-9]+$/"
+      ]
+    },
+    "declaration-property-value-no-unknown": true,
+    "no-duplicate-selectors": null,
+    "no-descending-specificity": [
+      true,
+      {
+        "severity": "warning"
+      }
+    ],
+    "font-family-no-missing-generic-family-keyword": null
+  },
+  "overrides": [
+    {
+      "files": [
+        "design/tokens.css"
+      ],
+      "rules": {
+        "color-no-hex": null,
+        "declaration-property-value-disallowed-list": null
+      }
+    }
+  ],
+  "ignoreFiles": [
+    "**/node_modules/**",
+    "web/dist/**"
+  ]
+}

@@ -67,7 +67,6 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-row-title { font: var(--gf-t-h); grid-column: 1; }
 .gf-row-meta { font: var(--gf-t-meta); color: var(--gf-mute); grid-column: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gf-row-trail { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: center; gap: var(--gf-s2); }
-.gf-row-kind { font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); margin-right: var(--gf-s2); }
 .gf-group-head { font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); padding: var(--gf-s3) 0 var(--gf-s1); }
 
 /* kv */
@@ -140,6 +139,10 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-btn:hover { border-color: var(--gf-mute); }
 .gf-btn.is-primary { color: var(--gf-system); border-color: var(--gf-system); }
 .gf-btn.is-danger { color: var(--gf-human); }
+/* DESIGN.md's "never opacity" is about state *marks* — blocked titles, illegal drop columns —
+   which must read as colour and strike, not as dimming. A disabled control is not a state mark:
+   it is the absence of an affordance, and dimming is what that has always looked like. */
+/* stylelint-disable-next-line declaration-property-value-disallowed-list */
 .gf-btn:disabled { opacity: .6; cursor: default; }
 .gf-actions, .gf-form-actions { display: flex; gap: var(--gf-s2); flex-wrap: wrap; }
 .gf-form { display: flex; flex-direction: column; gap: var(--gf-s3); padding-bottom: var(--gf-s3); border-bottom: 1px solid var(--gf-rule); }
@@ -216,7 +219,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
 /* rows bleed past the tile's padding, so the vertical scroll must not imply a horizontal one */
-.gf-picker-hits { max-height: 190px; overflow-y: auto; overflow-x: hidden; }
+.gf-picker-hits { max-height: 190px; overflow: hidden auto; }
 /* the marker is a border rather than an inset shadow: the row bleeds past the tile's
    padding, and a shadow at that outer edge gets clipped where a border does not */
 .gf-picker-hit {

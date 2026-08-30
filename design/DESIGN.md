@@ -2,7 +2,7 @@
 
 **Status:** working notes, not a strict design system. This describes what the mockups do and why, so new screens look like they belong. When the product needs something these notes don't cover, do the sensible thing and update the notes afterwards. Drift is allowed; unexplained drift is not.
 
-Tokens live in `design/tokens.css`. Rough mockups that produced this: `design/rough-v5/` (Everforest, flat), history in `rough-v0…v4`.
+Tokens live in `design/tokens.css`, and `bun run lint` enforces the mechanical half of these notes: colour only via `var(--gf-*)`, `--gf-radius` only, no gradients/shadows/blur, opacity never a state mark (`.gf-btn:disabled` is the one documented exception), and no rule left behind once its component is gone. Rough mockups that produced this: `design/rough-v5/` (Everforest, flat), history in `rough-v0…v4`.
 
 **Which mockups apply to S1:** `Kanban`, `Ticket`, `Project`, `Components`, `Tokens`. `Main` (Home with attention rows, claim order, live run meter) is an S5/S6 artefact — it assumes `needs_human`, leases and runs, none of which exist in S1 (ADR-0006).
 

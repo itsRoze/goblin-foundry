@@ -21,7 +21,13 @@ bun run build      # one-off GUI build
 bun test           # in-process API + CLI tests (fresh temp database per test)
 bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium` once)
 bun run typecheck
+bun run lint       # stylelint (DESIGN.md as rules) + the dead-CSS check
 bun run db:push    # drizzle-kit push against the dev database
 ```
+
+`bun run lint` is where the house style stops depending on review. stylelint holds the parts
+of DESIGN.md a machine can hold — colour comes from a token, radius is `0`, no gradients,
+shadows or blur, and opacity is never a state mark — and `scripts/unused-css.ts` finds rules
+the app no longer uses, which stylelint cannot see because it never reads the JSX.
 
 The database lives at `~/.goblin-foundry/foundry.db` (WAL). Set `GF_DB_PATH` to use another file (tests do), `GF_PORT` to change the port.

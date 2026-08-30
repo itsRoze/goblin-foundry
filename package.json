@@ -1,17 +1,27 @@
 {
   "name": "goblin-foundry",
   "private": true,
-  "workspaces": ["shared", "api", "web", "cli"],
+  "workspaces": [
+    "shared",
+    "api",
+    "web",
+    "cli"
+  ],
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '@goblin/web' build",
     "typecheck": "bun run --filter '*' typecheck",
+    "lint": "bun run lint:css && bun run lint:dead-css",
+    "lint:css": "stylelint \"web/src/**/*.css\" \"design/*.css\"",
+    "lint:dead-css": "bun scripts/unused-css.ts",
     "test": "bun test",
     "test:e2e": "playwright test",
     "db:push": "bun run --filter '@goblin/api' db:push"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "stylelint": "^17.14.1",
+    "stylelint-config-standard": "^40.0.0",
     "typescript": "^5.9.2"
   }
 }
