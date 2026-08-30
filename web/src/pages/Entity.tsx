@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { parseSlugId, slugPath, type App } from '@goblin/shared';
 import { ProblemError } from '../api';
-import { Saving, focusEditor, type SaveState } from '../editor';
+import { MarkdownField, Saving, focusEditor, type SaveState, type Saver } from '../editor';
 import { useKey } from '../keys';
 import { useApps, useIntent } from '../queries';
 import { Chip, Empty, InlineForm, Tile, type Field } from '../ui';
@@ -121,6 +121,34 @@ export function AboutTile<Body>({
         </button>
       </div>
     </Tile>
+  );
+}
+
+/**
+ * An App's or a Project's description: a sentence or two, so the inline shape
+ * (emphasis, code, links). Both views render it as the `description` row of
+ * their `about` tile, and it saves itself like every other field on a view.
+ */
+export function DescriptionField({
+  kind,
+  value,
+  saving,
+  patch,
+}: {
+  kind: 'app' | 'project';
+  value: string;
+  saving: Saver;
+  patch: (body: { description: string }) => Promise<unknown>;
+}) {
+  return (
+    <MarkdownField
+      shape="inline"
+      label="description"
+      placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}
+      value={value}
+      onSave={(description) => saving.run(() => patch({ description }))}
+      testId={`${kind}-description`}
+    />
   );
 }
 

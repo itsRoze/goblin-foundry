@@ -10,13 +10,21 @@ import type { Locator, Page } from '@playwright/test';
 
 const design = (page: Page) => page.getByTestId('design-tile').getByRole('textbox');
 
-/** Paste plain text the way a person does: the editor decides it is markdown, not the clipboard. */
-async function pasteMarkdown(field: Locator, markdown: string) {
-  await field.evaluate((element, text) => {
-    const data = new DataTransfer();
-    data.setData('text/plain', text);
-    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
-  }, markdown);
+/**
+ * Paste the way a person does: the editor decides the text is markdown, not
+ * the clipboard. `html` is the highlighted flavour a code editor puts on the
+ * clipboard beside the text — it must not stop the markdown from parsing.
+ */
+async function pasteMarkdown(field: Locator, markdown: string, html?: string) {
+  await field.evaluate(
+    (element, { text, html }) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', text);
+      if (html) data.setData('text/html', html);
+      element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    },
+    { text: markdown, html },
+  );
 }
 
 async function newTicket(page: Page, title: string) {
@@ -77,6 +85,13 @@ test('a design pasted as plain text arrives as markdown, and lets the ticket be 
   await expect(design(page).locator('h2')).toHaveText('What to build');
   await expect(design(page).locator('blockquote')).toContainText('from the planner');
   await expect(design(page).locator('input[type="checkbox"]')).toHaveCount(2);
+
+  // a design copied out of a code editor arrives with a highlighted `text/html` beside the text; the text is still what counts
+  await design(page).click();
+  await page.keyboard.press('ControlOrMeta+A');
+  await pasteMarkdown(design(page), '### From an editor\n\n- still a list\n', '<pre style="color:#abb2bf">### From an editor</pre>');
+  await expect(design(page).locator('h3')).toHaveText('From an editor');
+  await expect(design(page).locator('li')).toHaveText(['still a list']);
 
   await page.getByTestId('app-select').selectOption({ label: 'Paste target' });
   await page.getByTestId('move-plan').click();

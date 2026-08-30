@@ -5,7 +5,7 @@ import { useApps, useEvents, usePatchProject, useProject, useTickets } from '../
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
 import { Empty, History, Kbd, Kv, Tile, describeEvent } from '../ui';
-import { AboutTile, NotFound, appOptions, useAppNamer, useSlugParam } from './Entity';
+import { AboutTile, DescriptionField, NotFound, appOptions, useAppNamer, useSlugParam } from './Entity';
 
 export function ProjectView() {
   const { id } = useSlugParam('projects', undefined);
@@ -82,17 +82,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
             rows={[
               ['name', project.name],
               ['app', app ? <Link to={slugPath('apps', app)}>{app.name}</Link> : 'no app yet'],
-              [
-                'description',
-                <MarkdownField
-                  shape="inline"
-                  label="description"
-                  placeholder="what this project is"
-                  value={project.description}
-                  onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
-                  testId="project-description"
-                />,
-              ],
+              ['description', <DescriptionField kind="project" value={project.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
             ]}
           />
         }

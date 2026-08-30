@@ -79,14 +79,17 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   // the number is the identity; a bare number or a stale prefix lands on the canonical key (ADR-0002)
   if (ticket.key !== key) return <Navigate to={ticketPath(ticket)} replace />;
 
+  /** A write from the about tile's non-prose controls, reported in the tile's one line and rethrown so the caller knows it did not land. */
   const save = async (body: Parameters<typeof patch.mutateAsync>[0]) => {
     setRefusal(null);
     try {
       await patch.mutateAsync(body);
     } catch (e) {
       setRefusal(refusalLine(e));
+      throw e;
     }
   };
+  const trySave = (body: Parameters<typeof patch.mutateAsync>[0]) => void save(body).catch(() => {});
 
   return (
     <>
@@ -115,7 +118,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         keys={
           <>
             <Saving state={about.state} />
-            <Kbd>e</Kbd> edit
+            <Kbd>e</Kbd> write
           </>
         }
         focus
@@ -127,7 +130,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="description"
           placeholder="no description — press e"
           value={ticket.description}
-          onSave={(description) => about.run(() => save({ description }))}
+          onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
           testId="description"
         />
         <Kv
@@ -138,7 +141,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                 aria-label="app"
                 data-testid="app-select"
                 value={ticket.app_id === null ? '' : String(ticket.app_id)}
-                onChange={(e) => void save({ app_id: e.target.value ? Number(e.target.value) : null, project_id: null })}
+                onChange={(e) => trySave({ app_id: e.target.value ? Number(e.target.value) : null, project_id: null })}
               >
                 <option value="">no app</option>
                 {(apps.data ?? []).map((a) => (
@@ -154,7 +157,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                 aria-label="project"
                 data-testid="project-select"
                 value={ticket.project_id === null ? '' : String(ticket.project_id)}
-                onChange={(e) => void save({ project_id: e.target.value ? Number(e.target.value) : null })}
+                onChange={(e) => trySave({ project_id: e.target.value ? Number(e.target.value) : null })}
               >
                 <option value="">no project</option>
                 {(projects.data ?? [])
@@ -188,7 +191,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="ticket design"
           placeholder="no ticket design — the plan for this slice goes here"
           value={ticket.design}
-          onSave={(body) => design.run(() => save({ design: body }))}
+          onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
           testId="design"
         />
       </Tile>
@@ -591,7 +594,11 @@ function InlineTitle({ value, onSave }: { value: string; onSave: (title: string)
       onChange={(e) => setText(e.target.value)}
       onKeyDown={formKeys(
         () => {
-          void onSave(text.trim()).then(() => setEditing(false));
+          // a refused rename keeps the input open with the refusal beside it
+          void onSave(text.trim()).then(
+            () => setEditing(false),
+            () => {},
+          );
         },
         () => setEditing(false),
       )}
