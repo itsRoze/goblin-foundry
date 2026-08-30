@@ -1,7 +1,8 @@
+import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
-import type { AnyExtension, JSONContent } from '@tiptap/core';
+import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
 /**
  * The markdown seam (ADR-0005). Markdown is the only stored form, so the
@@ -35,8 +36,31 @@ const inlineKit = () =>
     link: { openOnClick: false },
   });
 
+/**
+ * Toggle a mark on the caret's whole span. The backticks around `code` are not
+ * in the document, so with nothing selected the only thing you can point at is
+ * the span itself: putting the caret in it and asking for `code` means "this
+ * one", not "whatever I type next". A real selection is left alone — there you
+ * did say what you meant.
+ */
+export const toggleWholeMark = (editor: Editor, name: string): boolean => {
+  const chain = editor.chain().focus();
+  return (editor.state.selection.empty ? chain.extendMarkRange(name) : chain).toggleMark(name).run();
+};
+
+/** The same rule from the keyboard, so `⌘E` and the mode line's `code` are one behaviour with two triggers. */
+const WholeMarks = Extension.create({
+  name: 'wholeMarks',
+  // ahead of StarterKit's own bindings, which act on the caret rather than the span
+  priority: 1000,
+  addKeyboardShortcuts() {
+    const whole = (name: string) => () => toggleWholeMark(this.editor, name);
+    return { 'Mod-b': whole('bold'), 'Mod-i': whole('italic'), 'Mod-e': whole('code') };
+  },
+});
+
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
-  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown] : [inlineKit(), Markdown];
+  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks] : [inlineKit(), Markdown, WholeMarks];
 
 const managers = new Map<EditorShape, MarkdownManager>();
 

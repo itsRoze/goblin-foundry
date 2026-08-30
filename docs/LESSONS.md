@@ -115,3 +115,12 @@ on an empty caret instead of the phrase. Focusing anything outside the editor co
 the slot opens and restored with `setTextSelection` before the command runs. A code fence's language
 is worse — the caret is gone, so the block is addressed by its own node position and rewritten with
 `setNodeMarkup`.
+
+## 2026-08-30 — a toggle on a collapsed caret has to mean the span
+
+`toggleCode()` with nothing selected only sets a stored mark, so putting the caret inside
+`` `parse` `` and pressing the `code` button lit the button and changed nothing — the only way to
+undo the input rule was to select the word first. Markdown's backticks are not in the document, so
+the span is the only thing a caret can point at: a collapsed selection now runs `extendMarkRange`
+before the toggle, from the mode line and from `⌘B`/`⌘I`/`⌘E` alike. A real selection is left
+alone, since there you did say what you meant.

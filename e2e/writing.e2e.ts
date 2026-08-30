@@ -8,7 +8,7 @@ import type { Locator, Page } from '@playwright/test';
  * specs address the tickets they made by key.
  */
 
-const design = (page: Page) => page.getByTestId('design-tile').getByRole('textbox');
+const design = (page: Page) => page.getByTestId('design-tile').locator('.tiptap');
 
 /**
  * Paste the way a person does: the editor decides the text is markdown, not
@@ -172,4 +172,26 @@ test('every heading level is reachable, and a fence can be opened, named and tak
   await field.locator('pre').click();
   await tile.getByTestId('fmt-codeBlock').click();
   await expect(field.locator('pre')).toHaveCount(0);
+});
+
+test('a mark can be taken off from inside it, with nothing selected', async ({ page }) => {
+  await newTicket(page, 'Uncode me');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+  await field.click();
+
+  // the backticks are not in the document, so the caret is the only way to point at the span
+  await page.keyboard.type('call `parse` now');
+  await expect(field.locator('code')).toHaveText('parse');
+  for (let i = 0; i < 4; i += 1) await page.keyboard.press('ArrowLeft');
+  await expect(tile.getByTestId('fmt-code')).toHaveAttribute('aria-pressed', 'true');
+
+  await tile.getByTestId('fmt-code').click();
+  await expect(field.locator('code')).toHaveCount(0);
+  await expect(field.locator('p').first()).toHaveText('call parse now');
+
+  // a selection still means exactly what it says, not the span around it
+  await page.keyboard.press('ControlOrMeta+A');
+  await tile.getByTestId('fmt-bold').click();
+  await expect(field.locator('strong')).toHaveText('call parse now');
 });

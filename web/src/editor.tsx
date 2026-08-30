@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
-import { extensionsFor, toDoc, toMarkdown, type EditorShape } from './markdown';
+import { extensionsFor, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { refusalLine } from './ui';
 
 /**
@@ -84,9 +84,9 @@ interface Control {
 
 /** Words, not glyphs: kinds and states are single words in this GUI (DESIGN.md §9). */
 const MARKS: Control[] = [
-  { id: 'bold', label: <b>b</b>, title: 'bold · ⌘B', active: (e) => e.isActive('bold'), run: (e) => e.chain().focus().toggleBold().run() },
-  { id: 'italic', label: <i>i</i>, title: 'italic · ⌘I', active: (e) => e.isActive('italic'), run: (e) => e.chain().focus().toggleItalic().run() },
-  { id: 'code', label: 'code', title: 'code · ⌘E', active: (e) => e.isActive('code'), run: (e) => e.chain().focus().toggleCode().run() },
+  { id: 'bold', label: <b>b</b>, title: 'bold · ⌘B', active: (e) => e.isActive('bold'), run: (e) => toggleWholeMark(e, 'bold') },
+  { id: 'italic', label: <i>i</i>, title: 'italic · ⌘I', active: (e) => e.isActive('italic'), run: (e) => toggleWholeMark(e, 'italic') },
+  { id: 'code', label: 'code', title: 'code · ⌘E', active: (e) => e.isActive('code'), run: (e) => toggleWholeMark(e, 'code') },
 ];
 
 const BLOCKS: Control[] = [

@@ -13,6 +13,7 @@ S1 is done when a fresh Subway Reader MVP project is created in the GUI, an agen
 - labels, milestones, priority, claim order (S5)
 - scope, lane, acceptance criteria, budget fields (S2 input snapshot)
 - design revisions, shas, repository access of any kind; stored HTML renderings
+- images in descriptions and designs — pasting, storing or sizing them (`docs/tickets/later/images-in-designs.md`: where the bytes live and what a width means in markdown are both unanswered)
 - anything that displays runs, evidence, leases or costs
 - import/export, including the legacy `research/subway-reader/TICKETS-v0.md`
 - light mode; phone-specific features beyond the responsive (mobile-first) layout
