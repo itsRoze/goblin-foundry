@@ -53,12 +53,7 @@
     },
     "declaration-property-value-no-unknown": true,
     "no-duplicate-selectors": null,
-    "no-descending-specificity": [
-      true,
-      {
-        "severity": "warning"
-      }
-    ],
+    "no-descending-specificity": true,
     "font-family-no-missing-generic-family-keyword": null
   },
   "overrides": [

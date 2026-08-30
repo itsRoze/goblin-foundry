@@ -90,6 +90,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   position: relative; display: flex; flex-direction: column; gap: var(--gf-s1);
   background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
   color: var(--gf-ink); transition: border-color var(--gf-fast) var(--gf-ease);
+  cursor: grab; /* the whole card is the drag handle — no grip (DESIGN.md §6) */
 }
 .gf-card:hover { border-color: var(--gf-rule-2); text-decoration: none; }
 .gf-card-id { display: flex; justify-content: space-between; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); }
@@ -171,7 +172,6 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-col.is-legal.is-over { border-color: var(--gf-system); background: var(--gf-rule); }
 .gf-col.is-illegal .gf-col-head { color: var(--gf-mute); }
 .gf-card.is-lifted { border-color: var(--gf-system); }
-.gf-card { cursor: grab; }
 .gf-col-refusal { animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
 @keyframes gf-refusal-in { from { opacity: 0; } to { opacity: 1; } }
 
@@ -198,12 +198,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-dep-add:hover, .gf-dep-add[aria-expanded='true'] { color: var(--gf-system); border-color: var(--gf-system); }
 .gf-dep-row .gf-row-title { display: flex; align-items: baseline; gap: 0; min-width: 0; color: var(--gf-ink); }
 .gf-dep-row .gf-row-trail { gap: var(--gf-s3); }
-/* only the declared edges are links; a picker candidate carries the same classes but is not one */
-.gf-dep-section > .gf-rows > .gf-dep-row .gf-row-title:hover { text-decoration: none; color: var(--gf-link); }
-/* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009). Scoped to the
-   declared list so it cannot reach a picker candidate that happens to be done — those are muted,
-   not struck, and relying on source order to undo a strike is how the two rules would drift apart. */
-.gf-dep-section > .gf-rows > .gf-dep-row.is-inert .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
+.gf-dep-row .gf-row-title:hover { text-decoration: none; color: var(--gf-link); }
+/* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009) */
+.gf-dep-row.is-inert .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
 .gf-dep-note { font: var(--gf-t-meta); color: var(--gf-mute); }
 /* `--gf-human` is reserved for "your attention is required" and nothing else (DESIGN.md §3), so
    removing an edge brightens to ink rather than inventing a destructive red */
@@ -228,5 +225,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   border-left: 2px solid transparent; padding-left: calc(var(--gf-s2) - 2px);
 }
 .gf-picker-hit.is-on { background: var(--gf-raised); border-left-color: var(--gf-system); }
+/* a candidate's title has its own class: sharing `.gf-row-title` with the declared edges is what
+   made the strike and the hover fight, and needing `>` chains to keep them apart was the symptom */
+.gf-pick-title { display: flex; align-items: baseline; gap: 0; min-width: 0; color: var(--gf-ink); }
 /* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
-.gf-picker-hit.is-inert .gf-row-title { color: var(--gf-mute); }
+.gf-picker-hit.is-inert .gf-pick-title { color: var(--gf-mute); }

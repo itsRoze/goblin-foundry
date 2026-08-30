@@ -433,12 +433,12 @@ function TicketPicker({
               id={optionId(t.key)}
               role="option"
               aria-selected={i === at}
-              className={`gf-row gf-dep-row gf-picker-hit${i === at ? ' is-on' : ''}${isTerminal(t.status) ? ' is-inert' : ''}`}
+              className={`gf-row gf-picker-hit${i === at ? ' is-on' : ''}${isTerminal(t.status) ? ' is-inert' : ''}`}
               data-testid={`pick-${t.key}`}
               onMouseMove={() => setCursor(i)}
               onClick={() => void onPick(t.key)}
             >
-              <span className="gf-row-title">
+              <span className="gf-row-title gf-pick-title">
                 <span className="gf-key">{t.key}</span>
                 {t.title}
               </span>
