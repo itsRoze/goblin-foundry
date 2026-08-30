@@ -253,7 +253,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-md.is-block.is-empty .tiptap { min-height: 3em; }
 .gf-md.is-empty::before {
   content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
-  font: var(--gf-t-body); color: var(--gf-dim);
+  font: var(--gf-t-body); color: var(--gf-mute);
 }
 
 /* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
@@ -317,7 +317,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-mode-btn:hover { color: var(--gf-ink); border-color: var(--gf-rule-2); }
 .gf-mode-btn.is-on { color: var(--gf-system); border-color: var(--gf-system); }
 .gf-mode-slot { margin-left: auto; display: flex; align-items: center; min-width: 0; }
-.gf-mode-hint { font: var(--gf-t-meta); color: var(--gf-dim); display: flex; align-items: center; gap: var(--gf-s2); }
+.gf-mode-hint { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
 .gf-mode-input {
   font: var(--gf-t-meta); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; width: 22ch; max-width: 100%;

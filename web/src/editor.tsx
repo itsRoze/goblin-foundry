@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
-import { extensionsFor, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
+import { INLINE_MARKS, extensionsFor, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { refusalLine } from './ui';
 
 /**
@@ -74,34 +74,46 @@ function fenceNodePos(editor: Editor): number | null {
 
 /** One button on the mode line: what it says, what it does, and when it is lit. */
 interface Control {
+  /** The schema name it acts on, which is also how the mode line asks whether this editor has it. */
   id: string;
   label: ReactNode;
-  /** `name · key` — the whole explanation, since the mode line has room for the mark only. */
-  title: string;
+  /** What it is, in one word or two (DESIGN.md §9), and the key that does the same thing — `undefined` when it has none. */
+  name: string;
+  key?: string;
   active: (e: Editor) => boolean;
   run: (e: Editor) => void;
 }
 
+const title = (c: Control) => (c.key ? `${c.name} · ${c.key}` : c.name);
+
 /** Words, not glyphs: kinds and states are single words in this GUI (DESIGN.md §9). */
-const MARKS: Control[] = [
-  { id: 'bold', label: <b>b</b>, title: 'bold · ⌘B', active: (e) => e.isActive('bold'), run: (e) => toggleWholeMark(e, 'bold') },
-  { id: 'italic', label: <i>i</i>, title: 'italic · ⌘I', active: (e) => e.isActive('italic'), run: (e) => toggleWholeMark(e, 'italic') },
-  { id: 'code', label: 'code', title: 'code · ⌘E', active: (e) => e.isActive('code'), run: (e) => toggleWholeMark(e, 'code') },
-];
+const MARK_LABEL: Record<string, ReactNode> = { bold: <b>b</b>, italic: <i>i</i>, code: 'code', strike: <s>s</s> };
+const MARK_NAME: Record<string, string> = { bold: 'bold', italic: 'italic', code: 'code', strike: 'strikethrough' };
+
+const MARKS: Control[] = INLINE_MARKS.map(({ name, key }) => ({
+  id: name,
+  label: MARK_LABEL[name],
+  name: MARK_NAME[name] ?? name,
+  key,
+  active: (e: Editor) => e.isActive(name),
+  run: (e: Editor) => toggleWholeMark(e, name),
+}));
 
 const BLOCKS: Control[] = [
-  { id: 'bulletList', label: 'list', title: 'bullet list · ⌘⇧8', active: (e) => e.isActive('bulletList'), run: (e) => e.chain().focus().toggleBulletList().run() },
-  { id: 'orderedList', label: '1.', title: 'numbered list · ⌘⇧7', active: (e) => e.isActive('orderedList'), run: (e) => e.chain().focus().toggleOrderedList().run() },
-  { id: 'taskList', label: 'task', title: 'task list', active: (e) => e.isActive('taskList'), run: (e) => e.chain().focus().toggleTaskList().run() },
-  { id: 'blockquote', label: 'quote', title: 'quote · ⌘⇧B', active: (e) => e.isActive('blockquote'), run: (e) => e.chain().focus().toggleBlockquote().run() },
+  { id: 'bulletList', label: 'list', name: 'bullet list', key: '⌘⇧8', active: (e) => e.isActive('bulletList'), run: (e) => e.chain().focus().toggleBulletList().run() },
+  { id: 'orderedList', label: '1.', name: 'numbered list', key: '⌘⇧7', active: (e) => e.isActive('orderedList'), run: (e) => e.chain().focus().toggleOrderedList().run() },
+  // no key: the list extensions bind `⌘⇧7` and `⌘⇧8` and stop there
+  { id: 'taskList', label: 'task', name: 'task list', active: (e) => e.isActive('taskList'), run: (e) => e.chain().focus().toggleTaskList().run() },
+  { id: 'blockquote', label: 'quote', name: 'quote', key: '⌘⇧B', active: (e) => e.isActive('blockquote'), run: (e) => e.chain().focus().toggleBlockquote().run() },
   // `fence` is markdown's own word for ```, which the document no longer shows you — the right slot edits its language
-  { id: 'codeBlock', label: 'fence', title: 'code fence · ⌘⌥C', active: (e) => e.isActive('codeBlock'), run: (e) => e.chain().focus().toggleCodeBlock().run() },
+  { id: 'codeBlock', label: 'fence', name: 'code fence', key: '⌘⌥C', active: (e) => e.isActive('codeBlock'), run: (e) => e.chain().focus().toggleCodeBlock().run() },
 ];
 
 const HEADINGS: Control[] = ([1, 2, 3, 4, 5, 6] as const).map((level) => ({
   id: `h${level}`,
   label: `h${level}`,
-  title: `heading ${level} · ⌘⌥${level}`,
+  name: `heading ${level}`,
+  key: `⌘⌥${level}`,
   active: (e: Editor) => e.isActive('heading', { level }),
   run: (e: Editor) => e.chain().focus().toggleHeading({ level }).run(),
 }));
@@ -130,6 +142,10 @@ export function MarkdownField({
   const live = useRef(server);
   /** The markdown a write is currently carrying, so an idle beat and a blur do not send the same body twice. */
   const sending = useRef<string | null>(null);
+  /** Which write is the latest, so an earlier one resolving late cannot report an older body as what the server holds. */
+  const issued = useRef(0);
+  /** Whether anything has been typed since the field was taken up. A held refetch loses to that, whether or not the write has landed yet. */
+  const touched = useRef(false);
   /** A refetch that arrived while the caret was here; applied on blur, never under the caret. */
   const held = useRef<string | null>(null);
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -157,14 +173,18 @@ export function MarkdownField({
     const markdown = live.current;
     if (markdown === agreed.current || markdown === sending.current) return;
     sending.current = markdown;
+    const write = (issued.current += 1);
     void save.current(markdown).then(
       () => {
+        // an earlier write resolving after a later one would name a body the server has already moved past
+        if (write !== issued.current) return;
         // only now is this what the server holds; until it is, the next beat or the blur retries
         agreed.current = markdown;
         sending.current = null;
         setRefusal(null);
       },
       (error: unknown) => {
+        if (write !== issued.current) return;
         sending.current = null;
         setRefusal(refusalLine(error));
       },
@@ -176,6 +196,7 @@ export function MarkdownField({
     (markdown: string) => {
       agreed.current = markdown;
       live.current = markdown;
+      touched.current = false;
       editorRef.current?.commands.setContent(toDoc(shape, markdown), { emitUpdate: false });
       setEmpty(markdown.trim() === '');
     },
@@ -228,6 +249,7 @@ export function MarkdownField({
         },
       },
       onUpdate({ editor }) {
+        touched.current = true;
         live.current = toMarkdown(shape, editor.getJSON());
         setEmpty(editor.isEmpty);
         if (idle.current) clearTimeout(idle.current);
@@ -245,13 +267,14 @@ export function MarkdownField({
   const release = useCallback(() => {
     engagedRef.current = false;
     setEngaged(false);
-    const mine = live.current !== agreed.current;
+    const mine = touched.current;
     write();
-    // a refetch held while you typed is applied now — unless you typed, in which case you were the last writer and it is dropped
+    // a refetch held while you had the field is applied now — unless you typed, in which case you were the last writer and it is dropped
     if (held.current !== null) {
       if (!mine) apply(held.current);
       held.current = null;
     }
+    touched.current = false;
   }, [write, apply]);
   // written in an effect, not in the render body: a discarded render must not reach the live editor
   useLayoutEffect(() => {
@@ -334,18 +357,26 @@ function ModeLine({
   openLink: () => void;
   range: { current: { from: number; to: number } | null };
 }) {
-  const groups = shape === 'block' ? [HEADINGS, MARKS, BLOCKS] : [MARKS];
+  // only what this configuration's schema actually has: the inline shape has no strike, so it gets no strike button
+  const marks = useMemo(() => MARKS.filter((c) => c.id in editor.schema.marks), [editor]);
+  const groups = useMemo(() => (shape === 'block' ? [HEADINGS, marks, BLOCKS] : [marks]), [shape, marks]);
   const linkGroup = shape === 'block' ? 1 : 0;
   const state = useEditorState({
     editor,
+    // every field here is a primitive: the selector runs on each transaction, and an object would re-render the line per keystroke
     selector: ({ editor }) => ({
-      on: Object.fromEntries(groups.flat().map((c) => [c.id, c.active(editor)])),
+      on: groups
+        .flat()
+        .filter((c) => c.active(editor))
+        .map((c) => c.id)
+        .join(' '),
       linked: editor.isActive('link'),
       // the code block's own position, not the caret's: the language is set on the node, from a field the caret has moved into
       fencePos: fenceNodePos(editor),
       fenceLang: (editor.getAttributes('codeBlock').language as string | null) ?? '',
     }),
   });
+  const isOn = (id: string) => state.on.split(' ').includes(id);
 
   /**
    * The fence the caret is in. Held in state rather than read live, because
@@ -366,17 +397,34 @@ function ModeLine({
     return at ? chain.setTextSelection(at) : chain;
   };
 
-  const commit = () => {
-    const href = (linking ?? '').trim();
-    const at = range.current;
-    if (href === '') restore().extendMarkRange('link').unsetLink().run();
-    else if (at && at.from === at.to && !editor.isActive('link'))
-      // no selection to wrap: the URL becomes its own link text, which is what you meant by asking for a link here
-      restore().insertContent([{ type: 'text', text: href, marks: [{ type: 'link', attrs: { href } }] }]).run();
-    else restore().extendMarkRange('link').setLink({ href }).run();
-    range.current = null;
-    setLinking(null);
+  /**
+   * Closing the link slot, once. `restore()` puts the caret back in the
+   * document, which blurs this input — so `onBlur` re-enters here while the
+   * first call is still running, and `esc` would land the link it was cancelling.
+   */
+  const closing = useRef(false);
+  const close = (act?: () => void) => {
+    if (closing.current) return;
+    closing.current = true;
+    try {
+      act?.();
+    } finally {
+      range.current = null;
+      setLinking(null);
+      closing.current = false;
+    }
   };
+
+  const commit = () =>
+    close(() => {
+      const href = (linking ?? '').trim();
+      const at = range.current;
+      if (href === '') restore().extendMarkRange('link').unsetLink().run();
+      else if (at && at.from === at.to && !editor.isActive('link'))
+        // no selection to wrap: the URL becomes its own link text, which is what you meant by asking for a link here
+        restore().insertContent([{ type: 'text', text: href, marks: [{ type: 'link', attrs: { href } }] }]).run();
+      else restore().extendMarkRange('link').setLink({ href }).run();
+    });
 
   return (
     // mousedown inside the line must not take the caret out of the field, or the command would have nothing to act on
@@ -387,10 +435,10 @@ function ModeLine({
             <button
               key={c.id}
               type="button"
-              className={`gf-mode-btn${state.on[c.id] ? ' is-on' : ''}`}
-              title={c.title}
-              aria-label={c.title.split(' · ')[0]}
-              aria-pressed={state.on[c.id]}
+              className={`gf-mode-btn${isOn(c.id) ? ' is-on' : ''}`}
+              title={title(c)}
+              aria-label={c.name}
+              aria-pressed={isOn(c.id)}
               data-testid={`fmt-${c.id}`}
               onClick={() => c.run(editor)}
             >
@@ -431,9 +479,8 @@ function ModeLine({
                 commit();
               } else if (e.key === 'Escape') {
                 e.preventDefault();
-                restore().run();
-                range.current = null;
-                setLinking(null);
+                // `esc` is the one cancel left in the editor: it puts the caret back and writes nothing
+                close(() => restore().run());
               }
             }}
           />
@@ -452,8 +499,12 @@ function ModeLine({
               const language = e.target.value;
               setFence({ ...fence, language });
               // the caret is in this input, so the block is rewritten where it stands rather than where the selection is
-              const node = editor.state.doc.nodeAt(fence.pos);
-              if (node) editor.view.dispatch(editor.state.tr.setNodeMarkup(fence.pos, undefined, { ...node.attrs, language }));
+              editor.commands.command(({ tr, dispatch }) => {
+                const node = tr.doc.nodeAt(fence.pos);
+                if (!node) return false;
+                if (dispatch) tr.setNodeMarkup(fence.pos, undefined, { ...node.attrs, language });
+                return true;
+              });
             }}
           />
         ) : (

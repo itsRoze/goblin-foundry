@@ -2,6 +2,8 @@ import { Extension } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorState } from '@tiptap/pm/state';
+import type { Node } from '@tiptap/pm/model';
+import { INLINE_MARKS } from './markdown';
 
 /**
  * Show a mark's markdown around it while the caret is on it.
@@ -18,14 +20,6 @@ import type { EditorState } from '@tiptap/pm/state';
  * cursor.
  */
 
-/** The marks whose markdown is a pair of characters around the run. `link` is not one — its URL lives in the mode line. */
-const REVEALED: { mark: string; token: string }[] = [
-  { mark: 'code', token: '`' },
-  { mark: 'bold', token: '**' },
-  { mark: 'italic', token: '*' },
-  { mark: 'strike', token: '~~' },
-];
-
 function token(text: string): HTMLElement {
   const span = document.createElement('span');
   span.className = 'gf-syntax';
@@ -37,7 +31,7 @@ function token(text: string): HTMLElement {
 }
 
 /** Runs of `mark` inside `block` that the selection touches, as `[from, to]` pairs. */
-function touchedRuns(block: { forEach: (f: (child: { nodeSize: number; marks: readonly { type: { name: string } }[] }, offset: number) => void) => void }, blockPos: number, mark: string, from: number, to: number) {
+function touchedRuns(block: Node, blockPos: number, mark: string, from: number, to: number) {
   const runs: [number, number][] = [];
   let start: number | null = null;
   let end = 0;
@@ -64,10 +58,10 @@ function decorate(state: EditorState): DecorationSet {
     if (!node.isTextblock) return true;
     // a fence has no marks to reveal, and its ``` would take two lines the block does not have room for
     if (node.type.spec.code) return false;
-    for (const { mark, token: text } of REVEALED)
-      for (const [start, end] of touchedRuns(node, pos, mark, from, to)) {
-        decorations.push(Decoration.widget(start, () => token(text), { side: -1, key: `${mark}:${start}:open` }));
-        decorations.push(Decoration.widget(end, () => token(text), { side: 1, key: `${mark}:${end}:close` }));
+    for (const { name, token: text } of INLINE_MARKS)
+      for (const [start, end] of touchedRuns(node, pos, name, from, to)) {
+        decorations.push(Decoration.widget(start, () => token(text), { side: -1, key: `${name}:${start}:open` }));
+        decorations.push(Decoration.widget(end, () => token(text), { side: 1, key: `${name}:${end}:close` }));
       }
     return false;
   });

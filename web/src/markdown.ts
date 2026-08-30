@@ -38,6 +38,20 @@ const inlineKit = () =>
   });
 
 /**
+ * The inline marks whose markdown is a pair of characters around the run.
+ * One table, so the mode line's buttons, the keyboard and the syntax the
+ * caret reveals cannot drift apart — a mark added here is added everywhere.
+ * `link` is not one of them: its markdown wraps the text *and* carries a URL,
+ * which is why it has a slot on the mode line instead.
+ */
+export const INLINE_MARKS = [
+  { name: 'bold', token: '**', binding: 'Mod-b', key: '⌘B' },
+  { name: 'italic', token: '*', binding: 'Mod-i', key: '⌘I' },
+  { name: 'code', token: '`', binding: 'Mod-e', key: '⌘E' },
+  { name: 'strike', token: '~~', binding: 'Mod-Shift-x', key: '⌘⇧X' },
+] as const;
+
+/**
  * Toggle a mark on the caret's whole span. The backticks around `code` are not
  * in the document, so with nothing selected the only thing you can point at is
  * the span itself: putting the caret in it and asking for `code` means "this
@@ -55,13 +69,33 @@ const WholeMarks = Extension.create({
   // ahead of StarterKit's own bindings, which act on the caret rather than the span
   priority: 1000,
   addKeyboardShortcuts() {
-    const whole = (name: string) => () => toggleWholeMark(this.editor, name);
-    return { 'Mod-b': whole('bold'), 'Mod-i': whole('italic'), 'Mod-e': whole('code') };
+    return Object.fromEntries(INLINE_MARKS.map(({ name, binding }) => [binding, () => toggleWholeMark(this.editor, name)]));
+  },
+});
+
+/**
+ * A way above a fence that opens the document. A design pasted from a planner
+ * often starts with one, and then there is no line above it to click and
+ * nothing before it to arrow into — the block's own `exitOnArrowUp` does not
+ * fire here. `ArrowUp` at the very start of it opens a paragraph instead.
+ */
+const OpenFence = Extension.create({
+  name: 'openFence',
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return {
+      ArrowUp: () => {
+        const { $from, empty } = this.editor.state.selection;
+        if (!empty || $from.parent.type.name !== 'codeBlock') return false;
+        if ($from.parentOffset !== 0 || $from.before() !== 0) return false;
+        return this.editor.chain().insertContentAt(0, { type: 'paragraph' }).setTextSelection(1).focus().run();
+      },
+    };
   },
 });
 
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
-  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks, RevealSyntax] : [inlineKit(), Markdown, WholeMarks, RevealSyntax];
+  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), Markdown, WholeMarks, RevealSyntax];
 
 const managers = new Map<EditorShape, MarkdownManager>();
 

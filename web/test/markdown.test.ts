@@ -57,6 +57,13 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(canonical('block', once)).toBe(once);
   });
 
+  test('all six heading levels survive, so a level is never quietly flattened into another', () => {
+    const source = ([1, 2, 3, 4, 5, 6] as const).map((level) => `${'#'.repeat(level)} level ${level}`).join('\n\n');
+    const once = canonical('block', source);
+    expect(canonical('block', once)).toBe(once);
+    for (const level of [1, 2, 3, 4, 5, 6] as const) expect(once).toContain(`${'#'.repeat(level)} level ${level}`);
+  });
+
   test('an empty document is empty markdown, not a stray paragraph', () => {
     expect(canonical('block', '')).toBe('');
   });

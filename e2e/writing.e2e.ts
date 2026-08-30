@@ -164,11 +164,13 @@ test('every heading level is reachable, and a fence can be opened, named and tak
 
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(tile.getByTestId('saving')).toHaveText('saved');
+  // that every level round-trips is `web/test/markdown.test.ts`'s job; here it only has to reach them and store something
   const stored: string = await page.request.get(`/api/tickets/${url.split('/').pop()}`).then((r) => r.json()).then((t) => t.design);
-  for (const level of [1, 2, 3, 4, 5, 6]) expect(stored).toContain(`${'#'.repeat(level)} level ${level}`);
+  expect(stored).toContain('# level 1');
+  expect(stored).toContain('###### level 6');
   expect(stored).toContain('```ts');
 
-  // and back off again: the only exit from a fence that is neither empty nor first in the document
+  // and back off again: the exit from a fence that has content and is not the first thing in the document
   await field.locator('pre').click();
   await tile.getByTestId('fmt-codeBlock').click();
   await expect(field.locator('pre')).toHaveCount(0);
@@ -223,4 +225,76 @@ test('the markdown around a span shows itself when the caret is on it', async ({
 
   // and with the caret away from both, the line reads as prose again
   await expect(field.locator('.gf-syntax')).toHaveCount(0);
+});
+
+test('the link slot cancels when told to, and lands its url exactly once', async ({ page }) => {
+  await newTicket(page, 'Link twice');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+  await field.click();
+
+  // esc is cancel: whatever was typed into the slot does not become a link
+  await page.keyboard.type('cancel me');
+  await page.keyboard.press('ControlOrMeta+A');
+  await tile.getByTestId('fmt-link').click();
+  await tile.getByLabel('link url').fill('https://nope.dev');
+  await tile.getByLabel('link url').press('Escape');
+  // the slot closing is what says the caret is back in the document, so wait for that, not for a timeout
+  await expect(tile.getByLabel('link url')).toHaveCount(0);
+  await expect(field.locator('a')).toHaveCount(0);
+
+  // with nothing selected the url becomes its own link text — once, not twice
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('Backspace');
+  await expect(field).toHaveText('');
+  await tile.getByTestId('fmt-link').click();
+  await tile.getByLabel('link url').fill('https://once.dev');
+  await tile.getByLabel('link url').press('Enter');
+  await expect(field.locator('a')).toHaveCount(1);
+  await expect(field.locator('a')).toHaveText('https://once.dev');
+});
+
+test('the keys the mode line advertises do what its buttons do', async ({ page }) => {
+  await newTicket(page, 'By keyboard alone');
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+  await field.click();
+  await page.keyboard.type('hold this');
+  await page.keyboard.press('ControlOrMeta+A');
+
+  // the same whole-span rule as the buttons, since these bindings are taken over from the schema's own
+  // (`⌘K` is not here: Chrome reserves it and Playwright's synthetic dispatch never delivers it to the page)
+  await page.keyboard.press('ControlOrMeta+b');
+  await expect(field.locator('strong')).toHaveText('hold this');
+  await page.keyboard.press('ControlOrMeta+i');
+  await expect(field.locator('em')).toHaveText('hold this');
+  await page.keyboard.press('ControlOrMeta+e');
+  await expect(field.locator('code')).toHaveText('hold this');
+  await expect(tile.getByTestId('fmt-code')).toHaveAttribute('aria-pressed', 'true');
+
+  // from inside the span, with nothing selected — the reason the bindings are ours and not the schema's
+  await field.locator('code').click();
+  await page.keyboard.press('ControlOrMeta+e');
+  await expect(field.locator('code')).toHaveCount(0);
+});
+
+test('a fence that opens the document can still be got out of, upwards', async ({ page }) => {
+  await newTicket(page, 'Fence first');
+  const field = design(page);
+  await field.click();
+
+  // a design pasted from a planner can begin with a fence, and then there is no line above it to click
+  await page.keyboard.type('```ts\n');
+  await page.keyboard.type('const first = 1;');
+  await expect(field.locator('pre')).toHaveCount(1);
+
+  // clicked, not arrowed: a run of key presses outruns the browser's async `selectionchange`, so ProseMirror
+  // would still think the caret was where the typing left it. The settle is that same asynchrony — there is
+  // no event on this side to await, and a caret moving within one block changes nothing on screen to assert on.
+  await field.locator('pre code').click({ position: { x: 0, y: 4 } });
+  await page.waitForTimeout(120);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.type('a line above it');
+  await expect(field.locator('p').first()).toHaveText('a line above it');
+  await expect(field.locator('pre code')).toHaveText('const first = 1;');
 });

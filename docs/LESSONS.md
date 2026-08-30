@@ -146,3 +146,27 @@ markers — the code span's backticks while the caret was on the bold. Chrome di
 `selectionchange` asynchronously, so ProseMirror has not re-run its decorations yet. Browser tests
 assert with `expect(locator).toHaveText(...)`, which retries; a bare `innerText()` reads one
 selection behind and looks like an off-by-one bug in the plugin.
+
+## 2026-08-30 — refocusing the editor re-enters the handler that did it
+
+The link slot's `esc` called `restore()` to put the caret back, which moves DOM focus out of the slot's
+input — firing its `onBlur`, which was `commit`. So `esc` applied the link it was meant to cancel, and
+`enter` ran `commit` twice (inserting the URL text twice when there was no selection to wrap). Any
+handler that returns focus to the editor has to assume it will be re-entered through blur: the close
+path now holds a `closing` ref and runs once.
+
+## 2026-08-30 — key presses outrun `selectionchange` too
+
+Already known that reading the DOM straight after a click sees the previous selection. The same
+asynchrony bites when *writing*: a loop of `ArrowLeft` presses followed immediately by `ArrowUp` left
+ProseMirror still believing the caret was where the typing ended, so a handler keyed on
+`parentOffset === 0` never fired and the feature looked broken when it was not. Browser tests place a
+caret with a click and let it settle before pressing the key under test.
+
+## 2026-08-30 — read the guard clause, then check it actually runs
+
+`@tiptap/extension-code-block` has `exitOnArrowUp`, and its source reads as though it handles a fence
+that opens the document (`if (before > 0) return false` — so `before === 0` proceeds). It does not fire
+in practice. The conclusion "the source says it is handled" was wrong and a review caught it; a probe
+would have caught it sooner. `OpenFence` in `web/src/markdown.ts` now does the job, with a browser test
+that would fail if the extension ever started doing it instead.
