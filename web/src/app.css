@@ -169,7 +169,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   display: flex; align-items: center; gap: var(--gf-s3); margin: 0;
   font: var(--gf-t-label); font-weight: 400; letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute);
 }
-/* the rule runs from the label to the control, which is what gives `+ add` a home */
+/* the rule runs out from behind the control to the tile's edge, dividing the two directions */
 .gf-dep-rule { flex: 1; height: 1px; background: var(--gf-rule); }
 .gf-dep-add {
   font: var(--gf-t-meta); color: var(--gf-mute); background: none; border: 1px solid var(--gf-rule-2);

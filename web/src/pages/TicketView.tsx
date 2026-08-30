@@ -293,12 +293,13 @@ function DependencySection({
   const label = DIRECTION_LABEL[direction];
   return (
     <section className="gf-dep-section" data-testid={`deps-${direction}`}>
+      {/* the control sits beside its label, never across the tile from it: this tile is full-width on a wide desk */}
       <h3 className="gf-dep-head">
         <span>{label}</span>
-        <span className="gf-dep-rule" />
         <button type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onClick={onOpen}>
           {picking ? 'close' : '+ add'}
         </button>
+        <span className="gf-dep-rule" />
       </h3>
       {picking && <TicketPicker label={label} taken={taken} onPick={onPick} onCancel={onClose} testId={`picker-${direction}`} />}
       {refusal && (
