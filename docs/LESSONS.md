@@ -229,3 +229,19 @@ should be the house's: TipTap takes `editorProps.attributes.class`, so the docum
 and the stylesheet never names a third-party class. The other two errors were real too — a focus
 reset declared after the rules it resets, and a `box-shadow: none` that resets a shadow this house
 never has (DESIGN.md §2).
+
+## 2026-08-31 — the field's own paste handler was hiding a feature that already existed
+
+Asked whether pasting a URL over a selection could link it, the way Linear does. It already could:
+`@tiptap/extension-link` ships `linkOnPaste` on by default. The field never saw it, because a
+ProseMirror view's own `editorProps.handlePaste` runs *before* any plugin's, and ours returned true
+for every plain-text paste in order to parse it as markdown. It now declines a bare URL dropped on a
+selection and lets the extension have it.
+
+The same reading turned up the other half: `openOnClick` defaults to `true` and had been switched off
+when the editor was first configured — reasonable for an editor, wrong here, because this field is
+also the read view (ADR-0005) and a link you cannot follow does not work. `whenNotEditable` is no
+help for an always-editable field; the source collapses it to `true` regardless.
+
+Before adding an affordance, read the extension's defaults: twice now the behaviour was already there
+and something of ours was in front of it.

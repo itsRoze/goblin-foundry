@@ -19,8 +19,16 @@ import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
  */
 export type EditorShape = 'block' | 'inline';
 
+/**
+ * A link opens when clicked, because this field is the read view as well as the
+ * editor (ADR-0005) — a link you cannot follow is a link that does not work.
+ * The caret reaches one by arrowing in from either side, and the mode line's
+ * `link` acts on the whole run from anywhere inside it.
+ */
+const LINK = { openOnClick: true, defaultProtocol: 'https' } as const;
+
 /** No tables (spec), and no slash menu: input rules are the whole authoring surface. */
-const blockKit = () => StarterKit.configure({ link: { openOnClick: false } });
+const blockKit = () => StarterKit.configure({ link: LINK });
 
 /** Everything that would make a second kind of block is off, so an inline field stays one. */
 const inlineKit = () =>
@@ -34,7 +42,7 @@ const inlineKit = () =>
     orderedList: false,
     listItem: false,
     listKeymap: false,
-    link: { openOnClick: false },
+    link: LINK,
   });
 
 /**

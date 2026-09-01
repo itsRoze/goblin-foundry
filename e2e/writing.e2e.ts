@@ -406,3 +406,30 @@ test('a run that opens the line can be arrowed out of, and typing there is plain
     .then((t) => t.design);
   expect(after.trim()).toBe('call `test`');
 });
+
+test('a url pasted over a selection links it, and a link opens when clicked', async ({ page, context }) => {
+  await newTicket(page, 'Link by paste');
+  const field = design(page);
+  await field.click();
+  await page.keyboard.type('the planner');
+  await page.keyboard.press('ControlOrMeta+A');
+
+  // the clipboard holding a url and text selected is the commonest way to make a link; no slot needed
+  await pasteMarkdown(field, 'https://goblin.dev/planner');
+  await expect(field.locator('a')).toHaveText('the planner');
+  await expect(field.locator('a')).toHaveAttribute('href', 'https://goblin.dev/planner');
+
+  // and it survives as a markdown link
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('design-tile').getByTestId('saving')).toHaveText('saved');
+  const stored: string = await page.request
+    .get(`/api/tickets/${page.url().split('/').pop()}`)
+    .then((r) => r.json())
+    .then((t) => t.design);
+  expect(stored.trim()).toBe('[the planner](https://goblin.dev/planner)');
+
+  // the field is the read view too (ADR-0005), so the link has to be followable
+  const opened = context.waitForEvent('page');
+  await field.locator('a').click();
+  expect((await opened).url()).toBe('https://goblin.dev/planner');
+});

@@ -65,6 +65,21 @@ export function focusEditor(): void {
 /** ProseMirror stamps its own clipboard HTML with this; anything else claiming to be HTML came from elsewhere. */
 const OWN_SLICE = 'data-pm-slice';
 
+/**
+ * Text that is nothing but a URL. Pasted over a selection it means "make this a
+ * link", which the link extension already does — so this field's own paste
+ * handling has to get out of the way rather than swallow it as markdown.
+ */
+function isBareUrl(text: string): boolean {
+  const value = text.trim();
+  if (value === '' || /\s/.test(value)) return false;
+  try {
+    return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`).hostname.includes('.');
+  } catch {
+    return false;
+  }
+}
+
 /** Where the code block around the caret starts, or `null` when the caret is not in one. */
 function fenceNodePos(editor: Editor): number | null {
   const { $from } = editor.state.selection;
@@ -230,10 +245,12 @@ export function MarkdownField({
          * put a highlighted `text/html` flavour on the clipboard beside the
          * text, so only this editor's own slice defers to ProseMirror.
          */
-        handlePaste(_view, event) {
+        handlePaste(view, event) {
           const data = event.clipboardData;
           const text = data?.getData('text/plain');
           if (!text || data?.getData('text/html').includes(OWN_SLICE)) return false;
+          // a URL dropped on a selection is a link, not a replacement — that is the link extension's job, not ours
+          if (!view.state.selection.empty && isBareUrl(text)) return false;
           event.preventDefault();
           editorRef.current?.commands.insertContent(toDoc(shape, text).content ?? []);
           return true;
