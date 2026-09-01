@@ -20,6 +20,7 @@ bun dev            # builds the GUI in watch mode and serves it from the API on 
 bun run build      # one-off GUI build
 bun test           # in-process API + CLI tests (fresh temp database per test)
 bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium` once)
+                   # set GF_E2E_PORT when another worktree is running its own suite
 bun run typecheck
 bun run lint       # stylelint (DESIGN.md as rules) + the dead-CSS check
 bun run db:push    # drizzle-kit push against the dev database

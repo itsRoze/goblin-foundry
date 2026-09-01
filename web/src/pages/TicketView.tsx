@@ -334,7 +334,7 @@ function DependencyRow({ dep, inert, removable, onRemove }: { dep: DependencyRef
         {dep.title}
       </Link>
       <span className="gf-row-trail">
-        {dep.trashed && <span className="gf-dep-note">in the trash</span>}
+        {dep.trashed && <span className="gf-dep-note">in the trash{removable ? '' : ' — restore to edit'}</span>}
         <StatusChip status={dep.status} />
         {removable && (
           <button type="button" className="gf-dep-drop" aria-label={`remove ${dep.key}`} title={`remove ${dep.key}`} onClick={onRemove}>
@@ -353,7 +353,8 @@ function DependencyRow({ dep, inert, removable, onRemove }: { dep: DependencyRef
  * are choices" rather than "this is a list of things".
  *
  * It offers what could sensibly be declared: never this ticket, never an edge
- * this side already names, never anything trashed (the list read has none) —
+ * *either* side already names (which is also the one-hop cycle), never anything
+ * trashed (the list read has none) —
  * and `done`/`cancelled` tickets last, since declaring one is legal but rarely
  * what you meant.
  */
@@ -410,7 +411,10 @@ function TicketPicker({
         type="text"
         role="combobox"
         aria-expanded={hits.length > 0}
-        aria-controls={listId}
+        // both track the listbox's existence: pointing `aria-controls` at an id that is not
+        // in the document is an invalid IDREF, not a harmless leftover
+        aria-controls={hits.length > 0 ? listId : undefined}
+        aria-autocomplete="list"
         aria-activedescendant={hits[at] ? optionId(hits[at].key) : undefined}
         aria-label={`${label} — search tickets`}
         placeholder="search by key or title"
@@ -438,7 +442,7 @@ function TicketPicker({
               onMouseMove={() => setCursor(i)}
               onClick={() => void onPick(t.key)}
             >
-              <span className="gf-row-title gf-pick-title">
+              <span className="gf-pick-title">
                 <span className="gf-key">{t.key}</span>
                 {t.title}
               </span>

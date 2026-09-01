@@ -48,7 +48,8 @@
         "/^(?!inset ).+/"
       ],
       "opacity": [
-        "/^0?\\.[0-9]+$/"
+        "/^0?\\.[0-9]+$/",
+        "/^[0-9]{1,2}%$/"
       ]
     },
     "declaration-property-value-no-unknown": true,

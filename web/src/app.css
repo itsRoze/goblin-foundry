@@ -76,7 +76,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md §5) */
-.gf-cols { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: var(--gf-gap); overflow-x: auto; padding-bottom: var(--gf-s2); }
+/* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
+   ultrawide from turning every card into a 400px slab (DESIGN.md §6) */
+.gf-cols { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 280px); gap: var(--gf-gap); overflow-x: auto; padding-bottom: var(--gf-s2); }
 .gf-col { display: flex; flex-direction: column; gap: var(--gf-s2); min-width: 0; }
 .gf-col-head {
   display: flex; justify-content: space-between; gap: var(--gf-s2);
@@ -215,18 +217,25 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
-/* rows bleed past the tile's padding, so the vertical scroll must not imply a horizontal one */
+/* `overflow-y: auto` forces `overflow-x` to `auto` too, so it is pinned to `hidden` — which
+   means nothing inside may rely on the bleed `.gf-row` gives it, or it gets clipped there. */
 .gf-picker-hits { max-height: 190px; overflow: hidden auto; }
 /* the marker is a border rather than an inset shadow: the row bleeds past the tile's
-   padding, and a shadow at that outer edge gets clipped where a border does not */
+   padding, and a shadow at that outer edge gets clipped where a border does not.
+   (No button resets here: an option is a div, because a listbox may not contain buttons.) */
 .gf-picker-hit {
-  width: 100%; text-align: left; background: none; cursor: pointer; font: inherit;
-  border: none; border-bottom: 1px solid var(--gf-rule);
+  /* `.gf-row`'s bleed is cancelled: the 2px marker below sits at this element's left edge, and
+     the scroll container clips anything left of its padding box — which the bleed lands in. */
+  margin-inline: 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gf-rule);
   border-left: 2px solid transparent; padding-left: calc(var(--gf-s2) - 2px);
 }
 .gf-picker-hit.is-on { background: var(--gf-raised); border-left-color: var(--gf-system); }
-/* a candidate's title has its own class: sharing `.gf-row-title` with the declared edges is what
-   made the strike and the hover fight, and needing `>` chains to keep them apart was the symptom */
-.gf-pick-title { display: flex; align-items: baseline; gap: 0; min-width: 0; color: var(--gf-ink); }
+/* A candidate's title carries its own class *only* — sharing `.gf-row-title` with the declared
+   edges is what made the strike and the hover fight, and the `>` chains were the symptom. Sharing
+   it for the layout half would have left them coupled, so this repeats five declarations on
+   purpose: the two look alike today and are free to stop. */
+.gf-pick-title { grid-column: 1; font: var(--gf-t-h); display: flex; align-items: baseline; min-width: 0; color: var(--gf-ink); }
 /* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
 .gf-picker-hit.is-inert .gf-pick-title { color: var(--gf-mute); }
