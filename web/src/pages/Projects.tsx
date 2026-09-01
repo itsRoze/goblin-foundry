@@ -13,9 +13,10 @@ export const projectFormFields = (apps: App[] | undefined, withApp: boolean) => 
     : []),
 ];
 
+/** A form that does not carry the description leaves it alone — the about tile's description saves itself. */
 export const projectBody = (v: Record<string, string>) => ({
   name: v.name ?? '',
-  description: v.description ?? '',
+  ...(v.description === undefined ? {} : { description: v.description }),
   app_id: v.app_id ? Number(v.app_id) : null,
 });
 

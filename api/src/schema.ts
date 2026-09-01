@@ -32,6 +32,8 @@ export const project = sqliteTable('project', {
   app_id: integer('app_id').references(() => app.id),
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
+  /** The Project Design, a markdown document stored with the project (ADR-0005). */
+  design: text('design'),
   ...lifecycle,
 });
 
@@ -53,7 +55,7 @@ export const ticket = sqliteTable(
     status: text('status').notNull().default('backlog').$type<(typeof TICKET_STATUSES)[number]>(),
     /** "straightforward enough to build without a Ticket Design" — the approve guard reads it (issue 04). */
     simple: integer('simple', { mode: 'boolean' }).notNull().default(false),
-    /** The Ticket Design, a markdown document stored with the ticket (ADR-0005); no editor until issue 07. */
+    /** The Ticket Design, a markdown document stored with the ticket (ADR-0005). */
     design: text('design'),
     app_id: integer('app_id').references(() => app.id),
     project_id: integer('project_id').references(() => project.id),

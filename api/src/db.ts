@@ -64,6 +64,7 @@ async function ensureSchema(db: Db): Promise<void> {
     app_id integer REFERENCES app(id),
     name text NOT NULL,
     description text DEFAULT '' NOT NULL,
+    design text,
     archived_at text,
     trashed_at text,
     trashed_via text,

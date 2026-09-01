@@ -1,3 +1,4 @@
+import { hasDesign } from './design';
 import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
 /**
@@ -119,7 +120,7 @@ export const UNCREATABLE_STATUSES = ['done', 'cancelled'] as const satisfies rea
 export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
   const missing: ApproveRequirement[] = [];
   if (ticket.app_id === null) missing.push('app');
-  if (!ticket.simple && (ticket.design ?? '').trim() === '') missing.push('design');
+  if (!ticket.simple && !hasDesign(ticket.design)) missing.push('design');
   return missing;
 }
 

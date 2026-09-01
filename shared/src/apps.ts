@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { designBody, designField } from './design';
 
 const timestamps = {
   archived_at: z.string().nullable(),
@@ -52,6 +53,8 @@ export const ProjectSchema = z.object({
   app_id: z.number().int().nullable(),
   name: z.string(),
   description: z.string(),
+  /** The Project Design: markdown, or `null` when nobody has written one (ADR-0005). */
+  design: designField,
   ...timestamps,
 });
 export type Project = z.infer<typeof ProjectSchema>;
@@ -59,6 +62,7 @@ export type Project = z.infer<typeof ProjectSchema>;
 export const CreateProjectBodySchema = z.strictObject({
   name: appFields.name,
   description: appFields.description.optional(),
+  design: designBody.optional(),
   app_id: z.number().int().nullable().optional(),
 });
 export type CreateProjectBody = z.infer<typeof CreateProjectBodySchema>;
@@ -66,6 +70,7 @@ export type CreateProjectBody = z.infer<typeof CreateProjectBodySchema>;
 export const PatchProjectBodySchema = z.strictObject({
   name: appFields.name.optional(),
   description: appFields.description.optional(),
+  design: designBody.optional(),
   app_id: z.number().int().nullable().optional(),
 });
 export type PatchProjectBody = z.infer<typeof PatchProjectBodySchema>;

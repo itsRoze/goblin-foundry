@@ -52,7 +52,7 @@ a:hover { text-decoration: underline; }
 }
 .gf-tile-sub { color: var(--gf-mute); }
 .gf-tile-keys { margin-left: auto; color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; text-transform: none; letter-spacing: 0; }
-.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); }
+.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); flex: 1; min-height: 0; }
 .gf-kbd { font: var(--gf-t-kbd); color: var(--gf-mute); border: 1px solid var(--gf-rule-2); padding: 0 5px; letter-spacing: .05em; }
 .gf-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }
 
@@ -122,9 +122,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-inline-title { font: var(--gf-t-h); color: var(--gf-ink); background: none; border: 1px solid transparent; border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; text-align: left; cursor: text; }
 .gf-inline-title:hover { border-color: var(--gf-rule-2); }
 .gf-inline-title-input { font: var(--gf-t-h); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; width: 100%; box-sizing: border-box; }
-.gf-prose { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .gf-since { font: var(--gf-t-meta); color: var(--gf-mute); }
-.gf-field.is-stacked { grid-template-columns: 1fr; }
 .gf-plus { font: var(--gf-t-meta); color: var(--gf-mute); background: none; border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 0 7px; cursor: pointer; line-height: 17px; }
 .gf-plus:hover { color: var(--gf-system); border-color: var(--gf-system); }
 
@@ -239,3 +237,106 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-pick-title { grid-column: 1; font: var(--gf-t-h); display: flex; align-items: baseline; min-width: 0; color: var(--gf-ink); }
 /* a done or cancelled ticket is still a true edge to declare, just not one you usually mean */
 .gf-picker-hit.is-inert .gf-pick-title { color: var(--gf-mute); }
+
+/* the markdown editor — also the read view, because markdown is the only stored form (ADR-0005) */
+.gf-md { position: relative; }
+/*
+ * The mode line comes and goes with the caret, so it must never be part of the
+ * layout: a line that appears between a mousedown and its mouseup moves
+ * whatever you were aiming at out from under you. It is absolutely placed, and
+ * a block field keeps its seat reserved whether or not it is sitting.
+ */
+.gf-md.is-block { padding-bottom: 42px; }
+.gf-md .gf-doc { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
+/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
+.gf-md .gf-doc:focus, .gf-md .gf-doc:focus-visible { outline: none; }
+/* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
+.gf-md.is-block .gf-doc { min-height: 1.5em; }
+.gf-md.is-block.is-empty .gf-doc { min-height: 3em; }
+/*
+ * A field that is what its tile is for takes all of it: the mode line then
+ * sits on the tile's bottom edge rather than crowding the last line written,
+ * and the whole tile is somewhere to click and start typing.
+ */
+.gf-md.is-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* `EditorContent` puts its own div between us and the document, so the growth has to be handed down through it */
+.gf-md.is-fill .gf-md-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gf-md.is-fill .gf-md-content .gf-doc { flex: 1; }
+.gf-md.is-empty::before {
+  content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
+  font: var(--gf-t-body); color: var(--gf-mute);
+}
+
+.gf-md .gf-doc > * { margin: 0 0 var(--gf-s3); }
+.gf-md .gf-doc > :last-child { margin-bottom: 0; }
+
+/*
+ * Six headings, six steps. Size carries the first four; below that the
+ * differentiator becomes weight, then colour, then tracking — an h6 inside a
+ * ticket design is a label, so it is set like one (DESIGN.md §4).
+ */
+.gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6) { font-family: var(--gf-sans); color: var(--gf-ink); line-height: 1.25; }
+.gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6):not(:first-child) { margin-top: var(--gf-s5); }
+.gf-md .gf-doc h1 { font-size: 19px; font-weight: 600; }
+.gf-md .gf-doc h2 { font-size: 16.5px; font-weight: 600; }
+.gf-md .gf-doc h3 { font-size: 14.5px; font-weight: 600; }
+.gf-md .gf-doc h4 { font-size: 13.5px; font-weight: 600; }
+.gf-md .gf-doc h5 { font-size: 13.5px; font-weight: 500; color: var(--gf-mute); }
+.gf-md .gf-doc h6 { font-size: 11.5px; font-weight: 500; color: var(--gf-mute); text-transform: uppercase; letter-spacing: var(--gf-track); }
+
+.gf-md .gf-doc :is(ul, ol) { padding-left: var(--gf-s5); }
+.gf-md .gf-doc li { margin-bottom: var(--gf-s1); }
+.gf-md .gf-doc li p { margin: 0; }
+.gf-md .gf-doc li::marker { color: var(--gf-dim); }
+.gf-md .gf-doc ul[data-type='taskList'] { list-style: none; padding-left: 0; }
+.gf-md .gf-doc ul[data-type='taskList'] li { display: flex; gap: var(--gf-s2); align-items: baseline; }
+.gf-md .gf-doc ul[data-type='taskList'] input[type='checkbox'] { accent-color: var(--gf-system); margin: 0; }
+.gf-md .gf-doc blockquote { border-left: 2px solid var(--gf-rule-2); padding-left: var(--gf-s3); color: var(--gf-mute); }
+.gf-md .gf-doc code { font: var(--gf-t-meta); color: var(--gf-link); }
+.gf-md .gf-doc pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
+.gf-md .gf-doc pre code { color: var(--gf-ink); }
+.gf-md .gf-doc a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
+/*
+ * The markdown around the span the caret is on: a handle, which is what
+ * --gf-dim is for (DESIGN.md §3). A marker the caret has stepped past renders
+ * inside the run's own element, so this has to outrank the run's styling.
+ */
+.gf-md .gf-doc .gf-syntax, .gf-md .gf-doc code .gf-syntax { color: var(--gf-dim); font: var(--gf-t-meta); user-select: none; }
+.gf-md .gf-doc hr { border: 0; border-top: 1px solid var(--gf-rule); }
+
+/*
+ * The mode line: a status bar on the field while the caret is in it, in the
+ * tiling-WM vernacular the rest of the GUI speaks. Every control names its key
+ * in its tooltip, so clicking teaches the keyboard rather than replacing it.
+ */
+.gf-mode {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: var(--gf-s3); flex-wrap: wrap;
+  padding: var(--gf-s1) var(--gf-s2); min-height: 26px;
+  background: var(--gf-raised); border-top: 1px solid var(--gf-rule);
+}
+/* a field that owns the tile's width runs its line to the tile's edges, like the bar does */
+.gf-md.is-block > .gf-mode { left: calc(-1 * var(--gf-pad-x)); right: calc(-1 * var(--gf-pad-x)); padding-left: var(--gf-pad-x); padding-right: var(--gf-pad-x); }
+/* an inline field is one row in a kv list: its line hangs below rather than taking a row of its own */
+.gf-md.is-inline > .gf-mode { top: 100%; bottom: auto; border: 1px solid var(--gf-rule); }
+.gf-mode-group { display: flex; align-items: center; gap: 1px; }
+.gf-mode-group + .gf-mode-group { padding-left: var(--gf-s3); border-left: 1px solid var(--gf-rule-2); }
+.gf-mode-btn {
+  font: var(--gf-t-label); letter-spacing: 0; color: var(--gf-mute); background: none;
+  border: 1px solid transparent; border-radius: var(--gf-radius); padding: 2px 5px; min-width: 20px; cursor: pointer;
+  transition: color var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease);
+}
+.gf-mode-btn:hover { color: var(--gf-ink); border-color: var(--gf-rule-2); }
+.gf-mode-btn.is-on { color: var(--gf-system); border-color: var(--gf-system); }
+.gf-mode-slot { margin-left: auto; display: flex; align-items: center; min-width: 0; }
+.gf-mode-hint { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
+.gf-mode-input {
+  font: var(--gf-t-meta); color: var(--gf-ink); background: var(--gf-page);
+  border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; width: 22ch; max-width: 100%;
+}
+.gf-mode-input.is-lang { width: 10ch; color: var(--gf-link); }
+.gf-mode-input:focus { outline: none; border-color: var(--gf-system); }
+
+/* what a field that saves itself says in its tile header (DESIGN.md §8) */
+.gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-saving[data-state='saved'] { color: var(--gf-system); }

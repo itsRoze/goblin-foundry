@@ -10,6 +10,7 @@ import {
   type TicketDetail,
   type Transition,
 } from '@goblin/shared';
+import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { formKeys, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
@@ -43,7 +44,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const patch = usePatchTicket(ticket.key);
   const intent = useTicketIntent(ticket.key);
   const move = useTransition();
-  const [editing, setEditing] = useState(false);
+  const about = useSaving();
+  const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = useRefusal<string>();
@@ -61,7 +63,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     },
     [setStateRefusal],
   );
-  useKey('e', useCallback(() => setEditing(true), []));
+  // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md §8)
+  useKey('e', focusEditor);
 
   const trash = useCallback(
     () =>
@@ -76,14 +79,17 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   // the number is the identity; a bare number or a stale prefix lands on the canonical key (ADR-0002)
   if (ticket.key !== key) return <Navigate to={ticketPath(ticket)} replace />;
 
+  /** A write from the about tile's non-prose controls, reported in the tile's one line and rethrown so the caller knows it did not land. */
   const save = async (body: Parameters<typeof patch.mutateAsync>[0]) => {
     setRefusal(null);
     try {
       await patch.mutateAsync(body);
     } catch (e) {
       setRefusal(refusalLine(e));
+      throw e;
     }
   };
+  const trySave = (body: Parameters<typeof patch.mutateAsync>[0]) => void save(body).catch(() => {});
 
   return (
     <>
@@ -111,17 +117,22 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         label="about"
         keys={
           <>
-            <Kbd>e</Kbd> edit
+            <Saving state={about.state} />
+            <Kbd>e</Kbd> write
           </>
         }
         focus
         testId="about-tile"
       >
-        <InlineTitle value={ticket.title} onSave={(title) => save({ title })} />
-        <Description value={ticket.description} editing={editing} onCancel={() => setEditing(false)} onSave={async (description) => {
-          await save({ description });
-          setEditing(false);
-        }} />
+        <InlineTitle value={ticket.title} onSave={(title) => about.run(() => save({ title }))} />
+        <MarkdownField
+          shape="block"
+          label="description"
+          placeholder="no description — press e"
+          value={ticket.description}
+          onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
+          testId="description"
+        />
         <Kv
           rows={[
             [
@@ -130,7 +141,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                 aria-label="app"
                 data-testid="app-select"
                 value={ticket.app_id === null ? '' : String(ticket.app_id)}
-                onChange={(e) => void save({ app_id: e.target.value ? Number(e.target.value) : null, project_id: null })}
+                onChange={(e) => trySave({ app_id: e.target.value ? Number(e.target.value) : null, project_id: null })}
               >
                 <option value="">no app</option>
                 {(apps.data ?? []).map((a) => (
@@ -146,7 +157,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                 aria-label="project"
                 data-testid="project-select"
                 value={ticket.project_id === null ? '' : String(ticket.project_id)}
-                onChange={(e) => void save({ project_id: e.target.value ? Number(e.target.value) : null })}
+                onChange={(e) => trySave({ project_id: e.target.value ? Number(e.target.value) : null })}
               >
                 <option value="">no project</option>
                 {(projects.data ?? [])
@@ -167,6 +178,23 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
             {refusal}
           </p>
         )}
+      </Tile>
+
+      <Tile
+        label="design"
+        subtitle={ticket.simple ? 'not needed — simple' : undefined}
+        keys={<Saving state={design.state} />}
+        testId="design-tile"
+      >
+        <MarkdownField
+          shape="block"
+          label="ticket design"
+          placeholder="no ticket design — the plan for this slice goes here"
+          value={ticket.design}
+          onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          fill
+          testId="design"
+        />
       </Tile>
 
       <DependenciesTile ticket={ticket} />
@@ -567,42 +595,14 @@ function InlineTitle({ value, onSave }: { value: string; onSave: (title: string)
       onChange={(e) => setText(e.target.value)}
       onKeyDown={formKeys(
         () => {
-          void onSave(text.trim()).then(() => setEditing(false));
+          // a refused rename keeps the input open with the refusal beside it
+          void onSave(text.trim()).then(
+            () => setEditing(false),
+            () => {},
+          );
         },
         () => setEditing(false),
       )}
     />
-  );
-}
-
-/**
- * Plain text for now — issue 07 swaps the widget in without changing the keys.
- * The editor is a separate component so its draft is seeded once, when it
- * mounts: a refetch (focus, or a write elsewhere) must not overwrite typing.
- */
-function Description({ value, editing, onSave, onCancel }: { value: string; editing: boolean; onSave: (description: string) => Promise<void>; onCancel: () => void }) {
-  if (editing) return <DescriptionEditor initial={value} onSave={onSave} onCancel={onCancel} />;
-  return value ? (
-    <p className="gf-prose" data-testid="description">
-      {value}
-    </p>
-  ) : (
-    <Empty>no description — press e</Empty>
-  );
-}
-
-function DescriptionEditor({ initial, onSave, onCancel }: { initial: string; onSave: (description: string) => Promise<void>; onCancel: () => void }) {
-  const [text, setText] = useState(initial);
-  const area = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => area.current?.focus(), []);
-
-  return (
-    <label className="gf-field is-stacked">
-      <span>description</span>
-      <textarea ref={area} aria-label="description" rows={6} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={formKeys(() => void onSave(text), onCancel)} />
-      <span className="gf-tile-keys">
-        <Kbd>⌘⏎</Kbd> save <Kbd>esc</Kbd> cancel
-      </span>
-    </label>
   );
 }
