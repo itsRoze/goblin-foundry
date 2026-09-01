@@ -8,7 +8,7 @@ import type { Locator, Page } from '@playwright/test';
  * specs address the tickets they made by key.
  */
 
-const design = (page: Page) => page.getByTestId('design-tile').locator('.tiptap');
+const design = (page: Page) => page.getByTestId('design-tile').locator('.gf-doc');
 
 /**
  * Paste the way a person does: the editor decides the text is markdown, not

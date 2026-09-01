@@ -176,7 +176,7 @@ that would fail if the extension ever started doing it instead.
 ## 2026-08-30 — `EditorContent` puts a div between you and the document
 
 Making the design field fill its tile (`flex: 1` down the chain) did nothing: `@tiptap/react`'s
-`EditorContent` renders its own wrapper div around `editor.view.dom`, so `flex: 1` on `.tiptap` was
+`EditorContent` renders its own wrapper div around `editor.view.dom`, so `flex: 1` on the document was
 being applied inside a parent that was not a flex container and had auto height. The wrapper takes a
 `className`, so the growth is handed down through `.gf-md-content` explicitly. Measuring the boxes
 found it in one pass; guessing at the CSS would not have.
@@ -219,3 +219,13 @@ character lands on the run's opening edge, where ProseMirror takes the marks of 
 missing stop rather than a trap: leftward you end up outside the mark, which is where you were
 going. Making it symmetric would mean intercepting an ordinary move to set `storedMarks`, which is
 more machinery than the asymmetry costs.
+
+## 2026-08-31 — style the editor's document by our own class, not ProseMirror's
+
+Rebasing onto the stylelint main added brought 30 `selector-class-pattern` errors: the editor's CSS
+hung off `.tiptap`, which is ProseMirror's class and matches neither `gf-` nor `is-`. Adding an
+exception for it would have been the easy read of the rule. The honest one is that a house selector
+should be the house's: TipTap takes `editorProps.attributes.class`, so the document carries `gf-doc`
+and the stylesheet never names a third-party class. The other two errors were real too — a focus
+reset declared after the rules it resets, and a `box-shadow: none` that resets a shadow this house
+never has (DESIGN.md §2).

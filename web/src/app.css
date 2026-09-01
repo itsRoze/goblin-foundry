@@ -247,10 +247,12 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  * a block field keeps its seat reserved whether or not it is sitting.
  */
 .gf-md.is-block { padding-bottom: 42px; }
-.gf-md .tiptap { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
+.gf-md .gf-doc { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
+/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
+.gf-md .gf-doc:focus, .gf-md .gf-doc:focus-visible { outline: none; }
 /* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
-.gf-md.is-block .tiptap { min-height: 1.5em; }
-.gf-md.is-block.is-empty .tiptap { min-height: 3em; }
+.gf-md.is-block .gf-doc { min-height: 1.5em; }
+.gf-md.is-block.is-empty .gf-doc { min-height: 3em; }
 /*
  * A field that is what its tile is for takes all of it: the mode line then
  * sits on the tile's bottom edge rather than crowding the last line written,
@@ -259,51 +261,48 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-md.is-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 /* `EditorContent` puts its own div between us and the document, so the growth has to be handed down through it */
 .gf-md.is-fill .gf-md-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.gf-md.is-fill .gf-md-content .tiptap { flex: 1; }
+.gf-md.is-fill .gf-md-content .gf-doc { flex: 1; }
 .gf-md.is-empty::before {
   content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
   font: var(--gf-t-body); color: var(--gf-mute);
 }
 
-/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
-.gf-md .tiptap:focus, .gf-md .tiptap:focus-visible { outline: none; box-shadow: none; }
-
-.gf-md .tiptap > * { margin: 0 0 var(--gf-s3); }
-.gf-md .tiptap > :last-child { margin-bottom: 0; }
+.gf-md .gf-doc > * { margin: 0 0 var(--gf-s3); }
+.gf-md .gf-doc > :last-child { margin-bottom: 0; }
 
 /*
  * Six headings, six steps. Size carries the first four; below that the
  * differentiator becomes weight, then colour, then tracking — an h6 inside a
  * ticket design is a label, so it is set like one (DESIGN.md §4).
  */
-.gf-md .tiptap :is(h1, h2, h3, h4, h5, h6) { font-family: var(--gf-sans); color: var(--gf-ink); line-height: 1.25; }
-.gf-md .tiptap :is(h1, h2, h3, h4, h5, h6):not(:first-child) { margin-top: var(--gf-s5); }
-.gf-md .tiptap h1 { font-size: 19px; font-weight: 600; }
-.gf-md .tiptap h2 { font-size: 16.5px; font-weight: 600; }
-.gf-md .tiptap h3 { font-size: 14.5px; font-weight: 600; }
-.gf-md .tiptap h4 { font-size: 13.5px; font-weight: 600; }
-.gf-md .tiptap h5 { font-size: 13.5px; font-weight: 500; color: var(--gf-mute); }
-.gf-md .tiptap h6 { font-size: 11.5px; font-weight: 500; color: var(--gf-mute); text-transform: uppercase; letter-spacing: var(--gf-track); }
+.gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6) { font-family: var(--gf-sans); color: var(--gf-ink); line-height: 1.25; }
+.gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6):not(:first-child) { margin-top: var(--gf-s5); }
+.gf-md .gf-doc h1 { font-size: 19px; font-weight: 600; }
+.gf-md .gf-doc h2 { font-size: 16.5px; font-weight: 600; }
+.gf-md .gf-doc h3 { font-size: 14.5px; font-weight: 600; }
+.gf-md .gf-doc h4 { font-size: 13.5px; font-weight: 600; }
+.gf-md .gf-doc h5 { font-size: 13.5px; font-weight: 500; color: var(--gf-mute); }
+.gf-md .gf-doc h6 { font-size: 11.5px; font-weight: 500; color: var(--gf-mute); text-transform: uppercase; letter-spacing: var(--gf-track); }
 
-.gf-md .tiptap :is(ul, ol) { padding-left: var(--gf-s5); }
-.gf-md .tiptap li { margin-bottom: var(--gf-s1); }
-.gf-md .tiptap li p { margin: 0; }
-.gf-md .tiptap li::marker { color: var(--gf-dim); }
-.gf-md .tiptap ul[data-type='taskList'] { list-style: none; padding-left: 0; }
-.gf-md .tiptap ul[data-type='taskList'] li { display: flex; gap: var(--gf-s2); align-items: baseline; }
-.gf-md .tiptap ul[data-type='taskList'] input[type='checkbox'] { accent-color: var(--gf-system); margin: 0; }
-.gf-md .tiptap blockquote { border-left: 2px solid var(--gf-rule-2); padding-left: var(--gf-s3); color: var(--gf-mute); }
-.gf-md .tiptap code { font: var(--gf-t-meta); color: var(--gf-link); }
-.gf-md .tiptap pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
-.gf-md .tiptap pre code { color: var(--gf-ink); }
-.gf-md .tiptap a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
+.gf-md .gf-doc :is(ul, ol) { padding-left: var(--gf-s5); }
+.gf-md .gf-doc li { margin-bottom: var(--gf-s1); }
+.gf-md .gf-doc li p { margin: 0; }
+.gf-md .gf-doc li::marker { color: var(--gf-dim); }
+.gf-md .gf-doc ul[data-type='taskList'] { list-style: none; padding-left: 0; }
+.gf-md .gf-doc ul[data-type='taskList'] li { display: flex; gap: var(--gf-s2); align-items: baseline; }
+.gf-md .gf-doc ul[data-type='taskList'] input[type='checkbox'] { accent-color: var(--gf-system); margin: 0; }
+.gf-md .gf-doc blockquote { border-left: 2px solid var(--gf-rule-2); padding-left: var(--gf-s3); color: var(--gf-mute); }
+.gf-md .gf-doc code { font: var(--gf-t-meta); color: var(--gf-link); }
+.gf-md .gf-doc pre { background: var(--gf-page); border: 1px solid var(--gf-rule); padding: var(--gf-s3); overflow-x: auto; }
+.gf-md .gf-doc pre code { color: var(--gf-ink); }
+.gf-md .gf-doc a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
 /*
  * The markdown around the span the caret is on: a handle, which is what
  * --gf-dim is for (DESIGN.md §3). A marker the caret has stepped past renders
  * inside the run's own element, so this has to outrank the run's styling.
  */
-.gf-md .tiptap .gf-syntax, .gf-md .tiptap code .gf-syntax { color: var(--gf-dim); font: var(--gf-t-meta); user-select: none; }
-.gf-md .tiptap hr { border: 0; border-top: 1px solid var(--gf-rule); }
+.gf-md .gf-doc .gf-syntax, .gf-md .gf-doc code .gf-syntax { color: var(--gf-dim); font: var(--gf-t-meta); user-select: none; }
+.gf-md .gf-doc hr { border: 0; border-top: 1px solid var(--gf-rule); }
 
 /*
  * The mode line: a status bar on the field while the caret is in it, in the

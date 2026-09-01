@@ -222,7 +222,8 @@ export function MarkdownField({
       extensions: extensionsFor(shape),
       content: toDoc(shape, server),
       editorProps: {
-        attributes: { 'aria-label': label, role: 'textbox', 'aria-multiline': String(shape === 'block') },
+        // our own class on the document, so the house style's selectors are the house's and not ProseMirror's
+        attributes: { class: 'gf-doc', 'aria-label': label, role: 'textbox', 'aria-multiline': String(shape === 'block') },
         /**
          * The planner writes a design and you paste it, so plain text is
          * always markdown here — never the literal characters of it. Editors
