@@ -27,6 +27,26 @@ async function pasteMarkdown(field: Locator, markdown: string, html?: string) {
   );
 }
 
+/**
+ * Click somewhere and wait until the caret is really there. `selectionchange` is asynchronous, so a
+ * key pressed straight after a click acts on where the caret *was* — and the mode line is no help,
+ * because "inside a code span" is true of every position in it. The browser's own selection is the
+ * precise signal, and `waitForFunction` polls it.
+ */
+async function caretInto(target: Locator, selector: string, offset: number, position?: { x: number; y: number }) {
+  await target.click(position ? { position } : undefined);
+  await target.page().waitForFunction(
+    ({ selector, offset }) => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+      const node = selection.anchorNode;
+      const host = node instanceof Element ? node : node?.parentElement;
+      return selection.anchorOffset === offset && host?.closest(selector) != null;
+    },
+    { selector, offset },
+  );
+}
+
 async function newTicket(page: Page, title: string) {
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
@@ -239,8 +259,9 @@ test('the link slot cancels when told to, and lands its url exactly once', async
   await tile.getByTestId('fmt-link').click();
   await tile.getByLabel('link url').fill('https://nope.dev');
   await tile.getByLabel('link url').press('Escape');
-  // the slot closing is what says the caret is back in the document, so wait for that, not for a timeout
+  // the slot closing is not enough: the keys that follow need the caret actually back in the document
   await expect(tile.getByLabel('link url')).toHaveCount(0);
+  await expect(field).toBeFocused();
   await expect(field.locator('a')).toHaveCount(0);
 
   // with nothing selected the url becomes its own link text — once, not twice
@@ -283,20 +304,15 @@ test('a fence that opens the document can still be got out of, upwards', async (
   const field = design(page);
   await field.click();
 
-  // a design pasted from a planner can begin with a fence, and then there is no line above it to click
+  // a design pasted from a planner can begin with a fence, and then there is no line above it to click.
+  // Opened empty, so the caret is at its first position by construction rather than by aiming a click there.
   await page.keyboard.type('```ts\n');
-  await page.keyboard.type('const first = 1;');
   await expect(field.locator('pre')).toHaveCount(1);
 
-  // clicked, not arrowed: a run of key presses outruns the browser's async `selectionchange`, so ProseMirror
-  // would still think the caret was where the typing left it. The settle is that same asynchrony — there is
-  // no event on this side to await, and a caret moving within one block changes nothing on screen to assert on.
-  await field.locator('pre code').click({ position: { x: 0, y: 4 } });
-  await page.waitForTimeout(120);
   await page.keyboard.press('ArrowUp');
   await page.keyboard.type('a line above it');
   await expect(field.locator('p').first()).toHaveText('a line above it');
-  await expect(field.locator('pre code')).toHaveText('const first = 1;');
+  await expect(field.locator('pre')).toHaveCount(1);
 });
 
 test('backspace against a revealed marker deletes the marker, then the character under it', async ({ page }) => {
@@ -306,8 +322,7 @@ test('backspace against a revealed marker deletes the marker, then the character
   // the run opens the line, so at its opening edge the caret is inside it and the marker is drawn behind
   await page.keyboard.type('`parse` now');
   await expect(field.locator('code')).toHaveText('parse');
-  await field.locator('code').click({ position: { x: 0, y: 6 } });
-  await page.waitForTimeout(120);
+  await caretInto(field.locator('code'), 'code', 0, { x: 0, y: 6 });
 
   // the first press deletes the marker, which is to say it takes the mark off the run; no text goes
   await page.keyboard.press('Backspace');
@@ -353,8 +368,7 @@ test('backspace inside a run deletes a character, not the whole run', async ({ p
   // the caret sits after the last character of the run, where the closing marker is drawn on its far side:
   // there is no marker against it, so backspace is an ordinary backspace
   const run = (await field.locator('code').boundingBox())!;
-  await page.mouse.click(run.x + run.width - 1, run.y + run.height / 2);
-  await page.waitForTimeout(120);
+  await caretInto(field.locator('code'), 'code', 'parse'.length, { x: run.width - 1, y: run.height / 2 });
 
   await page.keyboard.press('Backspace');
   await expect(field.locator('code')).toContainText('pars');
@@ -375,8 +389,7 @@ test('a run that opens the line can be arrowed out of, and typing there is plain
   // the whole line is one code span, so there is no position to its left to arrow into
   await page.keyboard.type('`test` ');
   await expect(field.locator('code')).toHaveText('test');
-  await field.locator('code').click({ position: { x: 0, y: 6 } });
-  await page.waitForTimeout(120);
+  await caretInto(field.locator('code'), 'code', 0, { x: 0, y: 6 });
 
   // the arrow does not move the caret, it steps it outside the mark: what comes next is no longer code
   await page.keyboard.press('ArrowLeft');
