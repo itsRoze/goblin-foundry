@@ -7,7 +7,10 @@ import { join } from 'node:path';
 // the exit criterion made executable, not where behaviour is enumerated.
 // One worker: every spec writes to that one database, so they must not
 // interleave (a spec that counts apps cannot share the file with one creating them).
-const port = 4790;
+// Worktrees run their suites concurrently, and a second run on the same port either fails
+// outright or — worse — silently drives the *other* worktree's build. `GF_E2E_PORT` gives a
+// run its own.
+const port = Number(process.env.GF_E2E_PORT ?? 4790);
 const dbPath = join(mkdtempSync(join(tmpdir(), 'gf-e2e-')), 'foundry.db');
 
 export default defineConfig({

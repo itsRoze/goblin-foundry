@@ -1,4 +1,4 @@
-import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { TICKET_STATUSES } from '@goblin/shared';
 
@@ -63,6 +63,25 @@ export const ticket = sqliteTable(
     updated_at: text('updated_at').notNull(),
   },
   (t) => [check('ticket_status', sql`${t.status} IN (${statusList()})`)],
+);
+
+/**
+ * "blocker blocks blocked" — a durable fact, not a live constraint (ADR-0009).
+ * The pair is the identity, so a re-declared edge is idempotent; edges survive
+ * a trip through the trash, which is why nothing here cascades.
+ */
+export const dependency = sqliteTable(
+  'dependency',
+  {
+    blocker_id: integer('blocker_id')
+      .notNull()
+      .references(() => ticket.id),
+    blocked_id: integer('blocked_id')
+      .notNull()
+      .references(() => ticket.id),
+    created_at: text('created_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.blocker_id, t.blocked_id] }), index('dependency_blocked').on(t.blocked_id)],
 );
 
 /** One row per write; `prior`/`new` are JSON of only the changed fields. */

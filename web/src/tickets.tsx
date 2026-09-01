@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import type { Ticket, TicketStatus } from '@goblin/shared';
+import { isBlocked, type Ticket, type TicketStatus } from '@goblin/shared';
 import { ProblemError } from './api';
 import { formKeys } from './keys';
 import { useCreateTicket, useApps, useProjects } from './queries';
@@ -70,10 +70,12 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
     });
   }, [ticket.key, ticket.status]);
 
+  // blocked is a derived condition, never a colour: the outline glyph and the strike, nothing else (DESIGN.md §3)
+  const blocked = isBlocked(ticket);
   return (
     <Link
       ref={ref}
-      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${lifted ? ' is-lifted' : ''}`}
+      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}`}
       to={ticketPath(ticket)}
       data-testid={`card-${ticket.key}`}
     >
@@ -81,7 +83,14 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
         <span className="gf-card-key">{ticket.key}</span>
         <i>{ticket.status}</i>
       </span>
-      <span className="gf-card-title">{ticket.title}</span>
+      <span className="gf-card-title">
+        {blocked && (
+          <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
+            ◇
+          </span>
+        )}
+        {ticket.title}
+      </span>
       {meta !== null && <span className="gf-card-meta">{meta}</span>}
       {updated !== null && (
         <span className="gf-card-meta">

@@ -33,7 +33,7 @@ export function Shell() {
         <nav className="gf-ws" aria-label="workspaces">
           {workspaces.map((w) => (
             <NavLink key={w.n} to={w.to} end={w.to === '/'} className={({ isActive }) => (isActive ? 'is-on' : '')}>
-              {w.n} {w.label}
+              {w.n} <span className="gf-ws-label">{w.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -42,10 +42,12 @@ export function Shell() {
         </span>
         <span className="gf-counts">
           <span>
-            <b>{apps.data?.length ?? '·'}</b>apps
+            <b>{apps.data?.length ?? '·'}</b>
+            <span className="gf-count-label">apps</span>
           </span>
           <span>
-            <b>{projects.data?.length ?? '·'}</b>projects
+            <b>{projects.data?.length ?? '·'}</b>
+            <span className="gf-count-label">projects</span>
           </span>
           <NavLink to="/trash" className={({ isActive }) => (isActive ? 'is-on' : '')}>
             trash

@@ -244,6 +244,25 @@ export function useRefusal<T>() {
   return { refusal, setRefusal };
 }
 
+/**
+ * The one question the tracker asks before doing what you said. It lives where
+ * a refusal would, because it is the same kind of sentence — this one just has
+ * a way through it (ADR-0009: `start` means "proceeding despite the blocker").
+ */
+export function Confirm({ text, verb, onConfirm, onCancel, testId }: { text: string; verb: string; onConfirm: () => void; onCancel: () => void; testId?: string }) {
+  return (
+    <p className="gf-confirm" role="alert" data-testid={testId}>
+      <span>{text}</span>
+      <button type="button" className="gf-btn" data-testid={`${testId ?? 'confirm'}-yes`} onClick={onConfirm}>
+        {verb} anyway
+      </button>
+      <button type="button" className="gf-btn" onClick={onCancel}>
+        cancel
+      </button>
+    </p>
+  );
+}
+
 const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 
 /** The name of a thing an event points at; `#3` once it is gone. */
@@ -269,6 +288,11 @@ const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
   // `approved · planning → ready`: the decision first, the state pair after it
   if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}`;
+  // one edge, written on both its ends: each side's history says which end this ticket is (ADR-0009)
+  if (e.kind === 'dependency_added' || e.kind === 'dependency_removed') {
+    const undone = e.kind === 'dependency_removed' ? 'no longer ' : '';
+    return 'blocker' in e.new ? `${undone}blocked by ${str(e.new.blocker)}` : `${undone}blocking ${str(e.new.blocked)}`;
+  }
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];

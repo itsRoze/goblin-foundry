@@ -5,6 +5,7 @@ import {
   EventSchema,
   ProjectSchema,
   SettingsSchema,
+  TicketDetailSchema,
   TicketSchema,
   type CreateAppBody,
   type CreateProjectBody,
@@ -63,9 +64,26 @@ export const useTickets = (filter: { app_id?: number | null; project_id?: number
   });
 };
 
-/** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one. */
+/** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one, and its edges in both directions. */
 export const useTicket = (key: string) =>
-  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketSchema), retry: false });
+  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketDetailSchema), retry: false });
+
+/** One edge, named from both ends, so a caller can declare it from whichever ticket it is standing on. */
+export interface Edge {
+  blocker: string;
+  blocked: string;
+}
+
+/**
+ * Declaring and undeclaring an edge. The endpoint always hangs off the
+ * *blocked* ticket (ADR-0004) — saying "this blocks GF-9" from GF-3 is the
+ * same edge written from the other end, so it addresses GF-9.
+ */
+export const useDependencyEdges = () => {
+  const add = useWrite(({ blocker, blocked }: Edge) => api.post(`/api/tickets/${blocked}/dependencies`, { blocker }));
+  const remove = useWrite(({ blocker, blocked }: Edge) => api.del(`/api/tickets/${blocked}/dependencies/${blocker}`));
+  return { add, remove };
+};
 
 export const useEvents = (kind: EntityKind, id: number) =>
   useQuery({ queryKey: ['events', kind, id], queryFn: () => api.get(`/api/${kind}s/${id}/events`, Events) });

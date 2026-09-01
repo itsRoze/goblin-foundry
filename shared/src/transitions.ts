@@ -1,4 +1,4 @@
-import { TICKET_STATUSES, type Ticket, type TicketStatus } from './tickets';
+import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
 /**
  * The lifecycle as data (ADR-0003). One table, read by the API to validate a
@@ -85,6 +85,15 @@ export const findTransition = (from: TicketStatus, name: TransitionName): Transi
  * two statuses will have to ask which.
  */
 export const transitionTo = (from: TicketStatus, to: TicketStatus): Transition | undefined => TRANSITIONS.find((t) => t.from === from && t.to === to);
+
+/**
+ * The one place a blocker gets in the way of a move, and it only asks
+ * (ADR-0009): `start` is the verb that means "proceeding despite the blocker",
+ * so the GUI puts the question to the human. Every other verb goes through
+ * without a word, whichever surface triggers it — the board's drop and the
+ * state tile's button read this same rule.
+ */
+export const asksBeforeBlocked = (name: TransitionName, ticket: Pick<Ticket, 'status' | 'blocked_by'>): boolean => name === 'start' && isBlocked(ticket);
 
 /** The only fields the guard looks at — everything that can hold a ticket out of the frontier. */
 export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design'>;

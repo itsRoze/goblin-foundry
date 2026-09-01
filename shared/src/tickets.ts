@@ -22,8 +22,56 @@ export const TicketSchema = z.object({
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** The keys of the blockers that are still *open* — a derived condition, never a status (CONTEXT.md "Blocked"). */
+  blocked_by: z.array(z.string()),
 });
 export type Ticket = z.infer<typeof TicketSchema>;
+
+/**
+ * Enough of the other end of an edge to render a chip without a second read.
+ * `trashed` is there because a trashed blocker and a `done` one are both out
+ * of `blocked_by` yet mean opposite things: one is finished, the other is
+ * suspended and re-blocks the moment it is restored (ADR-0009).
+ */
+export const DependencyRefSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  status: TicketStatusSchema,
+  trashed: z.boolean(),
+});
+export type DependencyRef = z.infer<typeof DependencyRefSchema>;
+
+/** Both directions of a ticket's declared edges — *every* one of them, satisfied or not (ADR-0009). */
+export const TicketDependenciesSchema = z.object({
+  depends_on: z.array(DependencyRefSchema),
+  blocks: z.array(DependencyRefSchema),
+});
+export type TicketDependencies = z.infer<typeof TicketDependenciesSchema>;
+
+/** What a single-ticket read answers: the ticket plus the neighbourhood a list read cannot afford. */
+export const TicketDetailSchema = TicketSchema.extend({ dependencies: TicketDependenciesSchema });
+export type TicketDetail = z.infer<typeof TicketDetailSchema>;
+
+/** The blocker is named by key, because the ticket view's picker deals in keys (ADR-0002). */
+export const AddDependencyBodySchema = z.strictObject({ blocker: z.string().trim().min(1) });
+export type AddDependencyBody = z.infer<typeof AddDependencyBodySchema>;
+
+/** The end of the line, however it got there. A terminal ticket has nowhere left to proceed to, which is what makes it neither blocked nor blocking. */
+export const TERMINAL_STATUSES = ['done', 'cancelled'] as const satisfies readonly TicketStatus[];
+export const isTerminal = (status: TicketStatus): boolean => (TERMINAL_STATUSES as readonly TicketStatus[]).includes(status);
+
+/**
+ * Blockedness is a property of a *non-terminal* ticket: a `done` or `cancelled`
+ * ticket is never blocked however many open blockers it still names
+ * (CONTEXT.md "Blocked").
+ */
+export const isBlocked = (t: Pick<Ticket, 'status' | 'blocked_by'>): boolean => t.blocked_by.length > 0 && !isTerminal(t.status);
+
+/** *GF-3 and GF-7 still block this* — the one sentence the `start` confirm asks with. */
+export function blockedWarning(keys: string[]): string {
+  if (keys.length === 1) return `${keys[0]} still blocks this`;
+  return `${keys.slice(0, -1).join(', ')} and ${keys[keys.length - 1]} still block this`;
+}
 
 const ticketFields = {
   title: z.string().trim().min(1).max(200),
