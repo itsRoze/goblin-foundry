@@ -32,7 +32,7 @@ const INERT: TicketStatus[] = [...TERMINAL_STATUSES];
 
 /** ADR-0001 warns off `IN` lists over 100 params, so an iterative walk goes a batch at a time. */
 const BATCH = 100;
-function* batches<T>(items: T[]): Generator<T[]> {
+export function* batches<T>(items: T[]): Generator<T[]> {
   for (let i = 0; i < items.length; i += BATCH) yield items.slice(i, i + BATCH);
 }
 

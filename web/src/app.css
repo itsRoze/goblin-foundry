@@ -340,3 +340,41 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* what a field that saves itself says in its tile header (DESIGN.md §8) */
 .gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-saving[data-state='saved'] { color: var(--gf-system); }
+
+/*
+ * The dependency graph (DESIGN.md §6): our own SVG over a dagre layout, drawn
+ * at its natural size in a box that scrolls both ways, so the page never does
+ * (§5). No arrowheads — rank order carries the direction — and no opacity: a
+ * blocked node is the kanban's hollow ◇ and a struck title, never a colour.
+ */
+.gf-graph { position: relative; overflow: auto; max-height: 480px; }
+.gf-graph-edge { fill: none; stroke: var(--gf-dim); stroke-width: 1; }
+/* dashed while the blocker is open, solid once it is satisfied — this reverses the rough-v5 mockup (§6) */
+.gf-graph-edge.is-open { stroke: var(--gf-mute); stroke-dasharray: 3 3; }
+.gf-graph-node:hover { text-decoration: none; }
+/* the box dagre reserved, so the whole node takes the click and the hover — not only the ink in it */
+.gf-graph-hit { fill: transparent; }
+.gf-graph-diamond { fill: var(--gf-mute); stroke: var(--gf-mute); stroke-width: 1; }
+.gf-graph-key { font: var(--gf-t-meta); fill: var(--gf-mute); letter-spacing: .08em; }
+.gf-graph-title { font: var(--gf-t-h); fill: var(--gf-ink); }
+.gf-graph-node.is-draft .gf-graph-diamond { fill: var(--gf-draft); stroke: var(--gf-draft); }
+.gf-graph-node.is-system .gf-graph-diamond { fill: var(--gf-system); stroke: var(--gf-system); }
+.gf-graph-node.is-review .gf-graph-diamond { fill: var(--gf-review); stroke: var(--gf-review); }
+/* blocked keeps the status colour and empties the shape; the fill is the tile so the wire never shows through */
+.gf-graph-node.is-blocked .gf-graph-diamond { fill: var(--gf-tile); }
+.gf-graph-node.is-blocked .gf-graph-title { fill: var(--gf-mute); text-decoration: line-through; }
+/* outside this project: context, not subject — mute, with no status treatment at all */
+.gf-graph-node.is-external .gf-graph-diamond { fill: var(--gf-mute); stroke: var(--gf-mute); }
+.gf-graph-node.is-external .gf-graph-title { fill: var(--gf-mute); }
+
+/* what the diamond had no room for; it rides in the scrolling content beside its node */
+.gf-graph-pop {
+  position: absolute; z-index: 2; max-width: 280px; pointer-events: none;
+  display: flex; flex-direction: column; gap: var(--gf-s1);
+  background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
+}
+.gf-graph-pop-head { display: flex; align-items: center; gap: var(--gf-s2); }
+.gf-graph-pop-title { font: var(--gf-t-h); }
+.gf-graph-pop-line { font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; }
+/* the legend is copy, not a key (§6) */
+.gf-graph-legend { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }

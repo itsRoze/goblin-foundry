@@ -259,3 +259,13 @@ ADR-0001's backup carve-out assumed it would: it does. A `Database(path, { reado
 `VACUUM INTO ?` while `bun dev` holds the same file open, reads through the `-wal`, and writes one
 settled file the schema opens with no recovery step. So `goblin backup` never needs the server
 stopped, and never needs a second writer.
+
+## 2026-09-02 — `graph.ts` and `graph.tsx` cannot both exist
+
+Issue 08 asked for a pure `web/src/graph.ts` (the dagre layout) and a `web/src/graph.tsx` (the
+SVG renderer). Both resolve from the same bare specifier: TypeScript and Vite try `.ts` before
+`.tsx`, so `import … from '../graph'` in the Project view would always reach the layout module
+and never the component, and the extension cannot be written out without
+`allowImportingTsExtensions`. The pure module keeps the plain name it is tested under
+(`web/test/graph.test.ts`) and the renderer is `graph-view.tsx`. Two modules in one directory
+need two stems, not two extensions.

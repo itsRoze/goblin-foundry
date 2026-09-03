@@ -4,7 +4,7 @@ import { TICKET_STATUSES, asksBeforeBlocked, blockedWarning, structuralRefusal, 
 import { useKey } from '../keys';
 import { useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
-import { TicketCard, asDraggedCard, useNames, useNewTicket, type DraggedCard } from '../tickets';
+import { TicketCard, asDraggedCard, homeLine, useNames, useNewTicket, type DraggedCard } from '../tickets';
 import { Confirm, Empty, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
 
 /** Per-device display preferences, not filters: a filter chooses which tickets are on the board and lives in the URL (CONTEXT.md). */
@@ -119,8 +119,7 @@ export function BoardPage() {
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   const columns = TICKET_STATUSES.filter((s) => s !== 'cancelled' || view.cancelled);
-  const meta = (t: Ticket) =>
-    t.app_id === null && t.project_id === null ? '—' : `${t.app_id === null ? '—' : names.app(t.app_id)} / ${t.project_id === null ? '—' : names.project(t.project_id)}`;
+  const meta = (t: Ticket) => homeLine(t.app_id === null ? null : names.app(t.app_id), t.project_id === null ? null : names.project(t.project_id));
 
   return (
     <Tile
