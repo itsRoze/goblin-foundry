@@ -55,7 +55,7 @@ export const useProject = (id: number | null) =>
  * Ticket view is on the drawing when you come back.
  */
 export const useProjectGraph = (id: number | null) =>
-  useQuery({ queryKey: ['project-graph', id], queryFn: () => api.get(`/api/projects/${id}/graph`, ProjectGraphSchema), enabled: id !== null, retry: false });
+  useQuery({ queryKey: ['project-graph', id], queryFn: () => api.get(`/api/projects/${id}/graph`, ProjectGraphSchema), enabled: id !== null });
 
 /**
  * Live tickets, optionally scoped to an app or a project. The board polls

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { isBlocked, type ProjectGraph } from '@goblin/shared';
 import { DIAMOND, LABEL_TOP, NODE_H, NODE_W, clipTitle, layoutGraph, type LaidNode } from './graph';
-import { StatusChip, statusTone, ticketPath } from './tickets';
+import { StatusChip, homeLine, statusTone, ticketPath } from './tickets';
 import { Empty } from './ui';
 
 /*
@@ -30,8 +30,8 @@ export const graphSubtitle = (graph: ProjectGraph) => `${plural(graph.nodes.leng
  * The legend is copy, not a key (DESIGN.md §6) — it says what the drawing
  * means in a sentence, and says the other thing when there is nothing to read.
  */
-export const graphLegend = (graph: ProjectGraph) =>
-  graph.edges.length === 0
+const legendFor = (edges: number) =>
+  edges === 0
     ? 'no dependencies yet — declare one from a ticket'
     : 'blocker → blocked · dashed while the blocker is open · ◇ blocked · mute is outside this project';
 
@@ -72,7 +72,8 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
   const shown = layout.nodes.find((n) => n.key === active);
 
   return (
-    <div className="gf-graph" data-testid="graph">
+    <>
+      <div className="gf-graph" data-testid="graph">
       <svg width={layout.width} height={layout.height} aria-label="dependency graph">
         {/* edges first, so an opaque diamond hides the end of its own wire rather than wearing it */}
         <g className="gf-graph-edges">
@@ -84,8 +85,13 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
           <Node key={n.key} node={n} onEnter={() => linger(n.key)} onLeave={() => show(null)} onFocus={() => show(n.key)} />
         ))}
       </svg>
-      {shown && <Popover node={shown} />}
-    </div>
+        {shown && <Popover node={shown} />}
+      </div>
+      {/* the legend sits under the drawing and stays put while the drawing scrolls */}
+      <p className="gf-graph-legend" data-testid="graph-legend">
+        {legendFor(layout.edges.length)}
+      </p>
+    </>
   );
 }
 
@@ -138,13 +144,9 @@ function Popover({ node }: { node: LaidNode }) {
         <StatusChip status={node.status} />
       </span>
       <span className="gf-graph-pop-title">{node.title}</span>
-      {node.blocked_by.length > 0 && <span className="gf-graph-pop-line">blocked by {node.blocked_by.join(', ')}</span>}
+      {isBlocked(node) && <span className="gf-graph-pop-line">blocked by {node.blocked_by.join(', ')}</span>}
       {node.description_line !== '' && <span className="gf-graph-pop-line">{node.description_line}</span>}
-      {node.external && (
-        <span className="gf-graph-pop-line">
-          {node.external.app ?? 'no app'} / {node.external.project ?? 'no project'}
-        </span>
-      )}
+      {node.external && <span className="gf-graph-pop-line">{homeLine(node.external.app, node.external.project)}</span>}
     </div>
   );
 }

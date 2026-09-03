@@ -64,12 +64,15 @@ describe('layoutGraph', () => {
     for (let i = 1; i < ys.length; i++) expect(ys[i]! - ys[i - 1]!).toBeGreaterThanOrEqual(NODE_H);
   });
 
-  test('the same graph lays out the same way twice — ties are broken by the order the nodes arrive in', () => {
-    const nodes = [node('GF-1'), node('GF-2'), node('GF-3'), node('GF-4')];
-    const edges = [edge('GF-1', 'GF-3'), edge('GF-2', 'GF-4')];
-    const once = layoutGraph(nodes, edges);
-    const twice = layoutGraph(nodes, edges);
-    expect(twice).toEqual(once);
+  test('where nothing else decides where a node goes, the order it arrived in does', () => {
+    const down = (keys: string[]) =>
+      layoutGraph(keys.map((key) => node(key)), [])
+        .nodes.sort((a, b) => a.y - b.y)
+        .map((n) => n.key);
+    // the read answers in key order, so that is what an untangled project reads as, top to bottom
+    expect(down(['GF-1', 'GF-2', 'GF-3'])).toEqual(['GF-1', 'GF-2', 'GF-3']);
+    // and it really is the input, not the key: hand them over shuffled and the drawing is shuffled
+    expect(down(['GF-3', 'GF-1', 'GF-2'])).toEqual(['GF-3', 'GF-1', 'GF-2']);
   });
 
   test('an edge naming a node that is not drawn is dropped rather than throwing', () => {

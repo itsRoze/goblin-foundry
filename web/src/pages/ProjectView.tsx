@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { slugPath } from '@goblin/shared';
 import { MarkdownField, Saving, useSaving } from '../editor';
-import { DependencyGraph, graphLegend, graphSubtitle } from '../graph-view';
+import { DependencyGraph, graphSubtitle } from '../graph-view';
 import { useApps, useEvents, usePatchProject, useProject, useProjectGraph, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
@@ -59,19 +59,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         <TicketRows tickets={tickets.data} />
       </Tile>
       <Tile label="graph" subtitle={graph.data ? graphSubtitle(graph.data) : undefined} testId="graph-tile">
-        {graph.data ? (
-          <>
-            <DependencyGraph graph={graph.data} />
-            {/* the legend is copy under the drawing, and stays put while the drawing scrolls */}
-            {graph.data.nodes.length > 0 && (
-              <p className="gf-graph-legend" data-testid="graph-legend">
-                {graphLegend(graph.data)}
-              </p>
-            )}
-          </>
-        ) : (
-          <Empty>loading…</Empty>
-        )}
+        {graph.data ? <DependencyGraph graph={graph.data} /> : <Empty>loading…</Empty>}
       </Tile>
       <Tile label="design" keys={<Saving state={design.state} />} testId="design-tile">
         <MarkdownField

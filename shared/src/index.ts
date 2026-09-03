@@ -50,6 +50,7 @@ export {
   type AddDependencyBody,
   TERMINAL_STATUSES,
   isTerminal,
+  isOpenBlocker,
   isBlocked,
   blockedWarning,
 } from './tickets';

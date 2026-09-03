@@ -62,6 +62,14 @@ export const TERMINAL_STATUSES = ['done', 'cancelled'] as const satisfies readon
 export const isTerminal = (status: TicketStatus): boolean => (TERMINAL_STATUSES as readonly TicketStatus[]).includes(status);
 
 /**
+ * "A blocker is open unless it is `done`, `cancelled`, or Trashed"
+ * (CONTEXT.md "Blocked"). Only the status half is answerable here: whether a
+ * ticket is in the trash is a fact about the row, and every read that asks
+ * this question has already dropped the trashed ones.
+ */
+export const isOpenBlocker = (status: TicketStatus): boolean => !isTerminal(status);
+
+/**
  * Blockedness is a property of a *non-terminal* ticket: a `done` or `cancelled`
  * ticket is never blocked however many open blockers it still names
  * (CONTEXT.md "Blocked").

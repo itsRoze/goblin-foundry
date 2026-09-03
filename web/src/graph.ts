@@ -10,7 +10,7 @@
  * the gap between their ranks.
  */
 import dagre from '@dagrejs/dagre';
-import { isTerminal, type GraphEdge, type GraphNode } from '@goblin/shared';
+import { isOpenBlocker, type GraphEdge, type GraphNode } from '@goblin/shared';
 
 /** The box dagre reserves for a node: the diamond, its key beside it and the clipped title beneath. */
 export const NODE_W = 200;
@@ -54,9 +54,10 @@ export interface Layout {
 }
 
 /**
- * `nodes` are inserted in the order given, which is what makes ties stable:
- * dagre orders within a rank by insertion where nothing else decides it, so
- * the read's key order is the drawing's order too.
+ * `nodes` are inserted in the order given, and where nothing else decides
+ * where one goes — a ticket with no edges — that is the order down the page,
+ * so the read's key order is the drawing's. Where edges do decide, dagre's
+ * ordering pass does, from the same input to the same output every time.
  */
 export function layoutGraph(nodes: GraphNode[], edges: GraphEdge[]): Layout {
   const known = new Map(nodes.map((n) => [n.key, n]));
@@ -86,8 +87,7 @@ export function layoutGraph(nodes: GraphNode[], edges: GraphEdge[]): Layout {
     return {
       ...e,
       path: `M ${from.x} ${from.y} H ${turn} V ${to.y} H ${to.x}`,
-      // a cancelled or trashed blocker never reaches the drawing, so "not done" is all that is left of "open"
-      open: !isTerminal(known.get(e.blocker)!.status),
+      open: isOpenBlocker(known.get(e.blocker)!.status),
     };
   });
 

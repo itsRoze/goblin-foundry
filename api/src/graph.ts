@@ -12,24 +12,21 @@
  */
 import { and, asc, eq, inArray, isNull, ne, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
-import { descriptionLine, isTerminal, ticketKey, type GraphEdge, type GraphNode, type ProjectGraph, type TicketStatus } from '@goblin/shared';
+import { descriptionLine, isOpenBlocker, ticketKey, type GraphEdge, type GraphNode, type ProjectGraph, type TicketStatus } from '@goblin/shared';
 import type { Db } from './db';
+import { batches } from './dependencies';
 import { app as appTable, dependency, project as projectTable, ticket as ticketTable } from './schema';
 import { readSettings } from './settings';
 
-/** ADR-0001 warns off `IN` lists over 100 params, so a lookup goes a batch at a time. */
-const BATCH = 100;
-
-/** `id → name` for the handful of apps or projects the external ends point at. */
+/** `id → name` for the handful of apps or projects the external ends point at; batched, per ADR-0001. */
 async function namesOf(db: Db, table: typeof appTable | typeof projectTable, ids: number[]): Promise<Map<number, string>> {
   const names = new Map<number, string>();
-  for (let i = 0; i < ids.length; i += BATCH)
-    for (const row of await db.select({ id: table.id, name: table.name }).from(table).where(inArray(table.id, ids.slice(i, i + BATCH))))
-      names.set(row.id, row.name);
+  for (const batch of batches(ids))
+    for (const row of await db.select({ id: table.id, name: table.name }).from(table).where(inArray(table.id, batch))) names.set(row.id, row.name);
   return names;
 }
 
-/** The ticket table, or either end of an edge joined under its own alias. */
+/** One end of an edge, joined under its own alias. Named so the union below can say "either table" in a type. */
 const endOfEdge = (name: string) => alias(ticketTable, name);
 type TicketTable = typeof ticketTable | ReturnType<typeof endOfEdge>;
 
@@ -76,8 +73,7 @@ export async function projectGraph(db: Db, projectId: number): Promise<ProjectGr
   for (const { blocker, blocked } of declared) {
     edges.push({ blocker: key(blocker), blocked: key(blocked) });
     for (const end of [blocker, blocked]) if (end.project_id !== projectId) outside.set(end.id, end);
-    // a cancelled or trashed blocker never reached this loop, so "not done" is all that is left of "open"
-    if (blocked.project_id === projectId && !isTerminal(blocker.status)) blockedBy.set(blocked.id, [...(blockedBy.get(blocked.id) ?? []), key(blocker)]);
+    if (blocked.project_id === projectId && isOpenBlocker(blocker.status)) blockedBy.set(blocked.id, [...(blockedBy.get(blocked.id) ?? []), key(blocker)]);
   }
 
   const externals = [...outside.values()];

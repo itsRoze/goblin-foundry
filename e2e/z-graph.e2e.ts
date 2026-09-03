@@ -86,6 +86,49 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   await expect(page.getByTestId('page-title')).toContainText('The lamp');
 });
 
+test('a blocker in another project is drawn once, mute, and opens like any other node', async ({ page }) => {
+  // a second project in the same app, with one ticket in it to block across the boundary
+  await page.goto('/apps');
+  await page.getByRole('link', { name: 'Graphing' }).click();
+  await page.getByRole('button', { name: 'new project' }).click();
+  const projectForm = page.getByTestId('new-project-form');
+  await projectForm.getByLabel('name').fill('Elsewhere');
+  await projectForm.getByLabel('name').press('ControlOrMeta+Enter');
+  await expect(page).toHaveURL(/\/projects\/elsewhere-\d+$/);
+
+  await expect(page.getByTestId('tickets-tile')).toBeVisible();
+  await page.keyboard.press('c');
+  const form = page.getByTestId('new-ticket');
+  await form.getByLabel('ticket title').fill('The mains supply');
+  await form.getByLabel('ticket title').press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('ticket-rows')).toContainText('The mains supply');
+
+  // declare it as a blocker of a ticket in the *other* project
+  await page.goto('/projects');
+  await page.getByRole('link', { name: 'Wiring' }).click();
+  await page.getByTestId('ticket-rows').getByRole('link', { name: /The lamp/ }).click();
+  await page.getByTestId('add-depends_on').click();
+  await page.getByRole('combobox', { name: 'blocked by — search tickets' }).fill('The mains supply');
+  await page.getByTestId('picker-depends_on').getByRole('option').filter({ hasText: 'The mains supply' }).click();
+  await expect(page.getByTestId('deps-depends_on')).toContainText('The mains supply');
+
+  await page.getByTestId('page-title').getByRole('link', { name: 'Wiring' }).click();
+  const external = page.locator('.gf-graph-node.is-external');
+  await expect(external).toHaveCount(1);
+  await expect(external).toContainText('The mains supply');
+  // context, not subject: no status treatment, and nothing of its own drawn behind it
+  await expect(external).not.toHaveClass(/is-blocked/);
+  await expect(nodes(page)).toHaveCount(3);
+
+  // the popover is where it says which project it came from
+  await external.hover();
+  await expect(page.getByTestId('graph-popover')).toContainText('Graphing / Elsewhere');
+
+  // and it opens like any other node
+  await external.click();
+  await expect(page.getByTestId('page-title')).toContainText('The mains supply');
+});
+
 test('a node says what it is: on hover after a beat, and the moment it takes focus', async ({ page }) => {
   await page.goto('/projects');
   await page.getByRole('link', { name: 'Wiring' }).click();
