@@ -133,10 +133,14 @@ describe('POST /api/tickets/:key/:name', () => {
     expect((await events(t.key)).length).toBe(before);
   });
 
-  test('the actor comes from the header, not the body', async () => {
+  // who may move a ticket at all is `actor.test.ts`; this is only about where the answer is read from
+  test('the actor comes from the header, not the body — and in S1 the header decides whether the move happens', async () => {
     const t = await at('backlog');
-    await req(`/api/tickets/${t.key}/pick`, { method: 'POST', headers: { 'x-goblin-actor': 'agent' } });
-    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'agent' });
+    const asAgent = await req(`/api/tickets/${t.key}/pick`, { method: 'POST', headers: { 'x-goblin-actor': 'agent' } });
+    expect(asAgent.status).toBe(409);
+    const claiming = await post(`/api/tickets/${t.key}/pick`, { actor: 'agent' });
+    expect(claiming.status).toBe(200);
+    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'human' });
   });
 
   test('the whole matrix: every (status, name) pair off the table is a 409', async () => {

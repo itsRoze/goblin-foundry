@@ -5,6 +5,7 @@ import type { ActorEnv } from './actor';
 import { moveTicketsOfProject, releaseTicketsOfProject, reviveChildren, type Ctx } from './children';
 import type { Db } from './db';
 import { diff, now, recordEvent } from './events';
+import { projectGraph } from './graph';
 import { parseBody } from './http';
 import { lifecycleRoutes, wantsArchived } from './lifecycle';
 import { unprocessable } from './problems';
@@ -78,6 +79,12 @@ export function projectsRoutes(db: Db) {
   r.get('/:id', async (c) => {
     const row = await findLive(c);
     return row ? c.json(toProject(row)) : missing(c);
+  });
+
+  /** What the Project view draws: the project's tickets and their edges, one hop past the boundary (issue 08). */
+  r.get('/:id/graph', async (c) => {
+    const row = await findLive(c);
+    return row ? c.json(await projectGraph(db, row.id)) : missing(c);
   });
 
   r.patch('/:id', async (c) => {

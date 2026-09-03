@@ -28,6 +28,9 @@ export const statusTone = (status: TicketStatus) => TONE[status];
 
 export const ticketPath = (t: { key: string }) => `/tickets/${t.key}`;
 
+/** Where a ticket lives, as `app / project` — a lone `—` for an orphan (DESIGN.md Interaction). */
+export const homeLine = (app: string | null, project: string | null) => (app === null && project === null ? '—' : `${app ?? '—'} / ${project ?? '—'}`);
+
 /** Names for the meta line and the history, from the cached lists; `#3` once a thing is gone. */
 export function useNames(): { app: Namer; project: Namer } {
   const apps = useApps(true);

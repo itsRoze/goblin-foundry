@@ -50,6 +50,7 @@ export {
   type AddDependencyBody,
   TERMINAL_STATUSES,
   isTerminal,
+  isOpenBlocker,
   isBlocked,
   blockedWarning,
 } from './tickets';
@@ -73,9 +74,25 @@ export {
   isGuarded,
   UNCREATABLE_STATUSES,
   approveGuard,
+  AGENT_CEILING,
+  defaultCreateStatus,
+  ceilingRefusal,
+  ownsTransition,
+  ownerRefusal,
   guardRefusal,
   guardHold,
   structuralRefusal,
 } from './transitions';
+export {
+  GraphExternalSchema,
+  type GraphExternal,
+  GraphNodeSchema,
+  type GraphNode,
+  GraphEdgeSchema,
+  type GraphEdge,
+  ProjectGraphSchema,
+  type ProjectGraph,
+  descriptionLine,
+} from './graph';
 export { slugify, slugPath, parseSlugId } from './slug';
 export { designField, designBody, hasDesign } from './design';

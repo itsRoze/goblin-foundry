@@ -6,7 +6,7 @@ Respect ADR-0002 (keys) and ADR-0003 (statuses as a checked text column; `needs_
 
 **Blocked by:** 02 (Apps and Projects)
 
-**Status:** ready-for-agent
+**Status:** done (PR #11 merged 2026-08-29, c0150f7)
 
 **Decisions (grilled 2026-08-28):**
 

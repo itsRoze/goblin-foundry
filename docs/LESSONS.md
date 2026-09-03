@@ -246,6 +246,30 @@ help for an always-editable field; the source collapses it to `true` regardless.
 Before adding an affordance, read the extension's defaults: twice now the behaviour was already there
 and something of ours was in front of it.
 
+## 2026-09-02 — `bun link` from a worktree leaves a symlink into a directory that will not last
+
+`bun link` in `cli/` installs the package's `bin` as `~/.bun/bin/goblin` — pointing at whatever
+directory you ran it in. Run from a feature worktree, `goblin` breaks the moment that worktree is
+removed, and the breakage shows up later, in an unrelated shell. Install from the main checkout;
+`bun unlink` (from the same directory) takes it back out.
+
+## 2026-09-02 — `VACUUM INTO` runs on a read-only connection, WAL and all
+
+ADR-0001's backup carve-out assumed it would: it does. A `Database(path, { readonly: true })` runs
+`VACUUM INTO ?` while `bun dev` holds the same file open, reads through the `-wal`, and writes one
+settled file the schema opens with no recovery step. So `goblin backup` never needs the server
+stopped, and never needs a second writer.
+
+## 2026-09-02 — `graph.ts` and `graph.tsx` cannot both exist
+
+Issue 08 asked for a pure `web/src/graph.ts` (the dagre layout) and a `web/src/graph.tsx` (the
+SVG renderer). Both resolve from the same bare specifier: TypeScript and Vite try `.ts` before
+`.tsx`, so `import … from '../graph'` in the Project view would always reach the layout module
+and never the component, and the extension cannot be written out without
+`allowImportingTsExtensions`. The pure module keeps the plain name it is tested under
+(`web/test/graph.test.ts`) and the renderer is `graph-view.tsx`. Two modules in one directory
+need two stems, not two extensions.
+
 ## 2026-09-02 — impeccable reads the root, and takes Bun workspaces for apps
 
 impeccable (the design skills, installed as a project-scoped plugin via `.claude/settings.json`) looks for `DESIGN.md` at the repo root, then `.agents/context/` and `docs/`, never `design/`; so the root `DESIGN.md` is a symlink to `design/DESIGN.md` and the house style stays where it was. Its detector enforces only tokens it can parse, so `design/DESIGN.md` now opens with a YAML copy of `design/tokens.css` plus the Typography heading steps (tokens.css changes first, the block second). The house then adopted impeccable's DESIGN.md shape outright, `/impeccable document` regenerating tokens and sections from the CSS and the prose merged in by hand; anything that cites a `DESIGN.md §n` (tickets, PR bodies, `.stylelintrc.json`, `.impeccable/critique/ignore.md`) has to be renumbered when the sections move — done on 2026-09-03 by `/impeccable document` (merge): the eight canonical headings plus Motion, Interaction, Voice and Deliberately not specified preserved after them, every `§n` citation in the repo rewritten to a section name, and the old-to-new map kept in the file's preamble for PR bodies and history. The Bun workspaces make the repo a monorepo with four "apps" in impeccable's eyes; `.impeccable/config.json` names `web` and negates the rest — negating `web` too would make the detector stop inheriting DESIGN.md for `web/src` — and a command with no file to anchor on still asks which app; answering moves its working directory to `web/` (snapshots and `ignore.md` with it), so name a file (`web/src/pages/Board.tsx`) instead. Its boot prints `MANUAL_DETECTOR_REQUIRED` because it looks for the hook in `.claude/settings*.json` and cannot see a plugin's; the hook is running regardless, and `/impeccable hooks on` must not be the answer: it writes a `.claude/settings.local.json` hook pointing at `.claude/skills/impeccable/…`, which this repo does not have. Its edit hook files design-system drift (a colour, radius or size outside the YAML block) under *advisory* and says nothing about it until `hook.advisoryRules` is `include`, which it now is. What the plugin does on its own: a PostToolUse hook on every Edit/Write and a Stop deep pass in every session here, a cache in `.impeccable/hook.*.json` and an ignore block written into the worktree's `.git/info/exclude`, a once-a-day version poll to impeccable.style recorded in `~/.impeccable/update-check.json`, four `impeccable-*` subagents, and a one-time prompt to enable the plugin in each checkout that reads `.claude/settings.json`. The `npx impeccable install` route was not taken: it vendors ~5 MB of skill into `.claude/skills/` and its CLI lagged the plugin (3.6.1 against 4.1.3) on the day.
