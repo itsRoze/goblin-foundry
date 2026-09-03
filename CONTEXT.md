@@ -77,7 +77,13 @@ Design. A human's session and an agent's session are always distinct, even back 
 (ADR-0008.)
 
 ## View option
-A per-device display preference on the Kanban: which card properties are shown, and whether `cancelled` cards are visible. Distinct from a **Filter**, which chooses *which* Tickets are on the board and lives in the URL so it can be bookmarked. Hiding `cancelled` is a View option, never a Filter.
+A per-device display preference on the Kanban: which card properties are shown. It decides how the board shows what the Filter chose, never *which* Tickets are on it, so it never hides a Status.
+
+## Filter
+Which Tickets are on the board: any combination of an App, a Project, a set of Statuses, and text matched against title or description. Lives in the board's address, so a bookmarked URL is a saved view. The default Status set is the seven live statuses; `cancelled` is on the board only when the Filter names it. The Filter chooses, the View option dresses; the two never overlap.
+
+## Scope
+The App or Project a screen is narrowed to: the thing an App or Project view is about, or the App and Project a board Filter names. A new Ticket starts in the Scope on screen.
 
 ## Transition
 One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name** and an **owner** — who is allowed to trigger it. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
