@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
 import { slugPath } from '@goblin/shared';
 import { MarkdownField, Saving, useSaving } from '../editor';
-import { useApps, useEvents, usePatchProject, useProject, useTickets } from '../queries';
+import { DependencyGraph, graphLegend, graphSubtitle } from '../graph-view';
+import { useApps, useEvents, usePatchProject, useProject, useProjectGraph, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
 import { Empty, History, Kbd, Kv, Tile, describeEvent } from '../ui';
@@ -22,6 +23,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
   const { redirect } = useSlugParam('projects', project);
   const events = useEvents('project', project.id);
   const tickets = useTickets({ project_id: project.id });
+  const graph = useProjectGraph(project.id);
   const patch = usePatchProject(project.id);
   const appName = useAppNamer();
   const newTicket = useNewTicket({ project_id: project.id });
@@ -55,6 +57,21 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
       >
         {newTicket}
         <TicketRows tickets={tickets.data} />
+      </Tile>
+      <Tile label="graph" subtitle={graph.data ? graphSubtitle(graph.data) : undefined} testId="graph-tile">
+        {graph.data ? (
+          <>
+            <DependencyGraph graph={graph.data} />
+            {/* the legend is copy under the drawing, and stays put while the drawing scrolls */}
+            {graph.data.nodes.length > 0 && (
+              <p className="gf-graph-legend" data-testid="graph-legend">
+                {graphLegend(graph.data)}
+              </p>
+            )}
+          </>
+        ) : (
+          <Empty>loading…</Empty>
+        )}
       </Tile>
       <Tile label="design" keys={<Saving state={design.state} />} testId="design-tile">
         <MarkdownField

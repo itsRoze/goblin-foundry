@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   AppSchema,
   EventSchema,
+  ProjectGraphSchema,
   ProjectSchema,
   SettingsSchema,
   TicketDetailSchema,
@@ -46,6 +47,15 @@ export const useProjects = (filter: { archived?: boolean; app_id?: number | null
 };
 export const useProject = (id: number | null) =>
   useQuery({ queryKey: ['project', id], queryFn: () => api.get(`/api/projects/${id}`, ProjectSchema), enabled: id !== null, retry: false });
+
+/**
+ * What the Project view draws: the project's tickets as nodes and their edges,
+ * one hop past the project boundary. No poll — a graph is read, not watched,
+ * and every write invalidates it (`useWrite`), so a dependency declared on the
+ * Ticket view is on the drawing when you come back.
+ */
+export const useProjectGraph = (id: number | null) =>
+  useQuery({ queryKey: ['project-graph', id], queryFn: () => api.get(`/api/projects/${id}/graph`, ProjectGraphSchema), enabled: id !== null, retry: false });
 
 /**
  * Live tickets, optionally scoped to an app or a project. The board polls
