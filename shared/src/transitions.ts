@@ -1,3 +1,4 @@
+import type { Actor } from './actor';
 import { hasDesign } from './design';
 import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
@@ -125,6 +126,33 @@ export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
 }
 
 const list = (missing: ApproveRequirement[]) => missing.map((m) => REQUIREMENT_LABEL[m]).join(' and ');
+
+/**
+ * An agent is the hands, never the authority (CONTEXT.md "Actor"): in S1 its
+ * reach ends at `planning`. It creates tickets only there, and it owns no
+ * edge in the table, so approving what an agent planned is always a human act
+ * and the ready frontier is only ever reached by a human's hand. Both halves
+ * refuse rather than correct — quietly moving a ticket the planner asked for
+ * in `backlog` would hide the misunderstanding instead of naming it.
+ */
+export const AGENT_CEILING: TicketStatus = 'planning';
+
+/** Where a ticket this actor creates lands when the body names no status. */
+export const defaultCreateStatus = (actor: Actor): TicketStatus => (actor === 'agent' ? AGENT_CEILING : 'backlog');
+
+/** Why this actor may not create a ticket *there*, or `null` when it may. */
+export const ceilingRefusal = (actor: Actor, status: TicketStatus): string | null =>
+  actor === 'agent' && status !== AGENT_CEILING ? `an agent creates a ticket in ${AGENT_CEILING}, never ${status}` : null;
+
+/**
+ * Whether the actor holds the authority an edge names. Actors and owners are
+ * deliberately different lists: no edge is owned by `agent`, which is the rule
+ * rather than an omission, and `controller` becomes an actor in S5.
+ */
+export const ownsTransition = (actor: Actor, owner: TransitionOwner): boolean => actor === owner;
+
+/** *approve is the human's move, not the agent's* — the refusal about who, where the others are about where (DESIGN.md §6). */
+export const ownerRefusal = (name: TransitionName, owner: TransitionOwner, actor: Actor): string => `${name} is the ${owner}'s move, not the ${actor}'s`;
 
 /** *approve needs a ticket design* (DESIGN.md §6). */
 export const guardRefusal = (name: TransitionName, missing: ApproveRequirement[]): string => `${name} needs ${list(missing)}`;

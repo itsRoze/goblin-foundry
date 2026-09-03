@@ -6,11 +6,11 @@
 
 **Blocked by:** 05 (Dependencies and the ready frontier)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every API endpoint reachable through `goblin`; output is the API body verbatim; problem+json on stderr and exit `1`/`2`/`3` per the decisions above; every noun and command answers `--help`
-- [ ] API: actor `agent` creates only into `planning` (default when omitted, `422` otherwise); transitions refuse an actor who is not the owner with `409 {owner, hint}`; both recorded on events; tests cover an agent `approve` and an agent create with `--status backlog`
-- [ ] `goblin backup <dir>` produces a `foundry-<YYYY-MM-DDTHHMMSS>.db` that `openDb` opens and that contains the data; refuses a missing directory with exit `2`
-- [ ] Transition verbs generated from the shared table; `dependency add|remove` with both flags required; `design get|set` on ticket and project; `null` clears a nullable field on `update`
-- [ ] Tests run the command handlers against the in-process seam: create app → project → ticket (as `agent`, lands in `planning`) → design → dependency → approve (as human; refused as agent) → frontier shows it
-- [ ] README section: `bun link` install, `goblin --help`, a hand-written planning transcript that ticket 12 replaces with a real one
+- [x] Every API endpoint reachable through `goblin`; output is the API body verbatim; problem+json on stderr and exit `1`/`2`/`3` per the decisions above; every noun and command answers `--help`
+- [x] API: actor `agent` creates only into `planning` (default when omitted, `422` otherwise); transitions refuse an actor who is not the owner with `409 {owner, hint}`; both recorded on events; tests cover an agent `approve` and an agent create with `--status backlog`
+- [x] `goblin backup <dir>` produces a `foundry-<YYYY-MM-DDTHHMMSS>.db` that `openDb` opens and that contains the data; refuses a missing directory with exit `2`
+- [x] Transition verbs generated from the shared table; `dependency add|remove` with both flags required; `design get|set` on ticket and project; `null` clears a nullable field on `update`
+- [x] Tests run the command handlers against the in-process seam: create app → project → ticket (as `agent`, lands in `planning`) → design → dependency → approve (as human; refused as agent) → frontier shows it
+- [x] README section: `bun link` install, `goblin --help`, a hand-written planning transcript that ticket 12 replaces with a real one
