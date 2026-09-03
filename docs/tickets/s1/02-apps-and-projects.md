@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Repository and workspace scaffold)
 
-**Status:** implemented (2026-08-27) — awaiting review
+**Status:** done (merged to main 2026-08-28 with review fixes, fada5f2)
 
 **Decisions (grilled 2026-08-27):** ADR-0007 for the ticket/project/app rule and detach-on-trash; CONTEXT.md for Archived vs Trashed vs `cancelled`. Not in this issue: ticket trash (03), the `⌘K` palette (10), `goblin trash purge` (09), Project `design` (07). Spec stories 18 and 32 already amended.
 

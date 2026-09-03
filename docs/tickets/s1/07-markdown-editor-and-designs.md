@@ -10,7 +10,7 @@ the API.
 
 **Blocked by:** 03 (Tickets with keys, kanban home, ticket view)
 
-**Status:** ready-for-agent
+**Status:** done (PR #14 merged 2026-09-01, eb192fb)
 
 - [x] `design` markdown column on project (ticket already has one), editable via `PATCH`;
       `''` normalises to `null`; events record prior/new bodies
