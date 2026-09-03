@@ -5,7 +5,7 @@
  */
 import { eq } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
-import { approveGuard, destinationOf, findTransition, guardRefusal, isTransitionName, structuralRefusal } from '@goblin/shared';
+import { approveGuard, destinationOf, findTransition, guardRefusal, isTransitionName, ownerRefusal, ownsTransition, structuralRefusal } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
 import { now, recordEvent } from './events';
@@ -36,6 +36,10 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, toWire }
     const edge = findTransition(row.status, name);
     if (!edge) return conflict(c, structuralRefusal(row.status, destinationOf(name)));
 
+    // authority before requirements: an actor who owns no edge here is not told what the ticket is missing
+    const actor = c.get('actor');
+    if (!ownsTransition(actor, edge.owner)) return conflict(c, ownerRefusal(name, edge.owner, actor), edge.owner);
+
     const lacks = edge.guard ? approveGuard(row) : [];
     if (lacks.length > 0) return conflict(c, guardRefusal(name, lacks), edge.owner);
 
@@ -45,7 +49,7 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, toWire }
     await recordEvent(db, {
       entity_kind: 'ticket',
       entity_id: row.id,
-      actor: c.get('actor'),
+      actor,
       kind: 'transitioned',
       prior: { status: edge.from },
       new: { status: edge.to, transition: edge.name },

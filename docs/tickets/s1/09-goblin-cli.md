@@ -1,13 +1,16 @@
 # 09: `goblin` CLI
 
-**What to build:** A thin command-line client over the API, JSON in and out, one subcommand per endpoint: apps, projects, tickets (create, show, update, design set), dependencies (add, remove), transitions (`goblin ticket approve GF-12` etc.), frontier, events, settings. `--actor agent` sets the actor header; tickets created with actor `agent` land in `planning` regardless of input. `goblin backup <dir>` writes a dated `VACUUM INTO` copy of the database. The CLI is a client, never a second write path; it is tested by invoking its command handlers against the in-process app.
+**What to build:** A thin command-line client over the API, JSON out and flags in, one subcommand per endpoint. Grammar is singular noun then verb: `goblin ticket create`, `goblin app list`, `goblin project show <id>`, `goblin ticket approve GF-12` (every verb in the transition table, generated from `shared/src/transitions.ts`, never hand-listed), `goblin dependency add --blocker GF-3 --blocked GF-12`, `goblin frontier`, `goblin <noun> history <id>`, `goblin settings`. Long-text fields (`description`, `design`) accept `@path` or `-` for stdin; `goblin ticket|project design get` prints raw markdown, the one non-JSON output. `--actor agent` (or `GF_ACTOR`) sets the actor header. `goblin backup <dir>` writes a `VACUUM INTO` copy named to the second. The CLI is a client, never a second write path; it is tested by invoking its command handlers against the in-process app.
+
+**Decisions (grilled 2026-09-02):** CONTEXT.md *Actor* sharpened — the hands, never the authority; an agent's reach ends at `planning`. Both halves of that rule are API work in this ticket: `POST /api/tickets` with actor `agent` defaults to `planning` and refuses any other status (`422` on `status`, one-line hint); every transition checks its owner against the actor (`409 {owner, hint}` — the refusal ADR-0003 always planned for the controller's edges). Refuse, never coerce. `plan` stays human-owned until a skill needs it. Output is always the API body (`--json` accepted and ignored); problem+json goes to stderr, stdout stays empty on error; exit `1` for an API problem, `2` for usage, `3` when the server is unreachable; a non-problem failure is wrapped into the same shape. Apps and Projects by id or `<slug>-<id>`, no name resolution. Backup runs through a `backupTo` helper exported by `api/src/db.ts` (ADR-0001 carve-out amended); launchd is out of scope. Two calls to create a ticket with a design (creation stays design-less, per 07). No shared client between web and cli; no global events endpoint. `goblin trash purge` deferred again: `docs/tickets/later/trash-purge.md`. Install is `bun link`.
 
 **Blocked by:** 05 (Dependencies and the ready frontier)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every API endpoint reachable through `goblin`; `--json` output stable for scripting; non-zero exit and problem+json on error
-- [ ] `--actor agent` recorded on events; agent-created tickets start in `planning`
-- [ ] `goblin backup <dir>` produces a valid SQLite file that opens and contains the data
-- [ ] Tests run the command handlers against the in-process seam: create app → project → ticket → design → dependency → approve → frontier shows it
-- [ ] README section: install, `goblin --help`, example planning transcript
+- [x] Every API endpoint reachable through `goblin`; output is the API body verbatim; problem+json on stderr and exit `1`/`2`/`3` per the decisions above; every noun and command answers `--help`
+- [x] API: actor `agent` creates only into `planning` (default when omitted, `422` otherwise); transitions refuse an actor who is not the owner with `409 {owner, hint}`; both recorded on events; tests cover an agent `approve` and an agent create with `--status backlog`
+- [x] `goblin backup <dir>` produces a `foundry-<YYYY-MM-DDTHHMMSS>.db` that `openDb` opens and that contains the data; refuses a missing directory with exit `2`
+- [x] Transition verbs generated from the shared table; `dependency add|remove` with both flags required; `design get|set` on ticket and project; `null` clears a nullable field on `update`
+- [x] Tests run the command handlers against the in-process seam: create app → project → ticket (as `agent`, lands in `planning`) → design → dependency → approve (as human; refused as agent) → frontier shows it
+- [x] README section: `bun link` install, `goblin --help`, a hand-written planning transcript that ticket 12 replaces with a real one

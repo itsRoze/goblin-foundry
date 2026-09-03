@@ -5,10 +5,13 @@ import {
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
   approveGuard,
+  ceilingRefusal,
+  defaultCreateStatus,
   guardHold,
   isGuarded,
   parseTicketKey,
   ticketKey,
+  type Actor,
   type ApproveRequirement,
   type GuardFields,
   type Ticket,
@@ -84,12 +87,14 @@ async function resolvePlacement(db: Db, current: Placement, body: { app_id?: num
 
 /**
  * Why this ticket may not be created at this status (ADR-0003), or `null` when
- * it may: the terminal statuses are earned rather than declared, and a ticket
- * born in the working end of the lifecycle must already satisfy the approve
- * guard. Both refusals are on `status`, because the status is what the body
- * asked for that it cannot have.
+ * it may: an agent's reach ends at `planning`, the terminal statuses are
+ * earned rather than declared, and a ticket born in the working end of the
+ * lifecycle must already satisfy the approve guard. Every refusal is on
+ * `status`, because the status is what the body asked for that it cannot have.
  */
-function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | null {
+function creationRefusal(actor: Actor, status: TicketStatus, fields: GuardFields): Issue | null {
+  const ceiling = ceilingRefusal(actor, status);
+  if (ceiling) return { path: ['status'], message: ceiling };
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
   if (!isGuarded(status)) return null;
@@ -170,20 +175,21 @@ export function ticketsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const placement = await resolvePlacement(db, { app_id: null, project_id: null }, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
+    const actor = c.get('actor');
     const at = now();
     const fields = {
       title: body.data.title,
       description: body.data.description ?? '',
-      status: body.data.status ?? ('backlog' as const),
+      status: body.data.status ?? defaultCreateStatus(actor),
       simple: body.data.simple ?? false,
       design: null,
       ...placement,
     };
-    const refused = creationRefusal(fields.status, fields);
+    const refused = creationRefusal(actor, fields.status, fields);
     if (refused) return unprocessable(c, [refused]);
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
+    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'created', prior: null, new: fields, at });
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
     return c.json(toTicket(row, await prefix()), 201);
   });
