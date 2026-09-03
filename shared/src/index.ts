@@ -77,5 +77,16 @@ export {
   guardHold,
   structuralRefusal,
 } from './transitions';
+export {
+  GraphExternalSchema,
+  type GraphExternal,
+  GraphNodeSchema,
+  type GraphNode,
+  GraphEdgeSchema,
+  type GraphEdge,
+  ProjectGraphSchema,
+  type ProjectGraph,
+  descriptionLine,
+} from './graph';
 export { slugify, slugPath, parseSlugId } from './slug';
 export { designField, designBody, hasDesign } from './design';
