@@ -8,17 +8,17 @@
 
 **Blocked by:** 05 (Dependencies and the ready frontier)
 
-**Status:** ready-for-agent
+**Status:** implemented (2026-09-02)
 
 **Decisions (grilled 2026-09-01):** all of the above; none is hard to reverse, so no ADR. `@dagrejs/dagre` (the maintained fork), not `dagre`. DESIGN.md §6's dependency graph entry amended — dashed means *the blocker is open*, reversing the rough-v5 mockup, which dashed the dead edge and painted `done` green. Work order: a throwaway renderer against fixture data first, judged by eye, then the read, the layout function and the tile; if the SVG disappoints, only the renderer is replaced (React Flow), the read and layout carry over. Cancelled hidden unconditionally — it does not follow the board's view option.
 
-- [ ] `GET /api/projects/:id/graph` → `{nodes: [{key, title, status, blocked_by, description_line, external?: {app, project}}], edges: [{blocker, blocked}]}`; `404` for a missing or trashed project; schema in `shared`
-- [ ] API tests: two dependent tickets → two nodes, one edge; satisfied edge (done blocker) present; trashed ticket and its edges absent; cancelled ticket and its edges absent; external end present once, with `app`/`project`, and its own further blockers absent; external cancelled/trashed end absent; description line is the first non-empty line only
-- [ ] `web/src/graph.ts`: a pure `layoutGraph(nodes, edges)` over `@dagrejs/dagre` (rank LR, nodes passed in key order for stable ties) returning positioned nodes and step paths; first `bun test` in `web`: every blocker's `x` is left of what it blocks; step path has exactly three segments
-- [ ] `web/src/graph.tsx`: SVG renderer — diamonds (rotated square), key + clipped title, step edges; classes `is-blocked` (hollow + struck), `is-external` (mute), `is-open` (dashed mute) / satisfied (solid dim); `done` mute; no arrowheads, no opacity
-- [ ] Node group is a `Link` to the ticket; popover component (120ms hover / instant focus; key, title, status chip, blocked-by line, description line, `app / project` for externals) positioned inside the scrolling body
-- [ ] Project view: `graph` tile after `tickets`, subtitle `n tickets · m edges`, legend line under the SVG, empty copy with no tickets, "no dependencies yet" legend with no edges; body scrolls both axes, max height ~480px; no sideways page scroll (`z-responsive` still green)
-- [ ] Queries: graph read invalidated with the ticket/dependency mutations, so a dependency declared on the Ticket view shows on return
-- [ ] Browser smoke: two dependent tickets in a project render two nodes and one dashed edge; ship the blocker, the edge goes solid; click a node, land on the Ticket view
-- [ ] (from 02 grill, ADR-0007) out-of-project ends drawn as mute external diamonds, one hop, clickable
-- [ ] DESIGN.md §6 dependency graph entry: as-built note per the decisions above
+- [x] `GET /api/projects/:id/graph` → `{nodes: [{key, title, status, blocked_by, description_line, external?: {app, project}}], edges: [{blocker, blocked}]}`; `404` for a missing or trashed project; schema in `shared`
+- [x] API tests: two dependent tickets → two nodes, one edge; satisfied edge (done blocker) present; trashed ticket and its edges absent; cancelled ticket and its edges absent; external end present once, with `app`/`project`, and its own further blockers absent; external cancelled/trashed end absent; description line is the first non-empty line only
+- [x] `web/src/graph.ts`: a pure `layoutGraph(nodes, edges)` over `@dagrejs/dagre` (rank LR, nodes passed in key order for stable ties) returning positioned nodes and step paths; first `bun test` in `web`: every blocker's `x` is left of what it blocks; step path has exactly three segments
+- [x] `web/src/graph-view.tsx` (not `graph.tsx`: a bare `./graph` import resolves to the `.ts`, see LESSONS): SVG renderer — diamonds (rotated square), key + clipped title, step edges; classes `is-blocked` (hollow + struck), `is-external` (mute), `is-open` (dashed mute) / satisfied (solid dim); `done` mute; no arrowheads, no opacity
+- [x] Node group is a `Link` to the ticket; popover component (120ms hover / instant focus; key, title, status chip, blocked-by line, description line, `app / project` for externals) positioned inside the scrolling body
+- [x] Project view: `graph` tile after `tickets`, subtitle `n tickets · m edges`, legend line under the SVG, empty copy with no tickets, "no dependencies yet" legend with no edges; body scrolls both axes, max height ~480px; no sideways page scroll (`z-responsive` still green)
+- [x] Queries: graph read invalidated with the ticket/dependency mutations, so a dependency declared on the Ticket view shows on return
+- [x] Browser smoke: two dependent tickets in a project render two nodes and one dashed edge; ship the blocker, the edge goes solid; click a node, land on the Ticket view
+- [x] (from 02 grill, ADR-0007) out-of-project ends drawn as mute external diamonds, one hop, clickable
+- [x] DESIGN.md §6 dependency graph entry: as-built note per the decisions above
