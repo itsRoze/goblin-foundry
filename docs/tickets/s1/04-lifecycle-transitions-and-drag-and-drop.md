@@ -21,7 +21,7 @@ No `review → building`. `close` skips `review` because the verb there is `ship
 
 **The approve guard** is one pure function in `shared` over the ticket, returning the *missing* items: an **app**, and a **design** (non-whitespace) unless `simple`. Not a description. It gates three places — the `approve` edge, creation into `ready`/`building`/`review`, and a `PATCH` at those statuses that would break it.
 
-On the board I drag a card to another column: the drop performs that transition optimistically; a refused move (`409 {owner, hint}`) rolls the card back and shows the hint inline at the target column per DESIGN.md §6 (120 ms fade in, clears on the next drag/click or after 4 s). Columns with no edge from the dragged card's status visibly refuse the drop. Drop position within a column means nothing — no claim order in S1, so no insertion indicator. A `simple` toggle lives on the Ticket view. Approve/unapprove/etc. are also buttons in the Ticket view's state tile, derived from the same table.
+On the board I drag a card to another column: the drop performs that transition optimistically; a refused move (`409 {owner, hint}`) rolls the card back and shows the hint inline at the target column per DESIGN.md Components (120 ms fade in, clears on the next drag/click or after 4 s). Columns with no edge from the dragged card's status visibly refuse the drop. Drop position within a column means nothing — no claim order in S1, so no insertion indicator. A `simple` toggle lives on the Ticket view. Approve/unapprove/etc. are also buttons in the Ticket view's state tile, derived from the same table.
 
 **Blocked by:** 03 (Tickets with keys, kanban home, ticket view)
 

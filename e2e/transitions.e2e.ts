@@ -72,7 +72,7 @@ test('approve names what the ticket is missing, and simple is what lets it throu
   await expect(page.getByTestId('col-ready')).toContainText('Needs a plan');
 });
 
-/** The board is one tile, so it spans the desk: at laptop width and up every column is on screen, `done` included (DESIGN.md §5). */
+/** The board is one tile, so it spans the desk: at laptop width and up every column is on screen, `done` included (DESIGN.md Layout). */
 test('a closed ticket shows in the done column, and that column is on screen', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await newTicket(page, 'Turned out to be done');

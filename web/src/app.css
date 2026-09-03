@@ -19,7 +19,7 @@ a:hover { text-decoration: underline; }
 .gf-counts { display: flex; gap: var(--gf-s4); align-items: center; }
 .gf-counts b { color: var(--gf-ink); font-weight: 400; font-size: 15px; margin-right: 4px; }
 
-/* the bar collapses to workspace numbers + counts when it runs out of room (DESIGN.md §5) */
+/* the bar collapses to workspace numbers + counts when it runs out of room (DESIGN.md Layout) */
 @media (max-width: 899px) {
   .gf-bar { gap: var(--gf-s3); padding: 0 var(--gf-s2); }
   .gf-ws-label, .gf-count-label { display: none; }
@@ -29,13 +29,13 @@ a:hover { text-decoration: underline; }
 /* narrower still, the crumb is the first thing to go: the page itself says where you are */
 @media (max-width: 599px) { .gf-crumb { display: none; } }
 
-/* the desk: a single column, a tile grid at laptop width and up (DESIGN.md §5) */
+/* the desk: a single column, a tile grid at laptop width and up (DESIGN.md Layout) */
 .gf-desk { padding: var(--gf-gap); display: grid; gap: var(--gf-gap); grid-template-columns: 1fr; align-content: start; }
 .gf-title { grid-column: 1 / -1; margin: 0; font: var(--gf-t-title); }
 .gf-title-parent { color: var(--gf-mute); }
-/* DESIGN.md §5: past laptop width the desk gains columns so more tiles open, rather than the
+/* DESIGN.md Layout: past laptop width the desk gains columns so more tiles open, rather than the
    same tiles getting bigger. Without the tiers above 1440 an ultrawide gets two ~1250px tiles,
-   which is exactly the failure mode §5 names. The 1920 tier is drift from §5's single 2560 step:
+   which is exactly the failure mode Layout names. The 1920 tier is drift from Layout's single 2560 step:
    two columns already stretch past comfort well before 2560. */
 @media (min-width: 1440px) { .gf-desk { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1920px) { .gf-desk { grid-template-columns: repeat(3, 1fr); } }
@@ -75,9 +75,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
 
-/* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md §5) */
+/* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
-   ultrawide from turning every card into a 400px slab (DESIGN.md §6) */
+   ultrawide from turning every card into a 400px slab (DESIGN.md Components) */
 .gf-cols { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 280px); gap: var(--gf-gap); overflow-x: auto; padding-bottom: var(--gf-s2); }
 .gf-col { display: flex; flex-direction: column; gap: var(--gf-s2); min-width: 0; }
 .gf-col-head {
@@ -87,12 +87,12 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 }
 .gf-col-head b { font-weight: 400; color: var(--gf-mute); }
 
-/* card: key + status note, title, meta (DESIGN.md §6) */
+/* card: key + status note, title, meta (DESIGN.md Components) */
 .gf-card {
   position: relative; display: flex; flex-direction: column; gap: var(--gf-s1);
   background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
   color: var(--gf-ink); transition: border-color var(--gf-fast) var(--gf-ease);
-  cursor: grab; /* the whole card is the drag handle — no grip (DESIGN.md §6) */
+  cursor: grab; /* the whole card is the drag handle — no grip (DESIGN.md Components) */
 }
 .gf-card:hover { border-color: var(--gf-rule-2); text-decoration: none; }
 .gf-card-id { display: flex; justify-content: space-between; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); }
@@ -103,7 +103,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-card-title { font: var(--gf-t-h); }
 .gf-card-meta { font: var(--gf-t-meta); color: var(--gf-mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gf-card.is-cancelled .gf-card-title, .gf-card.is-cancelled .gf-card-id i { text-decoration: line-through; color: var(--gf-mute); }
-/* blocked is a derived condition, never a colour (DESIGN.md §3): the outline glyph and a struck title, no dimming */
+/* blocked is a derived condition, never a colour (DESIGN.md Colors): the outline glyph and a struck title, no dimming */
 .gf-card.is-blocked .gf-card-title { text-decoration: line-through; color: var(--gf-mute); }
 /* inline-block so the title's strike stops at the glyph rather than running through it */
 .gf-blocked-mark { display: inline-block; margin-right: var(--gf-s2); color: var(--gf-mute); }
@@ -164,7 +164,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-history-what { font: var(--gf-t-body); }
 .gf-history-meta { font: var(--gf-t-meta); color: var(--gf-mute); }
 
-/* the drag (DESIGN.md §6): the legal columns are marked, the illegal ones are never dimmed.
+/* the drag (DESIGN.md Components): the legal columns are marked, the illegal ones are never dimmed.
    The resting column carries the border transparent and the padding already, so a drag paints
    the mark on without moving a card by a pixel. */
 .gf-col { padding: 0 var(--gf-s1); border: 1px solid transparent; transition: background var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease); }
@@ -202,13 +202,13 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* an edge that is no longer in anyone's way keeps its place, struck (ADR-0009) */
 .gf-dep-row.is-inert .gf-row-title { text-decoration: line-through; color: var(--gf-mute); }
 .gf-dep-note { font: var(--gf-t-meta); color: var(--gf-mute); }
-/* `--gf-human` is reserved for "your attention is required" and nothing else (DESIGN.md §3), so
+/* `--gf-human` is reserved for "your attention is required" and nothing else (DESIGN.md Colors), so
    removing an edge brightens to ink rather than inventing a destructive red */
 .gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); line-height: 1; padding: 2px 5px; }
 .gf-dep-drop:hover { color: var(--gf-ink); }
 
 /* the picker: an open input over candidate rows, the highlighted one wearing
-   the selected-row treatment from DESIGN.md §6 — that inset is what says these
+   the selected-row treatment from DESIGN.md Components — that inset is what says these
    are choices rather than a list of things. */
 .gf-picker { display: flex; flex-direction: column; gap: var(--gf-s2); padding-bottom: var(--gf-s2); }
 .gf-picker input {
@@ -248,7 +248,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  */
 .gf-md.is-block { padding-bottom: 42px; }
 .gf-md .gf-doc { font: var(--gf-t-body); color: var(--gf-ink); outline: none; }
-/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md §2) */
+/* the caret is the focus signal, not a box: focus belongs to the tile border (DESIGN.md Elevation & Depth) */
 .gf-md .gf-doc:focus, .gf-md .gf-doc:focus-visible { outline: none; }
 /* an empty field is roomy enough to invite a click; a written one is as tall as what it holds */
 .gf-md.is-block .gf-doc { min-height: 1.5em; }
@@ -273,7 +273,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /*
  * Six headings, six steps. Size carries the first four; below that the
  * differentiator becomes weight, then colour, then tracking — an h6 inside a
- * ticket design is a label, so it is set like one (DESIGN.md §4).
+ * ticket design is a label, so it is set like one (DESIGN.md Typography).
  */
 .gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6) { font-family: var(--gf-sans); color: var(--gf-ink); line-height: 1.25; }
 .gf-md .gf-doc :is(h1, h2, h3, h4, h5, h6):not(:first-child) { margin-top: var(--gf-s5); }
@@ -298,7 +298,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-md .gf-doc a { color: var(--gf-link); text-decoration: underline; text-underline-offset: 2px; }
 /*
  * The markdown around the span the caret is on: a handle, which is what
- * --gf-dim is for (DESIGN.md §3). A marker the caret has stepped past renders
+ * --gf-dim is for (DESIGN.md Colors). A marker the caret has stepped past renders
  * inside the run's own element, so this has to outrank the run's styling.
  */
 .gf-md .gf-doc .gf-syntax, .gf-md .gf-doc code .gf-syntax { color: var(--gf-dim); font: var(--gf-t-meta); user-select: none; }
@@ -337,6 +337,6 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-mode-input.is-lang { width: 10ch; color: var(--gf-link); }
 .gf-mode-input:focus { outline: none; border-color: var(--gf-system); }
 
-/* what a field that saves itself says in its tile header (DESIGN.md §8) */
+/* what a field that saves itself says in its tile header (DESIGN.md Interaction) */
 .gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-saving[data-state='saved'] { color: var(--gf-system); }

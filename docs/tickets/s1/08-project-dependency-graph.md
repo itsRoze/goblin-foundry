@@ -7,7 +7,7 @@
 **Status:** ready-for-agent
 
 - [ ] Graph renders all project tickets and dependencies; layout is left-to-right by blocking order
-- [ ] Node colour and edge style follow DESIGN.md §6 dependency graph; blocked/cancelled/done treated per §3
+- [ ] Node colour and edge style follow DESIGN.md Components dependency graph; blocked/cancelled/done treated per Colors
 - [ ] Hover popover (120 ms) and click-to-open
 - [ ] Responsive inside its tile (scrolls, never the page); reduced-motion honoured
 - [ ] Browser smoke: two dependent tickets render two nodes and one edge; clicking a node opens the ticket

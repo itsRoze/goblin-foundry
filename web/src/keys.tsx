@@ -4,7 +4,7 @@ const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
 /**
- * A key outside any input (DESIGN.md §8: keyboard first) — bare by default,
+ * A key outside any input (DESIGN.md Interaction: keyboard first) — bare by default,
  * with `⌘`/`ctrl` when `meta` is asked for (`⌘⌫` trashes). `⌘⏎` and `esc`
  * inside forms are handled by the form itself.
  */

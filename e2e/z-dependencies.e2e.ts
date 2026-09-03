@@ -47,7 +47,7 @@ test('a declared blocker strikes the card through, and shipping the blocker clea
   await expect(page.getByTestId('deps-depends_on')).toContainText('The groundwork');
   await expect(page.getByTestId('history')).toContainText('blocked by GF-');
 
-  // the board says so with the outline glyph and a struck title — never a colour (DESIGN.md §3)
+  // the board says so with the outline glyph and a struck title — never a colour (DESIGN.md Colors)
   await page.goto('/');
   await expect(card(page, 'The thing that waits')).toHaveClass(/is-blocked/);
   await expect(card(page, 'The thing that waits')).toContainText('◇');

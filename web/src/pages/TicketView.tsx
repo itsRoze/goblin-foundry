@@ -63,7 +63,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     },
     [setStateRefusal],
   );
-  // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md §8)
+  // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md Interaction)
   useKey('e', focusEditor);
 
   const trash = useCallback(
@@ -226,7 +226,7 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
   const { add, remove } = useDependencyEdges();
   // one picker at a time: opening the other side closes this one, so the tile never asks two questions at once
   const [picking, setPicking] = useState<Direction | null>(null);
-  // a refusal belongs beside the control that earned it (DESIGN.md §6), so it is filed by direction
+  // a refusal belongs beside the control that earned it (DESIGN.md Components), so it is filed by direction
   const [refusal, setRefusal] = useState<{ direction: Direction; text: string } | null>(null);
   const { depends_on, blocks } = ticket.dependencies;
   const stillOpen = new Set(ticket.blocked_by);
@@ -377,7 +377,7 @@ function DependencyRow({ dep, inert, removable, onRemove }: { dep: DependencyRef
 /**
  * Search by key or title, arrow keys to move, `⏎` to declare. The candidates
  * wear the same row shape as the edges above them and the highlighted one
- * takes the selected-row treatment (DESIGN.md §6), which is what says "these
+ * takes the selected-row treatment (DESIGN.md Components), which is what says "these
  * are choices" rather than "this is a list of things".
  *
  * It offers what could sensibly be declared: never this ticket, never an edge

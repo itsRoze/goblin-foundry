@@ -19,7 +19,7 @@ export function Tile({
   subtitle?: ReactNode;
   keys?: ReactNode;
   focus?: boolean;
-  /** The whole width of the desk. For a page that is one tile — the kanban needs every column it has (DESIGN.md §5). */
+  /** The whole width of the desk. For a page that is one tile — the kanban needs every column it has (DESIGN.md Layout). */
   span?: boolean;
   children: ReactNode;
   testId?: string;
@@ -36,7 +36,7 @@ export function Tile({
   );
 }
 
-/** One accent, one meaning (DESIGN.md §3); no tone is the mute default. */
+/** One accent, one meaning (DESIGN.md Colors); no tone is the mute default. */
 export type Tone = 'draft' | 'system' | 'review' | 'mute';
 
 export const Chip = ({ tone, struck, children }: { tone?: Tone; struck?: boolean; children: ReactNode }) => (
@@ -225,7 +225,7 @@ export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.line :
 
 /**
  * A refusal message is one sentence that clears itself: on the next click, or
- * after four seconds (DESIGN.md §6). Every surface that refuses — the board's
+ * after four seconds (DESIGN.md Components). Every surface that refuses — the board's
  * drop, the state tile's buttons — holds one of these, so the sentence never
  * outlives the situation that produced it.
  */
@@ -268,7 +268,7 @@ const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' :
 /** The name of a thing an event points at; `#3` once it is gone. */
 export type Namer = (id: unknown) => string;
 
-/** One history line per event: what happened, not what it means (DESIGN.md §9). */
+/** One history line per event: what happened, not what it means (DESIGN.md Voice). */
 export function describeEvent(e: Event, appName: Namer): string {
   if (e.kind !== 'updated') return e.kind;
   const keys = Object.keys(e.new);

@@ -25,7 +25,7 @@
     "color-no-hex": [
       true,
       {
-        "message": "DESIGN.md \u00a72/\u00a73: colour is a token \u2014 use var(--gf-*). The hexes live in design/tokens.css."
+        "message": "DESIGN.md Colors: colour is a token \u2014 use var(--gf-*). The hexes live in design/tokens.css."
       }
     ],
     "declaration-property-value-disallowed-list": {

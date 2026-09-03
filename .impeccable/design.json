@@ -1,0 +1,503 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-03T04:32:03.169Z",
+  "title": "Design System: Goblin Foundry",
+  "extensions": {
+    "colorMeta": {
+      "page": {
+        "role": "neutral",
+        "displayName": "page",
+        "canonical": "oklch(28.0% 0.012 232.9)",
+        "tonalRamp": [
+          "#060C10",
+          "#1F262A",
+          "#3C4348",
+          "#5B6367",
+          "#7B8489",
+          "#9EA7AC",
+          "#C2CBD0",
+          "#E7F0F6"
+        ]
+      },
+      "tile": {
+        "role": "neutral",
+        "displayName": "tile",
+        "canonical": "oklch(32.4% 0.015 240.4)",
+        "tonalRamp": [
+          "#060C11",
+          "#1F262C",
+          "#3B4349",
+          "#5A6369",
+          "#7A848B",
+          "#9DA7AE",
+          "#C1CBD2",
+          "#E6F0F8"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "raised",
+        "canonical": "oklch(36.0% 0.017 227.1)",
+        "tonalRamp": [
+          "#040D11",
+          "#1C272B",
+          "#394449",
+          "#586369",
+          "#78858A",
+          "#9BA7AD",
+          "#BECCD2",
+          "#E3F1F7"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "rule",
+        "canonical": "oklch(39.4% 0.017 227.0)",
+        "tonalRamp": [
+          "#040D11",
+          "#1D272B",
+          "#394449",
+          "#586369",
+          "#78858A",
+          "#9BA7AD",
+          "#BFCCD2",
+          "#E4F1F7"
+        ]
+      },
+      "rule-2": {
+        "role": "neutral",
+        "displayName": "rule-2",
+        "canonical": "oklch(43.1% 0.017 231.6)",
+        "tonalRamp": [
+          "#050C11",
+          "#1D272C",
+          "#39444A",
+          "#586369",
+          "#79848B",
+          "#9BA7AE",
+          "#BFCBD2",
+          "#E4F1F8"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "ink",
+        "canonical": "oklch(83.0% 0.041 86.1)",
+        "tonalRamp": [
+          "#120A00",
+          "#2E240C",
+          "#4C4128",
+          "#6B6047",
+          "#8D8167",
+          "#B0A489",
+          "#D5C8AC",
+          "#FBEDD0"
+        ]
+      },
+      "mute": {
+        "role": "neutral",
+        "displayName": "mute",
+        "canonical": "oklch(72.3% 0.019 153.4)",
+        "tonalRamp": [
+          "#060D08",
+          "#1E2821",
+          "#3B453D",
+          "#5A645C",
+          "#7A867D",
+          "#9DA9A0",
+          "#C0CDC4",
+          "#E6F2E9"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "dim",
+        "canonical": "oklch(60.1% 0.021 140.5)",
+        "tonalRamp": [
+          "#070D06",
+          "#20281E",
+          "#3C453A",
+          "#5B6459",
+          "#7C867A",
+          "#9EA99C",
+          "#C2CDC0",
+          "#E7F2E5"
+        ]
+      },
+      "system": {
+        "role": "primary",
+        "displayName": "system (green)",
+        "canonical": "oklch(77.3% 0.091 125.8)",
+        "tonalRamp": [
+          "#070E00",
+          "#1D2A00",
+          "#364A08",
+          "#556A2D",
+          "#758C4E",
+          "#97B070",
+          "#BBD493",
+          "#E0FAB8"
+        ]
+      },
+      "human": {
+        "role": "accent",
+        "displayName": "human (red)",
+        "canonical": "oklch(70.9% 0.128 19.6)",
+        "tonalRamp": [
+          "#200002",
+          "#4D000D",
+          "#781924",
+          "#9D3D42",
+          "#C35F62",
+          "#EA8284",
+          "#FFB2B1",
+          "#FFE8E8"
+        ]
+      },
+      "live": {
+        "role": "accent",
+        "displayName": "live (orange)",
+        "canonical": "oklch(75.0% 0.106 44.9)",
+        "tonalRamp": [
+          "#1C0300",
+          "#421500",
+          "#6E2B03",
+          "#914B29",
+          "#B66C4B",
+          "#DC8F6C",
+          "#FEB695",
+          "#FEEAE1"
+        ]
+      },
+      "draft": {
+        "role": "accent",
+        "displayName": "draft (yellow)",
+        "canonical": "oklch(80.8% 0.086 83.7)",
+        "tonalRamp": [
+          "#120900",
+          "#322200",
+          "#563D00",
+          "#785C1E",
+          "#9B7E42",
+          "#BFA164",
+          "#E4C588",
+          "#FFECC9"
+        ]
+      },
+      "review": {
+        "role": "accent",
+        "displayName": "review (aqua)",
+        "canonical": "oklch(75.4% 0.091 151.4)",
+        "tonalRamp": [
+          "#001003",
+          "#002E12",
+          "#0F4F28",
+          "#347046",
+          "#569266",
+          "#79B688",
+          "#9DDBAB",
+          "#C7FFD3"
+        ]
+      },
+      "link": {
+        "role": "accent",
+        "displayName": "link (blue)",
+        "canonical": "oklch(74.9% 0.063 185.5)",
+        "tonalRamp": [
+          "#000F0D",
+          "#002C28",
+          "#094D47",
+          "#316D66",
+          "#548F88",
+          "#77B2AA",
+          "#9AD7CF",
+          "#BFFDF4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "page title",
+        "purpose": "The top of the ladder; there is no display size."
+      },
+      "heading": {
+        "displayName": "row / card title",
+        "purpose": "Row and card titles."
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "Prose, descriptions, designs."
+      },
+      "meta": {
+        "displayName": "meta",
+        "purpose": "The line under a title: keys, timestamps, notes, refusals."
+      },
+      "label": {
+        "displayName": "label",
+        "purpose": "Tile headers, kv keys, column headers, chips: uppercase and tracked."
+      },
+      "kbd": {
+        "displayName": "kbd",
+        "purpose": "Key hints inside tile headers and buttons."
+      },
+      "number": {
+        "displayName": "telemetry number",
+        "purpose": "A number inside a row: text size, never bigger."
+      },
+      "stat": {
+        "displayName": "stat",
+        "purpose": "Project outcome tiles only: the one place a number is allowed to be big."
+      },
+      "doc-h1": {
+        "displayName": "document h1",
+        "purpose": "Design and description headings, step 1 of 6."
+      },
+      "doc-h2": {
+        "displayName": "document h2",
+        "purpose": "Step 2."
+      },
+      "doc-h3": {
+        "displayName": "document h3",
+        "purpose": "Step 3."
+      },
+      "doc-h4": {
+        "displayName": "document h4",
+        "purpose": "Step 4: body size at 600."
+      },
+      "doc-h5": {
+        "displayName": "document h5",
+        "purpose": "Step 5: body size at 500, mute."
+      },
+      "doc-h6": {
+        "displayName": "document h6",
+        "purpose": "Step 6: a label, uppercase and tracked, mute."
+      }
+    },
+    "shadows": [
+      {
+        "name": "focus-inset",
+        "value": "inset 0 0 0 1px #A7C080",
+        "purpose": "The focused tile: with the border switched to --gf-system, the only effect in the system. Every other box-shadow is refused by lint."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.2, .8, .2, 1)",
+        "purpose": "The one easing."
+      },
+      {
+        "name": "fast",
+        "value": "120ms",
+        "purpose": "Hover, focus, selection, the refusal fade-in. 0ms under prefers-reduced-motion."
+      },
+      {
+        "name": "move",
+        "value": "200ms",
+        "purpose": "Tiles resizing, rows reordering. 0ms under prefers-reduced-motion."
+      },
+      {
+        "name": "breathe",
+        "value": "1.6s",
+        "purpose": "The one ambient animation: a live run's node, opacity. animation: none under prefers-reduced-motion, never 0s."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "crumb-hides",
+        "value": "599px",
+        "purpose": "At and below this the crumb leaves the bar; trash and settings never do."
+      },
+      {
+        "name": "bar-collapses",
+        "value": "899px",
+        "purpose": "At and below this the bar shows workspace numbers and counts only."
+      },
+      {
+        "name": "laptop",
+        "value": "1440px",
+        "purpose": "The desk becomes a 2-column tile grid."
+      },
+      {
+        "name": "wide",
+        "value": "1920px",
+        "purpose": "3 columns: more tiles open rather than the same tiles getting bigger."
+      },
+      {
+        "name": "ultrawide",
+        "value": "2560px",
+        "purpose": "4 columns. The kanban spans every column and caps its own columns at 280px."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bar",
+      "kind": "nav",
+      "refersTo": "bar",
+      "description": "The 32px status bar: workspaces, crumb, counts, trash and settings. The active item takes a system border.",
+      "html": "<header class=\"ds-bar\"><nav class=\"ds-ws\"><a class=\"is-on\" href=\"#\">1 <span>board</span></a><a href=\"#\">2 <span>project</span></a><a href=\"#\">3 <span>app</span></a></nav><span class=\"ds-crumb\">subway reader / mvp</span><span class=\"ds-counts\"><span><b>2</b>apps</span><span><b>3</b>projects</span><a href=\"#\">trash</a><a href=\"#\">settings</a></span></header>",
+      "css": ".ds-bar{display:flex;align-items:center;gap:18px;height:32px;padding:0 14px;background:var(--gf-tile, #2D353B);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-ws{display:flex;gap:2px;}.ds-ws a,.ds-counts a{padding:3px 10px;border:1px solid transparent;color:inherit;text-decoration:none;transition:color 120ms cubic-bezier(.2,.8,.2,1);}.ds-ws a:hover,.ds-counts a:hover{color:var(--gf-ink, #D3C6AA);}.ds-ws a.is-on,.ds-counts a.is-on{border-color:var(--gf-system, #A7C080);color:var(--gf-system, #A7C080);}.ds-ws a:focus-visible,.ds-counts a:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-crumb{margin:0 auto;color:var(--gf-ink, #D3C6AA);text-transform:none;letter-spacing:0;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);}.ds-counts{display:flex;gap:14px;align-items:center;}.ds-counts b{color:var(--gf-ink, #D3C6AA);font-weight:400;font-size:15px;margin-right:4px;}"
+    },
+    {
+      "name": "Tile",
+      "kind": "card",
+      "refersTo": "tile",
+      "description": "A tile: raised header with label, subtitle and keys; body of rows. The focused tile takes the system border plus a 1px inset, the only effect in the system.",
+      "html": "<section class=\"ds-tile is-focus\"><div class=\"ds-tile-head\"><span>state</span><span class=\"ds-tile-sub\">GF-12</span><span class=\"ds-tile-keys\"><kbd class=\"ds-kbd\">a</kbd> approve <kbd class=\"ds-kbd\">e</kbd> edit</span></div><div class=\"ds-tile-body\"><div class=\"ds-row\"><span class=\"ds-row-title\">Feed list renders offline</span><span class=\"ds-row-meta\">GF-12 · updated 3m</span></div><div class=\"ds-row\"><span class=\"ds-row-title\">Article view</span><span class=\"ds-row-meta\">GF-13 · updated 2h</span></div></div></section>",
+      "css": ".ds-tile{background:var(--gf-tile, #2D353B);border:1px solid var(--gf-rule, #3D484D);border-radius:0;display:flex;flex-direction:column;min-width:0;width:360px;color:var(--gf-ink, #D3C6AA);transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-tile.is-focus{border-color:var(--gf-system, #A7C080);box-shadow:inset 0 0 0 1px var(--gf-system, #A7C080);}.ds-tile-head{display:flex;align-items:center;gap:12px;padding:8px 18px;background:var(--gf-raised, #343F44);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-system, #A7C080);}.ds-tile-sub{color:var(--gf-mute, #9DA9A0);}.ds-tile-keys{margin-left:auto;color:var(--gf-mute, #9DA9A0);display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;}.ds-tile-body{padding:14px 18px;display:flex;flex-direction:column;gap:12px;font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px;margin:0 -8px;border-bottom:1px solid var(--gf-rule, #3D484D);}.ds-row-title{font:500 14px/1.25 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-row-meta{font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+    },
+    {
+      "name": "Kanban card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Key and status note, title, meta. The whole card is the drag target. Blocked shows as ◇ and a struck title, never a colour.",
+      "html": "<a class=\"ds-card is-system\" href=\"#\"><span class=\"ds-card-id\"><span class=\"ds-card-key\">GF-12</span><i>ready</i></span><span class=\"ds-card-title\">Feed list renders offline</span><span class=\"ds-card-meta\">subway reader / mvp</span></a><a class=\"ds-card is-draft is-blocked\" href=\"#\"><span class=\"ds-card-id\"><span class=\"ds-card-key\">GF-14</span><i>planning</i></span><span class=\"ds-card-title\"><span class=\"ds-blocked-mark\">◇</span>Sync on wifi only</span><span class=\"ds-card-meta\">subway reader / mvp</span></a>",
+      "css": ".ds-card{position:relative;display:flex;flex-direction:column;gap:4px;width:250px;margin-bottom:8px;background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule, #3D484D);border-radius:0;padding:8px 12px;color:var(--gf-ink, #D3C6AA);text-decoration:none;cursor:grab;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-card:hover{border-color:var(--gf-rule-2, #475258);}.ds-card:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-card-id{display:flex;justify-content:space-between;gap:8px;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);}.ds-card-key{letter-spacing:.08em;}.ds-card-id i{font-style:normal;}.ds-card.is-draft .ds-card-id i{color:var(--gf-draft, #DBBC7F);}.ds-card.is-system .ds-card-id i{color:var(--gf-system, #A7C080);}.ds-card.is-review .ds-card-id i{color:var(--gf-review, #83C092);}.ds-card-title{font:500 14px/1.25 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-card-meta{font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.ds-card.is-blocked .ds-card-title{text-decoration:line-through;color:var(--gf-mute, #9DA9A0);}.ds-blocked-mark{display:inline-block;margin-right:8px;color:var(--gf-mute, #9DA9A0);}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A bordered mono label; coloured by meaning only when it carries state.",
+      "html": "<span class=\"ds-chip\">simple</span> <span class=\"ds-chip is-draft\">planning</span> <span class=\"ds-chip is-system\">ready</span> <span class=\"ds-chip is-review\">review</span> <span class=\"ds-chip is-struck\">cancelled</span>",
+      "css": ".ds-chip{display:inline-block;font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:2px 6px;color:var(--gf-mute, #9DA9A0);}.ds-chip.is-draft{color:var(--gf-draft, #DBBC7F);border-color:var(--gf-draft, #DBBC7F);}.ds-chip.is-system{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-chip.is-review{color:var(--gf-review, #83C092);border-color:var(--gf-review, #83C092);}.ds-chip.is-struck{text-decoration:line-through;}"
+    },
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Meta type on raised, a rule-2 border; hover brightens the border. A button that has a key shows it.",
+      "html": "<button class=\"ds-btn\">stop <kbd class=\"ds-kbd\">s</kbd></button>",
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-btn:disabled{opacity:.6;cursor:default;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+    },
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The same button in the system colour, text and border: the one the tile is for.",
+      "html": "<button class=\"ds-btn is-primary\">approve <kbd class=\"ds-kbd\">a</kbd></button>",
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-primary{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn.is-primary:hover{border-color:var(--gf-system, #A7C080);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+    },
+    {
+      "name": "Danger button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Trash: the destructive one. Human red on the text only; the border stays rule-2.",
+      "html": "<button class=\"ds-btn is-danger\">trash <kbd class=\"ds-kbd\">⌘⌫</kbd></button>",
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-danger{color:var(--gf-human, #E67E80);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A labelled field in the kv shape: 100px mono caps label, page-coloured input with a rule-2 border; system border when it is the open thing on screen.",
+      "html": "<label class=\"ds-field\"><span>name</span><input class=\"ds-input\" value=\"Subway Reader\"></label><label class=\"ds-field\"><span>repository</span><input class=\"ds-input is-open\" placeholder=\"https://github.com/…\"></label>",
+      "css": ".ds-field{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:baseline;margin-bottom:12px;width:360px;}.ds-field>span{font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-input{font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);color:var(--gf-ink, #D3C6AA);background:var(--gf-page, #232A2E);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 8px;width:100%;box-sizing:border-box;}.ds-input.is-open,.ds-input:focus-visible{border-color:var(--gf-system, #A7C080);outline:none;}.ds-input::placeholder{color:var(--gf-mute, #9DA9A0);}"
+    },
+    {
+      "name": "Mode line",
+      "kind": "custom",
+      "refersTo": "mode-line",
+      "description": "The status bar a field grows along its bottom edge while the caret is in it: mono, lowercase, groups divided by hairlines; the active control takes the system colour.",
+      "html": "<div class=\"ds-mode\"><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">h1</button><button class=\"ds-mode-btn is-on\">h2</button><button class=\"ds-mode-btn\">h3</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">b</button><button class=\"ds-mode-btn\">i</button><button class=\"ds-mode-btn\">code</button><button class=\"ds-mode-btn\">s</button><button class=\"ds-mode-btn\">link</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">list</button><button class=\"ds-mode-btn\">1.</button><button class=\"ds-mode-btn\">task</button><button class=\"ds-mode-btn\">quote</button><button class=\"ds-mode-btn\">fence</button></div><span class=\"ds-mode-hint\"><kbd class=\"ds-kbd\">⌘⏎</kbd> done</span></div>",
+      "css": ".ds-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 8px;min-height:26px;width:520px;background:var(--gf-raised, #343F44);border-top:1px solid var(--gf-rule, #3D484D);}.ds-mode-group{display:flex;align-items:center;gap:1px;}.ds-mode-group+.ds-mode-group{padding-left:12px;border-left:1px solid var(--gf-rule-2, #475258);}.ds-mode-btn{font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);background:none;border:1px solid transparent;border-radius:0;padding:2px 5px;min-width:20px;cursor:pointer;transition:color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-mode-btn:hover{color:var(--gf-ink, #D3C6AA);border-color:var(--gf-rule-2, #475258);}.ds-mode-btn.is-on{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-mode-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-mode-hint{margin-left:auto;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);display:flex;align-items:center;gap:8px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+    },
+    {
+      "name": "Refusal",
+      "kind": "custom",
+      "refersTo": "refusal",
+      "description": "One mono sentence in mute, inline where the action was refused, fading in over 120ms. Never a modal or a toast.",
+      "html": "<p class=\"ds-refusal\" role=\"alert\">a ticket in review does not go back to building</p>",
+      "css": ".ds-refusal{margin:0;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);animation:ds-refusal-in 120ms cubic-bezier(.2,.8,.2,1);}@keyframes ds-refusal-in{from{opacity:0;}to{opacity:1;}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Tiling Window Manager",
+    "overview": "A tracker that is a **control surface and a memory**, not a Linear clone. The visual model is a **tiling window manager**: a status bar with workspaces, tiles with gaps, one focused tile, keyboard hints in every title bar. Flat, matte, square. Colour carries meaning; almost nothing is decorative.\n\nThree references, distilled: Linear's keyboard-first discipline and single-accent restraint; Everforest's warm, low-glare palette; a HUD's honesty about telemetry (numbers you read, not numbers you admire).\n\nEverything on screen is a line in the bar or a tile on the desk. A tile's title bar names it in mono caps, says what its keys do, and takes the system colour on its border when it is the focused one; its body is rows, or cards on the kanban. The density is a working tool's: type runs from 10.5 to 22 pixels and only a project's outcome tiles are allowed a big number. The one confirmed rejection is the magazine. A ticket design is not one, so there is no display type, no hero number and no editorial whitespace anywhere in the GUI.",
+    "keyCharacteristics": [
+      "Everforest dark, matte and opaque: three surface steps and 1px rules do all the work of depth.",
+      "Square everywhere; the focused tile's border and inset is the only effect.",
+      "One accent, one meaning; red is your attention and nothing else.",
+      "IBM Plex Sans for words, JetBrains Mono for anything that is data.",
+      "Keyboard first: every tile header shows its keys, and a drag always has a key that does the same thing.",
+      "A refusal is one plain sentence, inline, that clears itself."
+    ],
+    "rules": [
+      {
+        "name": "The One Job Rule",
+        "body": "Each accent has one meaning. A new state first asks whether an existing meaning covers it, and `--gf-human` is your attention and nothing else — removing a dependency brightens to ink rather than inventing a destructive red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Blocked Is Not A Colour Rule",
+        "body": "Blocked is a derived condition: an outline glyph and a struck title, never a hue and never opacity.",
+        "section": "colors"
+      },
+      {
+        "name": "The Text-Safe Rule",
+        "body": "Every colour that carries words clears 4.5:1 on `--gf-tile`. `--gf-dim` carries no words.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Is A Signal Rule",
+        "body": "Mono says \"this is data, a key, a path\". A whole paragraph in mono is a bug, not a mood.",
+        "section": "typography"
+      },
+      {
+        "name": "The Text-Size Telemetry Rule",
+        "body": "A number inside a row is text size (Mono 500 15). Only a project outcome tile gets Mono 500 22.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tile Width Rule",
+        "body": "The number to hold is the tile width, not the column count: a wider desk opens more tiles rather than stretching the same ones, and the kanban, the one tile that spans the desk, caps its columns at 280px for the same reason.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Effect Rule",
+        "body": "Depth is three opaque steps and a 1px rule. The focused tile's `--gf-system` border and 1px inset is the only effect in the system; `bun run lint` refuses any `box-shadow` that is not an inset.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Square Rule",
+        "body": "`--gf-radius` is `0` and nothing else is allowed on `border-radius`. Browser-native rounding on focus outlines and `<kbd>` is let be.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Inline Refusal Rule",
+        "body": "A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast.",
+        "section": "components"
+      },
+      {
+        "name": "The Whole Card Rule",
+        "body": "The whole card is the drag target: no grip, no handle, no affordance drawn on it.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do take every colour from a token: `var(--gf-*)`, never a literal. `bun run lint` refuses hex in `web/src`.",
+      "Do give a new state an existing meaning before you reach for a new colour, and say what the colour means in the status note or the column header, not only in the hue.",
+      "Do set identifiers, keys, paths, timestamps and numbers in JetBrains Mono, and words in IBM Plex Sans.",
+      "Do keep a number inside a row at text size (Mono 500 15); only a project outcome tile gets Mono 500 22.",
+      "Do write the run cost as `$x.xx / cap`, spent first, cap second, in mute.",
+      "Do show every tile's keys in its header, and give every drag a key that does the same thing.",
+      "Do refuse with one plain sentence, inline, where the action was refused, and let it clear itself.",
+      "Do show blocked as ◇ and a struck title, and cancelled as a struck title in mute.",
+      "Do hold the tile width when the desk widens: open more tiles, cap the kanban's columns at 280px.",
+      "Do let browser-native focus outlines and `<kbd>` round themselves."
+    ],
+    "donts": [
+      "Don't use a `border-radius` other than `0`, a gradient, a shadow that is not the focus inset, a blur, or a glow.",
+      "Don't use opacity as a state mark; `.gf-btn:disabled` is the one documented exception, because a disabled control is a missing affordance, not a state.",
+      "Don't use `--gf-human` for anything but \"your attention is required\", and don't invent a destructive red.",
+      "Don't use `--gf-live` for \"in progress\"; orange means a run is alive and costing money, and until a run row exists a hand-built `building` ticket is `--gf-system`.",
+      "Don't set a whole paragraph in mono, or put `--gf-dim` on words.",
+      "Don't raise a modal or a toast for a refusal, a confirm, or a save state.",
+      "Don't add a grip, a handle or an icon to a card; the card is the drag target and marks are glyphs.",
+      "Don't reach for stock Everforest values for small text; the palette here was lifted to clear 4.5:1 on `--gf-tile`.",
+      "Don't add a marquee, scanline, pulse-glow or spring; the live node's breathe is the one ambient animation.",
+      "Don't draw a pie chart, a hero number or display type; a ticket design is not a magazine."
+    ]
+  }
+}

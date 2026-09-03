@@ -53,7 +53,7 @@ export const Saving = ({ state }: { state: SaveState }) =>
 
 /**
  * Put the caret in the focused tile's editor, or in the first one on the page
- * when that tile has none — `e` is a jump, not a mode (DESIGN.md §8). Tile
+ * when that tile has none — `e` is a jump, not a mode (DESIGN.md Interaction). Tile
  * focus is static until `⌘1–6` arrives (issue 10), so in practice this reaches
  * the first field of the view; the others are a click away.
  */
@@ -92,7 +92,7 @@ interface Control {
   /** The schema name it acts on, which is also how the mode line asks whether this editor has it. */
   id: string;
   label: ReactNode;
-  /** What it is, in one word or two (DESIGN.md §9), and the key that does the same thing — `undefined` when it has none. */
+  /** What it is, in one word or two (DESIGN.md Voice), and the key that does the same thing — `undefined` when it has none. */
   name: string;
   key?: string;
   active: (e: Editor) => boolean;
@@ -101,7 +101,7 @@ interface Control {
 
 const title = (c: Control) => (c.key ? `${c.name} · ${c.key}` : c.name);
 
-/** Words, not glyphs: kinds and states are single words in this GUI (DESIGN.md §9). */
+/** Words, not glyphs: kinds and states are single words in this GUI (DESIGN.md Voice). */
 /** Keyed by the table's own names, so a mark added there is a type error here until it is given a face. */
 type MarkName = (typeof INLINE_MARKS)[number]['name'];
 const MARK_LABEL: Record<MarkName, ReactNode> = { bold: <b>b</b>, italic: <i>i</i>, code: 'code', strike: <s>s</s> };
@@ -360,7 +360,7 @@ export function MarkdownField({
 /**
  * The mode line: a status bar docked to the bottom of the field while the
  * caret is in it, in the tiling-WM vernacular the rest of the GUI speaks
- * (DESIGN.md §1). Every control names its key, so clicking teaches the
+ * (DESIGN.md Overview). Every control names its key, so clicking teaches the
  * keyboard rather than replacing it. Its right slot is contextual — the URL
  * field on `⌘K`, the language of the code block you are standing in, and
  * otherwise the key that puts the field down.

@@ -126,13 +126,13 @@ export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
 
 const list = (missing: ApproveRequirement[]) => missing.map((m) => REQUIREMENT_LABEL[m]).join(' and ');
 
-/** *approve needs a ticket design* (DESIGN.md §6). */
+/** *approve needs a ticket design* (DESIGN.md Components). */
 export const guardRefusal = (name: TransitionName, missing: ApproveRequirement[]): string => `${name} needs ${list(missing)}`;
 
 /** *a ticket in ready needs an app* — the same sentence when the ticket is standing there rather than walking in. */
 export const guardHold = (status: TicketStatus, missing: ApproveRequirement[]): string => `a ticket in ${status} needs ${list(missing)}`;
 
-/** *a ticket in review does not go back to building* — generated from the status pair (DESIGN.md §6). */
+/** *a ticket in review does not go back to building* — generated from the status pair (DESIGN.md Components). */
 export function structuralRefusal(from: TicketStatus, to: TicketStatus): string {
   if (from === to) return `a ticket in ${from} is already in ${to}`;
   const backwards = TICKET_STATUSES.indexOf(to) < TICKET_STATUSES.indexOf(from);
