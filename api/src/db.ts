@@ -38,6 +38,24 @@ export async function openDb(path: string = defaultDbPath()): Promise<DbHandle> 
 }
 
 /**
+ * A whole copy of the database at `destination`, taken with `VACUUM INTO` —
+ * ADR-0001's second carve-out, and the only place outside `openDb` that
+ * touches the driver. Read-only, off the request path, and consistent without
+ * stopping the server: SQLite reads through the WAL and writes one settled
+ * file, which is what makes a copy safe to take while `bun dev` is running.
+ * `goblin backup` calls this rather than importing the driver itself.
+ */
+export function backupTo(source: string, destination: string): void {
+  const client = new Database(source, { readonly: true, strict: true });
+  try {
+    // the destination is a path, not a table name, so it binds like any value
+    client.run('VACUUM INTO ?', [destination]);
+  } finally {
+    client.close();
+  }
+}
+
+/**
  * Local schema management is `drizzle-kit push` (ADR-0001); at open we apply
  * the same schema idempotently so fresh dev and test databases just work.
  * Keep this in step with `schema.ts` — new tables land in both.

@@ -65,7 +65,9 @@ A flag on a Ticket meaning "straightforward enough to build without a Ticket Des
 The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spot-check with evidence). Not in S1; set at intake from S2.
 
 ## Actor
-Who performed a mutation: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
+Who performed a mutation — the hands, never the authority: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
+
+In S1 an agent's reach ends at `planning`: it creates Tickets only into `planning` (any other Status is refused, never silently corrected) and it owns no Transition, so approving what an agent planned is always a human act. The Ready Frontier is therefore only ever reached by a human's hand.
 
 ## Edit session
 A stretch of continuous editing of one thing by one Actor, recorded as a single entry in that

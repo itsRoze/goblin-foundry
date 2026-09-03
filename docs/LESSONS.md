@@ -246,6 +246,20 @@ help for an always-editable field; the source collapses it to `true` regardless.
 Before adding an affordance, read the extension's defaults: twice now the behaviour was already there
 and something of ours was in front of it.
 
+## 2026-09-02 — `bun link` from a worktree leaves a symlink into a directory that will not last
+
+`bun link` in `cli/` installs the package's `bin` as `~/.bun/bin/goblin` — pointing at whatever
+directory you ran it in. Run from a feature worktree, `goblin` breaks the moment that worktree is
+removed, and the breakage shows up later, in an unrelated shell. Install from the main checkout;
+`bun unlink` (from the same directory) takes it back out.
+
+## 2026-09-02 — `VACUUM INTO` runs on a read-only connection, WAL and all
+
+ADR-0001's backup carve-out assumed it would: it does. A `Database(path, { readonly: true })` runs
+`VACUUM INTO ?` while `bun dev` holds the same file open, reads through the `-wal`, and writes one
+settled file the schema opens with no recovery step. So `goblin backup` never needs the server
+stopped, and never needs a second writer.
+
 ## 2026-09-02 — `graph.ts` and `graph.tsx` cannot both exist
 
 Issue 08 asked for a pure `web/src/graph.ts` (the dagre layout) and a `web/src/graph.tsx` (the
