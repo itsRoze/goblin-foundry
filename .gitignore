@@ -8,3 +8,14 @@ test-results/
 playwright-report/
 .scratch/
 .DS_Store
+
+# impeccable's scratch (critique snapshots, live sessions, hook cache, per-developer config).
+# Tracked: the shared config, the house's standing critique exceptions, and the design sidecar
+# and surface briefs if they are ever generated.
+.impeccable/*
+!.impeccable/config.json
+!.impeccable/design.json
+!.impeccable/surfaces/
+!.impeccable/critique/
+.impeccable/critique/*
+!.impeccable/critique/ignore.md

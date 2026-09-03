@@ -1,0 +1,8 @@
+{
+  "projectRoots": ["web", "!api", "!cli", "!shared"],
+  "detector": {
+    "ignoreFiles": ["design/rough-*/**", "BLUEPRINT-v1.html", "research/**", "web/dist/**"],
+    "designSystem": { "enabled": true }
+  },
+  "hook": { "enabled": true, "quiet": true, "advisoryRules": "include" }
+}

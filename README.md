@@ -1,6 +1,6 @@
 # Goblin Foundry
 
-A solo software factory. S1 is the tracker: one Bun process, a typed HTTP API over one SQLite file, and a thin web GUI over that API. Domain language in `CONTEXT.md`; decisions in `docs/adr/`; the S1 spec in `docs/specs/S1-tracker-core.md`; house style in `design/DESIGN.md`.
+A solo software factory. S1 is the tracker: one Bun process, a typed HTTP API over one SQLite file, and a thin web GUI over that API. Domain language in `CONTEXT.md`; decisions in `docs/adr/`; the S1 spec in `docs/specs/S1-tracker-core.md`; house style in `design/DESIGN.md`. How agents work here, and which skill fits what, is in `CLAUDE.md` and `/ask-goblin`.
 
 ## Layout
 
