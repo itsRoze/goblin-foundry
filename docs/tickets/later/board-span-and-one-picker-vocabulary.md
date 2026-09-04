@@ -37,11 +37,9 @@ desk. The last is what S1 ships. Revisit with a real answer, and amend the Compo
 
 ## Also raised, and deliberately not fixed in 06
 
-- **`e2e/writing.e2e.ts` flakes about one run in three**, and it is not issue 06's: the same tests fail
-  on `bf78467` with `web/src` and `e2e` checked out at baseline. A different caret test fails each time
-  (`:199`, `:221`, `:384`), which is the async-`selectionchange` class of problem `docs/LESSONS.md`
-  already records twice. It wants its own pass: place the caret and assert with a retrying matcher rather
-  than reading the DOM once.
+- ~~`e2e/writing.e2e.ts` flakes about one run in three~~ — **fixed**, and it was a product bug rather
+  than a timing one: `RevealSyntax` drew from `state.selection` alone, so a blurred field kept its
+  markdown markers. See `docs/LESSONS.md`, 2026-09-03.
 - **`kbd` on `--gf-raised` measures 4.44:1**, just short of the 4.5:1 the text-safe rule asks for. This
   is not issue 06's: `--gf-mute` on `--gf-raised` is every tile header in the GUI. Fixing it means moving
   `--gf-mute` in `design/tokens.css`, which touches every screen and wants its own before-and-after.
