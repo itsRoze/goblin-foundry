@@ -11,14 +11,14 @@ import { Empty } from './ui';
  * here, and the pure layout keeps the plain name it is tested under.
  */
 
-/** A square on its point, drawn from its centre — the one shape in the graph (DESIGN.md §6). */
+/** A square on its point, drawn from its centre — the one shape in the graph (DESIGN.md Components). */
 const SHAPE = `M 0 ${-DIAMOND} L ${DIAMOND} 0 L 0 ${DIAMOND} L ${-DIAMOND} 0 Z`;
 /** Where the label sits around the diamond: the key beside it and above the edge line, the title beneath both. */
 const KEY_X = DIAMOND + 7;
 const KEY_Y = -5;
 const TITLE_Y = DIAMOND + 15;
 
-/** DESIGN.md §6: a popover is intent, not a twitch — hover waits, focus does not. */
+/** DESIGN.md Components: a popover is intent, not a twitch — hover waits, focus does not. */
 const HOVER_MS = 120;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -27,7 +27,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export const graphSubtitle = (graph: ProjectGraph) => `${plural(graph.nodes.length, 'ticket')} · ${plural(graph.edges.length, 'edge')}`;
 
 /**
- * The legend is copy, not a key (DESIGN.md §6) — it says what the drawing
+ * The legend is copy, not a key (DESIGN.md Components) — it says what the drawing
  * means in a sentence, and says the other thing when there is nothing to read.
  */
 const legendFor = (edges: number) =>
@@ -38,9 +38,9 @@ const legendFor = (edges: number) =>
 /**
  * The project's dependency graph: our own SVG over a dagre layout, at its
  * natural size inside a box that scrolls both ways, so the page never does
- * (DESIGN.md §5). No arrowheads — rank order carries the direction — and no
+ * (DESIGN.md Layout). No arrowheads — rank order carries the direction — and no
  * opacity anywhere: a blocked node is the kanban's hollow ◇ and a struck
- * title, never a colour and never a dimming (DESIGN.md §3).
+ * title, never a colour and never a dimming (DESIGN.md Colors).
  */
 export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
   const layout = useMemo(() => layoutGraph(graph.nodes, graph.edges), [graph]);

@@ -37,7 +37,7 @@ function useView() {
   return { view, toggle };
 }
 
-/** One sentence under the column the drop was refused at (DESIGN.md §6). */
+/** One sentence under the column the drop was refused at (DESIGN.md Components). */
 interface Refusal {
   status: TicketStatus;
   text: string;
@@ -88,7 +88,7 @@ function useDragToTransition(lookup: (key: string) => Ticket | undefined) {
       monitorForElements({
         canMonitor: ({ source }) => asDraggedCard(source.data) !== null,
         onDragStart: ({ source }) => {
-          setRefusal(null); // a refusal clears on the next drag (DESIGN.md §6)
+          setRefusal(null); // a refusal clears on the next drag (DESIGN.md Components)
           setPending(null);
           setDragging(asDraggedCard(source.data)?.status ?? null);
         },
@@ -158,7 +158,7 @@ export function BoardPage() {
             meta={view.meta ? meta : undefined}
             updated={view.updated}
             at={at}
-            // legal columns are marked, never the illegal ones dimmed (DESIGN.md §6)
+            // legal columns are marked, never the illegal ones dimmed (DESIGN.md Components)
             legal={dragging === null ? null : dragging !== status && transitionTo(dragging, status) !== undefined}
             refusal={refusal?.status === status ? refusal.text : null}
             pending={pending?.status === status ? pending : null}

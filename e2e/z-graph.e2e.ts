@@ -66,7 +66,7 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   await expect(nodes(page)).toHaveCount(2);
   await expect(edges(page)).toHaveCount(1);
   await expect(edges(page)).toHaveClass(/is-open/);
-  // the waiting node wears the kanban's hollow ◇, never a colour (DESIGN.md §3)
+  // the waiting node wears the kanban's hollow ◇, never a colour (DESIGN.md Colors)
   await expect(page.locator('.gf-graph-node.is-blocked')).toHaveCount(1);
   await expect(page.getByTestId('graph-legend')).toContainText('dashed while the blocker is open');
 

@@ -34,7 +34,7 @@ export function useAppNamer(): (id: unknown) => string {
  * description), an `edit` button for the fields that are not text — a name, a
  * repository, an app — and the archive / trash intents as flat buttons.
  * Shared by the App and Project views. `e` belongs to the editor now, not to
- * a mode (DESIGN.md §8).
+ * a mode (DESIGN.md Interaction).
  */
 export function AboutTile<Body>({
   kind,

@@ -19,7 +19,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 /** Styles that exist for a component that is not built yet; each needs a reason. */
 const PLANNED: Record<string, string> = {
-  'gf-breathe': 'the live-run ambient animation (DESIGN.md §7) — arrives with runs in S5',
+  'gf-breathe': 'the live-run ambient animation (DESIGN.md Motion) — arrives with runs in S5',
 };
 
 function walk(dir: string, out: string[] = []): string[] {

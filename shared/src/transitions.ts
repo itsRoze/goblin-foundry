@@ -151,16 +151,16 @@ export const ceilingRefusal = (actor: Actor, status: TicketStatus): string | nul
  */
 export const ownsTransition = (actor: Actor, owner: TransitionOwner): boolean => actor === owner;
 
-/** *approve is the human's move, not the agent's* — the refusal about who, where the others are about where (DESIGN.md §6). */
+/** *approve is the human's move, not the agent's* — the refusal about who, where the others are about where (DESIGN.md Components). */
 export const ownerRefusal = (name: TransitionName, owner: TransitionOwner, actor: Actor): string => `${name} is the ${owner}'s move, not the ${actor}'s`;
 
-/** *approve needs a ticket design* (DESIGN.md §6). */
+/** *approve needs a ticket design* (DESIGN.md Components). */
 export const guardRefusal = (name: TransitionName, missing: ApproveRequirement[]): string => `${name} needs ${list(missing)}`;
 
 /** *a ticket in ready needs an app* — the same sentence when the ticket is standing there rather than walking in. */
 export const guardHold = (status: TicketStatus, missing: ApproveRequirement[]): string => `a ticket in ${status} needs ${list(missing)}`;
 
-/** *a ticket in review does not go back to building* — generated from the status pair (DESIGN.md §6). */
+/** *a ticket in review does not go back to building* — generated from the status pair (DESIGN.md Components). */
 export function structuralRefusal(from: TicketStatus, to: TicketStatus): string {
   if (from === to) return `a ticket in ${from} is already in ${to}`;
   const backwards = TICKET_STATUSES.indexOf(to) < TICKET_STATUSES.indexOf(from);

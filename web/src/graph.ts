@@ -6,7 +6,7 @@
  * `@dagrejs/dagre` does the ranking — left to right, a blocker always left of
  * what it blocks — and nothing else. Its edge points are ignored: dagre routes
  * around dummy nodes with splines, and this house draws orthogonal steps
- * (DESIGN.md §6), so the path is computed here from the two node centres and
+ * (DESIGN.md Components), so the path is computed here from the two node centres and
  * the gap between their ranks.
  */
 import dagre from '@dagrejs/dagre';
@@ -21,7 +21,7 @@ export const DIAMOND = 7;
  * How far down the box the diamond's centre sits. An edge leaves and arrives
  * at that height, so the key is set above the line and the title below it —
  * a wire through a key reads as a strikethrough, which in this house means
- * something else entirely (DESIGN.md §3).
+ * something else entirely (DESIGN.md Colors).
  */
 export const LABEL_TOP = 16;
 /** Between ranks (the columns) and between nodes inside one (the rows). */

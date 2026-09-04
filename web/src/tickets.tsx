@@ -9,7 +9,7 @@ import { useKey } from './keys';
 import { Chip, Empty, Kbd, Since, type Namer, type Tone } from './ui';
 
 /**
- * Status → meaning (DESIGN.md §3). `backlog/todo/planning` are all "not yet
+ * Status → meaning (DESIGN.md Colors). `backlog/todo/planning` are all "not yet
  * real" — the column header, not the colour, tells them apart. `building` is
  * `system` while it is built by hand; it turns `live` when a run exists (S5).
  */
@@ -28,7 +28,7 @@ export const statusTone = (status: TicketStatus) => TONE[status];
 
 export const ticketPath = (t: { key: string }) => `/tickets/${t.key}`;
 
-/** Where a ticket lives, as `app / project` — a lone `—` for an orphan (DESIGN.md §8). */
+/** Where a ticket lives, as `app / project` — a lone `—` for an orphan (DESIGN.md Interaction). */
 export const homeLine = (app: string | null, project: string | null) => (app === null && project === null ? '—' : `${app ?? '—'} / ${project ?? '—'}`);
 
 /** Names for the meta line and the history, from the cached lists; `#3` once a thing is gone. */
@@ -57,11 +57,11 @@ export interface DraggedCard {
 export const asDraggedCard = (data: Record<string | symbol, unknown>): DraggedCard | null =>
   typeof data.key === 'string' && typeof data.status === 'string' ? { key: data.key, status: data.status as TicketStatus } : null;
 
-/** The kanban card: key + status note, title, then whatever the view options ask for (DESIGN.md §6). */
+/** The kanban card: key + status note, title, then whatever the view options ask for (DESIGN.md Components). */
 export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta: string | null; updated: string | null; at: number }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [lifted, setLifted] = useState(false);
-  // the whole card is the drag handle — no grip (DESIGN.md §6)
+  // the whole card is the drag handle — no grip (DESIGN.md Components)
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -73,7 +73,7 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
     });
   }, [ticket.key, ticket.status]);
 
-  // blocked is a derived condition, never a colour: the outline glyph and the strike, nothing else (DESIGN.md §3)
+  // blocked is a derived condition, never a colour: the outline glyph and the strike, nothing else (DESIGN.md Colors)
   const blocked = isBlocked(ticket);
   return (
     <Link
@@ -105,7 +105,7 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
 }
 
 /**
- * `c` creates a ticket wherever there is a scope (DESIGN.md §8): the board
+ * `c` creates a ticket wherever there is a scope (DESIGN.md Interaction): the board
  * passes none, an App or Project view passes its own. Returns the form to
  * render, or `null` when nobody has pressed `c`.
  */

@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * DESIGN.md §5 as an executable check.
+ * DESIGN.md Layout as an executable check.
  *
- * What §5 actually asks for is a *tile width*: "more tiles open ... rather than
+ * What Layout actually asks for is a *tile width*: "more tiles open ... rather than
  * the same tiles getting bigger". Asserting the column count instead would only
  * restate the media queries — any edit that kept `app.css` and this file in step
  * would pass by construction, which is no test at all. So the tiers are checked
@@ -13,7 +13,7 @@ import type { Page } from '@playwright/test';
  */
 
 /**
- * The band a tile has to stay inside *once the grid applies*. Below 1440 §5 asks
+ * The band a tile has to stay inside *once the grid applies*. Below 1440 Layout asks
  * for a single column, so a tile there is as wide as the window — at 1200px that
  * is 1176px, wider than any grid tier produces. That is the spec's own choice
  * ("The tile grid appears at ≥1440"), not a regression, so the width check

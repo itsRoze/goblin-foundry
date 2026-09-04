@@ -38,6 +38,6 @@ image collides with both. Decide these before writing code:
       parser and must keep doing so, so this is the file branch it does not have yet
 - [ ] Drag-to-size, keyboard-reachable (a width field on the mode line's right slot is the
       established pattern — see the code fence's language)
-- [ ] A size cap and a refused-with-a-sentence path for something too big, per DESIGN.md §6
+- [ ] A size cap and a refused-with-a-sentence path for something too big, per DESIGN.md Components
 - [ ] `goblin backup` still produces one restorable copy of everything
 - [ ] Browser smoke: paste an image, size it, reload, see it at that size

@@ -336,7 +336,7 @@ test('backspace against a revealed marker deletes the marker, then the character
 });
 
 test('the design field owns its tile: the mode line sits on the tile edge, not under the last line written', async ({ page }) => {
-  // two columns, so the design tile is stretched by the row and has room to fill (DESIGN.md §5)
+  // two columns, so the design tile is stretched by the row and has room to fill (DESIGN.md Layout)
   await page.setViewportSize({ width: 1600, height: 900 });
   await newTicket(page, 'Fills its tile');
   const tile = page.getByTestId('design-tile');
