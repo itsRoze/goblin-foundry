@@ -300,3 +300,18 @@ Two things came out of it. A browser test that presses a key to choose something
 to be on screen first (`toHaveCount(1)` on the options), the same rule as waiting for the tile that owns
 a shortcut. And the picker now says `loading…` rather than `no ticket matches` while its query is in
 flight, because the second sentence was a lie for as long as the race lasted.
+
+## 2026-09-03 — ProseMirror keeps its selection after a blur, so a decoration outlives the caret
+
+`e2e/writing.e2e.ts` failed about one run in three, a different caret test each time, and the cause
+was not timing at all: `RevealSyntax` derived its decorations from `state.selection` alone, and a
+blurred editor still *has* a selection. So `⌘⏎` (which flushes and calls `view.dom.blur()`) left the
+revealed `` ` `` and `**` on screen whenever the save round-trip did not happen to replace the document
+and reset the selection — the field went on reading as markdown source after you had left it, which is
+the opposite of what DESIGN.md Interaction promises ("markdown shows itself *where the caret is*").
+The test looked flaky because whether the reconcile landed was a race; the bug underneath was constant.
+
+Focus is now plugin state, flipped by the view's own `focus`/`blur` DOM events. It has to be state
+rather than a `view.hasFocus()` read inside the decorator, because **losing focus is not a
+transaction**: nothing would recompute the decorations to notice. The general rule: a decoration
+derived from the selection needs focus in its inputs, or it draws for a caret that is not there.

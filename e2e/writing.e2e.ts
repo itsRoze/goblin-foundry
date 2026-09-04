@@ -245,6 +245,13 @@ test('the markdown around a span shows itself when the caret is on it', async ({
 
   // and with the caret away from both, the line reads as prose again
   await expect(field.locator('.gf-syntax')).toHaveCount(0);
+
+  // clicking away is the other way to leave: a field you are not in has no caret, so it has no markers
+  await field.locator('code').dblclick();
+  await expect(line).toHaveText('call `parse` and hold now');
+  await page.getByTestId('page-title').click();
+  await expect(field.locator('.gf-syntax')).toHaveCount(0);
+  await expect(line).toHaveText('call parse and hold now');
 });
 
 test('the link slot cancels when told to, and lands its url exactly once', async ({ page }) => {
