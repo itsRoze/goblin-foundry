@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
+import { useOpensCreate } from '../creating';
+import { useCursor } from '../desk';
 import { useSaving } from '../editor';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
 import { useCrumb } from '../shell';
@@ -32,6 +34,8 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
   const nav = useNavigate();
   const newTicket = useNewTicket({ app_id: app.id });
   const about = useSaving();
+  useOpensCreate('project', () => setCreating(true));
+  const cursor = useCursor({ tile: 'projects', columns: [(projects.data ?? []).map((p) => slugPath('projects', p))], pathOf: (path) => path });
   if (redirect) return redirect;
 
   return (
@@ -43,7 +47,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         label="projects"
         subtitle={projects.data ? String(projects.data.length) : undefined}
         keys={<Plus label="new project" onClick={() => setCreating(true)} />}
-        focus
+        navigable
         testId="projects-tile"
       >
         {creating && (
@@ -60,7 +64,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
           />
         )}
         {projects.data?.length === 0 && !creating && <Empty>no projects — click +</Empty>}
-        {projects.data && <ProjectRows projects={projects.data} />}
+        {projects.data && <ProjectRows projects={projects.data} cursor={cursor.isAt} />}
         <label className="gf-toggle">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> show archived
         </label>
@@ -77,6 +81,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
             <Kbd>c</Kbd> new
           </>
         }
+        navigable
         testId="tickets-tile"
       >
         {newTicket}

@@ -66,6 +66,8 @@ export {
   transitionsFrom,
   findTransition,
   transitionTo,
+  type KeyedMove,
+  keyedMove,
   asksBeforeBlocked,
   type ApproveRequirement,
   type GuardFields,

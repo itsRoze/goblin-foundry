@@ -82,9 +82,13 @@ export const useTicketList = (search: string, poll = false) =>
     retry: false,
   });
 
-/** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one, and its edges in both directions. */
+/**
+ * `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the
+ * canonical one, and its edges in both directions. An empty key is the palette
+ * standing on a screen with no current Ticket — there is nothing to ask for.
+ */
 export const useTicket = (key: string) =>
-  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketDetailSchema), retry: false });
+  useQuery({ queryKey: ['ticket', key], queryFn: () => api.get(`/api/tickets/${key}`, TicketDetailSchema), enabled: key !== '', retry: false });
 
 /** One edge, named from both ends, so a caller can declare it from whichever ticket it is standing on. */
 export interface Edge {
@@ -117,10 +121,17 @@ function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>) {
 export const usePatchSettings = () => useWrite((body: PatchSettingsBody) => api.patch('/api/settings', body).then((r) => SettingsSchema.parse(r)));
 
 export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.post('/api/tickets', body).then((r) => TicketSchema.parse(r)));
-export const usePatchTicket = (key: string) => useWrite((body: PatchTicketBody) => api.patch(`/api/tickets/${key}`, body));
+/**
+ * An edit, addressed by key rather than bound to one: the Ticket view always
+ * patches the ticket it is showing, and the board's Cursor patches whichever
+ * card it is on, so the key travels with the body rather than with the hook.
+ */
+export const usePatchTicket = () => useWrite(({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body));
 /** A ticket is never archived (CONTEXT.md): trash and restore are all it has. */
-export const useTicketIntent = (key: string) =>
-  useWrite((intent: 'trash' | 'restore') => (intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`)));
+export const useTicketIntent = () =>
+  useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>
+    intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`),
+  );
 
 /** One move: which ticket, which verb, and where it lands so the cache can be patched before the answer. */
 export interface Move {

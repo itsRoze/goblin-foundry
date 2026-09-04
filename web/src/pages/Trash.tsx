@@ -11,7 +11,7 @@ interface Recoverable {
   trashed_at: string | null;
 }
 
-/** Everything recoverable, one tile per kind, newest first; `r` restores the focused row (or the first on the page). */
+/** Everything recoverable, one tile per kind, newest first; `r` restores the first row of the focused tile. */
 export function TrashPage() {
   useCrumb('trash');
   const trash = useTrash();
@@ -30,8 +30,12 @@ export function TrashPage() {
   useKey(
     'r',
     useCallback(() => {
-      const focused = document.activeElement?.closest<HTMLElement>('[data-trash-row]');
-      (focused ?? document.querySelector<HTMLElement>('[data-trash-row]'))?.querySelector<HTMLButtonElement>('button')?.click();
+      // the row you are standing on, else the first in the focused tile, else the first on the page
+      const row =
+        document.activeElement?.closest<HTMLElement>('[data-trash-row]') ??
+        document.querySelector<HTMLElement>('.gf-tile.is-focus [data-trash-row]') ??
+        document.querySelector<HTMLElement>('[data-trash-row]');
+      row?.querySelector<HTMLButtonElement>('button')?.click();
     }, []),
   );
 
@@ -49,7 +53,6 @@ export function TrashPage() {
         loaded={trash.data !== undefined}
         rows={byNewest((trash.data?.apps ?? []).map((a) => ({ id: a.id, label: a.name, trashed_at: a.trashed_at })))}
         onRestore={doRestore}
-        focus
       />
       <TrashTile
         kind="project"
@@ -71,13 +74,11 @@ function TrashTile({
   kind,
   rows,
   loaded,
-  focus,
   onRestore,
 }: {
   kind: TrashKind;
   rows: Recoverable[];
   loaded: boolean;
-  focus?: boolean;
   onRestore: (kind: TrashKind, id: number) => Promise<void>;
 }) {
   return (
@@ -89,7 +90,6 @@ function TrashTile({
           <Kbd>r</Kbd> restore
         </>
       }
-      focus={focus}
       testId={`trash-${kind}s-tile`}
     >
       {loaded && rows.length === 0 && <Empty>no {kind}s in the trash</Empty>}

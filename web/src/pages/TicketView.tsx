@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import {
   asksBeforeBlocked,
   blockedWarning,
+  findTransition,
   isTerminal,
+  keyedMove,
   slugPath,
   transitionsFrom,
   type DependencyRef,
+  type PatchTicketBody,
   type TicketDetail,
   type Transition,
+  type TransitionName,
 } from '@goblin/shared';
+import { useOffersTicket } from '../current';
+import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { formKeys, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
@@ -41,9 +47,9 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const events = useEvents('ticket', ticket.id);
   const names = useNames();
   const at = useMinute();
-  const patch = usePatchTicket(ticket.key);
-  const intent = useTicketIntent(ticket.key);
-  const move = useTransition();
+  const patch = usePatchTicket();
+  const intent = useTicketIntent();
+  const transition = useTransition();
   const about = useSaving();
   const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
@@ -51,6 +57,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const state = useRefusal<string>();
   const nav = useNavigate();
   const { setRefusal: setStateRefusal } = state;
+  /** One picker at a time, and `d` is another way to open one, so which is open lives up here. */
+  const [picking, setPicking] = useState<Direction | null>(null);
+  /** The one question the tracker asks: `start` on a blocked ticket, whether the button or the key asked it. */
+  const [confirming, setConfirming] = useState(false);
+  const focusTile = useFocusTile();
+  const edit = useCallback((body: PatchTicketBody) => patch.mutateAsync({ key: ticket.key, body }), [patch, ticket.key]);
   /** Every write the state tile makes reports its refusal in the tile's one line. */
   const inState = useCallback(
     async (write: () => Promise<unknown>) => {
@@ -69,27 +81,78 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const trash = useCallback(
     () =>
       inState(async () => {
-        await intent.mutateAsync('trash');
+        await intent.mutateAsync({ key: ticket.key, intent: 'trash' });
         nav('/');
       }),
-    [inState, intent, nav],
+    [inState, intent, nav, ticket.key],
   );
   useKey('Backspace', trash, { meta: true });
 
-  // the number is the identity; a bare number or a stale prefix lands on the canonical key (ADR-0002)
-  if (ticket.key !== key) return <Navigate to={ticketPath(ticket)} replace />;
+  /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot. */
+  const runEdge = useCallback((edge: Transition) => void inState(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to })), [inState, transition, ticket.key]);
+  const press = useCallback(
+    (name: TransitionName) => {
+      // the structural refusal is the shared table's, said locally — the same sentence a refused drop gets
+      const asked = keyedMove(ticket.status, name);
+      if (!asked.ok) return setStateRefusal(asked.refusal);
+      if (asksBeforeBlocked(name, ticket)) return setConfirming(true);
+      runEdge(asked.edge);
+    },
+    [ticket, runEdge, setStateRefusal],
+  );
+  /** `d` here is the dependencies tile's `+ add` on the `blocked by` side, pressed for you. */
+  const openBlockedBy = useCallback(() => {
+    focusTile('dependencies');
+    setPicking('depends_on');
+  }, [focusTile]);
+
+  // arriving from the board's `d`: go where the button is, and press it (issue 10)
+  const { pathname, search, state: navState } = useLocation();
+  const asked = (navState as { picking?: Direction } | null)?.picking;
+  useEffect(() => {
+    if (asked === undefined) return;
+    focusTile('dependencies');
+    setPicking(asked);
+    nav(pathname + search, { replace: true, state: null });
+  }, [asked, focusTile, nav, pathname, search]);
 
   /** A write from the about tile's non-prose controls, reported in the tile's one line and rethrown so the caller knows it did not land. */
-  const save = async (body: Parameters<typeof patch.mutateAsync>[0]) => {
+  const save = async (body: PatchTicketBody) => {
     setRefusal(null);
     try {
-      await patch.mutateAsync(body);
+      await edit(body);
     } catch (e) {
       setRefusal(refusalLine(e));
       throw e;
     }
   };
-  const trySave = (body: Parameters<typeof patch.mutateAsync>[0]) => void save(body).catch(() => {});
+  const trySave = (body: PatchTicketBody) => void save(body).catch(() => {});
+
+  // `a s d` and every `⌘K` action on this screen go through the same writes its buttons do
+  useOffersTicket({
+    key: ticket.key,
+    move: press,
+    trash: () => void trash(),
+    simple: (simple) => void inState(() => edit({ simple })),
+    blockedBy: openBlockedBy,
+    // ADR-0007 as the about tile's selects apply it — and a refused move lands in *their* line, not the state tile's
+    place: (field, id) => trySave(field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id }),
+  });
+
+  // `esc` closes what this screen holds open before the shell walks back
+  useEscape(() => {
+    if (confirming) {
+      setConfirming(false);
+      return true;
+    }
+    if (picking === null) return false;
+    setPicking(null);
+    return true;
+  });
+
+  // the number is the identity; a bare number or a stale prefix lands on the canonical key (ADR-0002)
+  if (ticket.key !== key) return <Navigate to={ticketPath(ticket)} replace />;
+
 
   return (
     <>
@@ -121,7 +184,6 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
             <Kbd>e</Kbd> write
           </>
         }
-        focus
         testId="about-tile"
       >
         <InlineTitle value={ticket.title} onSave={(title) => about.run(() => save({ title }))} />
@@ -130,7 +192,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="description"
           placeholder="no description — press e"
           value={ticket.description}
-          onSave={(description) => about.run(() => patch.mutateAsync({ description }))}
+          onSave={(description) => about.run(() => edit({ description }))}
           testId="description"
         />
         <Kv
@@ -191,19 +253,26 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="ticket design"
           placeholder="no ticket design — the plan for this slice goes here"
           value={ticket.design}
-          onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          onSave={(body) => design.run(() => edit({ design: body }))}
           fill
           testId="design"
         />
       </Tile>
 
-      <DependenciesTile ticket={ticket} />
+      <DependenciesTile ticket={ticket} picking={picking} setPicking={setPicking} />
 
       <StateTile
         ticket={ticket}
-        onMove={(edge) => inState(() => move.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))}
-        onSimple={(simple) => inState(() => patch.mutateAsync({ simple }))}
+        onPress={press}
+        onSimple={(simple) => inState(() => edit({ simple }))}
         onTrash={() => void trash()}
+        confirming={confirming}
+        onCancelConfirm={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          const start = findTransition(ticket.status, 'start');
+          if (start) runEdge(start);
+        }}
         refusal={state.refusal}
       />
 
@@ -222,14 +291,14 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
  * declared edge is shown, satisfied ones struck rather than dropped: the edge
  * is still a true fact, and it bites again if the blocker reopens (ADR-0009).
  */
-function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
+function DependenciesTile({ ticket, picking, setPicking }: { ticket: TicketDetail; picking: Direction | null; setPicking: (d: Direction | null) => void }) {
   const { add, remove } = useDependencyEdges();
-  // one picker at a time: opening the other side closes this one, so the tile never asks two questions at once
-  const [picking, setPicking] = useState<Direction | null>(null);
   // a refusal belongs beside the control that earned it (DESIGN.md Components), so it is filed by direction
   const [refusal, setRefusal] = useState<{ direction: Direction; text: string } | null>(null);
   const { depends_on, blocks } = ticket.dependencies;
   const stillOpen = new Set(ticket.blocked_by);
+  // both directions are one list to a key: `j` runs down the blockers and on into what this blocks
+  const cursor = useCursor({ tile: 'dependencies', columns: [[...depends_on, ...blocks].map((d) => d.key)], pathOf: (key) => ticketPath({ key }) });
 
   const write = async (direction: Direction, run: () => Promise<unknown>) => {
     setRefusal(null);
@@ -253,6 +322,7 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
       empty={empty}
       // a blocker is inert once it is out of the way; a ticket this one blocks is inert once it has nowhere left to go
       inert={(d) => (direction === 'depends_on' ? !stillOpen.has(d.key) : isTerminal(d.status))}
+      cursor={cursor.isAt}
       // the DELETE addresses the blocked end, and a trashed ticket is not addressable — restore it to undo that edge
       removable={(d) => direction === 'depends_on' || !d.trashed}
       picking={picking === direction}
@@ -272,7 +342,7 @@ function DependenciesTile({ ticket }: { ticket: TicketDetail }) {
   );
 
   return (
-    <Tile label="dependencies" testId="dependencies-tile">
+    <Tile label="dependencies" navigable testId="dependencies-tile">
       {section('depends_on', depends_on, 'nothing in the way')}
       {section('blocks', blocks, 'nothing waiting on this')}
     </Tile>
@@ -293,6 +363,7 @@ function DependencySection({
   deps,
   empty,
   inert,
+  cursor,
   removable,
   picking,
   taken,
@@ -306,6 +377,8 @@ function DependencySection({
   deps: DependencyRef[];
   empty: string;
   inert: (d: DependencyRef) => boolean;
+  /** Whether the Cursor is on this row — one cursor runs through both sections. */
+  cursor: (key: string) => boolean;
   /** Whether this row's edge can be undone from here at all. */
   removable: (d: DependencyRef) => boolean;
   picking: boolean;
@@ -340,7 +413,7 @@ function DependencySection({
       ) : (
         <div className="gf-rows">
           {deps.map((d) => (
-            <DependencyRow key={d.key} dep={d} inert={inert(d)} removable={removable(d)} onRemove={() => onRemove(d.key)} />
+            <DependencyRow key={d.key} dep={d} inert={inert(d)} cursor={cursor(d.key)} removable={removable(d)} onRemove={() => onRemove(d.key)} />
           ))}
         </div>
       )}
@@ -354,9 +427,9 @@ function DependencySection({
  * it is suspended rather than settled, and says so, because restoring it puts
  * the block straight back (ADR-0009).
  */
-function DependencyRow({ dep, inert, removable, onRemove }: { dep: DependencyRef; inert: boolean; removable: boolean; onRemove: () => void }) {
+function DependencyRow({ dep, inert, cursor, removable, onRemove }: { dep: DependencyRef; inert: boolean; cursor: boolean; removable: boolean; onRemove: () => void }) {
   return (
-    <div className={`gf-row gf-dep-row${inert && !dep.trashed ? ' is-inert' : ''}`} data-testid={`dep-${dep.key}`}>
+    <div className={`gf-row gf-dep-row${inert && !dep.trashed ? ' is-inert' : ''}${cursor ? ' is-cursor' : ''}`} aria-current={cursor ? true : undefined} data-testid={`dep-${dep.key}`}>
       <Link className="gf-row-title" to={ticketPath(dep)}>
         <span className="gf-key">{dep.key}</span>
         {dep.title}
@@ -403,7 +476,11 @@ function TicketPicker({
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
+  // `d` grows this tile by ~250px, which puts the candidates and the edges they join below the fold
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.closest('.gf-dep-section')?.scrollIntoView({ block: 'nearest' });
+  }, []);
   const listId = useId();
   const optionId = (key: string) => `${listId}-${key}`;
 
@@ -498,53 +575,58 @@ function TicketPicker({
  */
 function StateTile({
   ticket,
-  onMove,
+  onPress,
   onSimple,
   onTrash,
+  confirming,
+  onConfirm,
+  onCancelConfirm,
   refusal,
 }: {
   ticket: TicketDetail;
-  onMove: (edge: Transition) => Promise<void>;
+  /** A verb, not an edge: the button and the key ask for the move the same way. */
+  onPress: (name: TransitionName) => void;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
+  confirming: boolean;
+  onConfirm: () => void;
+  onCancelConfirm: () => void;
   refusal: string | null;
 }) {
   const edges = transitionsFrom(ticket.status);
-  const [confirming, setConfirming] = useState(false);
-  const press = (edge: Transition) => {
-    if (asksBeforeBlocked(edge.name, ticket)) return setConfirming(true);
-    void onMove(edge);
-  };
   return (
-    <Tile label="state" testId="state-tile">
+    <Tile
+      label="state"
+      keys={
+        <>
+          {/* `a` is offered only where the table has the arrow, exactly as the buttons below are: a hint
+              that cannot work is worse than no hint (DESIGN.md Voice, and the close-out of issue 10) */}
+          {keyedMove(ticket.status, 'approve').ok && (
+            <>
+              <Kbd>a</Kbd> approve
+            </>
+          )}
+          <Kbd>s</Kbd> status <Kbd>d</Kbd> deps
+        </>
+      }
+      testId="state-tile"
+    >
       <Kv rows={[['status', <StatusChip status={ticket.status} />]]} />
       <div className="gf-actions">
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
-            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => press(e)}>
+            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => onPress(e.name)}>
               {e.name}
             </button>
           ))}
       </div>
-      {confirming && (
-        <Confirm
-          text={blockedWarning(ticket.blocked_by)}
-          verb="start"
-          testId="confirm-start"
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => {
-            setConfirming(false);
-            const start = edges.find((e) => e.name === 'start');
-            if (start) void onMove(start);
-          }}
-        />
-      )}
+      {confirming && <Confirm text={blockedWarning(ticket.blocked_by)} verb="start" testId="confirm-start" onCancel={onCancelConfirm} onConfirm={onConfirm} />}
       <div className="gf-actions is-separated">
         {edges
           .filter((e) => e.name === 'cancel')
           .map((e) => (
-            <button key={e.name} className="gf-btn is-danger" data-testid="move-cancel" onClick={() => void onMove(e)}>
+            <button key={e.name} className="gf-btn is-danger" data-testid="move-cancel" onClick={() => onPress(e.name)}>
               cancel
             </button>
           ))}

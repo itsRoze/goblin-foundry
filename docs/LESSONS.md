@@ -99,6 +99,14 @@ the button moved, and the mouseup landed somewhere else — no click ever fired.
 it as "the ticket never left `backlog`". Chrome that comes and goes with focus is positioned
 absolutely with its space reserved, so the page never moves under a press in progress.
 
+*(Amended 2026-09-04, issue 10.)* The same rule caught a third case, from the other direction: tile
+focus follows a click, so `Tile`'s `onMouseDown` runs a focus change — and giving that change a
+`scrollIntoView` and a `blur()` (both right for `⌘1–6`, which has no press in flight) broke six
+browser tests at once. The scroll moved the link out from under the pointer; the blur collapsed
+ProseMirror's selection, so every mode-line button applied its mark to nothing. **A handler that
+serves both a click and a key needs two paths**: the pointer path may only change state, and
+anything that moves the page or the caret belongs to the keyed one.
+
 ## 2026-08-30 — a live field is owned by the field, not by its document
 
 Clicking from the editor into the mode line's own URL or language input blurs the *document*. The
@@ -315,3 +323,19 @@ Focus is now plugin state, flipped by the view's own `focus`/`blur` DOM events. 
 rather than a `view.hasFocus()` read inside the decorator, because **losing focus is not a
 transaction**: nothing would recompute the decorations to notice. The general rule: a decoration
 derived from the selection needs focus in its inputs, or it draws for a caret that is not there.
+
+## 2026-09-03 — a key that acts on what another key just chose must not wait for state
+
+Issue 10 gave the shell one `a`/`s`/`d` binding and let each screen say what those verbs do to
+the current Ticket. The first wiring put the current Ticket's *key* in context state and gated the
+bindings on it (`key === null ? undefined : …`). Pressing `j` then `a` did nothing about half the
+time: `j` commits the Cursor and paints `is-cursor`, but the offer only reaches the shell in that
+commit's passive effect, which re-renders the shell, whose own effect then refreshes the key map —
+two render/effect cycles *after* the mark a browser test (or a fast human) can already see.
+
+The screen's verbs now go into a **ref**, written in the same commit that draws the Cursor, and the
+global keys read that ref; the key stays in state only for what genuinely has to re-render, which is
+the palette's ticket read. The rule: anything reached by a keystroke should be published where a
+keystroke can see it immediately — state is for rendering, a ref is for handlers. A browser test
+that presses a key acting on a selection still waits for the selection to be on screen first, but it
+is no longer waiting for two invisible cycles behind it.

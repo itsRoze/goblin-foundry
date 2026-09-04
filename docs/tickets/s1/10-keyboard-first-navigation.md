@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Dependencies and the ready frontier)
 
-**Status:** ready-for-agent
+**Status:** built 2026-09-04
 
 **Decisions (grilled 2026-09-03):**
 
@@ -21,12 +21,24 @@
 - *Tile headers.* Every tile shows its `⌘n`. The focused tile adds `j k ⏎` when its body is rows or cards (history is not navigable). The board tile and the state tile show `a s d`. `⌘K` sits in the bar at the right, beside `trash` and `settings`. Unfocused tiles show only their number and their own keys.
 - *Not in 10.* Multi-select and bulk actions (03b); touch buttons for keyboard-only actions (11); `copy key`; vim range keys; a `?` key sheet. No ADR — nothing here is hard to reverse.
 
-- [ ] Cursor: `j/k/h/l` (+ arrows) on the board, `j/k` in every row tile that is a link, `⏎` opens, `esc` clears; keyed by ticket key across the poll and a transition; restored after `⏎`/`esc`; 2px `--gf-system` left inset on the cursor card or row
-- [ ] Tile focus: `⌘1–6` by reading order, focus follows click, resets on navigation; `is-focus` becomes state, not a prop; `e` reads it
-- [ ] `a`, `s`, `d` on the board and the Ticket view through the same mutations as the buttons; local structural refusal for `a`, API refusals in the slot the button uses; blocked-`start` confirm in its slot
-- [ ] `⌘K` palette (one combobox, with the `s` mode): tickets, current-ticket actions (transitions, trash, simple, blocked by…, move to project/app… nested), go to, create, clear filters; floating panel per the decisions; `⌘K` hint in the bar
-- [ ] Tile headers list `⌘n` and their keys in `<kbd>`; the focused tile adds `j k ⏎`
-- [ ] `esc` precedence: closes the open thing, else back through in-app history, else the board
-- [ ] Unit tests in `web/test`: cursor movement (within, across, clamp, skip empty, survive a card leaving) and palette candidates (groups, exact key first, terminal last, cap) as pure functions
-- [ ] Browser smoke: `c` creates a ticket, `j` puts the cursor on it, `⏎` opens it, `esc` returns with the cursor restored; `⌘K`, type its key, `⏎` opens it; `s` → `approve` on a simple ticket lands in `ready`; `⌘2` focuses the design tile and `e` lands in it
-- [ ] Closeout: DESIGN.md Interaction gains "As built (issue 10)"; Components gains **Command palette** and the cursor mark; the `Plus` comment and the filter-bar `×` note that pointed at issue 10 are updated
+**Close-out deviations (2026-09-04).** `/impeccable critique` on the board and the Ticket view, then Matt's two-axis review, moved five decisions above. Drift is allowed; unexplained drift is not.
+
+- *"Every tile shows its `⌘n`."* A tile carries its number only where the desk holds **more than one** tile — the board, `/apps`, `/projects` and `/settings` are one-tile desks, and a number with nothing to switch to is not information. Both critiques counted the board's ten-token header as the screen's worst cognitive load.
+- *"The board tile and the state tile show `a s d`."* Both now advertise `a approve` only where the transition table has that arrow out of the current status, exactly as the state tile already draws its buttons. A hint that cannot work is worse than no hint (DESIGN.md Voice), and `approve` is not an arrow out of `ready`.
+- *"at most 8 rows"* still holds, but with an empty query the eight are shared out a row at a time across the groups present. The `actions` group alone is nine or ten rows on a Ticket, so the fixed group order was burying `go to`, `create` and `clear filters` entirely — which contradicted this ticket's own "empty query shows everything but tickets".
+- *"`cancel` last"* still holds; the rows before it now lead with the moves that carry the Ticket forward, because `⏎` on an untyped query takes the first row and the table's own order opens with `unapprove` out of `ready`. The state tile's buttons keep table order — they *are* the table; a palette is ranked by what you probably meant.
+- *"a mono caps group label"* — the `actions` group label and the `s` placeholder also name the current Ticket (`actions · GF-3`). The panel covers the card it is about, and `trash` and `cancel` are one `⏎` from a subject otherwise held only in working memory.
+
+Two more things changed outside this ticket's scope, and are recorded where they belong: `--gf-mute` was lifted to `#A3AFA6` so it clears 4.5:1 on `--gf-raised` (this ticket put a panel of 10.5px hints on that surface; DESIGN.md Colors now measures the text-safe rule against the raised step), and three findings this ticket does not own went to `docs/tickets/later/`.
+
+Read alongside CONTEXT.md, *"None on load"* means before the first press, not across a reload: CONTEXT.md's **Cursor** says a refresh does not lose it, so the memory is `sessionStorage`. Seeding on any of `j/k/h/l` rather than `j` alone is the same reading — a key that appears dead is worse than one that starts you at the top.
+
+- [x] Cursor: `j/k/h/l` (+ arrows) on the board, `j/k` in every row tile that is a link, `⏎` opens, `esc` clears; keyed by ticket key across the poll and a transition; restored after `⏎`/`esc`; 2px `--gf-system` left inset on the cursor card or row
+- [x] Tile focus: `⌘1–6` by reading order, focus follows click, resets on navigation; `is-focus` becomes state, not a prop; `e` reads it
+- [x] `a`, `s`, `d` on the board and the Ticket view through the same mutations as the buttons; local structural refusal for `a`, API refusals in the slot the button uses; blocked-`start` confirm in its slot
+- [x] `⌘K` palette (one combobox, with the `s` mode): tickets, current-ticket actions (transitions, trash, simple, blocked by…, move to project/app… nested), go to, create, clear filters; floating panel per the decisions; `⌘K` hint in the bar
+- [x] Tile headers list `⌘n` and their keys in `<kbd>`; the focused tile adds `j k ⏎`
+- [x] `esc` precedence: closes the open thing, else back through in-app history, else the board
+- [x] Unit tests in `web/test`: cursor movement (within, across, clamp, skip empty, survive a card leaving) and palette candidates (groups, exact key first, terminal last, cap) as pure functions
+- [x] Browser smoke: `c` creates a ticket, `j` puts the cursor on it, `⏎` opens it, `esc` returns with the cursor restored; `⌘K`, type its key, `⏎` opens it; `s` → `approve` on a simple ticket lands in `ready`; `⌘2` focuses the design tile and `e` lands in it
+- [x] Closeout: DESIGN.md Interaction gains "As built (issue 10)"; Components gains **Command palette** and the cursor mark; the `Plus` comment and the filter-bar `×` note that pointed at issue 10 are updated
