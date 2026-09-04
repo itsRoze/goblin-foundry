@@ -37,74 +37,74 @@ typography:
     "20": "20px"
     "22": "22px"
   title:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "20px"
     fontWeight: 500
     lineHeight: 1.2
   heading:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "14px"
     fontWeight: 500
     lineHeight: 1.25
   body:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.5
   meta:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "11.5px"
     fontWeight: 400
     lineHeight: 1.4
   label:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "11px"
     fontWeight: 400
     lineHeight: 1
     letterSpacing: "0.14em"
   kbd:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "10.5px"
     fontWeight: 400
     lineHeight: "15px"
     letterSpacing: "0.05em"
   number:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "15px"
     fontWeight: 500
     lineHeight: 1.2
   stat:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontFamily: "JetBrains Mono, ui-monospace, SF Mono, Menlo, monospace"
     fontSize: "22px"
     fontWeight: 500
     lineHeight: 1.1
   doc-h1:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "19px"
     fontWeight: 600
     lineHeight: 1.25
   doc-h2:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "16.5px"
     fontWeight: 600
     lineHeight: 1.25
   doc-h3:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "14.5px"
     fontWeight: 600
     lineHeight: 1.25
   doc-h4:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "13.5px"
     fontWeight: 600
     lineHeight: 1.25
   doc-h5:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "13.5px"
     fontWeight: 500
     lineHeight: 1.25
   doc-h6:
-    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, -apple-system, sans-serif"
     fontSize: "11.5px"
     fontWeight: 500
     lineHeight: 1.25
@@ -233,7 +233,7 @@ A tracker that is a **control surface and a memory**, not a Linear clone. The vi
 
 Three references, distilled: Linear's keyboard-first discipline and single-accent restraint; Everforest's warm, low-glare palette; a HUD's honesty about telemetry (numbers you read, not numbers you admire).
 
-Everything on screen is a line in the bar or a tile on the desk. A tile's title bar names it in mono caps, says what its keys do, and takes the system colour on its border when it is the focused one; its body is rows, or cards on the kanban. The density is a working tool's: type runs from 10.5 to 22 pixels and only a project's outcome tiles are allowed a big number. The one confirmed rejection is the magazine. A ticket design is not one, so there is no display type, no hero number and no editorial whitespace anywhere in the GUI.
+Everything on screen is a line in the bar or a tile on the desk. A tile's title bar names it in system-green mono caps and says what its keys do; the tile's own border takes the system colour when it is the focused one; its body is rows, or cards on the kanban. The density is a working tool's: type runs from 10.5 to 22 pixels and only a project's outcome tiles are allowed a big number. The one confirmed rejection is the magazine. A ticket design is not one, so there is no display type, no hero number and no editorial whitespace anywhere in the GUI.
 
 **Key Characteristics:**
 
@@ -283,17 +283,17 @@ Text: `--gf-ink #D3C6AA` primary, `--gf-mute #9DA9A0` secondary. `--gf-dim #7A84
 
 ### Named Rules
 
-**The One Job Rule.** Each accent has one meaning. A new state first asks whether an existing meaning covers it, and `--gf-human` is your attention and nothing else — removing a dependency brightens to ink rather than inventing a destructive red.
+**The one job rule.** Each accent has one meaning. A new state first asks whether an existing meaning covers it, and `--gf-human` is your attention and nothing else — removing a dependency brightens to ink rather than inventing a destructive red.
 
-**The Blocked Is Not A Colour Rule.** Blocked is a derived condition: an outline glyph and a struck title, never a hue and never opacity.
+**The blocked-is-not-a-colour rule.** Blocked is a derived condition: an outline glyph and a struck title, never a hue and never opacity.
 
-**The Text-Safe Rule.** Every colour that carries words clears 4.5:1 on `--gf-tile`. `--gf-dim` carries no words.
+**The text-safe rule.** Every colour that carries words clears 4.5:1 on `--gf-tile`. `--gf-dim` carries no words.
 
 ## Typography
 
-**Display Font:** none. There is no display size; the page title is the top of the ladder.
-**Body Font:** IBM Plex Sans (with `system-ui, sans-serif`)
-**Label/Mono Font:** JetBrains Mono (with `ui-monospace, monospace`)
+**Display Font:** none. There is no display role: the page title (Sans 500 20) tops the text ladder, and the only larger type is the stat number (Mono 500 22) on a project's outcome tiles.
+**Body Font:** IBM Plex Sans (with `system-ui, -apple-system, sans-serif`)
+**Label/Mono Font:** JetBrains Mono (with `ui-monospace, 'SF Mono', Menlo, monospace`)
 
 **Character:** IBM Plex Sans for words, JetBrains Mono for identifiers and telemetry. Mono is a signal ("this is data, this is a key, this is a path"), not a mood — if a whole paragraph is mono, something is wrong.
 
@@ -317,9 +317,9 @@ Six heading levels need six visible steps, and a ticket design is not a magazine
 
 ### Named Rules
 
-**The Mono Is A Signal Rule.** Mono says "this is data, a key, a path". A whole paragraph in mono is a bug, not a mood.
+**The mono-is-a-signal rule.** Mono says "this is data, a key, a path". A whole paragraph in mono is a bug, not a mood.
 
-**The Text-Size Telemetry Rule.** A number inside a row is text size (Mono 500 15). Only a project outcome tile gets Mono 500 22.
+**The text-size telemetry rule.** A number inside a row is text size (Mono 500 15). Only a project outcome tile gets Mono 500 22.
 
 ## Layout
 
@@ -329,21 +329,21 @@ Six heading levels need six visible steps, and a ticket design is not a magazine
 - Inside tiles, content is **rows** (grid columns, 1px rule between) or **cards** (kanban only).
 - **Small layouts** (mobile-first): below laptop width the desk is a single column and tiles stack in workspace order; the kanban scrolls horizontally *inside* its tile, never the page; drag works on touch (long-press to lift); the bar collapses to workspace numbers + counts (below 900px; the crumb goes at 600px, but `trash` and `settings` never do — they are the only way to reach those pages). The tile grid appears at ≥1440.
 
-Spacing is a 4px base: `--gf-s1` 4 · `--gf-s2` 8 · `--gf-s3` 12 · `--gf-s4` 14 · `--gf-s5` 18 · `--gf-s6` 24. `--gf-gap` (12px) is the WM gap between tiles and the gap between a tile body's children; `--gf-pad-y` (14px) and `--gf-pad-x` (18px) pad a tile body; a tile header is `--gf-s2` tall-padded on the same horizontal padding, so header and body text align.
+Spacing is a 4px base: `--gf-s1` 4 · `--gf-s2` 8 · `--gf-s3` 12 · `--gf-s4` 14 · `--gf-s5` 18 · `--gf-s6` 24. `--gf-gap` (12px) is the WM gap between tiles, and a tile body's children sit `--gf-s3` apart, the same 12px under its own name; `--gf-pad-y` (14px) and `--gf-pad-x` (18px) pad a tile body; a tile header is `--gf-s2` tall-padded on the same horizontal padding, so header and body text align.
 
 ### Named Rules
 
-**The Tile Width Rule.** The number to hold is the tile width, not the column count: a wider desk opens more tiles rather than stretching the same ones, and the kanban, the one tile that spans the desk, caps its columns at 280px for the same reason.
+**The tile width rule.** The number to hold is the tile width, not the column count: a wider desk opens more tiles rather than stretching the same ones, and the kanban, the one tile that spans the desk, caps its columns at 280px for the same reason.
 
 ## Elevation & Depth
 
-Flat. There are no shadows, gradients, blur or glow anywhere; depth is three opaque steps — `--gf-page` under `--gf-tile` under `--gf-raised` — and a 1px `--gf-rule`. A tile header is raised above its body, a card is raised above its column, a selected row is raised above its neighbours, and that is the whole vocabulary. Interaction states move a border colour, never a surface off the page: hover on a card lifts its border to `--gf-rule-2`, hover on a button to `--gf-mute`.
+Flat. There are no shadows, gradients, blur or glow anywhere; depth is three opaque steps — `--gf-page` under `--gf-tile` under `--gf-raised` — and a 1px `--gf-rule`. A tile header is raised above its body, a card is raised above its column, a selected row is raised above its neighbours, and that is the whole vocabulary. Interaction states move a border colour or step a surface up one level, never off the page: hover on a card lifts its border to `--gf-rule-2`, hover on a button to `--gf-mute`; a hovered row, a legal drop column and the picker's highlighted candidate go `--gf-raised`.
 
 Focus = the tile border switches to `--gf-system`, plus a 1px inset of the same. That is the only "effect" in the system.
 
 ### Named Rules
 
-**The One Effect Rule.** Depth is three opaque steps and a 1px rule. The focused tile's `--gf-system` border and 1px inset is the only effect in the system; `bun run lint` refuses any `box-shadow` that is not an inset.
+**The one effect rule.** Depth is three opaque steps and a 1px rule. The focused tile's `--gf-system` border and 1px inset is the only effect in the system; `bun run lint` refuses any `box-shadow` that is not an inset.
 
 ## Shapes
 
@@ -353,7 +353,7 @@ Everything is a rectangle drawn with a 1px rule: tiles, cards, chips, buttons, i
 
 ### Named Rules
 
-**The Square Rule.** `--gf-radius` is `0` and nothing else is allowed on `border-radius`. Browser-native rounding on focus outlines and `<kbd>` is let be.
+**The square rule.** `--gf-radius` is `0` and nothing else is allowed on `border-radius`. Browser-native rounding on focus outlines and `<kbd>` is let be.
 
 ## Components
 
@@ -381,20 +381,20 @@ What `web/src/app.css` actually does, for the primitives the mockups take for gr
 
 - **Bar** — 32px on `--gf-tile` with a 1px `--gf-rule` beneath; mono label caps in `--gf-mute`. The active workspace, and the active `trash` or `settings` link, take a 1px `--gf-system` border and the system colour; hover brightens to ink. The crumb is meta type in `--gf-ink`, no caps, centred.
 - **Tile** — `--gf-tile` body inside a 1px `--gf-rule` border. The header sits on `--gf-raised` with the label in `--gf-system` mono caps, the subtitle in `--gf-mute`, the keys right-aligned in `--gf-mute`; the body is padded `--gf-pad-y`/`--gf-pad-x` with `--gf-s3` between its children. `is-span` takes the whole desk; `is-focus` is the effect in Elevation & Depth.
-- **Row** — a grid of title and meta stacked on the left and a trailing slot on the right, a 1px `--gf-rule` under each, bleeding `--gf-s2` past the tile padding so the rule runs edge to edge. A row that is a link hovers to `--gf-raised`. The picker's highlighted candidate is a row with the 2px `--gf-system` left inset.
+- **Row** — a grid of title and meta stacked on the left and a trailing slot on the right, a 1px `--gf-rule` under each, bleeding `--gf-s2` into the tile padding so the hover fill and the rule sit wider than the words. A row that is a link hovers to `--gf-raised`. The picker's highlighted candidate is a row with the 2px `--gf-system` left inset.
 - **Card** — `--gf-raised` in a 1px `--gf-rule` border, `--gf-s2` by `--gf-s3` padding, `cursor: grab` on the whole card. Hover lifts the border to `--gf-rule-2`; a lifted (dragging) card takes `--gf-system`. The status note beside the key wears the status colour; `cancelled` strikes title and note in `--gf-mute`; `blocked` strikes the title and puts ◇ before it, in `--gf-mute`.
 - **Chip** — mono label caps at .08em tracking, 1px `--gf-rule-2` border, 2px by 6px, `--gf-mute` text. A chip carrying state colours its text and border by meaning; `is-struck` strikes it.
-- **Button** — meta type in `--gf-ink` on `--gf-raised`, 1px `--gf-rule-2` border, 4px by 10px; hover brightens the border to `--gf-mute`. `is-primary` takes `--gf-system` for text and border; `is-danger` takes `--gf-human` for the text only. Disabled is `opacity: .6`, the one place opacity is allowed, because a disabled control is a missing affordance and not a state mark. A button that has a key shows it as a kbd inside itself.
+- **Button** — meta type in `--gf-ink` on `--gf-raised`, 1px `--gf-rule-2` border, 4px by 10px; hover brightens the border to `--gf-mute`. `is-primary` takes `--gf-system` for text and border; `is-danger` takes `--gf-human` for the text only: the one place red marks a destructive control rather than your attention, a standing tension with the one job rule that these notes record rather than resolve. Disabled is `opacity: .6`, the one place opacity is allowed, because a disabled control is a missing affordance and not a state mark. A button that has a key shows it as a kbd inside itself.
 - **Input** — body type in `--gf-ink` on `--gf-page`, 1px `--gf-rule-2` border, 4px by 8px. An input that is the open thing on screen (a new ticket, the picker) is bordered `--gf-system` from the start. A form labels each field in a 100px mono caps column, the kv row's shape.
 - **kbd** — Mono 10.5 on a 15px line in `--gf-mute`, 1px `--gf-rule-2` border, 0 by 5px, .05em tracking.
 - **Editor** — the document is body type in `--gf-ink` with no focus box of its own, because the caret is the focus signal and focus belongs to the tile border. Inline code is meta mono in `--gf-link`; a fence sits on `--gf-page` in a 1px `--gf-rule` border; a blockquote carries a 2px `--gf-rule-2` left rule and goes `--gf-mute`; list markers are `--gf-dim`; task checkboxes take `--gf-system` as their accent. The headings are the six steps in Typography. The mode line is described in Interaction.
-- **Refusal and confirm** — meta mono in `--gf-mute`, a paragraph with `role="alert"`, fading in over `--gf-fast`. The confirm is the same line with a `verb anyway` button and a `cancel` button inside it: the one question the tracker asks before doing what you said.
+- **Refusal and confirm** — meta mono in `--gf-mute`, a paragraph with `role="alert"`; the board's column refusal fades in over `--gf-fast`, the others appear at once. The confirm is the same line with a `verb anyway` button and a `cancel` button inside it: the one question the tracker asks before doing what you said.
 
 ### Named Rules
 
-**The Inline Refusal Rule.** A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast.
+**The inline refusal rule.** A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast.
 
-**The Whole Card Rule.** The whole card is the drag target: no grip, no handle, no affordance drawn on it.
+**The whole card rule.** The whole card is the drag target: no grip, no handle, no affordance drawn on it.
 
 ## Do's and Don'ts
 

@@ -35,8 +35,8 @@ The first product built with the factory is Subway Reader, an offline-first e-in
 One line each; the spec carries the user stories.
 
 - Statuses `backlog · todo · planning · ready · building · review · done · cancelled`, moved only by named transitions (`approve`, `start`, `ship`…). Blocked is a derived condition, never a status.
-- Every transition names its owner. In S1 all are human-owned; `ready → building` and `building → review` are marked for the controller from S5, so that flipping ownership changes no UI code (story 30).
-- A ticket created by an agent lands in `planning` regardless of input; approving is the human's (ticket 09).
+- Every transition names its owner. In S1 every edge is human-owned; the owner is in the table so that when `ready → building` and `building → review` pass to the controller in S5 (ADR-0003), flipping ownership changes no UI code (story 30).
+- An agent creates a ticket only into `planning` (the default when it names none; any other status is refused, never corrected) and owns no transition, so approving what an agent planned is always the human's act (CONTEXT.md Actor; decided in ticket 09).
 - Dependencies are advisory facts between any two tickets; only cycles are refused (ADR-0009). The Ready Frontier is where they bite.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
 - Designs are markdown columns in the tracker, edited in place, always live; there is no draft and no save step (ADR-0005). Editing text never changes status.
@@ -62,7 +62,7 @@ The look is the house style in `design/DESIGN.md`, and it is binding. This file 
 
 1. Agents produce candidates; deterministic code enforces boundaries; evidence informs trust; the human owns intent and irreversible decisions (BLUEPRINT-v1 §1).
 2. The transition table is the only authority over status; nothing else encodes the lifecycle, and a refusal says who owns the move.
-3. Every workflow action is reversible in its own way: cancel, archive, trash.
+3. Nothing is lost by a decision: cancel has `reopen`, archive has unarchive, trash has restore. Only cancel is a workflow action; archive is navigation and trash is the undo.
 4. Keyboard first: every tile header shows its keys, and a drag always has a key that does the same thing.
 5. Numbers you read, not numbers you admire.
 
@@ -71,6 +71,6 @@ The look is the house style in `design/DESIGN.md`, and it is binding. This file 
 Four standing commitments, and no external standard named (decided 2026-09-03):
 
 - Every text colour clears 4.5:1 on the tile surface; the palette was adjusted for it (DESIGN.md Colors). The dim token is for handles and dividers only and fails contrast deliberately.
-- Blocked, like any other state, is never carried by colour alone: outline glyph plus strikethrough.
+- Blocked is never a colour: an outline glyph plus strikethrough. No status is carried by colour alone; the word is always there.
 - `prefers-reduced-motion` collapses transitions and switches the one ambient animation off.
-- The keyboard reaches everything; browser-native focus outlines are kept.
+- The keyboard reaches everything, and focus is always visible: a 1px `--gf-system` outline on anything focusable, the caret inside an editor. The browser's own rounding of that outline is let be.

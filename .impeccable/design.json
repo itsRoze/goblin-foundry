@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T04:32:03.169Z",
+  "generatedAt": "2026-09-04T00:56:04.024Z",
   "title": "Design System: Goblin Foundry",
   "extensions": {
     "colorMeta": {
@@ -277,7 +277,7 @@
       {
         "name": "focus-inset",
         "value": "inset 0 0 0 1px #A7C080",
-        "purpose": "The focused tile: with the border switched to --gf-system, the only effect in the system. Every other box-shadow is refused by lint."
+        "purpose": "The focused tile: with the border switched to --gf-system, the only effect in the system. Any box-shadow that is not an inset is refused by lint."
       }
     ],
     "motion": [
@@ -337,7 +337,7 @@
       "refersTo": "bar",
       "description": "The 32px status bar: workspaces, crumb, counts, trash and settings. The active item takes a system border.",
       "html": "<header class=\"ds-bar\"><nav class=\"ds-ws\"><a class=\"is-on\" href=\"#\">1 <span>board</span></a><a href=\"#\">2 <span>project</span></a><a href=\"#\">3 <span>app</span></a></nav><span class=\"ds-crumb\">subway reader / mvp</span><span class=\"ds-counts\"><span><b>2</b>apps</span><span><b>3</b>projects</span><a href=\"#\">trash</a><a href=\"#\">settings</a></span></header>",
-      "css": ".ds-bar{display:flex;align-items:center;gap:18px;height:32px;padding:0 14px;background:var(--gf-tile, #2D353B);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-ws{display:flex;gap:2px;}.ds-ws a,.ds-counts a{padding:3px 10px;border:1px solid transparent;color:inherit;text-decoration:none;transition:color 120ms cubic-bezier(.2,.8,.2,1);}.ds-ws a:hover,.ds-counts a:hover{color:var(--gf-ink, #D3C6AA);}.ds-ws a.is-on,.ds-counts a.is-on{border-color:var(--gf-system, #A7C080);color:var(--gf-system, #A7C080);}.ds-ws a:focus-visible,.ds-counts a:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-crumb{margin:0 auto;color:var(--gf-ink, #D3C6AA);text-transform:none;letter-spacing:0;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);}.ds-counts{display:flex;gap:14px;align-items:center;}.ds-counts b{color:var(--gf-ink, #D3C6AA);font-weight:400;font-size:15px;margin-right:4px;}"
+      "css": ".ds-bar{display:flex;align-items:center;gap:18px;height:32px;padding:0 14px;background:var(--gf-tile, #2D353B);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-ws{display:flex;gap:2px;}.ds-ws a,.ds-counts a{padding:3px 10px;border:1px solid transparent;color:inherit;text-decoration:none;transition:color 120ms cubic-bezier(.2,.8,.2,1);}.ds-ws a:hover,.ds-counts a:hover{color:var(--gf-ink, #D3C6AA);}.ds-ws a.is-on,.ds-counts a.is-on{border-color:var(--gf-system, #A7C080);color:var(--gf-system, #A7C080);}.ds-ws a:focus-visible,.ds-counts a:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-crumb{margin:0 auto;color:var(--gf-ink, #D3C6AA);text-transform:none;letter-spacing:0;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);}.ds-counts{display:flex;gap:14px;align-items:center;}.ds-counts b{color:var(--gf-ink, #D3C6AA);font-weight:400;font-size:15px;margin-right:4px;}"
     },
     {
       "name": "Tile",
@@ -345,7 +345,7 @@
       "refersTo": "tile",
       "description": "A tile: raised header with label, subtitle and keys; body of rows. The focused tile takes the system border plus a 1px inset, the only effect in the system.",
       "html": "<section class=\"ds-tile is-focus\"><div class=\"ds-tile-head\"><span>state</span><span class=\"ds-tile-sub\">GF-12</span><span class=\"ds-tile-keys\"><kbd class=\"ds-kbd\">a</kbd> approve <kbd class=\"ds-kbd\">e</kbd> edit</span></div><div class=\"ds-tile-body\"><div class=\"ds-row\"><span class=\"ds-row-title\">Feed list renders offline</span><span class=\"ds-row-meta\">GF-12 · updated 3m</span></div><div class=\"ds-row\"><span class=\"ds-row-title\">Article view</span><span class=\"ds-row-meta\">GF-13 · updated 2h</span></div></div></section>",
-      "css": ".ds-tile{background:var(--gf-tile, #2D353B);border:1px solid var(--gf-rule, #3D484D);border-radius:0;display:flex;flex-direction:column;min-width:0;width:360px;color:var(--gf-ink, #D3C6AA);transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-tile.is-focus{border-color:var(--gf-system, #A7C080);box-shadow:inset 0 0 0 1px var(--gf-system, #A7C080);}.ds-tile-head{display:flex;align-items:center;gap:12px;padding:8px 18px;background:var(--gf-raised, #343F44);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-system, #A7C080);}.ds-tile-sub{color:var(--gf-mute, #9DA9A0);}.ds-tile-keys{margin-left:auto;color:var(--gf-mute, #9DA9A0);display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;}.ds-tile-body{padding:14px 18px;display:flex;flex-direction:column;gap:12px;font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px;margin:0 -8px;border-bottom:1px solid var(--gf-rule, #3D484D);}.ds-row-title{font:500 14px/1.25 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-row-meta{font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-tile{background:var(--gf-tile, #2D353B);border:1px solid var(--gf-rule, #3D484D);border-radius:0;display:flex;flex-direction:column;min-width:0;width:360px;color:var(--gf-ink, #D3C6AA);transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-tile.is-focus{border-color:var(--gf-system, #A7C080);box-shadow:inset 0 0 0 1px var(--gf-system, #A7C080);}.ds-tile-head{display:flex;align-items:center;gap:12px;padding:8px 18px;background:var(--gf-raised, #343F44);border-bottom:1px solid var(--gf-rule, #3D484D);font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-system, #A7C080);}.ds-tile-sub{color:var(--gf-mute, #9DA9A0);}.ds-tile-keys{margin-left:auto;color:var(--gf-mute, #9DA9A0);display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;}.ds-tile-body{padding:14px 18px;display:flex;flex-direction:column;gap:12px;font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, -apple-system, sans-serif);}.ds-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:8px;margin:0 -8px;border-bottom:1px solid ;}.ds-row-title{font:500 14px/1.25 ;grid-column:1;}.ds-row-meta{color:;grid-column:1;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Kanban card",
@@ -353,7 +353,7 @@
       "refersTo": "card",
       "description": "Key and status note, title, meta. The whole card is the drag target. Blocked shows as ◇ and a struck title, never a colour.",
       "html": "<a class=\"ds-card is-system\" href=\"#\"><span class=\"ds-card-id\"><span class=\"ds-card-key\">GF-12</span><i>ready</i></span><span class=\"ds-card-title\">Feed list renders offline</span><span class=\"ds-card-meta\">subway reader / mvp</span></a><a class=\"ds-card is-draft is-blocked\" href=\"#\"><span class=\"ds-card-id\"><span class=\"ds-card-key\">GF-14</span><i>planning</i></span><span class=\"ds-card-title\"><span class=\"ds-blocked-mark\">◇</span>Sync on wifi only</span><span class=\"ds-card-meta\">subway reader / mvp</span></a>",
-      "css": ".ds-card{position:relative;display:flex;flex-direction:column;gap:4px;width:250px;margin-bottom:8px;background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule, #3D484D);border-radius:0;padding:8px 12px;color:var(--gf-ink, #D3C6AA);text-decoration:none;cursor:grab;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-card:hover{border-color:var(--gf-rule-2, #475258);}.ds-card:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-card-id{display:flex;justify-content:space-between;gap:8px;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);}.ds-card-key{letter-spacing:.08em;}.ds-card-id i{font-style:normal;}.ds-card.is-draft .ds-card-id i{color:var(--gf-draft, #DBBC7F);}.ds-card.is-system .ds-card-id i{color:var(--gf-system, #A7C080);}.ds-card.is-review .ds-card-id i{color:var(--gf-review, #83C092);}.ds-card-title{font:500 14px/1.25 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);}.ds-card-meta{font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.ds-card.is-blocked .ds-card-title{text-decoration:line-through;color:var(--gf-mute, #9DA9A0);}.ds-blocked-mark{display:inline-block;margin-right:8px;color:var(--gf-mute, #9DA9A0);}"
+      "css": ".ds-card{position:relative;display:flex;flex-direction:column;gap:4px;width:250px;margin-bottom:8px;background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule, #3D484D);border-radius:0;padding:8px 12px;color:var(--gf-ink, #D3C6AA);text-decoration:none;cursor:grab;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-card:hover{border-color:var(--gf-rule-2, #475258);}.ds-card:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-card-id{display:flex;justify-content:space-between;gap:8px;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);}.ds-card-key{letter-spacing:.08em;}.ds-card-id i{font-style:normal;}.ds-card.is-draft .ds-card-id i{color:var(--gf-draft, #DBBC7F);}.ds-card.is-system .ds-card-id i{color:var(--gf-system, #A7C080);}.ds-card.is-review .ds-card-id i{color:var(--gf-review, #83C092);}.ds-card-title{font:500 14px/1.25 var(--gf-sans, 'IBM Plex Sans', system-ui, -apple-system, sans-serif);}.ds-card-meta{font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.ds-card.is-blocked .ds-card-title{text-decoration:line-through;color:var(--gf-mute, #9DA9A0);}.ds-blocked-mark{display:inline-block;margin-right:8px;color:var(--gf-mute, #9DA9A0);}"
     },
     {
       "name": "Chip",
@@ -361,7 +361,7 @@
       "refersTo": "chip",
       "description": "A bordered mono label; coloured by meaning only when it carries state.",
       "html": "<span class=\"ds-chip\">simple</span> <span class=\"ds-chip is-draft\">planning</span> <span class=\"ds-chip is-system\">ready</span> <span class=\"ds-chip is-review\">review</span> <span class=\"ds-chip is-struck\">cancelled</span>",
-      "css": ".ds-chip{display:inline-block;font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:2px 6px;color:var(--gf-mute, #9DA9A0);}.ds-chip.is-draft{color:var(--gf-draft, #DBBC7F);border-color:var(--gf-draft, #DBBC7F);}.ds-chip.is-system{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-chip.is-review{color:var(--gf-review, #83C092);border-color:var(--gf-review, #83C092);}.ds-chip.is-struck{text-decoration:line-through;}"
+      "css": ".ds-chip{display:inline-block;font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:2px 6px;color:var(--gf-mute, #9DA9A0);}.ds-chip.is-draft{color:var(--gf-draft, #DBBC7F);border-color:var(--gf-draft, #DBBC7F);}.ds-chip.is-system{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-chip.is-review{color:var(--gf-review, #83C092);border-color:var(--gf-review, #83C092);}.ds-chip.is-struck{text-decoration:line-through;}"
     },
     {
       "name": "Button",
@@ -369,7 +369,7 @@
       "refersTo": "button",
       "description": "Meta type on raised, a rule-2 border; hover brightens the border. A button that has a key shows it.",
       "html": "<button class=\"ds-btn\">stop <kbd class=\"ds-kbd\">s</kbd></button>",
-      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-btn:disabled{opacity:.6;cursor:default;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-btn:disabled{opacity:.6;cursor:default;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Primary button",
@@ -377,7 +377,7 @@
       "refersTo": "button-primary",
       "description": "The same button in the system colour, text and border: the one the tile is for.",
       "html": "<button class=\"ds-btn is-primary\">approve <kbd class=\"ds-kbd\">a</kbd></button>",
-      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-primary{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn.is-primary:hover{border-color:var(--gf-system, #A7C080);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-primary{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn.is-primary:hover{border-color:var(--gf-system, #A7C080);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Danger button",
@@ -385,7 +385,7 @@
       "refersTo": "button-danger",
       "description": "Trash: the destructive one. Human red on the text only; the border stays rule-2.",
       "html": "<button class=\"ds-btn is-danger\">trash <kbd class=\"ds-kbd\">⌘⌫</kbd></button>",
-      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-danger{color:var(--gf-human, #E67E80);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-danger{color:var(--gf-human, #E67E80);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Field",
@@ -393,7 +393,7 @@
       "refersTo": "input",
       "description": "A labelled field in the kv shape: 100px mono caps label, page-coloured input with a rule-2 border; system border when it is the open thing on screen.",
       "html": "<label class=\"ds-field\"><span>name</span><input class=\"ds-input\" value=\"Subway Reader\"></label><label class=\"ds-field\"><span>repository</span><input class=\"ds-input is-open\" placeholder=\"https://github.com/…\"></label>",
-      "css": ".ds-field{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:baseline;margin-bottom:12px;width:360px;}.ds-field>span{font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-input{font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, sans-serif);color:var(--gf-ink, #D3C6AA);background:var(--gf-page, #232A2E);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 8px;width:100%;box-sizing:border-box;}.ds-input.is-open,.ds-input:focus-visible{border-color:var(--gf-system, #A7C080);outline:none;}.ds-input::placeholder{color:var(--gf-mute, #9DA9A0);}"
+      "css": ".ds-field{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:baseline;margin-bottom:12px;width:360px;}.ds-field>span{font: 400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace); letter-spacing: .14em; text-transform: uppercase;color:var(--gf-mute, #9DA9A0);}.ds-input{font:400 13.5px/1.5 var(--gf-sans, 'IBM Plex Sans', system-ui, -apple-system, sans-serif);color:var(--gf-ink, #D3C6AA);background:var(--gf-page, #232A2E);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 8px;width:100%;box-sizing:border-box;}.ds-input.is-open{border-color:;}.ds-input:focus-visible{outline:1px solid ;outline-offset:1px;}"
     },
     {
       "name": "Mode line",
@@ -401,20 +401,20 @@
       "refersTo": "mode-line",
       "description": "The status bar a field grows along its bottom edge while the caret is in it: mono, lowercase, groups divided by hairlines; the active control takes the system colour.",
       "html": "<div class=\"ds-mode\"><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">h1</button><button class=\"ds-mode-btn is-on\">h2</button><button class=\"ds-mode-btn\">h3</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">b</button><button class=\"ds-mode-btn\">i</button><button class=\"ds-mode-btn\">code</button><button class=\"ds-mode-btn\">s</button><button class=\"ds-mode-btn\">link</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">list</button><button class=\"ds-mode-btn\">1.</button><button class=\"ds-mode-btn\">task</button><button class=\"ds-mode-btn\">quote</button><button class=\"ds-mode-btn\">fence</button></div><span class=\"ds-mode-hint\"><kbd class=\"ds-kbd\">⌘⏎</kbd> done</span></div>",
-      "css": ".ds-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 8px;min-height:26px;width:520px;background:var(--gf-raised, #343F44);border-top:1px solid var(--gf-rule, #3D484D);}.ds-mode-group{display:flex;align-items:center;gap:1px;}.ds-mode-group+.ds-mode-group{padding-left:12px;border-left:1px solid var(--gf-rule-2, #475258);}.ds-mode-btn{font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);background:none;border:1px solid transparent;border-radius:0;padding:2px 5px;min-width:20px;cursor:pointer;transition:color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-mode-btn:hover{color:var(--gf-ink, #D3C6AA);border-color:var(--gf-rule-2, #475258);}.ds-mode-btn.is-on{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-mode-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-mode-hint{margin-left:auto;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);display:flex;align-items:center;gap:8px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 8px;min-height:26px;width:520px;background:var(--gf-raised, #343F44);border-top:1px solid var(--gf-rule, #3D484D);}.ds-mode-group{display:flex;align-items:center;gap:1px;}.ds-mode-group+.ds-mode-group{padding-left:12px;border-left:1px solid var(--gf-rule-2, #475258);}.ds-mode-btn{font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);background:none;border:1px solid transparent;border-radius:0;padding:2px 5px;min-width:20px;cursor:pointer;transition:color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-mode-btn:hover{color:var(--gf-ink, #D3C6AA);border-color:var(--gf-rule-2, #475258);}.ds-mode-btn.is-on{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-mode-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-mode-hint{margin-left:auto;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);display:flex;align-items:center;gap:8px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Refusal",
       "kind": "custom",
       "refersTo": "refusal",
-      "description": "One mono sentence in mute, inline where the action was refused, fading in over 120ms. Never a modal or a toast.",
+      "description": "One mono sentence in mute, inline where the action was refused. The board's column refusal (is-col) fades in over 120ms; the others appear at once. Never a modal or a toast.",
       "html": "<p class=\"ds-refusal\" role=\"alert\">a ticket in review does not go back to building</p>",
-      "css": ".ds-refusal{margin:0;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, monospace);color:var(--gf-mute, #9DA9A0);animation:ds-refusal-in 120ms cubic-bezier(.2,.8,.2,1);}@keyframes ds-refusal-in{from{opacity:0;}to{opacity:1;}}"
+      "css": ".ds-refusal{margin:0;color:;}.ds-refusal.is-col{animation:ds-refusal-in 120ms cubic-bezier(.2,.8,.2,1);}@keyframes ds-refusal-in{from{opacity:0;}to{opacity:1;}}"
     }
   ],
   "narrative": {
     "northStar": "The Tiling Window Manager",
-    "overview": "A tracker that is a **control surface and a memory**, not a Linear clone. The visual model is a **tiling window manager**: a status bar with workspaces, tiles with gaps, one focused tile, keyboard hints in every title bar. Flat, matte, square. Colour carries meaning; almost nothing is decorative.\n\nThree references, distilled: Linear's keyboard-first discipline and single-accent restraint; Everforest's warm, low-glare palette; a HUD's honesty about telemetry (numbers you read, not numbers you admire).\n\nEverything on screen is a line in the bar or a tile on the desk. A tile's title bar names it in mono caps, says what its keys do, and takes the system colour on its border when it is the focused one; its body is rows, or cards on the kanban. The density is a working tool's: type runs from 10.5 to 22 pixels and only a project's outcome tiles are allowed a big number. The one confirmed rejection is the magazine. A ticket design is not one, so there is no display type, no hero number and no editorial whitespace anywhere in the GUI.",
+    "overview": "A tracker that is a **control surface and a memory**, not a Linear clone. The visual model is a **tiling window manager**: a status bar with workspaces, tiles with gaps, one focused tile, keyboard hints in every title bar. Flat, matte, square. Colour carries meaning; almost nothing is decorative.\n\nThree references, distilled: Linear's keyboard-first discipline and single-accent restraint; Everforest's warm, low-glare palette; a HUD's honesty about telemetry (numbers you read, not numbers you admire).\n\nEverything on screen is a line in the bar or a tile on the desk. A tile's title bar names it in system-green mono caps and says what its keys do; the tile's own border takes the system colour when it is the focused one; its body is rows, or cards on the kanban. The density is a working tool's: type runs from 10.5 to 22 pixels and only a project's outcome tiles are allowed a big number. The one confirmed rejection is the magazine. A ticket design is not one, so there is no display type, no hero number and no editorial whitespace anywhere in the GUI.",
     "keyCharacteristics": [
       "Everforest dark, matte and opaque: three surface steps and 1px rules do all the work of depth.",
       "Square everywhere; the focused tile's border and inset is the only effect.",
@@ -425,52 +425,52 @@
     ],
     "rules": [
       {
-        "name": "The One Job Rule",
+        "name": "The one job rule",
         "body": "Each accent has one meaning. A new state first asks whether an existing meaning covers it, and `--gf-human` is your attention and nothing else — removing a dependency brightens to ink rather than inventing a destructive red.",
         "section": "colors"
       },
       {
-        "name": "The Blocked Is Not A Colour Rule",
+        "name": "The blocked-is-not-a-colour rule",
         "body": "Blocked is a derived condition: an outline glyph and a struck title, never a hue and never opacity.",
         "section": "colors"
       },
       {
-        "name": "The Text-Safe Rule",
+        "name": "The text-safe rule",
         "body": "Every colour that carries words clears 4.5:1 on `--gf-tile`. `--gf-dim` carries no words.",
         "section": "colors"
       },
       {
-        "name": "The Mono Is A Signal Rule",
+        "name": "The mono-is-a-signal rule",
         "body": "Mono says \"this is data, a key, a path\". A whole paragraph in mono is a bug, not a mood.",
         "section": "typography"
       },
       {
-        "name": "The Text-Size Telemetry Rule",
+        "name": "The text-size telemetry rule",
         "body": "A number inside a row is text size (Mono 500 15). Only a project outcome tile gets Mono 500 22.",
         "section": "typography"
       },
       {
-        "name": "The Tile Width Rule",
+        "name": "The tile width rule",
         "body": "The number to hold is the tile width, not the column count: a wider desk opens more tiles rather than stretching the same ones, and the kanban, the one tile that spans the desk, caps its columns at 280px for the same reason.",
         "section": "layout"
       },
       {
-        "name": "The One Effect Rule",
+        "name": "The one effect rule",
         "body": "Depth is three opaque steps and a 1px rule. The focused tile's `--gf-system` border and 1px inset is the only effect in the system; `bun run lint` refuses any `box-shadow` that is not an inset.",
         "section": "elevation"
       },
       {
-        "name": "The Square Rule",
+        "name": "The square rule",
         "body": "`--gf-radius` is `0` and nothing else is allowed on `border-radius`. Browser-native rounding on focus outlines and `<kbd>` is let be.",
         "section": "shapes"
       },
       {
-        "name": "The Inline Refusal Rule",
+        "name": "The inline refusal rule",
         "body": "A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast.",
         "section": "components"
       },
       {
-        "name": "The Whole Card Rule",
+        "name": "The whole card rule",
         "body": "The whole card is the drag target: no grip, no handle, no affordance drawn on it.",
         "section": "components"
       }

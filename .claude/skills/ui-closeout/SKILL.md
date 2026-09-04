@@ -19,7 +19,7 @@ Nothing listed: say so in one line and stop. Otherwise map the paths to the scre
 |---|---|---|
 | `web/src/pages/Board.tsx`, `web/src/tickets.tsx` | `web/src/pages/Board.tsx` | `board` |
 | `web/src/pages/TicketView.tsx`, `web/src/editor.tsx`, `web/src/markdown.ts`, `web/src/reveal.ts` | `web/src/pages/TicketView.tsx` | `ticketBlockedWithDesign` |
-| `web/src/pages/ProjectView.tsx` | `web/src/pages/ProjectView.tsx` | `project` |
+| `web/src/pages/ProjectView.tsx`, `web/src/graph-view.tsx`, `web/src/graph.ts` | `web/src/pages/ProjectView.tsx` | `project` |
 | `web/src/pages/AppView.tsx`, `web/src/pages/Entity.tsx` | `web/src/pages/AppView.tsx` | `app` |
 | `web/src/pages/Apps.tsx`, `web/src/pages/Projects.tsx` | that page | `apps`, `projects` |
 | `web/src/pages/Settings.tsx`, `web/src/pages/Trash.tsx` | that page | `settings`, `trash` |
@@ -31,7 +31,7 @@ Nothing listed: say so in one line and stop. Otherwise map the paths to the scre
 bun .claude/skills/ui-closeout/serve.ts start
 ```
 
-Builds the GUI, starts the API on a free port over a scratch database, seeds one small world (two apps, three projects, thirteen tickets with every column of the board filled, a blocker, a design, a trashed ticket) and prints `url` and the `routes` named above with real ids. Nothing touches `~/.goblin-foundry/foundry.db`. The server reads `web/dist` per request, so after an edit `bun run build` refreshes the screen with no restart; `--no-build` skips the first build only when nothing under `web/` or `design/` has changed since the last one.
+Builds the GUI, starts the API on a free port over a scratch database, seeds one small world (two apps, three projects, thirteen tickets with every column of the board filled, a blocker, a design, a trashed ticket) and prints `url` and the `routes` named above with real ids. Nothing touches `~/.goblin-foundry/foundry.db`. The server reads `web/dist` per request, so after an edit `bun run build` refreshes the screen with no restart; `--no-build` skips the first build unconditionally and only checks that `web/dist` exists, so use it only when nothing under `web/` or `design/` has changed since the last build.
 
 ## 3. Critique, then polish, per target
 
@@ -41,7 +41,7 @@ The target of both commands is the file, so the snapshot's slug and fingerprint 
 2. `/impeccable polish web/src/pages/Board.tsx, rendered at <url>/`. It reads that snapshot as its backlog. Fix what polish fixes: alignment, spacing, a missing state, a token where a literal crept in, copy that breaks DESIGN.md Voice. A structural finding (hierarchy, information architecture, a flow) is written down, not built: an *Open question* heading in the PR body, or `docs/tickets/later/<slug>.md` when it is a ticket.
 3. `bun run build`, then look again: polish's own last pass and the next target's critique must see the polished screen, not the bundle from step 2.
 
-A finding that contradicts a DESIGN.md section is refused with the section number: the brief wins over impeccable's category defaults, and `bun run lint` refuses radius, shadows and gradients anyway. When the house style is wrong, change DESIGN.md first and let the command follow. A polish that changes something DESIGN.md specifies updates the matching "As built" note in the same commit: drift is allowed, unexplained drift is not.
+A finding that contradicts a DESIGN.md section is refused with the section name: the brief wins over impeccable's category defaults, and `bun run lint` refuses radius, shadows and gradients anyway. When the house style is wrong, change DESIGN.md first and let the command follow. A polish that changes something DESIGN.md specifies updates the matching "As built" note in the same commit: drift is allowed, unexplained drift is not.
 
 ## 4. Prove it and put the server away
 
