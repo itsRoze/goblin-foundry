@@ -8,6 +8,7 @@ import {
   SettingsSchema,
   TicketDetailSchema,
   TicketSchema,
+  serialiseTicketFilter,
   type CreateAppBody,
   type CreateProjectBody,
   type CreateTicketBody,
@@ -17,6 +18,7 @@ import {
   type PatchSettingsBody,
   type PatchTicketBody,
   type Ticket,
+  type TicketFilter,
   type TicketStatus,
   type TransitionName,
 } from '@goblin/shared';
@@ -58,21 +60,27 @@ export const useProjectGraph = (id: number | null) =>
   useQuery({ queryKey: ['project-graph', id], queryFn: () => api.get(`/api/projects/${id}/graph`, ProjectGraphSchema), enabled: id !== null });
 
 /**
- * Live tickets, optionally scoped to an app or a project. The board polls
- * (5 s, foreground only) so a `goblin` CLI write shows up without a reload;
- * the scoped tiles do not.
+ * Live tickets under the board's Filter (issue 06). The board polls (5 s,
+ * foreground only) so a `goblin` CLI write shows up without a reload; the
+ * scoped tiles do not.
  */
-export const useTickets = (filter: { app_id?: number | null; project_id?: number | null } = {}, poll = false) => {
-  const q = new URLSearchParams();
-  for (const [name, value] of Object.entries(filter)) if (value !== undefined) q.set(name, String(value));
-  const qs = q.toString();
-  return useQuery({
-    queryKey: ['tickets', filter],
-    queryFn: () => api.get(`/api/tickets${qs ? `?${qs}` : ''}`, Tickets),
+export const useTickets = (filter: TicketFilter = {}, poll = false) => useTicketList(serialiseTicketFilter(filter), poll);
+
+/**
+ * The same read, addressed by the query string itself, because the board's
+ * filter comes out of the address and a value the parser refuses still has to
+ * reach the API: the 422 is what the bar shows, and the address is never
+ * rewritten to hide it. `retry: false` for the same reason — a refusal is an
+ * answer, not a flake.
+ */
+export const useTicketList = (search: string, poll = false) =>
+  useQuery({
+    queryKey: ['tickets', search],
+    queryFn: () => api.get(`/api/tickets${search ? `?${search}` : ''}`, Tickets),
     refetchInterval: poll ? 5_000 : false,
     refetchIntervalInBackground: false,
+    retry: false,
   });
-};
 
 /** `key` may be stale or bare (`GF-7`, `SR-7`, `7`); the answer carries the canonical one, and its edges in both directions. */
 export const useTicket = (key: string) =>

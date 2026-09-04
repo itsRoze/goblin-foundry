@@ -43,7 +43,7 @@ test('no page scrolls sideways, and a tile never stretches past reading width', 
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
   await page.keyboard.press('c');
-  const form = page.getByTestId('new-ticket');
+  const form = page.getByTestId('board-create');
   await form.getByLabel('ticket title').fill('A ticket to measure');
   await form.getByLabel('ticket title').press('ControlOrMeta+Enter');
   const card = page.locator('[data-testid^="card-"]', { hasText: 'A ticket to measure' });

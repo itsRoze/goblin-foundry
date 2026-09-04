@@ -49,6 +49,10 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         subtitle={tickets.data ? String(tickets.data.length) : undefined}
         keys={
           <>
+            {/* the board, filtered to this project — the same Filter a chip would set (issue 06) */}
+            <Link className="gf-tile-link" to={`/?project_id=${project.id}`}>
+              board
+            </Link>
             <Kbd>c</Kbd> new
           </>
         }

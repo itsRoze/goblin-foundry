@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
 import { useSaving } from '../editor';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
@@ -70,6 +70,10 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         subtitle={tickets.data ? String(tickets.data.length) : undefined}
         keys={
           <>
+            {/* the board, filtered to this app — the same Filter a chip would set (issue 06) */}
+            <Link className="gf-tile-link" to={`/?app_id=${app.id}`}>
+              board
+            </Link>
             <Kbd>c</Kbd> new
           </>
         }

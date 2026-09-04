@@ -1,19 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { TICKET_STATUSES, asksBeforeBlocked, blockedWarning, structuralRefusal, transitionTo, type Ticket, type TicketStatus } from '@goblin/shared';
+import {
+  DEFAULT_BOARD_STATUSES,
+  FILTER_PARAMS,
+  asksBeforeBlocked,
+  blockedWarning,
+  parseTicketFilter,
+  serialiseTicketFilter,
+  structuralRefusal,
+  transitionTo,
+  type Ticket,
+  type TicketFilter,
+  type TicketStatus,
+} from '@goblin/shared';
+import { ProblemError } from '../api';
+import { FilterBar, type BadValues } from '../filters';
 import { useKey } from '../keys';
-import { useTickets, useTransition } from '../queries';
+import { useTicketList, useTransition } from '../queries';
 import { useCrumb } from '../shell';
-import { TicketCard, asDraggedCard, homeLine, useNames, useNewTicket, type DraggedCard } from '../tickets';
+import { TicketCard, asDraggedCard, homeLine, useBoardCreate, useNames, type DraggedCard } from '../tickets';
 import { Confirm, Empty, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
 
-/** Per-device display preferences, not filters: a filter chooses which tickets are on the board and lives in the URL (CONTEXT.md). */
+/**
+ * Per-device display preferences, and nothing else: a View option decides how
+ * the board shows what the Filter chose, never *which* tickets are on it, so
+ * it never hides a status (CONTEXT.md "View option"). `show cancelled` used to
+ * live here; it is the status Filter now (issue 06 reverses issue 03).
+ */
 interface View {
   meta: boolean;
   updated: boolean;
-  cancelled: boolean;
 }
-const DEFAULT_VIEW: View = { meta: true, updated: false, cancelled: false };
+const DEFAULT_VIEW: View = { meta: true, updated: false };
 const VIEW_STORAGE_KEY = 'gf.board.view';
 
 function useView() {
@@ -105,21 +124,80 @@ function useDragToTransition(lookup: (key: string) => Ticket | undefined) {
   return { dragging, refusal, pending, cancel: useCallback(() => setPending(null), []) };
 }
 
-/** The kanban is home (CONTEXT.md): every live ticket, one column per status, in lifecycle order. */
+/**
+ * The four parameters exactly as the address wrote them. This is what goes to
+ * the API when the parser refuses one of them: the refusal comes from the one
+ * place that owns it, and the address is never rewritten to hide a mistake
+ * (issue 06).
+ */
+function rawFilterSearch(params: URLSearchParams): string {
+  const out = new URLSearchParams();
+  for (const name of FILTER_PARAMS) {
+    const raw = params.get(name);
+    if (raw !== null) out.set(name, raw);
+  }
+  return out.toString();
+}
+
+/**
+ * The kanban is home (CONTEXT.md), and the Filter in the address says what is
+ * on it: one column per status in the filter's set — the seven live ones by
+ * default — in lifecycle order. The address is always *replaced*, never
+ * pushed, so back never steps through filters.
+ */
 export function BoardPage() {
   useCrumb('board');
-  const tickets = useTickets({}, true);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  // the browser's address may carry the `<slug>-<id>` routes write; the wire only ever takes the id
+  const parsed = useMemo(() => parseTicketFilter(params, { slugs: true }), [params]);
+  /** What the API will refuse, as the address wrote it, so the bar can show what the refusal is about. */
+  const bad = useMemo((): BadValues => {
+    if (parsed.ok) return {};
+    return Object.fromEntries(parsed.issues.map((issue) => [issue.path[0], params.get(issue.path[0] as string) ?? '']));
+  }, [parsed, params]);
+  /** Everything that did parse: one bad parameter blanks itself, never the other three. */
+  const filter = useMemo((): TicketFilter => {
+    if (parsed.ok) return parsed.filter;
+    const kept = Object.fromEntries(FILTER_PARAMS.filter((name) => !(name in bad)).map((name) => [name, params.get(name) ?? undefined]));
+    const again = parseTicketFilter(kept, { slugs: true });
+    return again.ok ? again.filter : {};
+  }, [parsed, bad, params]);
+  const columns = filter.status ?? DEFAULT_BOARD_STATUSES;
+  /**
+   * The wire always names the status set the board actually draws, even when
+   * the address leaves it out — the API's own default is every status, so
+   * without it the board would fetch `cancelled` tickets and drop them, and
+   * the tile subtitle would count what is not on screen.
+   */
+  const search = useMemo(
+    () => (parsed.ok ? serialiseTicketFilter({ ...parsed.filter, status: [...columns] }) : rawFilterSearch(params)),
+    [parsed, params, columns],
+  );
+  /** Whether anything is filtered at all, which the wire's status set can no longer say. */
+  const filtered = serialiseTicketFilter(filter) !== '';
+
+  const tickets = useTicketList(search, true);
   const names = useNames();
   const at = useMinute();
   const { view, toggle } = useView();
   const [menu, setMenu] = useState(false);
-  const newTicket = useNewTicket({});
+  const create = useBoardCreate(filter, columns);
   const cards = tickets.data;
   const { dragging, refusal, pending, cancel } = useDragToTransition(useCallback((key: string) => cards?.find((t) => t.key === key), [cards]));
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
-  const columns = TICKET_STATUSES.filter((s) => s !== 'cancelled' || view.cancelled);
+  const write = useCallback(
+    (next: TicketFilter) => {
+      const qs = serialiseTicketFilter(next);
+      navigate({ search: qs === '' ? '' : `?${qs}` }, { replace: true });
+    },
+    [navigate],
+  );
+
   const meta = (t: Ticket) => homeLine(t.app_id === null ? null : names.app(t.app_id), t.project_id === null ? null : names.project(t.project_id));
+  const problem = tickets.error === null ? null : tickets.error instanceof ProblemError ? tickets.error.line : `could not reach the API: ${tickets.error.message}`;
 
   return (
     <Tile
@@ -127,14 +205,14 @@ export function BoardPage() {
       subtitle={tickets.data ? String(tickets.data.length) : undefined}
       keys={
         <>
-          <Kbd>c</Kbd> new <Kbd>v</Kbd> view
+          <Kbd>c</Kbd> new <Kbd>f</Kbd> find <Kbd>v</Kbd> view
         </>
       }
       focus
       span
       testId="board-tile"
     >
-      {tickets.isError && <p className="gf-refusal">could not reach the API: {tickets.error.message}</p>}
+      <FilterBar filter={filter} bad={bad} onChange={write} refusal={problem} />
       {menu && (
         <div className="gf-view-menu" data-testid="view-menu">
           <label className="gf-toggle">
@@ -143,18 +221,15 @@ export function BoardPage() {
           <label className="gf-toggle">
             <input type="checkbox" checked={view.updated} onChange={() => toggle('updated')} /> updated
           </label>
-          <label className="gf-toggle">
-            <input type="checkbox" checked={view.cancelled} onChange={() => toggle('cancelled')} /> show cancelled
-          </label>
         </div>
       )}
+      {create}
       <div className="gf-cols" data-testid="board">
         {columns.map((status) => (
           <Column
             key={status}
             status={status}
             tickets={(tickets.data ?? []).filter((t) => t.status === status)}
-            head={status === 'backlog' ? newTicket : null}
             meta={view.meta ? meta : undefined}
             updated={view.updated}
             at={at}
@@ -166,7 +241,7 @@ export function BoardPage() {
           />
         ))}
       </div>
-      {tickets.data?.length === 0 && !newTicket && <Empty>no tickets yet — press c</Empty>}
+      {tickets.data?.length === 0 && !create && <Empty>{filtered ? 'nothing matches this filter' : 'no tickets yet — press c'}</Empty>}
     </Tile>
   );
 }
@@ -175,7 +250,6 @@ export function BoardPage() {
 function Column({
   status,
   tickets,
-  head,
   meta,
   updated,
   at,
@@ -186,7 +260,6 @@ function Column({
 }: {
   status: TicketStatus;
   tickets: Ticket[];
-  head: React.ReactNode;
   meta: ((t: Ticket) => string) | undefined;
   updated: boolean;
   at: number;
@@ -220,7 +293,6 @@ function Column({
         {status}
         <b>{tickets.length}</b>
       </div>
-      {head}
       {tickets.map((t) => (
         <TicketCard key={t.id} ticket={t} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} />
       ))}

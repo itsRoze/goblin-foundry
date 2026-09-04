@@ -51,8 +51,8 @@ async function newTicket(page: Page, title: string) {
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
   await page.keyboard.press('c');
-  await page.getByTestId('new-ticket').getByLabel('ticket title').fill(title);
-  await page.getByTestId('new-ticket').getByLabel('ticket title').press('ControlOrMeta+Enter');
+  await page.getByTestId('board-create').getByLabel('ticket title').fill(title);
+  await page.getByTestId('board-create').getByLabel('ticket title').press('ControlOrMeta+Enter');
   await page.locator('[data-testid^="card-"]', { hasText: title }).click();
   await expect(page.getByTestId('design-tile')).toBeVisible();
 }
@@ -245,6 +245,13 @@ test('the markdown around a span shows itself when the caret is on it', async ({
 
   // and with the caret away from both, the line reads as prose again
   await expect(field.locator('.gf-syntax')).toHaveCount(0);
+
+  // clicking away is the other way to leave: a field you are not in has no caret, so it has no markers
+  await field.locator('code').dblclick();
+  await expect(line).toHaveText('call `parse` and hold now');
+  await page.getByTestId('page-title').click();
+  await expect(field.locator('.gf-syntax')).toHaveCount(0);
+  await expect(line).toHaveText('call parse and hold now');
 });
 
 test('the link slot cancels when told to, and lands its url exactly once', async ({ page }) => {

@@ -1,8 +1,9 @@
 import { Extension } from '@tiptap/core';
-import { Plugin } from '@tiptap/pm/state';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorState } from '@tiptap/pm/state';
 import type { Node } from '@tiptap/pm/model';
+import type { EditorView } from '@tiptap/pm/view';
 import { INLINE_MARKS } from './markdown';
 
 /**
@@ -123,9 +124,42 @@ function decorate(state: EditorState): DecorationSet {
   return DecorationSet.create(state.doc, decorations);
 }
 
+/**
+ * Whether the caret is actually in this field. Markdown shows itself *where
+ * the caret is*, and a field you have left has no caret — but ProseMirror
+ * keeps its last selection after a blur, so without this the markers outlive
+ * the caret that asked for them and the field goes on reading as source once
+ * you are gone (`⌘⏎` blurs, and so does clicking away).
+ *
+ * It is plugin state rather than a `view.hasFocus()` read inside `decorate`,
+ * because losing focus is not itself a transaction: nothing would recompute
+ * the decorations to notice. The DOM events dispatch one so that it does.
+ */
+const focused = new PluginKey<boolean>('revealFocus');
+
+const setFocused = (view: EditorView, is: boolean) => {
+  view.dispatch(view.state.tr.setMeta(focused, is));
+  return false; // the event is only being watched, never handled
+};
+
 export const RevealSyntax = Extension.create({
   name: 'revealSyntax',
   addProseMirrorPlugins() {
-    return [new Plugin({ props: { decorations: decorate } })];
+    return [
+      new Plugin({
+        key: focused,
+        state: {
+          init: () => false,
+          apply: (tr, was: boolean) => (tr.getMeta(focused) as boolean | undefined) ?? was,
+        },
+        props: {
+          decorations: (state) => (focused.getState(state) ? decorate(state) : DecorationSet.empty),
+          handleDOMEvents: {
+            focus: (view) => setFocused(view, true),
+            blur: (view) => setFocused(view, false),
+          },
+        },
+      }),
+    ];
   },
 });

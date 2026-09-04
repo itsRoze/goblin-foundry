@@ -7,8 +7,8 @@ test('a ticket through the GUI: c on the board, edit the title, view options, tr
 
   // c creates a ticket from a title alone; it lands in backlog
   await page.keyboard.press('c');
-  await page.getByTestId('new-ticket').getByLabel('ticket title').fill('Article list screen');
-  await page.getByTestId('new-ticket').getByLabel('ticket title').press('ControlOrMeta+Enter');
+  await page.getByTestId('board-create').getByLabel('ticket title').fill('Article list screen');
+  await page.getByTestId('board-create').getByLabel('ticket title').press('ControlOrMeta+Enter');
   const card = page.getByTestId('card-GF-1');
   await expect(page.getByTestId('col-backlog')).toContainText('Article list screen');
   await expect(card).toContainText('backlog');
@@ -28,13 +28,22 @@ test('a ticket through the GUI: c on the board, edit the title, view options, tr
   await page.goto('/tickets/1');
   await expect(page).toHaveURL(/\/tickets\/GF-1$/);
 
-  // cancelled is a view option, not a filter: the column is hidden until you ask for it
+  // cancelled is a Filter, not a view option (issue 06 reverses issue 03): the column
+  // arrives when the status picker names it, and the address says so
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
   await expect(page.getByTestId('col-cancelled')).toHaveCount(0);
-  await page.keyboard.press('v');
-  await page.getByLabel('show cancelled').check();
+  await page.getByTestId('chip-status').click();
+  // the box is answered by the address, so the click and the assertion are separate (docs/LESSONS.md)
+  await page.getByTestId('check-cancelled').click();
+  await expect(page.getByTestId('check-cancelled')).toBeChecked();
   await expect(page.getByTestId('col-cancelled')).toBeVisible();
+  await expect(page).toHaveURL(/\?status=backlog,todo,planning,ready,building,review,done,cancelled$/);
+  await page.getByTestId('check-cancelled').click();
+  await expect(page.getByTestId('col-cancelled')).toHaveCount(0);
+  // back to the default seven, so the address drops `status` entirely
+  await expect(page).toHaveURL(/\/$/);
+  await page.keyboard.press('Escape');
 
   // trash from the ticket view with ⌘⌫, restore from /trash with r
   await page.getByTestId('card-GF-1').click();

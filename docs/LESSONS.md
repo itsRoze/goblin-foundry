@@ -273,3 +273,45 @@ need two stems, not two extensions.
 ## 2026-09-02 — impeccable reads the root, and takes Bun workspaces for apps
 
 impeccable (the design skills, installed as a project-scoped plugin via `.claude/settings.json`) looks for `DESIGN.md` at the repo root, then `.agents/context/` and `docs/`, never `design/`; so the root `DESIGN.md` is a symlink to `design/DESIGN.md` and the house style stays where it was. Its detector enforces only tokens it can parse, so `design/DESIGN.md` now opens with a YAML copy of `design/tokens.css` plus the Typography heading steps (tokens.css changes first, the block second). The house then adopted impeccable's DESIGN.md shape outright, `/impeccable document` regenerating tokens and sections from the CSS and the prose merged in by hand; anything that cites a `DESIGN.md §n` (tickets, PR bodies, `.stylelintrc.json`, `.impeccable/critique/ignore.md`) has to be renumbered when the sections move — done on 2026-09-03 by `/impeccable document` (merge): the eight canonical headings plus Motion, Interaction, Voice and Deliberately not specified preserved after them, every `§n` citation in the repo rewritten to a section name, and the old-to-new map kept in the file's preamble for PR bodies and history. The Bun workspaces make the repo a monorepo with four "apps" in impeccable's eyes; `.impeccable/config.json` names `web` and negates the rest — negating `web` too would make the detector stop inheriting DESIGN.md for `web/src` — and a command with no file to anchor on still asks which app; answering moves its working directory to `web/` (snapshots and `ignore.md` with it), so name a file (`web/src/pages/Board.tsx`) instead. Its boot prints `MANUAL_DETECTOR_REQUIRED` because it looks for the hook in `.claude/settings*.json` and cannot see a plugin's; the hook is running regardless, and `/impeccable hooks on` must not be the answer: it writes a `.claude/settings.local.json` hook pointing at `.claude/skills/impeccable/…`, which this repo does not have. Its edit hook files design-system drift (a colour, radius or size outside the YAML block) under *advisory* and says nothing about it until `detector.advisoryRules` is `include`, which it now is; `/impeccable doctor` then lists `advisoryRules` as a `detector` key nothing reads, which is the doctor's known-key list lagging the hook that does read it. What the plugin does on its own: a PostToolUse hook on every Edit/Write and a Stop deep pass in every session here, a cache in `.impeccable/hook.*.json` and an ignore block written into the worktree's `.git/info/exclude`, a once-a-day version poll to impeccable.style recorded in `~/.impeccable/update-check.json`, four `impeccable-*` subagents, and a one-time prompt to enable the plugin in each checkout that reads `.claude/settings.json`. The `npx impeccable install` route was not taken: it vendors ~5 MB of skill into `.claude/skills/` and its CLI lagged the plugin (3.6.1 against 4.1.3) on the day.
+
+## 2026-09-03 — the stylesheet linter catches what you wrote, not what you left out
+
+Issue 06's close-out found three colour defects in one screen, and `bun run lint` was green through all
+of them, because each was an *omission*: a `<button>` inherits no `font-family`, so the filter chip
+rendered in the UA's Arial beside mono siblings; a `<input type="checkbox">` with no `accent-color`
+paints in the browser's saturated blue, which in this house means a link and nothing else; and
+`::placeholder` with no rule is `#757575`, 3.1:1 on `--gf-page`, under the 4.5:1 the text-safe rule
+asks of anything carrying words. `lint:css` refuses a hex literal and `lint:dead-css` refuses a class
+nobody uses; neither can see a property nobody declared. A new form control gets its font, its accent
+and its placeholder colour written down explicitly, and the check for that is a rendered screen — the
+close-out's `/impeccable critique` measured all three off the running page.
+
+## 2026-09-03 — a picker's `⏎` is only as warm as its query key
+
+The board's ticket read and the dependency picker's both went through `useTickets()`, so navigating
+from the board to a Ticket view left the picker's candidate list already in cache: `fill('dependent')`
+then `press('Enter')` picked the one hit immediately. Issue 06 gave the board a different cache key
+(its query now always names the status set it draws), and the picker's list became a cold fetch —
+`hits` was empty for a beat, `⏎` had nothing to pick, and it silently did nothing. `deps-blocks` still
+*contained* the ticket's title, because the open picker renders its candidates inside that tile, so the
+assertion above the failing one passed and the symptom read as "history did not refresh".
+
+Two things came out of it. A browser test that presses a key to choose something waits for the choice
+to be on screen first (`toHaveCount(1)` on the options), the same rule as waiting for the tile that owns
+a shortcut. And the picker now says `loading…` rather than `no ticket matches` while its query is in
+flight, because the second sentence was a lie for as long as the race lasted.
+
+## 2026-09-03 — ProseMirror keeps its selection after a blur, so a decoration outlives the caret
+
+`e2e/writing.e2e.ts` failed about one run in three, a different caret test each time, and the cause
+was not timing at all: `RevealSyntax` derived its decorations from `state.selection` alone, and a
+blurred editor still *has* a selection. So `⌘⏎` (which flushes and calls `view.dom.blur()`) left the
+revealed `` ` `` and `**` on screen whenever the save round-trip did not happen to replace the document
+and reset the selection — the field went on reading as markdown source after you had left it, which is
+the opposite of what DESIGN.md Interaction promises ("markdown shows itself *where the caret is*").
+The test looked flaky because whether the reconcile landed was a race; the bug underneath was constant.
+
+Focus is now plugin state, flipped by the view's own `focus`/`blur` DOM events. It has to be state
+rather than a `view.hasFocus()` read inside the decorator, because **losing focus is not a
+transaction**: nothing would recompute the decorations to notice. The general rule: a decoration
+derived from the selection needs focus in its inputs, or it draws for a caret that is not there.

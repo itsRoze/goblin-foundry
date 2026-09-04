@@ -14,7 +14,7 @@ async function newTicket(page: Page, title: string) {
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
   await page.keyboard.press('c');
-  const form = page.getByTestId('new-ticket');
+  const form = page.getByTestId('board-create');
   await form.getByLabel('ticket title').fill(title);
   await form.getByLabel('ticket title').press('ControlOrMeta+Enter');
   await expect(card(page, title)).toBeVisible();
@@ -80,6 +80,8 @@ test('the same edge can be declared from the blocking end, and the picker is dri
   await card(page, 'The prerequisite').click();
   await page.getByTestId('add-blocks').click();
   await page.getByRole('combobox', { name: 'blocks — search tickets' }).fill('dependent');
+  // ⏎ picks the highlighted candidate, so wait for one: the picker's list is its own query and may still be in flight
+  await expect(page.getByTestId('picker-blocks').getByRole('option')).toHaveCount(1);
   await page.getByRole('combobox', { name: 'blocks — search tickets' }).press('Enter');
   await expect(page.getByTestId('deps-blocks')).toContainText('The dependent');
   await expect(page.getByTestId('history')).toContainText('blocking GF-');

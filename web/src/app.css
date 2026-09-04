@@ -378,3 +378,107 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-graph-pop-line { font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; }
 /* the legend is copy, not a key (Components) */
 .gf-graph-legend { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }
+
+/*
+ * The filter bar (issue 06): the strip between the board's tile header and its
+ * columns. The Filter is what is *on* the board, so a chip that is set wears
+ * the system border and its key goes system; unset, it is its bare label in
+ * mute. Keys are mono, values are words (DESIGN.md Typography).
+ */
+.gf-filters { display: flex; align-items: center; gap: var(--gf-s2); flex-wrap: wrap; padding-bottom: var(--gf-s3); border-bottom: 1px solid var(--gf-rule); }
+/* the popover hangs off its chip, so the chip's slot is what positions it */
+.gf-filter-slot { position: relative; display: inline-flex; }
+/* a button inherits no font, so the chip tokens its own or it renders in the UA's Arial */
+.gf-filter-chip {
+  display: inline-flex; align-items: center; gap: var(--gf-s2); box-sizing: border-box; min-height: 26px;
+  font: var(--gf-t-meta); background: none; border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius);
+  padding: 2px 6px; cursor: pointer; color: var(--gf-mute);
+  transition: color var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease);
+}
+/* the key shares the value's line box, so a set chip is no taller than an unset one */
+.gf-filter-key { font: var(--gf-t-label); line-height: 1.4; letter-spacing: .08em; text-transform: uppercase; }
+.gf-filter-chip:hover { border-color: var(--gf-mute); }
+.gf-filter-chip.is-set { border-color: var(--gf-system); }
+.gf-filter-chip.is-set .gf-filter-key { color: var(--gf-system); }
+/* `app: subway reader` — the colon is what makes the key a key rather than the first word of the value */
+.gf-filter-chip.is-set .gf-filter-key::after, .gf-filter-chip.is-bad .gf-filter-key::after { content: ':'; }
+/* the chip whose popover is open is the active control, as the mode line's is (DESIGN.md Interaction) */
+.gf-filter-chip[aria-expanded='true'] { color: var(--gf-system); border-color: var(--gf-system); }
+.gf-filter-value { font: var(--gf-t-meta); color: var(--gf-ink); }
+/* a value the API refused: shown as it was pasted, in no state at all, so the refusal has something to point at */
+.gf-filter-chip.is-bad .gf-filter-value { color: var(--gf-mute); text-decoration: line-through; }
+.gf-filter-text {
+  font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); box-sizing: border-box; min-height: 26px;
+  border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 8px;
+  /* the text filter is one of four, not the strip: it takes a reading width and leaves the `×` beside the chips */
+  flex: 0 1 320px; min-width: 140px;
+}
+.gf-filter-text:focus { outline: none; border-color: var(--gf-system); }
+/* a filter that is set says so, whichever of the four it is */
+.gf-filter-text.is-set { border-color: var(--gf-system); }
+/* click-only, like the `×` on a dependency row: `⌘K` grows a "clear filters" in issue 10 */
+.gf-filter-clear {
+  background: none; border: none; color: var(--gf-mute); cursor: pointer;
+  font: var(--gf-t-meta); line-height: 1; padding: 2px 6px; min-height: 26px;
+}
+.gf-filter-clear:hover { color: var(--gf-ink); }
+/* the one documented use of opacity: a disabled control is a missing affordance, not a state mark */
+/* stylelint-disable-next-line declaration-property-value-disallowed-list */
+.gf-filter-clear:disabled { opacity: .6; cursor: default; }
+.gf-filter-clear:disabled:hover { color: var(--gf-mute); }
+/* the refusal takes the whole width under the controls, where the problem was */
+.gf-filter-refusal { flex-basis: 100%; }
+
+/* one popover for all three chips, shaped like the Ticket picker (DESIGN.md Components) */
+.gf-pop {
+  position: absolute; top: calc(100% + var(--gf-s1)); left: 0; z-index: 3; min-width: 200px;
+  max-width: calc(100vw - 2 * var(--gf-pad-x));
+  background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
+}
+/*
+ * A popover already sits on `--gf-raised`, so its highlighted row steps up
+ * again rather than down: `--gf-tile` under a raised panel is a step off the
+ * page, which Elevation & Depth forbids.
+ */
+.gf-pop .gf-picker-hit.is-on, .gf-check.is-on { background: var(--gf-rule-2); }
+.gf-checks { display: flex; flex-direction: column; gap: var(--gf-s1); }
+/* the highlighted row takes the Attention row's selected treatment, as the picker's does */
+.gf-check {
+  display: flex; align-items: center; gap: var(--gf-s2); cursor: pointer;
+  font: var(--gf-t-meta); color: var(--gf-ink);
+  border-left: 2px solid transparent; padding: 2px var(--gf-s2) 2px calc(var(--gf-s2) - 2px);
+}
+.gf-check.is-on { border-left-color: var(--gf-system); }
+.gf-check input { accent-color: var(--gf-system); margin: 0; }
+
+/*
+ * `c` on the board: one row, not a column head — the ticket lands where you
+ * sent it, which may be off this board entirely (issue 06).
+ */
+.gf-new-row { display: flex; align-items: center; gap: var(--gf-s2); flex-wrap: wrap; padding-bottom: var(--gf-s3); border-bottom: 1px solid var(--gf-rule); }
+.gf-new-row input[type='text'], .gf-new-row select {
+  font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page);
+  border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 3px 8px;
+}
+/* the title is the only thing a ticket must have, so it takes the room (CONTEXT.md) */
+.gf-new-row input.gf-new-row-title { border-color: var(--gf-system); flex: 0 1 420px; min-width: 160px; }
+.gf-new-row-refusal { flex-basis: 100%; }
+
+/*
+ * A checkbox with no accent paints in the browser's blue, which in this house
+ * means a link and nothing else (DESIGN.md Colors). `bun run lint` refuses a
+ * hex literal but cannot see a colour nobody declared.
+ */
+.gf-toggle input { accent-color: var(--gf-system); }
+/* placeholder text is text: the UA's grey fails the text-safe rule at 3.1:1 on `--gf-page` */
+.gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder { color: var(--gf-mute); }
+
+/* the third chip's popover would hang off the tile at phone width, so it hangs from its right edge instead */
+@media (max-width: 899px) {
+  .gf-filter-slot:nth-of-type(3) .gf-pop { left: auto; right: 0; }
+  .gf-filter-clear { order: -1; }
+}
+
+/* a link among a tile's keys is chrome, not prose: mute until you point at it */
+.gf-tile-link { color: var(--gf-mute); }
+.gf-tile-link:hover { color: var(--gf-ink); text-decoration: none; }
