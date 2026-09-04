@@ -73,6 +73,8 @@ export {
   GUARDED_STATUSES,
   isGuarded,
   UNCREATABLE_STATUSES,
+  CREATABLE_STATUSES,
+  isCreatable,
   approveGuard,
   AGENT_CEILING,
   defaultCreateStatus,
@@ -96,3 +98,16 @@ export {
 } from './graph';
 export { slugify, slugPath, parseSlugId } from './slug';
 export { designField, designBody, hasDesign } from './design';
+export {
+  FILTER_PARAMS,
+  type FilterParam,
+  type TicketFilter,
+  type FilterIssue,
+  type ParsedFilter,
+  type FilterSource,
+  type ParseOptions,
+  DEFAULT_BOARD_STATUSES,
+  canonicalStatuses,
+  parseTicketFilter,
+  serialiseTicketFilter,
+} from './filters';

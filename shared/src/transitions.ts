@@ -113,6 +113,11 @@ export const isGuarded = (status: TicketStatus): boolean => (GUARDED_STATUSES as
 /** The terminal states are earned, never declared — a ticket cannot be created in one. */
 export const UNCREATABLE_STATUSES = ['done', 'cancelled'] as const satisfies readonly TicketStatus[];
 
+/** The other six, in lifecycle order: what a create form may offer. */
+export const CREATABLE_STATUSES: readonly TicketStatus[] = TICKET_STATUSES.filter((s) => !(UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(s));
+
+export const isCreatable = (status: TicketStatus): boolean => CREATABLE_STATUSES.includes(status);
+
 /**
  * The single gate into the ready frontier, shared by every client: an app,
  * and a ticket design unless the ticket is simple. Returns what is *missing*,

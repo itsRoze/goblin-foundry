@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { isBlocked, type Ticket, type TicketStatus } from '@goblin/shared';
+import { CREATABLE_STATUSES, isBlocked, isCreatable, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus } from '@goblin/shared';
 import { ProblemError } from './api';
 import { formKeys } from './keys';
 import { useCreateTicket, useApps, useProjects } from './queries';
@@ -125,6 +125,124 @@ export function useNewTicket(scope: { app_id?: number; project_id?: number }, te
         setOpen(false);
       }}
     />
+  );
+}
+
+/** Where a ticket the board makes starts: the first status in the Filter it may be *created* in, else `backlog`. */
+const createStatusFor = (statuses: readonly TicketStatus[]): TicketStatus => statuses.find(isCreatable) ?? 'backlog';
+
+/**
+ * ADR-0007's question, asked once: may this project sit under this app? Both
+ * places that choose an app and a project side by side — the board's filter
+ * chips and its create row — drop the project when the answer is no.
+ */
+export const projectFitsApp = (project: { app_id: number | null } | undefined, app_id: number | null): boolean => project?.app_id === app_id;
+
+/**
+ * `c` on the board (issue 06): one row under the filter bar, prefilled from
+ * the Filter — the Scope on screen (CONTEXT.md "Scope"). Every field is
+ * editable before saving, so the ticket lands where you sent it, on this board
+ * or off it.
+ */
+export function useBoardCreate(filter: TicketFilter, statuses: readonly TicketStatus[]) {
+  const [open, setOpen] = useState(false);
+  useKey('c', useCallback(() => setOpen(true), []));
+  if (!open) return null;
+  return <BoardCreate filter={filter} statuses={statuses} onDone={() => setOpen(false)} />;
+}
+
+const idOf = (value: string): number | null => (value === '' ? null : Number(value));
+
+function BoardCreate({ filter, statuses, onDone }: { filter: TicketFilter; statuses: readonly TicketStatus[]; onDone: () => void }) {
+  // an archived app or project is not somewhere a new ticket may go, so the row offers only live ones
+  const apps = useApps();
+  const projects = useProjects();
+  const create = useCreateTicket();
+  const [title, setTitle] = useState('');
+  const [app, setApp] = useState<number | null>(typeof filter.app_id === 'number' ? filter.app_id : null);
+  const [project, setProject] = useState<number | null>(typeof filter.project_id === 'number' ? filter.project_id : null);
+  const [status, setStatus] = useState<TicketStatus>(() => createStatusFor(statuses));
+  const [simple, setSimple] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const busy = useRef(false);
+
+  /** ADR-0007 while you are still typing: a project brings its app, and moving the app drops a project that is not in it. */
+  const chooseProject = (id: number | null) => {
+    setProject(id);
+    const chosen = projects.data?.find((p) => p.id === id);
+    if (chosen) setApp(chosen.app_id);
+  };
+  const chooseApp = (id: number | null) => {
+    setApp(id);
+    if (!projectFitsApp(projects.data?.find((p) => p.id === project), id)) setProject(null);
+  };
+
+  const save = async () => {
+    if (busy.current || !title.trim()) return;
+    busy.current = true;
+    setError(null);
+    try {
+      // a project already carries its app; sending both would be a contradiction the API is right to refuse
+      const placement = project === null ? { app_id: app } : { project_id: project };
+      await create.mutateAsync({ title: title.trim(), status, simple, ...placement } satisfies CreateTicketBody);
+      onDone();
+    } catch (e) {
+      setError(e instanceof ProblemError ? e.line : String(e));
+    } finally {
+      busy.current = false;
+    }
+  };
+
+  // a project already names its app, so the row never opens saying `no app` beside a project (ADR-0007)
+  const shownApp = project === null ? app : (projects.data?.find((p) => p.id === project)?.app_id ?? app);
+  const inProject = projects.data?.filter((p) => shownApp === null || p.app_id === shownApp) ?? [];
+  return (
+    <div className="gf-new-row" data-testid="board-create" onKeyDown={formKeys(() => void save(), onDone)}>
+      <input
+        autoFocus
+        className="gf-new-row-title"
+        type="text"
+        aria-label="ticket title"
+        placeholder="new ticket"
+        autoComplete="off"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <select aria-label="app" value={shownApp === null ? '' : String(shownApp)} onChange={(e) => chooseApp(idOf(e.target.value))}>
+        <option value="">no app</option>
+        {apps.data?.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
+        ))}
+      </select>
+      <select aria-label="project" value={project === null ? '' : String(project)} onChange={(e) => chooseProject(idOf(e.target.value))}>
+        <option value="">no project</option>
+        {inProject.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <select aria-label="status" value={status} onChange={(e) => setStatus(e.target.value as TicketStatus)}>
+        {CREATABLE_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+      <label className="gf-toggle">
+        <input type="checkbox" checked={simple} onChange={(e) => setSimple(e.target.checked)} /> simple
+      </label>
+      <span className="gf-new-ticket-keys">
+        <Kbd>⌘⏎</Kbd> save <Kbd>esc</Kbd> cancel
+      </span>
+      {error && (
+        <p className="gf-refusal gf-new-row-refusal" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

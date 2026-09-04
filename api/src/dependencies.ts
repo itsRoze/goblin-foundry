@@ -20,6 +20,7 @@ import type { Context, Hono as HonoType } from 'hono';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
 import { now, recordEvent } from './events';
+import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable } from './problems';
 import { dependency, ticket as ticketTable } from './schema';
@@ -212,14 +213,20 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
 /**
  * The ready frontier: what a controller may claim (CONTEXT.md). `ready`, no
  * open blocker, stalest first — the ordering is the only claim order S1 has.
+ * It narrows by app, project and text through the board's own parser (issue
+ * 06), so every endpoint stays reachable from `goblin`.
  */
 export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, blocked_by: string[]) => unknown) {
   const r = new Hono<ActorEnv>();
   r.get('/', async (c) => {
+    const filter = readFilter(c);
+    if (filter instanceof Response) return filter;
+    // the same parser as the board, minus the one parameter this endpoint has already answered
+    if (filter.status) return unprocessable(c, [{ path: ['status'], message: 'the frontier is ready by definition' }]);
     const rows = await db
       .select()
       .from(ticketTable)
-      .where(and(isNull(ticketTable.trashed_at), eq(ticketTable.status, 'ready')))
+      .where(and(isNull(ticketTable.trashed_at), eq(ticketTable.status, 'ready'), ...ticketWhere(filter)))
       .orderBy(asc(ticketTable.updated_at), asc(ticketTable.id));
     const { ticket_prefix } = await readSettings(db);
     const blockers = await openBlockers(db, ticket_prefix);

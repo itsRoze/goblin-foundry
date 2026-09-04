@@ -54,6 +54,7 @@ lifecycle is documented by the lifecycle.
 | refusals | `application/problem+json` on stderr, stdout empty. Exit `1` the API refused, `2` the invocation was wrong, `3` nothing answered |
 | long text | `--description`, `--design` and `design set` take the text inline, `@path` to read a file, or `-` to read stdin |
 | clearing | `null` as the value of a nullable flag on `update` clears the field (`--app null`, `--design null`) |
+| filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
 | actor | `--actor agent`, or `GF_ACTOR`; the flag wins. An agent creates tickets only into `planning` and owns no transition (CONTEXT.md *Actor*) |
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
 | elsewhere | `GF_URL` points at the API; `goblin backup <dir>` copies the database file itself, from `GF_DB_PATH` or the default |

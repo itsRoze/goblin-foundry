@@ -455,7 +455,8 @@ function TicketPicker({
         onKeyDown={onKeyDown}
       />
       {hits.length === 0 ? (
-        <Empty>no ticket matches</Empty>
+        // "nothing matches" would be a lie while the list is still coming; `⏎` has nothing to pick either way
+        <Empty>{all.isPending ? 'loading…' : 'no ticket matches'}</Empty>
       ) : (
         <div id={listId} className="gf-rows gf-picker-hits" role="listbox" aria-label={`${label} — candidates`}>
           {/* options are divs, not buttons: a listbox child must not be tab-focusable when the input holds focus */}

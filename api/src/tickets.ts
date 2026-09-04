@@ -23,6 +23,7 @@ import type { ActorEnv } from './actor';
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { diff, listEvents, now, recordEvent } from './events';
+import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable } from './schema';
@@ -151,19 +152,15 @@ export function ticketsRoutes(db: Db) {
     return { ...(await one(row)), dependencies: await dependenciesOf(db, row.id, p) };
   }
 
+  /** The board's Filter, in full (issue 06); with none of it given, every live ticket. */
   r.get('/', async (c) => {
-    const filters = [isNull(ticketTable.trashed_at)];
-    for (const [name, column] of [
-      ['app_id', ticketTable.app_id],
-      ['project_id', ticketTable.project_id],
-    ] as const) {
-      const raw = c.req.query(name);
-      if (raw === undefined) continue;
-      if (raw === 'null') filters.push(isNull(column));
-      else if (Number.isInteger(Number(raw))) filters.push(eq(column, Number(raw)));
-      else return unprocessable(c, [{ path: [name], message: `expected an id or null` }]);
-    }
-    const rows = await db.select().from(ticketTable).where(and(...filters)).orderBy(asc(ticketTable.id));
+    const filter = readFilter(c);
+    if (filter instanceof Response) return filter;
+    const rows = await db
+      .select()
+      .from(ticketTable)
+      .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(filter)))
+      .orderBy(asc(ticketTable.id));
     const p = await prefix();
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);

@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 (Lifecycle — transition table, intent endpoints, drag-and-drop)
 
-**Status:** ready-for-agent
+**Status:** built 2026-09-03
 
 **Decisions (grilled 2026-09-03):**
 
@@ -23,14 +23,14 @@
 - *Entry points.* The `tickets` tile header on the App and Project views gains a `board` link to the board filtered to that app or project. The breadcrumb waits.
 - *Not in 06.* Word-AND text matching; a `q` on apps/projects; the collapsed "hidden column" Linear's board has; anything in the URL beyond the four parameters.
 
-- [ ] Shared filter schema: parse/serialise `app_id`, `project_id` (id | `null`), `status` (comma list, lifecycle order), `q`; used by `GET /api/tickets`, `GET /api/frontier`, the web and `goblin`; unknown status and non-id values → `422` on the field
-- [ ] `GET /api/tickets?app_id=&project_id=&status=a,b&q=` filters server-side; `q` over title or description, case-insensitive, `%`/`_` literal; API tests for each alone, combined, `null`, unknown status, empty params, escaping; the API refuses `<slug>-<id>` (the clients strip it)
-- [ ] `GET /api/frontier` honours `app_id`, `project_id`, `q`; tests
-- [ ] `goblin ticket list --status --q`, `goblin frontier --app --project --q`; tested through the in-process app
-- [ ] Filter bar in the board strip: three chips + text input + `×`; state ⇄ URL with replace only; 200 ms text debounce; canonical order; refusal line for a `422`
-- [ ] Picker popover component (search rows for app/project with `any`/`none`; check rows for status), keyboard per the decisions; project fills app, app change clears a foreign project
-- [ ] Only filtered statuses render as columns; `cancelled` appears iff in the set; `v` menu loses `show cancelled` (keeps `app / project`, `updated`); `e2e/tickets.e2e.ts:32-38` moves onto the status picker
-- [ ] `c` opens the one-row create form prefilled from the filter; every field editable; creatable statuses only; refusals inline; 03's backlog input retired
-- [ ] `board` link in the App and Project views' `tickets` tile headers
-- [ ] `f` focuses the text input, `esc` blurs; DESIGN.md Components (as built) gains **Filter bar** and **Picker popover**, Interaction gains `f` and the create form, at closeout
-- [ ] Browser smoke: pick a project and a status, reload, both persist and the URL is unchanged; open a ticket, press back, the filter is still there; `cancelled` is absent until checked in the status picker; `c` on a project-filtered board creates a ticket in that project
+- [x] Shared filter schema: parse/serialise `app_id`, `project_id` (id | `null`), `status` (comma list, lifecycle order), `q`; used by `GET /api/tickets`, `GET /api/frontier`, the web and `goblin`; unknown status and non-id values → `422` on the field
+- [x] `GET /api/tickets?app_id=&project_id=&status=a,b&q=` filters server-side; `q` over title or description, case-insensitive, `%`/`_` literal; API tests for each alone, combined, `null`, unknown status, empty params, escaping; the API refuses `<slug>-<id>` (the clients strip it)
+- [x] `GET /api/frontier` honours `app_id`, `project_id`, `q`; tests
+- [x] `goblin ticket list --status --q`, `goblin frontier --app --project --q`; tested through the in-process app
+- [x] Filter bar in the board strip: three chips + text input + `×`; state ⇄ URL with replace only; 200 ms text debounce; canonical order; refusal line for a `422`
+- [x] Picker popover component (search rows for app/project with `any`/`none`; check rows for status), keyboard per the decisions; project fills app, app change clears a foreign project
+- [x] Only filtered statuses render as columns; `cancelled` appears iff in the set; `v` menu loses `show cancelled` (keeps `app / project`, `updated`); `e2e/tickets.e2e.ts:32-38` moves onto the status picker
+- [x] `c` opens the one-row create form prefilled from the filter; every field editable; creatable statuses only; refusals inline; 03's backlog input retired
+- [x] `board` link in the App and Project views' `tickets` tile headers
+- [x] `f` focuses the text input, `esc` blurs; DESIGN.md Components (as built) gains **Filter bar** and **Picker popover**, Interaction gains `f` and the create form, at closeout
+- [x] Browser smoke: pick a project and a status, reload, both persist and the URL is unchanged; open a ticket, press back, the filter is still there; `cancelled` is absent until checked in the status picker; `c` on a project-filtered board creates a ticket in that project

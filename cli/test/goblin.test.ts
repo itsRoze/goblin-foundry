@@ -280,6 +280,50 @@ describe('goblin', () => {
     });
   });
 
+  describe('the filter flags (issue 06)', () => {
+    /** Two apps, a project, and one ticket in every shape the flags have to tell apart. */
+    const seed = async () => {
+      await json(['app', 'create', '--name', 'Subway Reader']);
+      await json(['app', 'create', '--name', 'Other']);
+      await json(['project', 'create', '--name', 'MVP', '--app', '1']);
+      await json(['ticket', 'create', '--title', 'orphan']);
+      await json(['ticket', 'create', '--title', 'parse a feed', '--project', '1', '--description', 'rss and atom']);
+      await json(['ticket', 'create', '--title', 'somebody else', '--app', '2']);
+      await json(['ticket', 'create', '--title', 'ready to go', '--app', '1', '--simple', '--status', 'ready']);
+    };
+    const titles = async (argv: string[]) => (await json(argv)).map((t: { title: string }) => t.title);
+
+    test('`ticket list` narrows by app, project, status and text, and the four compose', async () => {
+      await seed();
+      expect(await titles(['ticket', 'list'])).toEqual(['orphan', 'parse a feed', 'somebody else', 'ready to go']);
+      expect(await titles(['ticket', 'list', '--app', 'subway-reader-1'])).toEqual(['parse a feed', 'ready to go']);
+      expect(await titles(['ticket', 'list', '--project', '1'])).toEqual(['parse a feed']);
+      expect(await titles(['ticket', 'list', '--status', 'ready,backlog'])).toEqual(['orphan', 'parse a feed', 'somebody else', 'ready to go']);
+      expect(await titles(['ticket', 'list', '--status', 'ready'])).toEqual(['ready to go']);
+      expect(await titles(['ticket', 'list', '--q', 'RSS'])).toEqual(['parse a feed']);
+      expect(await titles(['ticket', 'list', '--app', '1', '--status', 'backlog', '--q', 'feed'])).toEqual(['parse a feed']);
+      expect(await titles(['ticket', 'list', '--app', 'null'])).toEqual(['orphan']);
+    });
+
+    test('`frontier` takes the same flags, minus the one it has already answered', async () => {
+      await seed();
+      await json(['ticket', 'create', '--title', 'also ready', '--project', '1', '--simple', '--status', 'ready']);
+      expect(await titles(['frontier'])).toEqual(['ready to go', 'also ready']);
+      expect(await titles(['frontier', '--app', '1'])).toEqual(['ready to go', 'also ready']);
+      expect(await titles(['frontier', '--project', '1'])).toEqual(['also ready']);
+      expect(await titles(['frontier', '--q', 'also'])).toEqual(['also ready']);
+      // `--status` is not a frontier flag at all, so the parser refuses it before anything is sent
+      expect((await run(['frontier', '--status', 'ready'])).code).toBe(2);
+    });
+
+    test('a mistyped status is a usage error: nothing was sent, so the exit code says so', async () => {
+      const refused = await run(['ticket', 'list', '--status', 'shipped']);
+      expect(refused.code).toBe(2);
+      expect(refused.out).toBe('');
+      expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--status: shipped is not a status' });
+    });
+  });
+
   describe('backup', () => {
     let dir: string;
     const saved = process.env.GF_DB_PATH;

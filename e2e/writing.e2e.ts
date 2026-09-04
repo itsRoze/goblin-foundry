@@ -51,8 +51,8 @@ async function newTicket(page: Page, title: string) {
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
   await page.keyboard.press('c');
-  await page.getByTestId('new-ticket').getByLabel('ticket title').fill(title);
-  await page.getByTestId('new-ticket').getByLabel('ticket title').press('ControlOrMeta+Enter');
+  await page.getByTestId('board-create').getByLabel('ticket title').fill(title);
+  await page.getByTestId('board-create').getByLabel('ticket title').press('ControlOrMeta+Enter');
   await page.locator('[data-testid^="card-"]', { hasText: title }).click();
   await expect(page.getByTestId('design-tile')).toBeVisible();
 }
