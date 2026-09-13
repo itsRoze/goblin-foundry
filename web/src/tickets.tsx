@@ -3,9 +3,10 @@ import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { CREATABLE_STATUSES, isBlocked, isCreatable, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus } from '@goblin/shared';
 import { ProblemError } from './api';
-import { formKeys } from './keys';
+import { useOpensCreate } from './creating';
+import { useCursor } from './desk';
+import { formKeys, useKey } from './keys';
 import { useCreateTicket, useApps, useProjects } from './queries';
-import { useKey } from './keys';
 import { Chip, Empty, Kbd, Since, type Namer, type Tone } from './ui';
 
 /**
@@ -58,7 +59,20 @@ export const asDraggedCard = (data: Record<string | symbol, unknown>): DraggedCa
   typeof data.key === 'string' && typeof data.status === 'string' ? { key: data.key, status: data.status as TicketStatus } : null;
 
 /** The kanban card: key + status note, title, then whatever the view options ask for (DESIGN.md Components). */
-export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta: string | null; updated: string | null; at: number }) {
+export function TicketCard({
+  ticket,
+  cursor,
+  meta,
+  updated,
+  at,
+}: {
+  ticket: Ticket;
+  /** The Cursor is on this card: the selected-row mark, never the full border, which is the drag's. */
+  cursor: boolean;
+  meta: string | null;
+  updated: string | null;
+  at: number;
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [lifted, setLifted] = useState(false);
   // the whole card is the drag handle — no grip (DESIGN.md Components)
@@ -78,8 +92,9 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
   return (
     <Link
       ref={ref}
-      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}`}
+      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}${cursor ? ' is-cursor' : ''}`}
       to={ticketPath(ticket)}
+      aria-current={cursor ? true : undefined}
       data-testid={`card-${ticket.key}`}
     >
       <span className="gf-card-id">
@@ -112,7 +127,9 @@ export function TicketCard({ ticket, meta, updated, at }: { ticket: Ticket; meta
 export function useNewTicket(scope: { app_id?: number; project_id?: number }, testId = 'new-ticket') {
   const [open, setOpen] = useState(false);
   const create = useCreateTicket();
-  useKey('c', useCallback(() => setOpen(true), []));
+  const start = useCallback(() => setOpen(true), []);
+  useKey('c', start);
+  useOpensCreate('ticket', start);
   const { app_id, project_id } = scope;
 
   if (!open) return null;
@@ -146,9 +163,14 @@ export const projectFitsApp = (project: { app_id: number | null } | undefined, a
  */
 export function useBoardCreate(filter: TicketFilter, statuses: readonly TicketStatus[]) {
   const [open, setOpen] = useState(false);
-  useKey('c', useCallback(() => setOpen(true), []));
-  if (!open) return null;
-  return <BoardCreate filter={filter} statuses={statuses} onDone={() => setOpen(false)} />;
+  const start = useCallback(() => setOpen(true), []);
+  useKey('c', start);
+  useOpensCreate('ticket', start);
+  // `close` doubles as "is it open": `esc` closes the topmost thing, and the row is one of them
+  return {
+    form: open ? <BoardCreate filter={filter} statuses={statuses} onDone={() => setOpen(false)} /> : null,
+    close: open ? () => setOpen(false) : null,
+  };
 }
 
 const idOf = (value: string): number | null => (value === '' ? null : Number(value));
@@ -292,14 +314,19 @@ export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: st
   );
 }
 
-/** The `tickets` tile of an App or Project view: key, title, status. */
-export function TicketRows({ tickets }: { tickets: Ticket[] | undefined }) {
+/**
+ * The `tickets` tile of an App or Project view: key, title, status. `j/k` move
+ * the Cursor down the rows and `⏎` opens one; there is nothing else here for a
+ * key to do, because there is no other button on the row (issue 10).
+ */
+export function TicketRows({ tickets, tile = 'tickets' }: { tickets: Ticket[] | undefined; tile?: string }) {
+  const cursor = useCursor({ tile, columns: [(tickets ?? []).map((t) => t.key)], pathOf: (key) => ticketPath({ key }) });
   if (!tickets) return <Empty>loading…</Empty>;
   if (tickets.length === 0) return <Empty>no tickets — press c</Empty>;
   return (
     <div className="gf-rows" data-testid="ticket-rows">
       {tickets.map((t) => (
-        <Link key={t.id} className="gf-row" to={ticketPath(t)}>
+        <Link key={t.id} className={`gf-row${cursor.isAt(t.key) ? ' is-cursor' : ''}`} aria-current={cursor.isAt(t.key) ? true : undefined} to={ticketPath(t)}>
           <span className="gf-row-title">
             <span className="gf-key">{t.key}</span> {t.title}
           </span>

@@ -18,7 +18,7 @@ export function useSlugParam(kind: 'apps' | 'projects', entity: { id: number; na
 }
 
 export const NotFound = ({ what }: { what: string }) => (
-  <Tile label={what} focus>
+  <Tile label={what}>
     <Empty>not found — it may be in the trash</Empty>
   </Tile>
 );

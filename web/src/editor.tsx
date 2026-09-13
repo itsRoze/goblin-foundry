@@ -53,9 +53,9 @@ export const Saving = ({ state }: { state: SaveState }) =>
 
 /**
  * Put the caret in the focused tile's editor, or in the first one on the page
- * when that tile has none — `e` is a jump, not a mode (DESIGN.md Interaction). Tile
- * focus is static until `⌘1–6` arrives (issue 10), so in practice this reaches
- * the first field of the view; the others are a click away.
+ * when that tile has none — `e` is a jump, not a mode (DESIGN.md Interaction).
+ * Which tile that is now moves: `⌘1–6` and a click both set it (issue 10), so
+ * `⌘2 e` reaches the second editor on a view without touching the mouse.
  */
 export function focusEditor(): void {
   const inFocusedTile = document.querySelector<HTMLElement>('.gf-tile.is-focus .gf-md [contenteditable="true"]');

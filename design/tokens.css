@@ -11,7 +11,7 @@
 
   /* text */
   --gf-ink:     #D3C6AA;   /* primary text */
-  --gf-mute:    #9DA9A0;   /* secondary text, labels, hints — text-safe (≥4.5:1 on tile) */
+  --gf-mute:    #A3AFA6;                           /* secondary text, labels, hints — text-safe (≥4.5:1 on raised, the lightest surface) */
   --gf-dim:     #7A8478;   /* decorative only: drag handles, dividers, never words */
 
   /* accents by meaning — the colour is the meaning, so each has one job */

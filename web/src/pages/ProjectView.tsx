@@ -56,7 +56,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
             <Kbd>c</Kbd> new
           </>
         }
-        focus
+        navigable
         testId="tickets-tile"
       >
         {newTicket}

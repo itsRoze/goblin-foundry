@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath, type App, type Project } from '@goblin/shared';
+import { useOpensCreate } from '../creating';
+import { useCursor } from '../desk';
 import { useApps, useCreateProject, useProjects } from '../queries';
 import { useCrumb } from '../shell';
 import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
@@ -20,13 +22,14 @@ export const projectBody = (v: Record<string, string>) => ({
   app_id: v.app_id ? Number(v.app_id) : null,
 });
 
-export function ProjectRows({ projects }: { projects: Project[] }) {
+export function ProjectRows({ projects, cursor }: { projects: Project[]; cursor?: (path: string) => boolean }) {
   return (
     <div className="gf-rows">
       {projects.map((p) => (
         <Row
           key={p.id}
           to={slugPath('projects', p)}
+          cursor={cursor?.(slugPath('projects', p))}
           title={p.name}
           meta={p.description || undefined}
           trailing={p.archived_at ? <Chip tone="draft">archived</Chip> : undefined}
@@ -45,6 +48,7 @@ export function ProjectsPage() {
   const projects = useProjects({ archived: showArchived });
   const create = useCreateProject();
   const nav = useNavigate();
+  useOpensCreate('project', () => setCreating(true));
 
   const groups: { key: string; label: string; items: Project[] }[] = [];
   if (projects.data && apps.data) {
@@ -55,13 +59,15 @@ export function ProjectsPage() {
     const orphans = projects.data.filter((p) => p.app_id === null);
     if (orphans.length) groups.push({ key: 'none', label: 'no app', items: orphans });
   }
+  // the groups are one list to a key: `j` runs down the page, through the headings and on
+  const cursor = useCursor({ tile: 'projects', columns: [groups.flatMap((g) => g.items.map((p) => slugPath('projects', p)))], pathOf: (path) => path });
 
   return (
     <Tile
       label="projects"
       subtitle={projects.data ? `${projects.data.length} · by app` : undefined}
       keys={<Plus label="new project" onClick={() => setCreating(true)} />}
-      focus
+      navigable
       testId="projects-tile"
     >
       {creating && (
@@ -81,7 +87,7 @@ export function ProjectsPage() {
       {groups.map((g) => (
         <div key={g.key} className="gf-group" data-testid={`group-${g.key}`}>
           <div className="gf-group-head">{g.label}</div>
-          <ProjectRows projects={g.items} />
+          <ProjectRows projects={g.items} cursor={cursor.isAt} />
         </div>
       ))}
       <label className="gf-toggle">

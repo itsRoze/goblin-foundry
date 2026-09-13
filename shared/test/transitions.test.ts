@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { TICKET_STATUSES, type TicketStatus } from '../src/tickets';
-import { TRANSITIONS, approveGuard, destinationOf, findTransition, guardRefusal, structuralRefusal, transitionTo, transitionsFrom, type GuardFields } from '../src/transitions';
+import { TRANSITIONS, approveGuard, destinationOf, findTransition, guardRefusal, keyedMove, structuralRefusal, transitionTo, transitionsFrom, type GuardFields } from '../src/transitions';
 
 /**
  * ADR-0003's table, transcribed by hand as one flat arrow per line — a
@@ -119,5 +119,24 @@ describe('refusal sentences', () => {
   test('a guard refusal names what is missing', () => {
     expect(guardRefusal('approve', ['design'])).toBe('approve needs a ticket design');
     expect(guardRefusal('approve', ['app', 'design'])).toBe('approve needs an app and a ticket design');
+  });
+});
+
+/**
+ * A drag names a destination column and a key names the verb, so the two ask
+ * the table different questions — and both the board's `a` and the Ticket
+ * view's `a` have to answer with the same sentence (issue 10).
+ */
+describe('keyedMove', () => {
+  test('hands back the arrow when the table has one out of here', () => {
+    const asked = keyedMove('planning', 'approve');
+    expect(asked).toEqual({ ok: true, edge: findTransition('planning', 'approve')! });
+  });
+
+  test('refuses by the verb, naming where that verb would have gone', () => {
+    // `ready` has no `approve` arrow, and `stop` also lands in `ready` — so the pair alone could not say this
+    expect(keyedMove('ready', 'approve')).toEqual({ ok: false, refusal: 'a ticket in ready is already in ready' });
+    expect(keyedMove('building', 'approve')).toEqual({ ok: false, refusal: 'a ticket in building does not go back to ready' });
+    expect(keyedMove('backlog', 'approve')).toEqual({ ok: false, refusal: 'a ticket in backlog does not go to ready' });
   });
 });

@@ -23,7 +23,6 @@ export function SettingsPage() {
           <Kbd>e</Kbd> edit
         </>
       }
-      focus
       testId="settings-tile"
     >
       {settings.isError && <p className="gf-refusal">could not reach the API: {settings.error.message}</p>}

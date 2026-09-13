@@ -88,6 +88,21 @@ export const findTransition = (from: TicketStatus, name: TransitionName): Transi
  */
 export const transitionTo = (from: TicketStatus, to: TicketStatus): Transition | undefined => TRANSITIONS.find((t) => t.from === from && t.to === to);
 
+/** What a named verb asks for: the arrow, or the sentence saying there is none out of here. */
+export type KeyedMove = { ok: true; edge: Transition } | { ok: false; refusal: string };
+
+/**
+ * The edge a *key* describes (issue 10). A drag names a destination column, so
+ * a missing arrow is refused by the pair; a key names the verb, so the refusal
+ * is about the arrow that is not there — and both the board's `a` and the
+ * Ticket view's `a` have to say the same sentence, which is why the lookup and
+ * the refusal are one call rather than the same three lines in two files.
+ */
+export function keyedMove(from: TicketStatus, name: TransitionName): KeyedMove {
+  const edge = findTransition(from, name);
+  return edge ? { ok: true, edge } : { ok: false, refusal: structuralRefusal(from, destinationOf(name)) };
+}
+
 /**
  * The one place a blocker gets in the way of a move, and it only asks
  * (ADR-0009): `start` is the verb that means "proceeding despite the blocker",

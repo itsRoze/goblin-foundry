@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { slugPath } from '@goblin/shared';
+import { useOpensCreate } from '../creating';
+import { useCursor } from '../desk';
 import { useApps, useCreateApp } from '../queries';
 import { useCrumb } from '../shell';
 import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
@@ -27,13 +29,16 @@ export function AppsPage() {
   const apps = useApps(showArchived);
   const create = useCreateApp();
   const nav = useNavigate();
+  useOpensCreate('app', () => setCreating(true));
+  // a row here opens and nothing else: the all-apps list has no buttons for a key to stand for
+  const cursor = useCursor({ tile: 'apps', columns: [(apps.data ?? []).map((a) => slugPath('apps', a))], pathOf: (path) => path });
 
   return (
     <Tile
       label="apps"
       subtitle={apps.data ? `${apps.data.length}` : undefined}
       keys={<Plus label="new app" onClick={() => setCreating(true)} />}
-      focus
+      navigable
       testId="apps-tile"
     >
       {creating && (
@@ -55,6 +60,7 @@ export function AppsPage() {
           <Row
             key={a.id}
             to={slugPath('apps', a)}
+            cursor={cursor.isAt(slugPath('apps', a))}
             title={a.name}
             meta={a.repository_url ?? 'no repository'}
             trailing={a.archived_at ? <Chip tone="draft">archived</Chip> : undefined}

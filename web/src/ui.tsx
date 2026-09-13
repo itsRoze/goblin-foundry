@@ -2,15 +2,23 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError } from './api';
+import { useTile } from './desk';
 import { formKeys } from './keys';
 
 export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="gf-kbd">{children}</kbd>;
 
+/**
+ * A tile, and its place in the keyboard: it registers itself with the desk,
+ * which numbers the tiles in reading order and says which one has the focus
+ * (CONTEXT.md "Focused tile"). The label is the address — unique on a page,
+ * and what `useCursor` and `d` name a tile by — so it is also what the header
+ * shows. Focus follows a click, as it does in a tiling window manager.
+ */
 export function Tile({
   label,
   subtitle,
   keys,
-  focus,
+  navigable,
   span,
   children,
   testId,
@@ -18,18 +26,38 @@ export function Tile({
   label: string;
   subtitle?: ReactNode;
   keys?: ReactNode;
-  focus?: boolean;
+  /** Its body is rows or cards, so the focused tile offers `j k ⏎` (a history is not navigable). */
+  navigable?: boolean;
   /** The whole width of the desk. For a page that is one tile — the kanban needs every column it has (DESIGN.md Layout). */
   span?: boolean;
   children: ReactNode;
   testId?: string;
 }) {
+  const tile = useTile(label);
   return (
-    <section className={`gf-tile${focus ? ' is-focus' : ''}${span ? ' is-span' : ''}`} aria-label={label} data-testid={testId}>
+    <section
+      ref={tile.ref}
+      className={`gf-tile${tile.focused ? ' is-focus' : ''}${span ? ' is-span' : ''}`}
+      // the focus is a border to the eye and nothing at all to a screen reader without this
+      aria-current={tile.focused ? true : undefined}
+      aria-label={label}
+      data-testid={testId}
+      onMouseDown={tile.focus}
+    >
       <div className="gf-tile-head">
         <span>{label}</span>
         {subtitle && <span className="gf-tile-sub">{subtitle}</span>}
-        {keys && <span className="gf-tile-keys">{keys}</span>}
+        <span className="gf-tile-keys">
+          {keys}
+          {navigable && tile.focused && (
+            <span className="gf-tile-move">
+              <Kbd>j</Kbd>
+              <Kbd>k</Kbd>
+              <Kbd>⏎</Kbd>
+            </span>
+          )}
+          {tile.n !== null && <Kbd>⌘{tile.n}</Kbd>}
+        </span>
       </div>
       <div className="gf-tile-body">{children}</div>
     </section>
@@ -45,15 +73,15 @@ export const Chip = ({ tone, struck, children }: { tone?: Tone; struck?: boolean
 
 export const Empty = ({ children }: { children: ReactNode }) => <p className="gf-empty">{children}</p>;
 
-/** Opens a tile's inline create form. `n` is retired; `⌘K` takes this over in issue 10. */
+/** Opens a tile's inline create form. `n` is retired; `⌘K` reaches the same form by name (issue 10). */
 export const Plus = ({ label, onClick }: { label: string; onClick: () => void }) => (
   <button type="button" className="gf-plus" aria-label={label} onClick={onClick}>
     +
   </button>
 );
 
-/** `[title] [meta] [trailing]` — the list row; a link when `to` is given. */
-export function Row({ to, title, meta, trailing, testId }: { to?: string; title: ReactNode; meta?: ReactNode; trailing?: ReactNode; testId?: string }) {
+/** `[title] [meta] [trailing]` — the list row; a link when `to` is given, and the Cursor's mark when it is here. */
+export function Row({ to, title, meta, trailing, cursor, testId }: { to?: string; title: ReactNode; meta?: ReactNode; trailing?: ReactNode; cursor?: boolean; testId?: string }) {
   const body = (
     <>
       <span className="gf-row-title">{title}</span>
@@ -61,12 +89,13 @@ export function Row({ to, title, meta, trailing, testId }: { to?: string; title:
       {trailing && <span className="gf-row-trail">{trailing}</span>}
     </>
   );
+  const className = `gf-row${cursor ? ' is-cursor' : ''}`;
   return to ? (
-    <Link className="gf-row" to={to} data-testid={testId}>
+    <Link className={className} to={to} aria-current={cursor ? true : undefined} data-testid={testId}>
       {body}
     </Link>
   ) : (
-    <div className="gf-row" data-testid={testId}>
+    <div className={className} data-testid={testId}>
       {body}
     </div>
   );

@@ -85,6 +85,15 @@ Which Tickets are on the board: any combination of an App, a Project, a set of S
 ## Scope
 The App or Project a screen is narrowed to: the thing an App or Project view is about, or the App and Project a board Filter names. A new Ticket starts in the Scope on screen.
 
+## Focused tile
+The one tile on a screen that keys address; its border says which. Every screen has exactly one, and the Cursor lives inside it.
+
+## Cursor
+The one card or row on screen that keys act on: move it, open it, act on the Ticket under it. There is at most one; it sits in the Focused tile and is remembered by Ticket Key, so a refresh or a trip into the Ticket view and back does not lose it. The **current Ticket** is the open Ticket on a Ticket view, otherwise the Ticket under the Cursor — it is what a status change or a command palette action applies to. Not a Selection.
+
+## Selection
+A set of Tickets gathered on the board for one bulk action (issue 03b). A Cursor is where you are; a Selection is what you have gathered. The two coexist and never mean each other.
+
 ## Transition
 One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name** and an **owner** — who is allowed to trigger it. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
 
