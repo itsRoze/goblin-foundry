@@ -21,7 +21,7 @@ import { formKeys, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Confirm, Empty, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 
 export function TicketView() {
@@ -181,7 +181,9 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         keys={
           <>
             <Saving state={about.state} />
-            <Kbd>e</Kbd> write
+            <Hint k="e" onClick={focusEditor} testId="hint-write">
+              write
+            </Hint>
           </>
         }
         testId="about-tile"
@@ -193,6 +195,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           placeholder="no description — press e"
           value={ticket.description}
           onSave={(description) => about.run(() => edit({ description }))}
+          status={about.state}
           testId="description"
         />
         <Kv
@@ -255,6 +258,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           value={ticket.design}
           onSave={(body) => design.run(() => edit({ design: body }))}
           fill
+          status={design.state}
           testId="design"
         />
       </Tile>
@@ -266,6 +270,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onPress={press}
         onSimple={(simple) => inState(() => edit({ simple }))}
         onTrash={() => void trash()}
+        onBlockedBy={openBlockedBy}
         confirming={confirming}
         onCancelConfirm={() => setConfirming(false)}
         onConfirm={() => {
@@ -578,6 +583,7 @@ function StateTile({
   onPress,
   onSimple,
   onTrash,
+  onBlockedBy,
   confirming,
   onConfirm,
   onCancelConfirm,
@@ -586,6 +592,8 @@ function StateTile({
   ticket: TicketDetail;
   /** A verb, not an edge: the button and the key ask for the move the same way. */
   onPress: (name: TransitionName) => void;
+  /** `d deps` as a control: the dependencies tile's `+ add`, pressed from here. */
+  onBlockedBy: () => void;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
   confirming: boolean;
@@ -602,11 +610,14 @@ function StateTile({
           {/* `a` is offered only where the table has the arrow, exactly as the buttons below are: a hint
               that cannot work is worse than no hint (DESIGN.md Voice, and the close-out of issue 10) */}
           {keyedMove(ticket.status, 'approve').ok && (
-            <>
-              <Kbd>a</Kbd> approve
-            </>
+            <Hint k="a" onClick={() => onPress('approve')}>
+              approve
+            </Hint>
           )}
-          <Kbd>s</Kbd> status <Kbd>d</Kbd> deps
+          <Hint k="s">status</Hint>
+          <Hint k="d" onClick={onBlockedBy}>
+            deps
+          </Hint>
         </>
       }
       testId="state-tile"
@@ -669,23 +680,25 @@ function InlineTitle({ value, onSave }: { value: string; onSave: (title: string)
       </button>
     );
 
+  // a refused rename keeps the input open with the refusal beside it
+  const save = () =>
+    void onSave(text.trim()).then(
+      () => setEditing(false),
+      () => {},
+    );
+  const cancel = () => setEditing(false);
   return (
-    <input
-      ref={input}
-      className="gf-inline-title-input"
-      aria-label="title"
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onKeyDown={formKeys(
-        () => {
-          // a refused rename keeps the input open with the refusal beside it
-          void onSave(text.trim()).then(
-            () => setEditing(false),
-            () => {},
-          );
-        },
-        () => setEditing(false),
-      )}
-    />
+    <div className="gf-inline-title-edit" data-testid="title-edit">
+      <input ref={input} className="gf-inline-title-input" aria-label="title" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={formKeys(save, cancel)} />
+      {/* the keys still work; the buttons are for a hand with no `⌘⏎` (issue 11) */}
+      <span className="gf-form-actions">
+        <button type="button" className="gf-btn is-primary" data-testid="title-save" onClick={save}>
+          save <Kbd>⌘⏎</Kbd>
+        </button>
+        <button type="button" className="gf-btn" data-testid="title-cancel" onClick={cancel}>
+          cancel <Kbd>esc</Kbd>
+        </button>
+      </span>
+    </div>
   );
 }

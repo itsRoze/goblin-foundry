@@ -8,6 +8,44 @@ import { formKeys } from './keys';
 export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="gf-kbd">{children}</kbd>;
 
 /**
+ * A key hint in a tile header — `c new` — that is also the control (issue 11):
+ * given something to run it is a button, so a finger reaches what the key
+ * reaches, in the same words. Without one it is the hint alone, as before. The
+ * key is the control, the way `⌘K` in the bar already is.
+ */
+export function Hint({ k, children, onClick, testId }: { k: ReactNode; children: ReactNode; onClick?: () => void; testId?: string }) {
+  if (!onClick)
+    return (
+      <span className="gf-hint">
+        <Kbd>{k}</Kbd> {children}
+      </span>
+    );
+  return (
+    <button type="button" className="gf-hint" data-testid={testId} onClick={onClick}>
+      <Kbd>{k}</Kbd> {children}
+    </button>
+  );
+}
+
+/**
+ * A press anywhere outside the element closes it — a popover, a menu. The
+ * listener watches the whole slot (the button and its panel) rather than the
+ * panel alone: watching the panel would close on the way down and let the
+ * button's own click reopen it, so pressing an open button a second time would
+ * never shut it. A tap is a press too; the browser sends the mouse event after it.
+ */
+export function useCloseOnOutside(slot: React.RefObject<HTMLElement | null>, open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!slot.current?.contains(e.target as Node)) onClose();
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [slot, open, onClose]);
+}
+
+/**
  * A tile, and its place in the keyboard: it registers itself with the desk,
  * which numbers the tiles in reading order and says which one has the focus
  * (CONTEXT.md "Focused tile"). The label is the address — unique on a page,
@@ -153,7 +191,7 @@ export function InlineForm({
     try {
       await onSubmit(values);
     } catch (e) {
-      setError(e instanceof ProblemError ? e.line : e instanceof Error ? e.message : String(e));
+      setError(e instanceof ProblemError ? e.sentence : e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -250,7 +288,7 @@ export const Since = ({ iso, at }: { iso: string; at: number }) => (
 const REFUSAL_MS = 4_000;
 
 /** What a refused write says: a `409`'s hint, a `422`'s issues, or whatever else went wrong. */
-export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.line : String(e));
+export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.sentence : String(e));
 
 /**
  * A refusal message is one sentence that clears itself: on the next click, or

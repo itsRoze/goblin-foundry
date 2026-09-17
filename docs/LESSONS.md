@@ -339,3 +339,24 @@ the palette's ticket read. The rule: anything reached by a keystroke should be p
 keystroke can see it immediately — state is for rendering, a ref is for handlers. A browser test
 that presses a key acting on a selection still waits for the selection to be on screen first, but it
 is no longer waiting for two invisible cycles behind it.
+
+## 2026-09-16 — WebKit gives every `Error` its own `line`, and an own property beats a getter
+
+`ProblemError` carried its one-sentence refusal as a getter named `line`. Under WebKit — Playwright's
+engine for iOS Safari, so also the phone in your pocket — every `Error` instance is born with own
+`line`, `column` and `sourceURL` properties, and an own property shadows anything on the prototype.
+So on iOS every refusal read as `74`: the source line the error was thrown from. Chromium never
+showed it, and neither did a probe that only *counted* refusals. The getter is `sentence` now. Two
+rules: a name on an `Error` subclass is only yours if no engine has claimed it, and a test that
+proves a message is there has to read the message.
+
+## 2026-09-16 — a later rule wins, and a phone tells you by growing the page
+
+The card menu set `right: 0` to hang from the card's edge, and `.gf-pop`, declared further down the
+stylesheet at the same specificity, set `left: 0`, so the menu hung off the right instead. Desktop
+Chromium showed nothing wrong — the panel ran past the viewport and the page could be scrolled to it
+— but under `isMobile` emulation the layout viewport grew to fit the overflow and the whole page
+zoomed out, which is how a phone reports a 200px mistake. When a component borrows another's
+clothes (`.gf-pop`) and overrides one of them, the override is `.gf-pop.gf-card-menu`, not a bare
+class that happens to sit earlier in the file; and the no-sideways-scroll check is worth running
+with every popover open, not only on a quiet page.

@@ -5,7 +5,7 @@ import { DependencyGraph, graphSubtitle } from '../graph-view';
 import { useApps, useEvents, usePatchProject, useProject, useProjectGraph, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
-import { Empty, History, Kbd, Kv, Tile, describeEvent } from '../ui';
+import { Empty, Hint, History, Kv, Tile, describeEvent } from '../ui';
 import { AboutTile, DescriptionField, NotFound, appOptions, useAppNamer, useSlugParam } from './Entity';
 
 export function ProjectView() {
@@ -53,13 +53,15 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
             <Link className="gf-tile-link" to={`/?project_id=${project.id}`}>
               board
             </Link>
-            <Kbd>c</Kbd> new
+            <Hint k="c" onClick={newTicket.open}>
+              new
+            </Hint>
           </>
         }
         navigable
         testId="tickets-tile"
       >
-        {newTicket}
+        {newTicket.form}
         <TicketRows tickets={tickets.data} />
       </Tile>
       <Tile label="graph" subtitle={graph.data ? graphSubtitle(graph.data) : undefined} testId="graph-tile">

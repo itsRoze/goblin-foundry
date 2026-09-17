@@ -115,22 +115,20 @@ function shareOut(ordered: Candidate[]): Candidate[] {
 }
 
 /**
- * The `s` mode: every arrow out of this status, from the same table the state
- * tile's buttons and the board's drop read (ADR-0003), each saying where it
- * lands.
- *
- * The state tile draws its buttons in table order, because they are the table.
- * A palette is ranked by what you probably meant, and `⏎` on an untyped query
- * takes the first row — so the moves that carry the ticket *forward* lead, the
- * ones that walk it back follow, and `cancel` is last wherever the table put
- * it, because it is a way of stopping rather than a step through the
- * lifecycle. Out of `ready` that is `start` first rather than `unapprove`.
+ * The verbs out of a status ranked by what you probably meant: the moves that
+ * carry the Ticket *forward* first, the ones that send it back after, and
+ * `cancel` last. The state tile keeps the table's order; a menu ranks (issue
+ * 10), and the card's `⋯` reads the same ranking (issue 11). Out of `ready`
+ * that is `start` first rather than `unapprove`.
  */
-export function transitionRows(from: TicketStatus): Candidate[] {
+export function rankedMoves(from: TicketStatus): TransitionName[] {
   const direction = (name: TransitionName) =>
     name === 'cancel' ? 2 : TICKET_STATUSES.indexOf(destinationOf(name)) < TICKET_STATUSES.indexOf(from) ? 1 : 0;
   return transitionsFrom(from)
-    .slice()
-    .sort((a, b) => direction(a.name) - direction(b.name))
-    .map((edge) => ({ id: `move-${edge.name}`, group: 'actions', label: edge.name, note: destinationOf(edge.name), action: { kind: 'move', name: edge.name } }));
+    .map((edge) => edge.name)
+    .sort((a, b) => direction(a) - direction(b));
+}
+
+export function transitionRows(from: TicketStatus): Candidate[] {
+  return rankedMoves(from).map((name) => ({ id: `move-${name}`, group: 'actions', label: name, note: destinationOf(name), action: { kind: 'move', name } }));
 }

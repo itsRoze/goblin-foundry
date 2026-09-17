@@ -1,0 +1,5 @@
+# Project view at phone width: tile order and the graph's scroll box
+
+**Found:** issue 11 close-out critique of `web/src/pages/ProjectView.tsx` (2026-09-16).
+
+At 390px the `graph` tile is second in the stack and is a nested vertical scroll region (`.gf-graph { overflow: auto; max-height: 480px }`), so a thumb scrolls through 480px of one-column diamonds with no scrollbar drawn to reach `design`, `about` and `history` at y ≈ 1250. DESIGN.md Layout (issue 11) says nothing inside a tile takes the vertical scroll from the page; Components (issue 08) says the graph scrolls inside the tile body. Resolve the contradiction, and consider: natural height under the stacked-board breakpoint; a wrapped-row layout for unconnected nodes; the desk owning tile order below the grid (`tickets · design · about · graph · history`); or foldable tiles on a phone the way board sections fold. Also from the same critique: `no tickets — press c` and the description placeholder `press e` address a keyboard a thumb does not have; the `AboutTile` and `NewTicket` refusals never auto-clear while `useRefusal` does; `save` on an empty title is a silent no-op.

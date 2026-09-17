@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { parseSlugId, slugPath, type App } from '@goblin/shared';
-import { ProblemError } from '../api';
 import { MarkdownField, Saving, focusEditor, type SaveState, type Saver } from '../editor';
 import { useKey } from '../keys';
 import { useApps, useIntent } from '../queries';
-import { Chip, Empty, InlineForm, Tile, type Field } from '../ui';
+import { Chip, Empty, InlineForm, Tile, refusalLine, type Field } from '../ui';
 
 /** `/apps/<slug>-<id>`: the id resolves; a stale slug redirects to the current one. */
 export function useSlugParam(kind: 'apps' | 'projects', entity: { id: number; name: string } | undefined) {
@@ -68,7 +67,7 @@ export function AboutTile<Body>({
       await intent.mutateAsync(name);
       if (name === 'trash') nav(`/${kind}s`);
     } catch (e) {
-      setRefusal(e instanceof ProblemError ? e.line : String(e));
+      setRefusal(refusalLine(e));
     }
   };
 
@@ -147,6 +146,7 @@ export function DescriptionField({
       placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}
       value={value}
       onSave={(description) => saving.run(() => patch({ description }))}
+      status={saving.state}
       testId={`${kind}-description`}
     />
   );

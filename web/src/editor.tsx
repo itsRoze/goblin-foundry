@@ -44,9 +44,9 @@ export function useSaving() {
 /** What `useSaving` hands back: the tile's indicator, and the wrapper every field's write goes through. */
 export type Saver = ReturnType<typeof useSaving>;
 
-export const Saving = ({ state }: { state: SaveState }) =>
+export const Saving = ({ state, testId = 'saving' }: { state: SaveState; testId?: string }) =>
   state === 'idle' ? null : (
-    <span className="gf-saving" data-testid="saving" data-state={state}>
+    <span className="gf-saving" data-testid={testId} data-state={state}>
       {state === 'saving' ? 'saving…' : 'saved'}
     </span>
   );
@@ -142,6 +142,7 @@ export function MarkdownField({
   placeholder,
   onSave,
   fill,
+  status,
   testId,
 }: {
   shape: EditorShape;
@@ -153,6 +154,8 @@ export function MarkdownField({
   onSave: (markdown: string) => Promise<unknown>;
   /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
   fill?: boolean;
+  /** The tile's save word, echoed in the mode line where a phone with its keyboard up can still see it (issue 11). */
+  status?: SaveState;
   testId?: string;
 }) {
   const server = value ?? '';
@@ -333,7 +336,7 @@ export function MarkdownField({
 
   return (
     <div
-      className={`gf-md is-${shape}${empty ? ' is-empty' : ''}${fill ? ' is-fill' : ''}`}
+      className={`gf-md is-${shape}${empty ? ' is-empty' : ''}${fill ? ' is-fill' : ''}${engaged ? ' is-engaged' : ''}`}
       data-testid={testId}
       data-placeholder={placeholder}
       onFocus={() => {
@@ -346,7 +349,7 @@ export function MarkdownField({
     >
       <EditorContent editor={editor} className="gf-md-content" />
       {editor && engaged && (
-        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} />
+        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} />
       )}
       {refusal && (
         <p className="gf-refusal" role="alert">
@@ -372,6 +375,7 @@ function ModeLine({
   setLinking,
   openLink,
   range,
+  status,
 }: {
   editor: Editor;
   shape: EditorShape;
@@ -379,6 +383,7 @@ function ModeLine({
   setLinking: (href: string | null) => void;
   openLink: () => void;
   range: { current: { from: number; to: number } | null };
+  status?: SaveState;
 }) {
   // only what this configuration's schema actually has: the inline shape has no strike, so it gets no strike button
   const marks = useMemo(() => MARKS.filter((c) => c.id in editor.schema.marks), [editor]);
@@ -485,28 +490,39 @@ function ModeLine({
       ))}
 
       <div className="gf-mode-slot">
+        {/* the tile header says this too; on a phone with the keyboard up the header is off screen and this line is not */}
+        {status !== undefined && status !== 'idle' && <Saving state={status} testId="saving-line" />}
         {linking !== null ? (
-          <input
-            autoFocus
-            type="text"
-            className="gf-mode-input"
-            aria-label="link url"
-            placeholder="https://"
-            value={linking}
-            onMouseDown={(e) => e.stopPropagation()}
-            onChange={(e) => setLinking(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commit();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                // `esc` is the one cancel left in the editor: it puts the caret back and writes nothing
-                close(() => restore().run());
-              }
-            }}
-          />
+          <>
+            <input
+              autoFocus
+              type="text"
+              className="gf-mode-input"
+              aria-label="link url"
+              placeholder="https://"
+              value={linking}
+              onMouseDown={(e) => e.stopPropagation()}
+              onChange={(e) => setLinking(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commit();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  // `esc` is the one cancel left in the editor: it puts the caret back and writes nothing
+                  close(() => restore().run());
+                }
+              }}
+            />
+            {/* the same two ends for a hand with no keys (issue 11): `apply` is `⏎`, `cancel` is `esc` — cancelling the link, never the document */}
+            <button type="button" className="gf-mode-btn" title="apply · ⏎" data-testid="link-apply" onClick={commit}>
+              apply
+            </button>
+            <button type="button" className="gf-mode-btn" title="cancel · esc" data-testid="link-cancel" onClick={() => close(() => restore().run())}>
+              cancel
+            </button>
+          </>
         ) : fence !== null ? (
           // the fence's language, which the document itself no longer shows you
           <input
@@ -531,9 +547,10 @@ function ModeLine({
             }}
           />
         ) : (
-          <span className="gf-mode-hint">
+          // `done` is what `⌘⏎` does — flush and let go — as a button, for a finger (issue 11); the document saves itself either way
+          <button type="button" className="gf-mode-btn gf-mode-done" title="done · ⌘⏎" data-testid="editor-done" onClick={() => (editor.view.dom as HTMLElement).blur()}>
             <kbd className="gf-kbd">⌘⏎</kbd> done
-          </span>
+          </button>
         )}
       </div>
     </div>

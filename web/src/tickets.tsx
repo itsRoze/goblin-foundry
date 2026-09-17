@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { CREATABLE_STATUSES, isBlocked, isCreatable, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus } from '@goblin/shared';
-import { ProblemError } from './api';
+import { CREATABLE_STATUSES, destinationOf, isBlocked, isCreatable, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { useOpensCreate } from './creating';
 import { useCursor } from './desk';
 import { formKeys, useKey } from './keys';
+import { rankedMoves } from './palette';
 import { useCreateTicket, useApps, useProjects } from './queries';
-import { Chip, Empty, Kbd, Since, type Namer, type Tone } from './ui';
+import { Chip, Empty, Kbd, Since, refusalLine, useCloseOnOutside, type Namer, type Tone } from './ui';
 
 /**
  * Status → meaning (DESIGN.md Colors). `backlog/todo/planning` are all "not yet
@@ -58,13 +58,29 @@ export interface DraggedCard {
 export const asDraggedCard = (data: Record<string | symbol, unknown>): DraggedCard | null =>
   typeof data.key === 'string' && typeof data.status === 'string' ? { key: data.key, status: data.status as TicketStatus } : null;
 
-/** The kanban card: key + status note, title, then whatever the view options ask for (DESIGN.md Components). */
+/** What a card's menu can do to its own Ticket — the board's verbs, addressed to this card and no other (issue 11). */
+export interface CardActions {
+  move: (name: TransitionName) => void;
+  trash: () => void;
+  blockedBy: () => void;
+}
+
+/**
+ * The kanban card: key + status note, title, then whatever the view options
+ * ask for (DESIGN.md Components). The card is a link and the whole of it is
+ * the drag handle; the `⋯` beside it is the menu (issue 11), a sibling rather
+ * than a child so a link never contains a button. Whatever the board has to
+ * say *about* this card — a refusal, a question, where it went — goes under it.
+ */
 export function TicketCard({
   ticket,
   cursor,
   meta,
   updated,
   at,
+  menu,
+  canDrag,
+  children,
 }: {
   ticket: Ticket;
   /** The Cursor is on this card: the selected-row mark, never the full border, which is the drag's. */
@@ -72,57 +88,171 @@ export function TicketCard({
   meta: string | null;
   updated: string | null;
   at: number;
+  menu: CardActions;
+  /** Only a horizontal board drags (issue 11): stacked sections move a card through its menu. */
+  canDrag: boolean;
+  children?: ReactNode;
 }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [lifted, setLifted] = useState(false);
   // the whole card is the drag handle — no grip (DESIGN.md Components)
   useEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    if (!element || !canDrag) return;
     return draggable({
       element,
       getInitialData: (): Record<string, unknown> => ({ key: ticket.key, status: ticket.status }),
       onDragStart: () => setLifted(true),
       onDrop: () => setLifted(false),
     });
-  }, [ticket.key, ticket.status]);
+  }, [ticket.key, ticket.status, canDrag]);
 
   // blocked is a derived condition, never a colour: the outline glyph and the strike, nothing else (DESIGN.md Colors)
   const blocked = isBlocked(ticket);
   return (
-    <Link
-      ref={ref}
-      className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}${cursor ? ' is-cursor' : ''}`}
-      to={ticketPath(ticket)}
-      aria-current={cursor ? true : undefined}
-      data-testid={`card-${ticket.key}`}
-    >
-      <span className="gf-card-id">
-        <span className="gf-card-key">{ticket.key}</span>
-        <i>{ticket.status}</i>
-      </span>
-      <span className="gf-card-title">
-        {blocked && (
-          <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
-            ◇
+    <div className="gf-card-slot">
+      <Link
+        ref={ref}
+        className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}${cursor ? ' is-cursor' : ''}`}
+        to={ticketPath(ticket)}
+        aria-current={cursor ? true : undefined}
+        data-testid={`card-${ticket.key}`}
+        // what the touch drag reads off the card it landed on (touch-drag.ts)
+        data-key={ticket.key}
+        data-status={ticket.status}
+      >
+        <span className="gf-card-id">
+          <span className="gf-card-key">{ticket.key}</span>
+          <i>{ticket.status}</i>
+        </span>
+        <span className="gf-card-title">
+          {blocked && (
+            <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
+              ◇
+            </span>
+          )}
+          {ticket.title}
+        </span>
+        {meta !== null && <span className="gf-card-meta">{meta}</span>}
+        {updated !== null && (
+          <span className="gf-card-meta">
+            updated <Since iso={updated} at={at} />
           </span>
         )}
-        {ticket.title}
-      </span>
-      {meta !== null && <span className="gf-card-meta">{meta}</span>}
-      {updated !== null && (
-        <span className="gf-card-meta">
-          updated <Since iso={updated} at={at} />
-        </span>
+      </Link>
+      <CardMenu ticket={ticket} actions={menu} />
+      {children}
+    </div>
+  );
+}
+
+/**
+ * `⋯` on a card (issue 11): the state tile's arrows and the ways of stopping,
+ * for this Ticket alone. It never moves the Cursor — a menu that changed what
+ * `a s d` point at would make a tap do two things — and it reads the same
+ * table the drag and the keys read, so it cannot offer a move they refuse.
+ * Forward moves first, as the palette ranks them; `cancel` and `trash` apart,
+ * as the state tile sets them.
+ */
+function CardMenu({ ticket, actions }: { ticket: Ticket; actions: CardActions }) {
+  const [open, setOpen] = useState(false);
+  const slot = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useCloseOnOutside(slot, open, close);
+  /** Whether the panel hangs above the button instead of below it: it must fit the screen it is on. */
+  const [up, setUp] = useState(false);
+  useLayoutEffect(() => {
+    if (!open || !panel.current) return;
+    const box = panel.current.getBoundingClientRect();
+    // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
+    const seen = window.visualViewport?.height ?? window.innerHeight;
+    setUp(box.bottom > seen && box.height < box.top);
+    // the keys land on the first row; the page must not move for a menu that opened under a tap
+    panel.current.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  }, [open]);
+  useEffect(() => {
+    if (!open) setUp(false);
+  }, [open]);
+
+  const run = (act: () => void) => {
+    setOpen(false);
+    act();
+  };
+  const verbs = rankedMoves(ticket.status);
+  // `close` skips the lifecycle to `done`: in a tapped menu it goes last among the arrows, against the separator,
+  // so a thumb that slips off the first row lands on a lateral move and not on an ending
+  const moves = [...verbs.filter((name) => name !== 'cancel' && name !== 'close'), ...verbs.filter((name) => name === 'close')];
+  const cancel = verbs.includes('cancel');
+
+  return (
+    <div className="gf-card-menu-slot" ref={slot}>
+      <button
+        type="button"
+        className="gf-card-menu-btn"
+        aria-label={`actions for ${ticket.key}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-testid={`menu-${ticket.key}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          ref={panel}
+          className={`gf-pop gf-card-menu${up ? ' is-up' : ''}`}
+          role="menu"
+          aria-label={`actions for ${ticket.key}`}
+          data-testid={`card-menu-${ticket.key}`}
+          // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` closes it, and none of
+          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setOpen(false);
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              const rows = [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+              const at = rows.indexOf(document.activeElement as HTMLElement);
+              rows[(at + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus({ preventScroll: true });
+            }
+          }}
+        >
+          <div className="gf-menu-group">
+            {moves.map((name) => (
+              <button key={name} type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-${name}`} onClick={() => run(() => actions.move(name))}>
+                {name}
+                <span className="gf-menu-note">{destinationOf(name)}</span>
+              </button>
+            ))}
+            <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-blocked-by`} onClick={() => run(actions.blockedBy)}>
+              blocked by…
+            </button>
+          </div>
+          <div className="gf-menu-group is-separated">
+            {cancel && (
+              <button type="button" role="menuitem" className="gf-menu-item is-danger" data-testid={`menu-${ticket.key}-cancel`} onClick={() => run(() => actions.move('cancel'))}>
+                cancel
+              </button>
+            )}
+            <button type="button" role="menuitem" className="gf-menu-item is-danger" data-testid={`menu-${ticket.key}-trash`} onClick={() => run(actions.trash)}>
+              trash
+            </button>
+          </div>
+        </div>
       )}
-    </Link>
+    </div>
   );
 }
 
 /**
  * `c` creates a ticket wherever there is a scope (DESIGN.md Interaction): the board
  * passes none, an App or Project view passes its own. Returns the form to
- * render, or `null` when nobody has pressed `c`.
+ * render — `null` when nobody has pressed `c` — and the opener, for the hint
+ * that is also a button (issue 11).
  */
 export function useNewTicket(scope: { app_id?: number; project_id?: number }, testId = 'new-ticket') {
   const [open, setOpen] = useState(false);
@@ -132,8 +262,7 @@ export function useNewTicket(scope: { app_id?: number; project_id?: number }, te
   useOpensCreate('ticket', start);
   const { app_id, project_id } = scope;
 
-  if (!open) return null;
-  return (
+  const form = open ? (
     <NewTicket
       testId={testId}
       onCancel={() => setOpen(false)}
@@ -142,7 +271,8 @@ export function useNewTicket(scope: { app_id?: number; project_id?: number }, te
         setOpen(false);
       }}
     />
-  );
+  ) : null;
+  return { form, open: start };
 }
 
 /** Where a ticket the board makes starts: the first status in the Filter it may be *created* in, else `backlog`. */
@@ -170,6 +300,7 @@ export function useBoardCreate(filter: TicketFilter, statuses: readonly TicketSt
   return {
     form: open ? <BoardCreate filter={filter} statuses={statuses} onDone={() => setOpen(false)} /> : null,
     close: open ? () => setOpen(false) : null,
+    open: start,
   };
 }
 
@@ -209,7 +340,7 @@ function BoardCreate({ filter, statuses, onDone }: { filter: TicketFilter; statu
       await create.mutateAsync({ title: title.trim(), status, simple, ...placement } satisfies CreateTicketBody);
       onDone();
     } catch (e) {
-      setError(e instanceof ProblemError ? e.line : String(e));
+      setError(refusalLine(e));
     } finally {
       busy.current = false;
     }
@@ -256,9 +387,7 @@ function BoardCreate({ filter, statuses, onDone }: { filter: TicketFilter; statu
       <label className="gf-toggle">
         <input type="checkbox" checked={simple} onChange={(e) => setSimple(e.target.checked)} /> simple
       </label>
-      <span className="gf-new-ticket-keys">
-        <Kbd>⌘⏎</Kbd> save <Kbd>esc</Kbd> cancel
-      </span>
+      <FormButtons onSave={() => void save()} onCancel={onDone} />
       {error && (
         <p className="gf-refusal gf-new-row-refusal" role="alert">
           {error}
@@ -267,6 +396,18 @@ function BoardCreate({ filter, statuses, onDone }: { filter: TicketFilter; statu
     </div>
   );
 }
+
+/** `save` and `cancel` as buttons that carry their keys (issue 11): a hint is not a control, and a finger has no `⌘⏎`. */
+const FormButtons = ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (
+  <span className="gf-form-actions gf-new-ticket-keys">
+    <button type="button" className="gf-btn is-primary" data-testid="form-save" onClick={onSave}>
+      save <Kbd>⌘⏎</Kbd>
+    </button>
+    <button type="button" className="gf-btn" data-testid="form-cancel" onClick={onCancel}>
+      cancel <Kbd>esc</Kbd>
+    </button>
+  </span>
+);
 
 /**
  * A ticket from a title alone. One line, because at this point the ticket is
@@ -284,7 +425,7 @@ export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: st
     try {
       await onCreate(title.trim());
     } catch (e) {
-      setError(e instanceof ProblemError ? e.line : String(e));
+      setError(refusalLine(e));
     } finally {
       busy.current = false;
     }
@@ -302,9 +443,7 @@ export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: st
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={formKeys(() => void save(), onCancel)}
       />
-      <span className="gf-new-ticket-keys">
-        <Kbd>⌘⏎</Kbd> save <Kbd>esc</Kbd> cancel
-      </span>
+      <FormButtons onSave={() => void save()} onCancel={onCancel} />
       {error && (
         <p className="gf-refusal" role="alert">
           {error}

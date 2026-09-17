@@ -9,7 +9,8 @@ import type { Page } from '@playwright/test';
  * restate the media queries — any edit that kept `app.css` and this file in step
  * would pass by construction, which is no test at all. So the tiers are checked
  * by their consequence: a tile stays in a readable band at every width, the page
- * never scrolls sideways, and the kanban does its scrolling inside its own tile.
+ * never scrolls sideways, and the kanban does its scrolling inside its own tile
+ * where it is a kanban — and stacks where there is no room for one (issue 11).
  */
 
 /**
@@ -23,10 +24,11 @@ const GRID_FROM = 1440;
 const NARROWEST = 300;
 const WIDEST = 900;
 
-const WIDTHS = [375, 600, 900, 1200, 1440, 1920, 2560, 3440];
+/** The ticket's five (390 · 768 · 1440 · 1920 · 2560) and the tiers' edges either side of them. */
+const WIDTHS = [375, 390, 600, 768, 900, 1200, 1440, 1920, 2560, 3440];
 
 /** Every routine page, including the ticket view — the densest tile in the app. */
-const ROUTES = ['/', '/apps', '/projects'];
+const ROUTES = ['/', '/apps', '/projects', '/settings', '/trash'];
 
 const measure = (page: Page) =>
   page.evaluate(() => {
@@ -48,11 +50,14 @@ test('no page scrolls sideways, and a tile never stretches past reading width', 
   await form.getByLabel('ticket title').press('ControlOrMeta+Enter');
   const card = page.locator('[data-testid^="card-"]', { hasText: 'A ticket to measure' });
   await expect(card).toBeVisible();
-  const ticketPath = new URL(await card.getAttribute('href') ?? '', 'http://x').pathname;
+  const ticketPath = new URL((await card.getAttribute('href')) ?? '', 'http://x').pathname;
+  // and an app, so the App view — a page of four tiles — is measured too
+  const app = await page.request.post('/api/apps', { data: { name: 'Measured' } }).then((r) => r.json() as Promise<{ id: number }>);
+  const appPath = `/apps/measured-${app.id}`;
 
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of [...ROUTES, ticketPath]) {
+    for (const route of [...ROUTES, ticketPath, appPath]) {
       await page.goto(route);
       await page.waitForSelector('.gf-desk .gf-tile');
       const { overflow, tiles } = await measure(page);
@@ -66,29 +71,61 @@ test('no page scrolls sideways, and a tile never stretches past reading width', 
   }
 });
 
-test('the kanban scrolls inside its tile rather than the page, and its columns stop growing', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto('/');
-  await page.waitForSelector('.gf-cols');
-  const narrow = await page.evaluate(() => {
-    const cols = document.querySelector('.gf-cols')!;
-    return {
-      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      kanbanScrollsInside: cols.scrollWidth > cols.clientWidth,
-      workspaceLabelsHidden: getComputedStyle(document.querySelector('.gf-ws-label')!).display === 'none',
-    };
-  });
-  expect(narrow).toEqual({ pageOverflow: 0, kanbanScrollsInside: true, workspaceLabelsHidden: true });
+/**
+ * The board's orientation is its own width's decision (issue 11): a phone gets
+ * sections down the page, a tablet keeps the kanban and scrolls it inside the
+ * tile, and an ultrawide's columns stop growing. Either side of the breakpoint
+ * is checked, not only the far ends.
+ */
+test('the board stacks where the columns would be cramped, and keeps the kanban inside its tile where they are not', async ({ page }) => {
+  const orientation = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+    await page.waitForSelector('[data-testid="board"]');
+    return page.evaluate(() => {
+      const board = document.querySelector<HTMLElement>('[data-testid="board"]')!;
+      return {
+        orientation: board.dataset.orientation,
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        scrollsInside: board.scrollWidth > board.clientWidth,
+        workspaceLabelsHidden: getComputedStyle(document.querySelector('.gf-ws-label')!).display === 'none',
+      };
+    });
+  };
+
+  // a phone: stacked, nothing scrolls sideways at all — the page scrolls down instead
+  expect(await orientation(390)).toEqual({ orientation: 'vertical', pageOverflow: 0, scrollsInside: false, workspaceLabelsHidden: true });
+  await expect(page.getByTestId('section-planning')).toBeVisible();
+  await expect(page.locator('.gf-cols')).toHaveCount(0);
   // the ways out of the board are never among the words the bar drops
   await expect(page.getByRole('link', { name: 'trash' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'settings' })).toBeVisible();
+
+  // and still nothing sideways with a card's menu open (LESSONS 2026-09-16)
+  await page.request.post('/api/tickets', { data: { title: 'Menu measured', status: 'planning' } });
+  await page.goto('/?q=Menu%20measured');
+  await page.locator('[data-testid^="menu-GF-"]').first().click();
+  await expect(page.locator('[data-testid^="card-menu-GF-"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+
+  // just under the breakpoint and just over it
+  expect((await orientation(680)).orientation).toBe('vertical');
+  expect((await orientation(720)).orientation).toBe('horizontal');
+
+  // a tablet: the kanban, scrolling inside its tile and never the page
+  expect(await orientation(768)).toEqual({ orientation: 'horizontal', pageOverflow: 0, scrollsInside: true, workspaceLabelsHidden: true });
+  await expect(page.getByTestId('col-backlog')).toBeVisible();
+
+  // a resized window changes its mind without a reload
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.getByTestId('board')).toHaveAttribute('data-orientation', 'vertical');
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await expect(page.getByTestId('board')).toHaveAttribute('data-orientation', 'horizontal');
 
   // wide enough that eight columns fit with room to spare: they must stop, not stretch
   await page.setViewportSize({ width: 2560, height: 900 });
   await page.goto('/');
   await page.waitForSelector('.gf-col');
-  const widest = await page.evaluate(() =>
-    Math.max(...[...document.querySelectorAll('.gf-col')].map((c) => c.getBoundingClientRect().width)),
-  );
+  const widest = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.gf-col')].map((c) => c.getBoundingClientRect().width)));
   expect(widest).toBeLessThanOrEqual(280);
 });

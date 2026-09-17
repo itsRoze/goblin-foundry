@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
-import { ProblemError } from '../api';
 import { useKey } from '../keys';
 import { useRestore, useTrash, type TrashKind } from '../queries';
 import { useCrumb } from '../shell';
-import { Empty, Kbd, Tile, when } from '../ui';
+import { Empty, Kbd, Tile, refusalLine, when } from '../ui';
 
 interface Recoverable {
   id: number;
@@ -23,7 +22,7 @@ export function TrashPage() {
     try {
       await restore.mutateAsync({ kind, id });
     } catch (e) {
-      setRefusal(e instanceof ProblemError ? e.line : String(e));
+      setRefusal(refusalLine(e));
     }
   };
 
