@@ -1,6 +1,6 @@
 # 11: Mobile-first responsive layout and touch controls
 
-**Status:** ready-for-agent
+**Status:** done (PR #21 merged 2026-09-16, 8f4fe78)
 
 **Blocked by:** 04 (Lifecycle — transition table, intent endpoints, drag-and-drop)
 
