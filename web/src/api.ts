@@ -8,8 +8,13 @@ export class ProblemError extends Error {
   ) {
     super(problem.hint ?? problem.detail ?? problem.title ?? `HTTP ${status}`);
   }
-  /** One line for an inline refusal / validation message. */
-  get line(): string {
+  /**
+   * One line for an inline refusal / validation message. Not `line`: WebKit
+   * gives every `Error` own `line`, `column` and `sourceURL` properties, and an
+   * own property shadows a prototype getter — so on iOS Safari a refusal named
+   * `line` read as the source line the error was thrown from (issue 11).
+   */
+  get sentence(): string {
     if (this.problem.issues?.length) return this.problem.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join(' · ');
     return this.message;
   }

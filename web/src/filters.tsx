@@ -3,7 +3,7 @@ import { DEFAULT_BOARD_STATUSES, TICKET_STATUSES, canonicalStatuses, serialiseTi
 import { useKey } from './keys';
 import { useApps, useProjects } from './queries';
 import { projectFitsApp, useNames } from './tickets';
-import { Kbd } from './ui';
+import { Kbd, useCloseOnOutside } from './ui';
 
 /**
  * The board's Filter bar (issue 06): the strip between the tile header and the
@@ -27,16 +27,27 @@ export function FilterBar({
   bad,
   onChange,
   refusal,
+  findRef,
 }: {
   filter: TicketFilter;
   bad: BadValues;
   onChange: (next: TicketFilter) => void;
   refusal: string | null;
+  /** Handed back to the board so its `f find` hint can be the control as well as the key (issue 11). */
+  findRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const [open, setOpen] = useState<Which | null>(null);
   const close = useCallback(() => setOpen(null), []);
   const text = useRef<HTMLInputElement>(null);
-  useKey('f', useCallback(() => text.current?.focus(), []));
+  const find = useCallback(() => text.current?.focus(), []);
+  useKey('f', find);
+  useEffect(() => {
+    if (!findRef) return;
+    findRef.current = find;
+    return () => {
+      findRef.current = null;
+    };
+  }, [findRef, find]);
 
   return (
     <div className="gf-filters" data-testid="filter-bar">
@@ -132,23 +143,6 @@ function ChipButton({
       {shown !== null && <span className="gf-filter-value">{shown}</span>}
     </button>
   );
-}
-
-/**
- * A press anywhere outside the chip *and* its popover closes it. The listener
- * watches the whole slot rather than the panel alone: watching the panel would
- * close on the way down and let the chip's own click reopen it, so pressing an
- * open chip a second time would never shut it.
- */
-function useCloseOnOutside(slot: React.RefObject<HTMLElement | null>, open: boolean, onClose: () => void) {
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!slot.current?.contains(e.target as Node)) onClose();
-    };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
-  }, [slot, open, onClose]);
 }
 
 /** The popover itself: anchored beneath its chip, closed by `esc` or by a press outside its slot. */

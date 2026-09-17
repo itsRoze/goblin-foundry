@@ -98,7 +98,10 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
   color: var(--gf-ink); transition: border-color var(--gf-fast) var(--gf-ease);
   cursor: grab; /* the whole card is the drag handle — no grip (DESIGN.md Components) */
+  -webkit-touch-callout: none; /* the drag handle for a finger too (issue 11): a long-press lifts it, not the browser's menu */
 }
+/* and nothing selects while it is held; a coarse pointer has no use for selecting a card's words */
+@media (pointer: coarse) { .gf-card { user-select: none; } }
 .gf-card:hover { border-color: var(--gf-rule-2); text-decoration: none; }
 .gf-card.is-cursor { border-left: 2px solid var(--gf-system); padding-left: calc(var(--gf-s3) - 1px); }
 .gf-card-id { display: flex; justify-content: space-between; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); }
@@ -123,12 +126,14 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
 .gf-new-ticket-keys { display: flex; gap: var(--gf-s2); align-items: center; font: var(--gf-t-meta); color: var(--gf-mute); }
-.gf-view-menu { display: flex; gap: var(--gf-s4); flex-wrap: wrap; padding-bottom: var(--gf-s3); border-bottom: 1px solid var(--gf-rule); }
+.gf-view-menu { display: flex; gap: var(--gf-s4); flex-wrap: wrap; align-items: center; padding-bottom: var(--gf-s3); border-bottom: 1px solid var(--gf-rule); }
 
 /* the ticket's about tile */
 .gf-inline-title { font: var(--gf-t-h); color: var(--gf-ink); background: none; border: 1px solid transparent; border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; text-align: left; cursor: text; }
 .gf-inline-title:hover { border-color: var(--gf-rule-2); }
-.gf-inline-title-input { font: var(--gf-t-h); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; margin: 0 -8px; width: 100%; box-sizing: border-box; }
+.gf-inline-title-input { font: var(--gf-t-h); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box; }
+/* the input and its two buttons, bleeding the way the resting title does */
+.gf-inline-title-edit { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0 -8px; }
 .gf-since { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-plus { font: var(--gf-t-meta); color: var(--gf-mute); background: none; border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 0 7px; cursor: pointer; line-height: 17px; }
 .gf-plus:hover { color: var(--gf-system); border-color: var(--gf-system); }
@@ -160,6 +165,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 4px 8px; width: 100%; box-sizing: border-box;
 }
 .gf-field textarea { resize: vertical; }
+/* a select in a kv row (the Ticket view's app and project) wears the input's clothes too, or it renders in the UA's Arial and white */
+.gf-kv select { font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; max-width: 100%; }
 .gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }
 /* the same line as a refusal, with a way through it */
 .gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
@@ -170,6 +177,61 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-history li { display: flex; flex-direction: column; gap: 2px; padding: var(--gf-s2) 0; border-bottom: 1px solid var(--gf-rule); }
 .gf-history-what { font: var(--gf-t-body); }
 .gf-history-meta { font: var(--gf-t-meta); color: var(--gf-mute); }
+
+/*
+ * The card and what hangs off it (issue 11): the link is the card, the `⋯` is a sibling in its
+ * top-right corner — a link never contains a button — and whatever the board says about the
+ * card sits under it in the same slot. The id row leaves the corner free for the mark.
+ */
+.gf-card-slot { position: relative; display: flex; flex-direction: column; gap: var(--gf-s1); }
+.gf-card-slot .gf-card-id { padding-right: 22px; }
+/* the `⋯` is quiet — three dots in mute, no box — but its hit area is 32px square, the size a finger needs;
+   the mark need not fill what it can be pressed on. It goes ink on hover and system while its menu is open. */
+.gf-card-menu-slot { position: absolute; top: 0; right: 0; }
+.gf-card-menu-btn {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: var(--gf-t-h); color: var(--gf-mute); letter-spacing: .1em;
+  transition: color var(--gf-fast) var(--gf-ease);
+}
+.gf-card-menu-btn:hover { color: var(--gf-ink); }
+.gf-card-menu-btn[aria-expanded='true'] { color: var(--gf-system); }
+/* the menu is the picker popover's clothes (Components), hung from the card's right edge so it never runs off a phone
+   (`.gf-pop` anchors left and is declared later, so this has to outrank it) */
+.gf-pop.gf-card-menu { left: auto; right: 0; top: calc(100% - var(--gf-s1)); min-width: 160px; padding: var(--gf-s1) 0; display: flex; flex-direction: column; }
+/* when there is no room below on the screen it hangs above instead: a menu has to fit the screen it is on */
+.gf-pop.gf-card-menu.is-up { top: auto; bottom: 100%; }
+.gf-menu-group { display: flex; flex-direction: column; }
+/* `cancel` and `trash` apart from the arrows, as the state tile keeps them */
+.gf-menu-group.is-separated { margin-top: var(--gf-s1); padding-top: var(--gf-s1); border-top: 1px solid var(--gf-rule); }
+/* a row is a button the height a finger can hit, in the picker row's shape: the 2px inset marks the one under the pointer */
+.gf-menu-item {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--gf-s3);
+  min-height: 34px; padding: var(--gf-s1) var(--gf-s3) var(--gf-s1) calc(var(--gf-s3) - 2px); width: 100%; box-sizing: border-box;
+  background: none; border: none; border-left: 2px solid transparent; cursor: pointer; text-align: left;
+  font: var(--gf-t-h); color: var(--gf-ink);
+}
+/* the browser's own focus outline is let be (Shapes); the row mark is for the pointer and the arrow keys alike */
+.gf-menu-item:hover, .gf-menu-item:focus-visible { border-left-color: var(--gf-system); background: var(--gf-rule-2); }
+.gf-menu-item.is-danger { color: var(--gf-human); }
+.gf-menu-note { font: var(--gf-t-meta); color: var(--gf-mute); }
+
+/*
+ * The stacked board (issue 11): below the orientation breakpoint the columns become sections
+ * down the page, each with the column head as a button that folds it. The count stays on show
+ * folded or not, because it counts what is on the board, not what is on screen. Page scrolling,
+ * no scroll region of its own: nothing inside a tile may take the vertical scroll from the page.
+ */
+.gf-sections { display: flex; flex-direction: column; gap: var(--gf-s3); }
+.gf-section { display: flex; flex-direction: column; gap: var(--gf-s2); min-width: 0; }
+.gf-section-head { width: 100%; min-height: 36px; align-items: center; background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; text-align: left; }
+.gf-section-head:hover { color: var(--gf-ink); }
+.gf-section-mark { display: inline-block; width: 14px; color: var(--gf-mute); }
+/* a move said where the card was: the confirm line's shape, with the way to it */
+.gf-notice { animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
+
+/* the card under a finger, drawn where the finger is and a little above it so the finger does not hide it */
+.gf-ghost { position: fixed; z-index: 5; width: 180px; pointer-events: none; transform: translate(-50%, calc(-100% - 24px)); border-color: var(--gf-system); }
 
 /* the drag (DESIGN.md Components): the legal columns are marked, the illegal ones are never dimmed.
    The resting column carries the border transparent and the padding already, so a drag paints
@@ -324,8 +386,30 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 }
 /* a field that owns the tile's width runs its line to the tile's edges, like the bar does */
 .gf-md.is-block > .gf-mode { left: calc(-1 * var(--gf-pad-x)); right: calc(-1 * var(--gf-pad-x)); padding-left: var(--gf-pad-x); padding-right: var(--gf-pad-x); }
-/* an inline field is one row in a kv list: its line hangs below rather than taking a row of its own */
-.gf-md.is-inline > .gf-mode { top: 100%; bottom: auto; border: 1px solid var(--gf-rule); }
+/* an inline field is one row in a kv list: its line hangs below rather than taking a row of its own — and the
+   row keeps that seat reserved, as a block field does, so the line never lands on the buttons under it (issue 11) */
+.gf-md.is-inline { padding-bottom: 30px; }
+.gf-md.is-inline > .gf-mode { top: calc(100% - 30px); bottom: auto; border: 1px solid var(--gf-rule); }
+/*
+ * At phone width the line is one row that scrolls sideways rather than two or three that wrap, and it is
+ * *in flow* and sticky to the bottom of the screen: a field taller than what the software keyboard has
+ * left of the viewport keeps `done`, the marks and the save word on screen while the caret is anywhere in
+ * it (issue 11). The reserved seat is the same 42px the line takes, and the seat gives way to the line
+ * while the field is engaged, so nothing under the field moves when the caret arrives or leaves.
+ */
+@media (max-width: 599px) {
+  .gf-md.is-block, .gf-md.is-inline { padding-bottom: 42px; }
+  .gf-md.is-block.is-engaged, .gf-md.is-inline.is-engaged { padding-bottom: 0; }
+  .gf-md > .gf-mode {
+    position: sticky; inset: auto 0 0; z-index: 2;
+    box-sizing: border-box; height: 42px; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+  }
+  .gf-md.is-block > .gf-mode { margin-left: calc(-1 * var(--gf-pad-x)); margin-right: calc(-1 * var(--gf-pad-x)); }
+  .gf-md.is-inline > .gf-mode { margin: 0; }
+  .gf-mode-group { flex: none; }
+  /* the right slot stays in reach at the end of the row, whatever the row scrolled to */
+  .gf-mode-slot { flex: none; flex-wrap: nowrap; position: sticky; right: 0; background: var(--gf-raised); padding-left: var(--gf-s2); border-left: 1px solid var(--gf-rule-2); }
+}
 .gf-mode-group { display: flex; align-items: center; gap: 1px; }
 .gf-mode-group + .gf-mode-group { padding-left: var(--gf-s3); border-left: 1px solid var(--gf-rule-2); }
 .gf-mode-btn {
@@ -335,8 +419,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 }
 .gf-mode-btn:hover { color: var(--gf-ink); border-color: var(--gf-rule-2); }
 .gf-mode-btn.is-on { color: var(--gf-system); border-color: var(--gf-system); }
-.gf-mode-slot { margin-left: auto; display: flex; align-items: center; min-width: 0; }
-.gf-mode-hint { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
+.gf-mode-slot { margin-left: auto; display: flex; align-items: center; gap: var(--gf-s1); min-width: 0; flex-wrap: wrap; }
+/* `done` in the right slot: a button in the mode line's own clothes, its key inside it (issue 11) */
+.gf-mode-done { display: inline-flex; align-items: center; gap: var(--gf-s2); font: var(--gf-t-meta); text-transform: none; }
 .gf-mode-input {
   font: var(--gf-t-meta); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; width: 22ch; max-width: 100%;
@@ -486,6 +571,25 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   .gf-filter-clear { order: -1; }
 }
 
+/*
+ * A coarse pointer (issue 11): every control a finger is meant for is at least 32px tall — the box grows,
+ * the drawn mark does not, so the house's 4px by 10px button reads as before and simply catches more —
+ * and a hint that is not also a control folds away, because a key a finger cannot press is not information
+ * (Voice). `j k ⏎` and `⌘n` go with them; they come back the moment the pointer is fine.
+ */
+@media (pointer: coarse) {
+  .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
+  /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
+  .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
+  .gf-dep-drop { min-width: 32px; min-height: 32px; }
+  button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
+  span.gf-hint, .gf-tile-move, .gf-tile-keys > .gf-kbd { display: none; }
+  /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */
+  .gf-btn .gf-kbd, .gf-mode-done .gf-kbd { display: none; }
+  .gf-toggle { min-height: 32px; }
+  .gf-mode-btn { min-width: 32px; }
+}
+
 /* a link among a tile's keys is chrome, not prose: mute until you point at it */
 .gf-tile-link { color: var(--gf-mute); }
 .gf-tile-link:hover { color: var(--gf-ink); text-decoration: none; }
@@ -526,5 +630,14 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-palette .gf-picker-hit.is-on { background: none; }
 
 /* the key is the control: `⌘K` in the bar opens the panel the key opens (DESIGN.md Voice: hints are verbs with a key) */
-.gf-bar-key { display: inline-flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer; }
+.gf-bar-key { display: inline-flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; }
 .gf-bar-key:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute); }
+/*
+ * A tile header's hint (`c new`) in the same clothes whether it is a span or a button (issue 11):
+ * a finger reaches what the key reaches, and nothing new is drawn to say so. The button's hit
+ * area is the whole hint, taller than its type by the header's own padding.
+ */
+.gf-hint { display: inline-flex; align-items: center; gap: 4px; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+button.gf-hint { background: none; border: none; padding: 4px 2px; margin: -4px -2px; cursor: pointer; }
+button.gf-hint:hover { color: var(--gf-ink); }
+button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute); }

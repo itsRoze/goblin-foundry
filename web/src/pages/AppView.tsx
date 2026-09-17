@@ -7,7 +7,7 @@ import { useSaving } from '../editor';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
-import { Empty, History, InlineForm, Kbd, Kv, Plus, Tile, describeEvent } from '../ui';
+import { Empty, Hint, History, InlineForm, Kv, Plus, Tile, describeEvent } from '../ui';
 import { appBody, appFormFields } from './Apps';
 import { AboutTile, DescriptionField, NotFound, useAppNamer, useSlugParam } from './Entity';
 import { ProjectRows, projectBody, projectFormFields } from './Projects';
@@ -78,13 +78,15 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
             <Link className="gf-tile-link" to={`/?app_id=${app.id}`}>
               board
             </Link>
-            <Kbd>c</Kbd> new
+            <Hint k="c" onClick={newTicket.open}>
+              new
+            </Hint>
           </>
         }
         navigable
         testId="tickets-tile"
       >
-        {newTicket}
+        {newTicket.form}
         <TicketRows tickets={tickets.data} />
       </Tile>
       <AboutTile

@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useSettings, usePatchSettings } from '../queries';
 import { useCrumb } from '../shell';
 import { useKey } from '../keys';
-import { Empty, InlineForm, Kbd, Kv, Tile } from '../ui';
+import { Empty, Hint, InlineForm, Kv, Tile } from '../ui';
 
 /**
  * The installation itself. Changing the prefix changes every displayed key at
@@ -13,14 +13,17 @@ export function SettingsPage() {
   const settings = useSettings();
   const patch = usePatchSettings();
   const [editing, setEditing] = useState(false);
-  useKey('e', useCallback(() => setEditing(true), []));
+  const edit = useCallback(() => setEditing(true), []);
+  useKey('e', edit);
 
   return (
     <Tile
       label="settings"
       keys={
         <>
-          <Kbd>e</Kbd> edit
+          <Hint k="e" onClick={edit} testId="hint-edit">
+            edit
+          </Hint>
         </>
       }
       testId="settings-tile"
