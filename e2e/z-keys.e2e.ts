@@ -51,7 +51,8 @@ test('c makes a ticket, j points at it, ⏎ opens it, and esc comes back to wher
 
   // the focused tile offers the moves; the board is the only tile on its desk, so it carries no number
   await expect(page.getByTestId('board-tile')).toContainText('j');
-  await expect(page.getByTestId('board-tile')).not.toContainText('⌘');
+  // (`⌘A all` is a hint of its own; the number would be `⌘1`)
+  await expect(page.getByTestId('board-tile')).not.toContainText('⌘1');
 
   await page.keyboard.press('j');
   await expect(only).toHaveClass(/is-cursor/);

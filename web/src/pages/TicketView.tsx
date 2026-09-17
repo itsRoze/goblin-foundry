@@ -19,6 +19,7 @@ import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { formKeys, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
+import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
@@ -62,7 +63,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   /** The one question the tracker asks: `start` on a blocked ticket, whether the button or the key asked it. */
   const [confirming, setConfirming] = useState(false);
   const focusTile = useFocusTile();
-  const edit = useCallback((body: PatchTicketBody) => patch.mutateAsync({ key: ticket.key, body }), [patch, ticket.key]);
+  /**
+   * A bulk action that was sent with this Ticket in it holds it until it answers (issue 03b): every write this
+   * screen makes goes through `guard`, which refuses in the API's shape, so each lands in the slot it already has.
+   */
+  const { guard } = useBulkLock(ticket);
+  const edit = useCallback((body: PatchTicketBody) => guard(() => patch.mutateAsync({ key: ticket.key, body })), [guard, patch, ticket.key]);
   /** Every write the state tile makes reports its refusal in the tile's one line. */
   const inState = useCallback(
     async (write: () => Promise<unknown>) => {
@@ -81,15 +87,18 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const trash = useCallback(
     () =>
       inState(async () => {
-        await intent.mutateAsync({ key: ticket.key, intent: 'trash' });
+        await guard(() => intent.mutateAsync({ key: ticket.key, intent: 'trash' }));
         nav('/');
       }),
-    [inState, intent, nav, ticket.key],
+    [inState, guard, intent, nav, ticket.key],
   );
   useKey('Backspace', trash, { meta: true });
 
   /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot. */
-  const runEdge = useCallback((edge: Transition) => void inState(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to })), [inState, transition, ticket.key]);
+  const runEdge = useCallback(
+    (edge: Transition) => void inState(() => guard(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))),
+    [inState, guard, transition, ticket.key],
+  );
   const press = useCallback(
     (name: TransitionName) => {
       // the structural refusal is the shared table's, said locally — the same sentence a refused drop gets
@@ -298,6 +307,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
  */
 function DependenciesTile({ ticket, picking, setPicking }: { ticket: TicketDetail; picking: Direction | null; setPicking: (d: Direction | null) => void }) {
   const { add, remove } = useDependencyEdges();
+  const { guard } = useBulkLock(ticket);
   // a refusal belongs beside the control that earned it (DESIGN.md Components), so it is filed by direction
   const [refusal, setRefusal] = useState<{ direction: Direction; text: string } | null>(null);
   const { depends_on, blocks } = ticket.dependencies;
@@ -308,7 +318,8 @@ function DependenciesTile({ ticket, picking, setPicking }: { ticket: TicketDetai
   const write = async (direction: Direction, run: () => Promise<unknown>) => {
     setRefusal(null);
     try {
-      await run();
+      // an edge is a write to this Ticket too, and a bulk action that holds it holds this (issue 03b)
+      await guard(run);
       return true;
     } catch (e) {
       setRefusal({ direction, text: refusalLine(e) });

@@ -55,6 +55,19 @@ export {
   blockedWarning,
 } from './tickets';
 export {
+  BulkMoveTargetSchema,
+  type BulkMoveTarget,
+  BulkActionSchema,
+  type BulkAction,
+  BULK_MAX_TICKETS,
+  BulkTicketsBodySchema,
+  type BulkTicketsBody,
+  BulkRefusalSchema,
+  type BulkRefusal,
+  BulkResultSchema,
+  type BulkResult,
+} from './bulk';
+export {
   TRANSITIONS,
   TRANSITION_NAMES,
   type TransitionName,
@@ -69,6 +82,8 @@ export {
   type KeyedMove,
   keyedMove,
   asksBeforeBlocked,
+  type JudgedTransition,
+  judgeTransition,
   type ApproveRequirement,
   type GuardFields,
   TRANSITION_PAST,

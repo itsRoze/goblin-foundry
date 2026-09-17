@@ -1,14 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { CurrentTicketProvider, useCurrentTicket } from './current';
 import { CreateProvider } from './creating';
 import { DeskProvider, useScreenEscape } from './desk';
 import { useKey, useKeyMap } from './keys';
 import { Palette, type PaletteMode } from './palette-view';
 import { useApps, useProjects } from './queries';
+import { BulkStatus, SelectingProvider, useSelecting } from './selecting';
 import { Kbd } from './ui';
 
 const CrumbContext = createContext<(crumb: string) => void>(() => {});
+
+/** The palette is the shell's, and a control on a page may open it: the board's `status` and `move` are taps on the same panel `s` opens. */
+const PaletteContext = createContext<(mode: PaletteMode) => void>(() => {});
+export const useOpenPalette = () => useContext(PaletteContext);
 
 /** Pages announce where they are; the bar shows it as `app / project`. */
 export function useCrumb(crumb: string) {
@@ -35,11 +40,13 @@ const workspaces = [
 export function Shell() {
   return (
     <CurrentTicketProvider>
-      <CreateProvider>
-        <DeskProvider>
-          <ShellBody />
-        </DeskProvider>
-      </CreateProvider>
+      <SelectingProvider>
+        <CreateProvider>
+          <DeskProvider>
+            <ShellBody />
+          </DeskProvider>
+        </CreateProvider>
+      </SelectingProvider>
     </CurrentTicketProvider>
   );
 }
@@ -80,11 +87,17 @@ function ShellBody() {
    * one before it.
    */
   useKeyMap({
-    a: () => current.actions.current?.move('approve'),
-    s: () => current.actions.current !== null && setPalette('status'),
-    d: () => current.actions.current?.blockedBy(),
+    // a Selection outranks the Cursor for as long as it exists: the keys must never mean one card while several are ticked
+    a: () => (current.selectionActions.current ? current.selectionActions.current.act({ kind: 'transition', name: 'approve' }) : current.actions.current?.move('approve')),
+    s: () => (current.selectionActions.current ?? current.actions.current) !== null && setPalette('status'),
+    d: () => (current.selectionActions.current ? current.selectionActions.current.explainDependencies() : current.actions.current?.blockedBy()),
     Escape: escape,
   });
+
+  // a bulk action outlives the board it was sent from; off the board, the shell is where it reports
+  const selecting = useSelecting();
+  const { pathname } = useLocation();
+  const reporting = pathname !== '/' && (selecting.pending !== null || selecting.outcome !== null);
 
   return (
     <CrumbContext.Provider value={setCrumb}>
@@ -120,8 +133,15 @@ function ShellBody() {
           </button>
         </span>
       </header>
+      {reporting && (
+        <div className="gf-bulk-strip">
+          <BulkStatus onDismiss={() => selecting.report(null)} />
+        </div>
+      )}
       <main className="gf-desk">
-        <Outlet />
+        <PaletteContext.Provider value={setPalette}>
+          <Outlet />
+        </PaletteContext.Provider>
       </main>
       {palette !== null && <Palette mode={palette} onClose={closePalette} />}
     </CrumbContext.Provider>

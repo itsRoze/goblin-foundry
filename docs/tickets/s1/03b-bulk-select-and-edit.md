@@ -1,6 +1,6 @@
 # 03b: Multi-select and bulk edit on the kanban
 
-**Status:** ready-for-agent
+**Status:** done (implemented 2026-09-17 on branch `03b-bulk-select-and-edit`)
 
 **Depends on:** 04 (Lifecycle — transition table, intent endpoints, drag-and-drop). Integrates with 10's keyboard/palette behavior and follows 11's responsive controls; 11 does not wait for this feature.
 
@@ -93,4 +93,14 @@ The existing real-SQLite API harness and Playwright browser suite are the agreed
 
 - [ADR-0010: atomic bulk Ticket actions](../../adr/0010-atomic-bulk-ticket-actions.md) records the architectural trade-off. [ADR-0001](../../adr/0001-sqlite-via-drizzle-single-process.md) now points to that scoped exception. Intent authority, App-following-Project membership, and advisory dependencies continue to follow ADR-0003/0004, ADR-0007, and ADR-0009 respectively.
 - [Linear's selection documentation](https://linear.app/docs/select-issues), checked during this discussion, informed the keyboard conventions. It documents individual selection, keyboard ranges, Select all, and Escape; our shift-click range boundaries are explicitly agreed product behavior.
-- The ticket itself is the requested publication destination. Its status is ready-for-agent; this specification does not implement the feature.
+- The ticket itself is the requested publication destination.
+
+## As built
+
+- **API.** `POST /api/tickets/bulk` with `{ tickets: [keys], action }`, where `action` is `{kind:'transition', name}`, `{kind:'move', to}` (`to` is `{kind:'project'|'app', id}`, `{kind:'no-project'}` or `{kind:'nowhere'}`) or `{kind:'trash'}`. Success is `200 {tickets}`. A refused member is `409 {owner, hint, refusals:[{key, reason}]}` — the refused-intent shape plus the per-Ticket reasons; a bad destination or body is `422 issues`; a write that failed and was rolled back is `500` with `detail` beginning *nothing changed*. At most 500 Tickets per batch. The CLI does not wrap it yet.
+- **Atomic boundary.** `atomically(db, writes)` in `api/src/db.ts`: a list of built statements run between `BEGIN IMMEDIATE` and `COMMIT` in one synchronous block, each proven to have written exactly one row, each Ticket write pinned to the `updated_at` and status it was judged at, and a move's destination pinned by a no-op write that matches only a live, unarchived App or Project still in the judged App. A pin that matches nothing is `stale`: `409` naming the Ticket, nothing changed. Rollback evidence: `api/test/bulk.test.ts` (trigger-injected faults through the API) and `api/test/db.test.ts` (the seam itself).
+- **One judge.** `judgeTransition` in `shared/src/transitions.ts` is what the single-Ticket route, the batch and the board's preflight all ask, so the three cannot drift.
+- **Selection.** `web/src/selection.ts` (pure model: `picked` + `ranged` + `anchor`), `web/src/bulk.ts` (pure: shared verbs, preflight, the two questions, what a confirmation is bound to), `web/src/selecting.tsx` (the shell-level owner: Selection, the one action out at a time, the pending lock, the outcome). Deselecting a Ticket clears the anchor; the next range gesture plants a new one.
+- **Decisions taken while building.** `⇧↑/⇧↓` (and `J`/`K`) walk the *range order* — off the end of one column into the next — so a cross-column range is reachable from the keyboard, and the Cursor rides the far end. The palette and `s` offer the verbs every selected Ticket shares; `a` on a Selection that does not share `approve` is refused with each Ticket's reason. A start question whose blockers all clear is withdrawn rather than left asking about nothing. Success says *Approved 3 Tickets* for four seconds. Off the board, the shell reports a pending or finished action in a strip under the bar.
+- **From the code review.** A question whose blockers change is redrawn from the live members before any yes is given, rather than dismissed and re-opened — no yes ever answers the old text. Only the API's own problem document counts as a definite refusal; a bare `502` from anything in between is an unknown outcome. A card's own blocked-`start` question checks the lock when it goes, not when it was asked. `recordEvent` starts a fresh history row if the edit session it meant to amend has moved on, instead of writing nothing. ADR-0001 gained a third carve-out: the test harness may create triggers in its own database for fault injection.
+- **Known, not from this ticket.** Two browser specs in `e2e/writing.e2e.ts` (*backspace against a revealed marker…*, *a run that opens the line…*) fail identically on the commit this branch started from (`3ccefed`), and the first spec in `e2e/z-filters.e2e.ts` (the text filter's `toHaveURL`) fails there too but only some runs — a flake, also not this ticket's.

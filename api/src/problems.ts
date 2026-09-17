@@ -32,3 +32,20 @@ function fromZod(issue: ZodError['issues'][number]): Issue[] {
 
 /** A refused intent names its owner and what would let it through; the GUI shows `hint`. */
 export const conflict = (c: Context, hint: string, owner = 'human') => problem(c, 409, 'Conflict', { owner, hint });
+
+/** How many refusals a `hint` spells out before it counts the rest; `refusals` always carries them all. */
+const HINTED = 3;
+
+/**
+ * A refused batch (ADR-0010): the same `409 {owner, hint}` a refused intent
+ * gets, plus `refusals` — which Tickets stopped it, and why, one sentence
+ * each. The hint leads with the fact that matters most: nothing changed.
+ */
+export function refusedBatch(c: Context, refusals: { key: string; reason: string }[], owner = 'human') {
+  const said = refusals.slice(0, HINTED).map((r) => `${r.key}: ${r.reason}`);
+  const more = refusals.length > HINTED ? ` · and ${refusals.length - HINTED} more` : '';
+  return problem(c, 409, 'Conflict', { owner, hint: `nothing changed — ${said.join(' · ')}${more}`, refusals });
+}
+
+/** A write that failed and was rolled back: a definite answer, unlike a response that never arrives. */
+export const failed = (c: Context, detail: string) => problem(c, 500, 'Internal Server Error', { detail });

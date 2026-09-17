@@ -24,6 +24,72 @@ export interface DbHandle {
   close(): void;
 }
 
+/**
+ * One statement of an atomic batch: a query *built* with the ordinary query
+ * builder and never awaited, plus what to call it when it fails. It is held in
+ * an object because the builder is a thenable — returned bare from an `async`
+ * function it would be run by the promise machinery on its way out, outside
+ * any transaction. Every statement must end in `.returning()`: the batch
+ * proves each one wrote exactly one row.
+ */
+export interface AtomicWrite {
+  what: string;
+  statement: { all(): unknown[] };
+}
+
+/**
+ * Why a batch did not commit. `stale` is a statement that matched no row —
+ * its `WHERE` named a version of the row that is no longer there — and `fault`
+ * is the driver refusing a write. Either way nothing was kept.
+ */
+export class AtomicWriteError extends Error {
+  constructor(
+    public kind: 'stale' | 'fault',
+    /** The failing statement's own `what`, so a caller can say which of its members it was about. */
+    public what: string,
+    cause?: unknown,
+  ) {
+    super(`${what}: ${kind === 'stale' ? 'the row changed underneath the batch' : cause instanceof Error ? cause.message : String(cause)}`, { cause });
+  }
+}
+
+/**
+ * The atomic boundary ADR-0010 asks for: every statement commits, or none
+ * does. Drizzle's `transaction()` is not it — on this driver it is synchronous
+ * and commits at an async callback's first `await`, and on durable-sqlite it
+ * is broken outright (ADR-0001) — so the batch is a *list*, the shape D1's
+ * `batch()` and a Durable Object's `transactionSync()` both honour, and what
+ * makes it atomic here stays inside the seam: `BEGIN IMMEDIATE` to `COMMIT`
+ * in one synchronous run, with no `await` for another request to slip into.
+ * It is `async` only so the signature survives a driver whose batch is.
+ *
+ * Callers do their reading and deciding first and hand over writes whose
+ * `WHERE` pins what they read; a statement that matches no row is `stale`.
+ * `api/test/db.test.ts` and `bulk.test.ts` hold the rollback evidence.
+ */
+export async function atomically(db: Db, writes: readonly AtomicWrite[]): Promise<void> {
+  db.run(sql`BEGIN IMMEDIATE`);
+  try {
+    for (const write of writes) {
+      let rows: unknown[];
+      try {
+        rows = write.statement.all();
+      } catch (cause) {
+        throw new AtomicWriteError('fault', write.what, cause);
+      }
+      if (rows.length !== 1) throw new AtomicWriteError('stale', write.what);
+    }
+    db.run(sql`COMMIT`);
+  } catch (error) {
+    try {
+      db.run(sql`ROLLBACK`);
+    } catch {
+      // SQLite had already rolled the transaction back itself (a full disk, `RAISE(ROLLBACK)`); there is nothing left to undo
+    }
+    throw error instanceof AtomicWriteError ? error : new AtomicWriteError('fault', 'commit', error);
+  }
+}
+
 export async function openDb(path: string = defaultDbPath()): Promise<DbHandle> {
   mkdirSync(dirname(path), { recursive: true });
   const client = new Database(path, { create: true, strict: true });

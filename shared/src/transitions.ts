@@ -187,6 +187,27 @@ export function structuralRefusal(from: TicketStatus, to: TicketStatus): string 
   return `a ticket in ${from} does not go ${backwards ? 'back to' : 'to'} ${to}`;
 }
 
+/** What asking for a named move comes to: the arrow to take, or the one sentence saying why not and whose arrow it was. */
+export type JudgedTransition = { ok: true; edge: Transition } | { ok: false; reason: string; owner: TransitionOwner };
+
+/**
+ * The whole of what stands between a Ticket and a named move, in the order the
+ * refusals are owed (ADR-0003): is there such an arrow out of here, does this
+ * actor own it, does the Ticket have what the arrow's guard wants. Authority
+ * comes before requirements — an actor who owns no edge here is not told what
+ * the Ticket is missing. One Ticket or a batch of them, the API asks this; the
+ * board asks it too before sending a Selection, so a refusal it can see coming
+ * is said in the same words without a round trip.
+ */
+export function judgeTransition(ticket: GuardFields & Pick<Ticket, 'status'>, name: TransitionName, actor: Actor): JudgedTransition {
+  const edge = findTransition(ticket.status, name);
+  if (!edge) return { ok: false, reason: structuralRefusal(ticket.status, destinationOf(name)), owner: 'human' };
+  if (!ownsTransition(actor, edge.owner)) return { ok: false, reason: ownerRefusal(name, edge.owner, actor), owner: edge.owner };
+  const lacks = edge.guard ? approveGuard(ticket) : [];
+  if (lacks.length > 0) return { ok: false, reason: guardRefusal(name, lacks), owner: edge.owner };
+  return { ok: true, edge };
+}
+
 /** History reads as decisions, not only as state (ADR-0003) — the verb, in the past, beside the table it comes from. */
 export const TRANSITION_PAST: Record<TransitionName, string> = {
   pick: 'picked',

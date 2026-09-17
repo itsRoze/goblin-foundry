@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { isTerminal, slugPath, type TicketDetail } from '@goblin/shared';
 import { useCurrentTicket } from './current';
 import { useCreate } from './creating';
-import { paletteHits, transitionRows, type Candidate, type PaletteAction } from './palette';
+import { commonMoves, countOf } from './bulk';
+import { paletteHits, selectionMoveRows, selectionPlaceRows, selectionRows, selectionTransitionRows, transitionRows, type Candidate, type PaletteAction } from './palette';
 import { useApps, useProjects, useTicket, useTickets } from './queries';
 import { StatusChip, ticketPath } from './tickets';
 import { Empty, Kbd } from './ui';
@@ -20,8 +21,8 @@ import { Empty, Kbd } from './ui';
  * the button it stands for does.
  */
 
-/** `⌘K` searches everything; `s` opens on the current Ticket's arrows alone. */
-export type PaletteMode = 'anything' | 'status';
+/** `⌘K` searches everything; `s` opens on the arrows alone — the current Ticket's, or the Selection's; `move` is the Selection bar's own way in. */
+export type PaletteMode = 'anything' | 'status' | 'move';
 
 /** The static half of `go to` — every page that is somewhere to be. */
 const PAGES: { label: string; to: string }[] = [
@@ -36,6 +37,8 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const current = useCurrentTicket();
   const detail = useTicket(current.key ?? '');
   const ticket = detail.data ?? null;
+  /** A Selection outranks the current Ticket here as it does on the keys: its actions replace the Ticket's, never sit beside them. */
+  const selected = current.members.length > 0 ? current.members : null;
   const tickets = useTickets();
   const apps = useApps();
   const projects = useProjects();
@@ -65,12 +68,18 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const all = useMemo(
     (): Candidate[] =>
       nest !== null
-        ? placeRows(nest, ticket, nest === 'app' ? apps.data : projects.data)
-        : mode === 'status'
-          ? ticket === null
-            ? []
-            : transitionRows(ticket.status)
-          : [
+        ? selected !== null
+          ? selectionPlaceRows(nest, nest === 'app' ? apps.data : projects.data)
+          : placeRows(nest, ticket, nest === 'app' ? apps.data : projects.data)
+        : mode === 'move'
+          ? selectionMoveRows()
+          : mode === 'status'
+            ? selected !== null
+              ? selectionTransitionRows(commonMoves(selected))
+              : ticket === null
+                ? []
+                : transitionRows(ticket.status)
+            : [
               ...(tickets.data ?? []).map(
                 (t): Candidate => ({
                   id: `ticket-${t.key}`,
@@ -82,7 +91,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
                   action: { kind: 'go', to: ticketPath(t) },
                 }),
               ),
-              ...(ticket ? ticketActions(ticket) : []),
+              ...(selected !== null ? selectionRows(commonMoves(selected)) : ticket ? ticketActions(ticket) : []),
               ...PAGES.map((p): Candidate => ({ id: `go-${p.label}`, group: 'go to', label: p.label, action: { kind: 'go', to: p.to } })),
               ...(apps.data ?? []).map((a): Candidate => ({ id: `go-app-${a.id}`, group: 'go to', label: a.name, note: 'app', action: { kind: 'go', to: slugPath('apps', a) } })),
               ...(projects.data ?? []).map(
@@ -95,7 +104,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
               ] as const).map((c): Candidate => ({ id: `create-${c.what}`, group: 'create', label: c.label, action: { kind: 'create', what: c.what } })),
               ...(filtered ? [{ id: 'clear-filters', group: 'board', label: 'clear filters', action: { kind: 'clear-filters' } } satisfies Candidate] : []),
             ],
-    [nest, mode, ticket, tickets.data, apps.data, projects.data, filtered],
+    [nest, mode, ticket, selected, tickets.data, apps.data, projects.data, filtered],
   );
 
   const hits = paletteHits(all, query);
@@ -114,6 +123,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     if (action.kind === 'go') nav(action.to);
     else if (action.kind === 'clear-filters') nav('/', { replace: true });
     else if (action.kind === 'create') create(action.what);
+    else if (action.kind === 'bulk') current.selectionActions.current?.act(action.action);
     else if (action.kind === 'move') act?.move(action.name);
     else if (action.kind === 'trash') act?.trash();
     else if (action.kind === 'simple') act?.simple(action.simple);
@@ -142,8 +152,15 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   };
 
   // the panel covers the card it is about, so it has to say which one (issue 10 close-out)
-  const subject = ticket?.key ?? current.key;
-  const placeholder = nest !== null ? `move to ${nest}` : mode === 'status' ? `move ${subject ?? 'this ticket'}` : 'search tickets, actions, pages';
+  const subject = selected !== null ? countOf(selected.length) : (ticket?.key ?? current.key);
+  const placeholder = nest !== null ? `move ${selected !== null ? `${subject} ` : ''}to ${nest}` : mode !== 'anything' ? `move ${subject ?? 'this ticket'}` : 'search tickets, actions, pages';
+  /** Why the list is empty, when it is not a query that emptied it: a Selection with no verb in common is an answer, not a miss. */
+  const nothing =
+    tickets.isPending || (selected === null && current.key !== null && detail.isPending)
+      ? 'loading…'
+      : mode === 'status' && selected !== null && query.trim() === ''
+        ? `no transition fits all ${subject}`
+        : 'nothing matches';
   const optionId = (c: Candidate) => `${listId}-${c.id}`;
 
   return (
@@ -168,7 +185,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
       />
       {hits.length === 0 ? (
         // "nothing matches" would be a lie while a read is in flight (LESSONS 2026-09-03)
-        <Empty>{tickets.isPending || (current.key !== null && detail.isPending) ? 'loading…' : 'nothing matches'}</Empty>
+        <Empty>{nothing}</Empty>
       ) : (
         <div id={listId} className="gf-rows gf-palette-hits" role="listbox" aria-label="commands">
           {hits.map((c, i) => (

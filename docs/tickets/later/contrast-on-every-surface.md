@@ -8,3 +8,5 @@ Issue 10 lifted `--gf-mute` to `#A3AFA6` so it clears 4.5:1 on `--gf-raised` (4.
 - **`--gf-dim` `#7A8478` on `--gf-tile` = 3.21:1** painting `li::marker` in a rendered design (`app.css`, the editor's list styling from issue 07). Colors says `--gf-dim` is for handles and dividers and fails contrast deliberately — but an ordered list's numbers are content, not a handle. Either the markers take `--gf-mute`, or Colors says that a marker is a handle and means it.
 
 **What to do:** one pass over every token/surface pair the app actually renders, with the ratios written into Colors as a table rather than a sentence. The check is a rendered screen — `bun run lint` refuses a hex literal and a dead class, and can see neither of these (LESSONS 2026-09-03, "the stylesheet linter catches what you wrote, not what you left out").
+
+**2026-09-17, issue 03b's close-out:** the selection bar adds two more `.gf-btn.is-danger` on `--gf-raised` (`trash`, and the trash question's button), measured again at 3.95:1. `#EB8E90` would be 4.54:1 and `#EC9092` 4.62:1 on that surface. Left for this ticket: it is a token, and the token is the owner's.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { PALETTE_ROWS, paletteHits, transitionRows, type Candidate } from '../src/palette';
+import { PALETTE_ROWS, paletteHits, selectionPlaceRows, selectionRows, transitionRows, type Candidate } from '../src/palette';
 
 /**
  * What `⌘K` offers, as a pure question about a list of candidates: which rows
@@ -105,5 +105,21 @@ describe('transitionRows', () => {
     }
     // a cancelled ticket has only `reopen`, and nothing to put last
     expect(labels(transitionRows('cancelled'))).toEqual(['reopen']);
+  });
+});
+
+describe('a Selection in the palette (issue 03b)', () => {
+  test('offers transitions, trash and the four moves — and nothing that is about one ticket', () => {
+    const rows = selectionRows(['approve', 'cancel']);
+    expect(rows.map((r) => r.id)).toEqual(['move-approve', 'move-cancel', 'act-trash', 'act-move-app', 'act-move-project', 'act-no-project', 'act-nowhere']);
+    expect(rows.some((r) => r.action.kind === 'simple' || r.action.kind === 'blocked-by')).toBe(false);
+    // every row that acts, acts on the set: nothing here reaches the Cursor's ticket
+    expect(rows.filter((r) => r.action.kind !== 'nest').every((r) => r.action.kind === 'bulk')).toBe(true);
+  });
+
+  test('a nested pick offers every live target, and choosing a project is a move to that project', () => {
+    const rows = selectionPlaceRows('project', [{ id: 4, name: 'Reader MVP' }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.action).toEqual({ kind: 'bulk', action: { kind: 'move', to: { kind: 'project', id: 4 } } });
   });
 });

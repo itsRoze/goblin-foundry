@@ -1,6 +1,6 @@
 import { and, desc, eq, gte } from 'drizzle-orm';
 import type { Actor, EntityKind, Event, EventKind } from '@goblin/shared';
-import type { Db } from './db';
+import type { AtomicWrite, Db } from './db';
 import { event } from './schema';
 
 export const now = () => new Date().toISOString();
@@ -29,15 +29,32 @@ export const EDIT_SESSION_MS = 5 * 60_000;
  */
 export async function recordEvent(db: Db, input: EventInput): Promise<void> {
   const at = input.at ?? now();
+  const write = await eventWrite(db, { ...input, at });
+  const rows = (await write.statement) as unknown[];
+  // an amend is pinned to the session it read; if that session moved on in between, the write is still history —
+  // it starts a row of its own rather than vanishing
+  if (rows.length === 0) await db.insert(event).values({ ...input, at });
+}
+
+/**
+ * The same event as a statement not yet run, for a batch that must commit it
+ * together with the write it records (ADR-0010). The edit-session read happens
+ * now; the amend pins the row it read, so a session that moved on in between
+ * fails the batch instead of being overwritten.
+ */
+export async function eventWrite(db: Db, input: EventInput): Promise<AtomicWrite & { statement: PromiseLike<unknown[]> }> {
+  const at = input.at ?? now();
+  const what = `${input.kind} event for ${input.entity_kind} ${input.entity_id}`;
   const open = input.kind === 'updated' ? await openSession(db, input, at) : undefined;
-  if (!open) {
-    await db.insert(event).values({ ...input, at });
-    return;
-  }
-  await db
-    .update(event)
-    .set({ prior: { ...input.prior, ...(open.prior ?? {}) }, new: { ...open.new, ...input.new }, at })
-    .where(eq(event.id, open.id));
+  if (!open) return { what, statement: db.insert(event).values({ ...input, at }).returning({ id: event.id }) };
+  return {
+    what,
+    statement: db
+      .update(event)
+      .set({ prior: { ...input.prior, ...(open.prior ?? {}) }, new: { ...open.new, ...input.new }, at })
+      .where(and(eq(event.id, open.id), eq(event.at, open.at)))
+      .returning({ id: event.id }),
+  };
 }
 
 /** The sitting this write belongs to, or `undefined` when it starts a new one. */

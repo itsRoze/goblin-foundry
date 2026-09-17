@@ -65,6 +65,17 @@ export interface CardActions {
   blockedBy: () => void;
 }
 
+/** A card's part in the Selection (issue 03b): whether it is in, how it gets in or out, and whether any of that is on hold. */
+export interface CardSelect {
+  selected: boolean;
+  /** The checkbox, or a shift-click anywhere on the card; `range` is whether shift was down. */
+  onSelect: (range: boolean) => void;
+  /** A bulk action is out: the Selection is frozen until it answers. */
+  frozen: boolean;
+  /** This Ticket is in the submitted set, so nothing else may write to it meanwhile — no menu, no drag. */
+  locked: boolean;
+}
+
 /**
  * The kanban card: key + status note, title, then whatever the view options
  * ask for (DESIGN.md Components). The card is a link and the whole of it is
@@ -79,6 +90,7 @@ export function TicketCard({
   updated,
   at,
   menu,
+  select,
   canDrag,
   children,
 }: {
@@ -89,6 +101,7 @@ export function TicketCard({
   updated: string | null;
   at: number;
   menu: CardActions;
+  select: CardSelect;
   /** Only a horizontal board drags (issue 11): stacked sections move a card through its menu. */
   canDrag: boolean;
   children?: ReactNode;
@@ -98,28 +111,48 @@ export function TicketCard({
   // the whole card is the drag handle — no grip (DESIGN.md Components)
   useEffect(() => {
     const element = ref.current;
-    if (!element || !canDrag) return;
+    if (!element || !canDrag || select.locked) return;
     return draggable({
       element,
       getInitialData: (): Record<string, unknown> => ({ key: ticket.key, status: ticket.status }),
       onDragStart: () => setLifted(true),
       onDrop: () => setLifted(false),
     });
-  }, [ticket.key, ticket.status, canDrag]);
+  }, [ticket.key, ticket.status, canDrag, select.locked]);
 
   // blocked is a derived condition, never a colour: the outline glyph and the strike, nothing else (DESIGN.md Colors)
   const blocked = isBlocked(ticket);
   return (
     <div className="gf-card-slot">
+      {/* a sibling of the link, like the menu: ticking a card never opens it, and a finger needs no long-press to reach it.
+          First in the slot because it is first on the card: the tab order follows the eye */}
+      <input
+        type="checkbox"
+        className="gf-card-check"
+        aria-label={`select ${ticket.key}`}
+        data-testid={`select-${ticket.key}`}
+        // it takes no text, so the board's keys work past it while it holds the focus (keys.tsx)
+        data-passes-keys=""
+        checked={select.selected}
+        disabled={select.frozen}
+        onChange={(e) => select.onSelect((e.nativeEvent as MouseEvent).shiftKey === true)}
+      />
       <Link
         ref={ref}
-        className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}${cursor ? ' is-cursor' : ''}`}
+        className={`gf-card is-${statusTone(ticket.status)}${ticket.status === 'cancelled' ? ' is-cancelled' : ''}${blocked ? ' is-blocked' : ''}${lifted ? ' is-lifted' : ''}${cursor ? ' is-cursor' : ''}${select.selected ? ' is-selected' : ''}`}
         to={ticketPath(ticket)}
         aria-current={cursor ? true : undefined}
+        // shift-click gathers a range and goes nowhere; every other click still opens the Ticket
+        onClick={(e) => {
+          if (!e.shiftKey) return;
+          e.preventDefault();
+          select.onSelect(true);
+        }}
         data-testid={`card-${ticket.key}`}
         // what the touch drag reads off the card it landed on (touch-drag.ts)
         data-key={ticket.key}
         data-status={ticket.status}
+        data-locked={select.locked ? '' : undefined}
       >
         <span className="gf-card-id">
           <span className="gf-card-key">{ticket.key}</span>
@@ -140,7 +173,7 @@ export function TicketCard({
           </span>
         )}
       </Link>
-      <CardMenu ticket={ticket} actions={menu} />
+      <CardMenu ticket={ticket} actions={menu} disabled={select.locked} />
       {children}
     </div>
   );
@@ -154,7 +187,7 @@ export function TicketCard({
  * Forward moves first, as the palette ranks them; `cancel` and `trash` apart,
  * as the state tile sets them.
  */
-function CardMenu({ ticket, actions }: { ticket: Ticket; actions: CardActions }) {
+function CardMenu({ ticket, actions, disabled }: { ticket: Ticket; actions: CardActions; disabled: boolean }) {
   const [open, setOpen] = useState(false);
   const slot = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -194,6 +227,7 @@ function CardMenu({ ticket, actions }: { ticket: Ticket; actions: CardActions })
         aria-haspopup="menu"
         aria-expanded={open}
         data-testid={`menu-${ticket.key}`}
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
       >
         ⋯

@@ -33,7 +33,8 @@ export interface TouchLift {
 
 /** The card under a pointer, read off the element the card itself wrote (`data-key`, `data-status`). */
 function cardAt(target: EventTarget | null): DraggedCard | null {
-  const element = target instanceof Element ? target.closest<HTMLElement>('.gf-card') : null;
+  // a card a bulk action holds is not lifted: nothing else writes to it until the action answers (issue 03b)
+  const element = target instanceof Element ? target.closest<HTMLElement>('.gf-card:not([data-locked])') : null;
   const key = element?.dataset.key;
   const status = element?.dataset.status;
   return key && status ? { key, status: status as TicketStatus } : null;
