@@ -10,6 +10,7 @@ S1 runs as one Bun process on the laptop with one SQLite file (`~/.goblin-foundr
 
 - Locally, `drizzle-kit push` for speed; switch to `drizzle-kit generate` migrations at first deploy (push does not work against Durable Objects).
 - Do not rely on Drizzle `transaction()` for correctness (broken on durable-sqlite); mutations are small sequential statements.
+  [ADR-0010](0010-atomic-bulk-ticket-actions.md) supersedes the sequential-statement approach for bulk Ticket actions: they require a verified atomic boundary behind `db.ts`, covering validation, Ticket changes, and history events. Driver-specific transaction support stays inside that seam.
 - Avoid: sync driver calls, `ATTACH`, `VACUUM` in app code, `IN` lists over 100 params, rows over 2 MB. One carve-out: on the `bun-sqlite` driver `db.run`/`db.all`/`db.get` are typed synchronous (an `await` there is a no-op), so `db.ts` alone may call `db.run` synchronously for PRAGMAs and DDL; all other code uses the thenable query builder (`await db.select()…`).
 - Backups: `goblin backup` (`VACUUM INTO` a dated copy to a synced folder) nightly via launchd; Litestream to R2 when the process leaves the laptop. The second carve-out (2026-09-02): `db.ts` alone may open a read-only connection and run `VACUUM INTO` for `goblin backup`, which only ever runs on the laptop and is not on the request path; the CLI calls that helper rather than importing the driver itself.
 - Lease semantics (S5) are defined as an atomic conditional update on one row, which both SQLite and a Durable Object honour.
