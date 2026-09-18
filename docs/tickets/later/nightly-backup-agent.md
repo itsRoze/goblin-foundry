@@ -1,0 +1,3 @@
+# Later: nightly `goblin backup` agent
+
+ADR-0001 promised `goblin backup` nightly via launchd; ticket 13 (2026-09-17) built the launchd machinery for the server and deliberately left this out so it stayed one afternoon's work. Open questions of its own: which synced folder receives the copies; retention (backups are named to the second and nothing prunes them); what happens on a night the folder is unmounted or the laptop is asleep (`StartCalendarInterval` fires on wake, so a missed night runs late rather than never); and whether it is a second plist installed by `goblin service install` or its own `goblin backup schedule <dir>` verb. Needs a short grill, then it is small.
