@@ -314,7 +314,7 @@ describe('goblin', () => {
     test('every noun and every command answers --help, and nothing is documented that is not there', async () => {
       const root = await run(['--help']);
       expect(root.code).toBe(0);
-      for (const noun of ['app', 'project', 'ticket', 'dependency', 'frontier', 'trash', 'settings', 'backup']) {
+      for (const noun of ['app', 'project', 'ticket', 'dependency', 'frontier', 'trash', 'settings', 'backup', 'service']) {
         expect(root.out).toContain(`  ${noun}`);
         const help = await run([noun, '--help']);
         expect([noun, help.code]).toEqual([noun, 0]);

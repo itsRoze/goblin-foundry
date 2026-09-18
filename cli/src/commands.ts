@@ -8,6 +8,7 @@
 import { FILTER_PARAMS, TRANSITION_NAMES, TRANSITIONS, destinationOf, parseTicketFilter, serialiseTicketFilter, type BulkAction, type BulkMoveTarget, type TransitionName } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
+import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
 
 /** The actor-stamped client. Every handler talks to the API only through this (ADR-0004: the CLI is never a second write path). */
 export interface Api {
@@ -21,6 +22,8 @@ export interface Ctx {
   args: Args;
   api: Api;
   io: Io;
+  /** The laptop, for the one noun that acts on it rather than on the API (`service`). */
+  host: Host;
 }
 
 /**
@@ -226,6 +229,18 @@ function moveTarget(args: Args): BulkMoveTarget {
   return project === null ? { kind: 'no-project' } : { kind: 'project', id: project as number };
 }
 
+const DEFAULT_LOG_LINES = 50;
+const LOG_LINES: Flag = { name: 'lines', kind: 'string', value: '<n>', summary: `how many lines from the end of each file (default ${DEFAULT_LOG_LINES})` };
+
+/** `--lines` is a count, so a word there is a usage refusal rather than a tail of NaN. */
+function logLines(args: Args): number {
+  const written = args.values.lines;
+  if (written === undefined) return DEFAULT_LOG_LINES;
+  const lines = Number(written);
+  if (!Number.isInteger(lines) || lines < 1) throw new UsageError(`--lines wants a whole number of lines, not '${written}'`);
+  return lines;
+}
+
 const DEPENDENCY_FLAGS: Flag[] = [
   { name: 'blocker', kind: 'string', required: true, value: '<ticket>', summary: 'the ticket that must be done first' },
   { name: 'blocked', kind: 'string', required: true, value: '<ticket>', summary: 'the ticket that has to wait' },
@@ -318,6 +333,20 @@ export const NOUNS: Noun[] = [
         operands: [{ name: 'dir', summary: 'where to put the copy' }],
         run: ({ args }) => backupCommand(args.operands[0] as string),
       },
+    ],
+  },
+  {
+    name: 'service',
+    summary: 'the macOS LaunchAgent that keeps the tracker up',
+    // no fallback: seven verbs that do different things, so a bare `goblin service` is a question, not a command
+    commands: [
+      { verb: 'install', summary: 'build the GUI, write the agent, and load it; safe to run again', run: ({ host }) => installService(host) },
+      { verb: 'uninstall', summary: 'unload the agent and remove its plist — the permanent off', run: ({ host }) => uninstallService(host) },
+      { verb: 'start', summary: 'load the installed agent', run: ({ host }) => startService(host) },
+      { verb: 'stop', summary: 'unload it until the next login', run: ({ host }) => stopService(host) },
+      { verb: 'restart', summary: 'rebuild the GUI and bounce the process — how a change reaches the running tracker', run: ({ host }) => restartService(host) },
+      { verb: 'status', summary: 'loaded? listening? which checkout and database?', run: ({ host }) => serviceStatus(host) },
+      { verb: 'logs', summary: "the end of the agent's two log files", flags: [LOG_LINES], run: ({ args, host }) => serviceLogs(host, logLines(args)) },
     ],
   },
 ];

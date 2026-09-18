@@ -398,3 +398,23 @@ run: the filter trims and matches substrings, so `Tick` found every "ticket" the
 had made, and the Cursor's first `j` landed on somebody else's card. Fixtures that are found by
 text are now coined words (`Tickbox`, `Shiftrange`, `Bulkaccept`). A spec that shares a database
 picks names no English sentence contains.
+
+## 2026-09-17 — `launchctl bootout` returns before the job is out
+
+`goblin service stop` booted the agent out, then read `launchctl list` to report on it, and
+reported `loaded: true` about an agent it had just stopped — the port was already dead, so the
+*process* was gone, but the job was still in the domain for a fraction of a second. The same
+race is why a `bootstrap` straight after a `bootout` is sometimes refused. So `bootout` in
+`cli/src/service.ts` does not return until `launchctl list` stops answering (twenty 100 ms
+looks), and `reload` is then just bootout-then-bootstrap. Cost: nothing when the job has
+already gone, which is every time it was not loaded to begin with.
+
+## 2026-09-17 — a failed `bun run build` says nothing useful on stderr
+
+Under `bun run --filter`, vite's actual reason arrives on **stdout**, one line at a time behind
+a `@goblin/web build: ` prefix; stderr carries only bun's own `$ bun run --filter …` and
+`error: script "build" exited with code 1`. So "quote the last line of stderr" — the obvious
+way to put a shelled-out failure into a message — quotes noise, and there is no single line
+that is the reason. `goblin service restart` therefore says the build failed and names
+`bun run build`, rather than relaying an output that would also have to be prose on a stderr
+that carries only problem+json.

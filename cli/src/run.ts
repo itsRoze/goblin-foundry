@@ -12,6 +12,7 @@ import { ACTOR_HEADER, ActorSchema, DEFAULT_ACTOR, type Actor } from '@goblin/sh
 import { UsageError, parseArgs, type Io, type Value } from './args';
 import { GLOBAL_FLAGS, findCommand, findNoun, type Api, type Command, type Noun, type Outcome } from './commands';
 import { commandHelp, nounHelp, rootHelp } from './help';
+import { DEFAULT_HOST, type Host } from './service';
 
 export type GoblinFetch = (path: string, init?: RequestInit) => Promise<Response>;
 
@@ -19,6 +20,8 @@ export interface GoblinDeps {
   fetch: GoblinFetch;
   env?: Record<string, string | undefined>;
   io?: Partial<Io>;
+  /** The laptop `service` acts on. Faked in tests, which is how plist generation and `status` are covered without a real `launchctl`. */
+  host?: Partial<Host>;
 }
 
 export interface GoblinResult {
@@ -46,6 +49,7 @@ const problem = (status: number, title: string, detail: string, hint?: string) =
 
 export async function runGoblin(argv: string[], deps: GoblinDeps): Promise<GoblinResult> {
   const io = { ...DEFAULT_IO, ...deps.io };
+  const host = { ...DEFAULT_HOST, ...deps.host };
   const help = (out: string) => ({ code: EXIT.ok, out, err: '' });
   try {
     // globals may lead (`goblin --actor agent ticket …`); from the noun on, the tokens are the command's
@@ -70,11 +74,11 @@ export async function runGoblin(argv: string[], deps: GoblinDeps): Promise<Gobli
     if (args.globals.help || lead.globals.help) return help(commandHelp(noun, command));
 
     const actor = resolveActor(args.globals.actor ?? lead.globals.actor ?? (deps.env ?? process.env).GF_ACTOR);
-    return await report(await command.run({ args, api: client(deps.fetch, actor), io }));
+    return await report(await command.run({ args, api: client(deps.fetch, actor), io, host }));
   } catch (error) {
     if (error instanceof UsageError) return { code: EXIT.usage, out: '', err: usage(error.message, error.hint) };
     if (error instanceof UnreachableError)
-      return { code: EXIT.unreachable, out: '', err: problem(503, 'Service Unavailable', error.message, 'is `bun dev` running? GF_URL points elsewhere') };
+      return { code: EXIT.unreachable, out: '', err: problem(503, 'Service Unavailable', error.message, 'try `goblin service start`, or GF_URL points elsewhere') };
     // a driver error out of `backup`, a body that was not JSON: whatever went wrong, it leaves in the one shape
     return { code: EXIT.problem, out: '', err: problem(500, 'Internal Error', error instanceof Error ? error.message : String(error)) };
   }

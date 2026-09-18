@@ -14,9 +14,47 @@ A solo software factory. S1 is the tracker: one Bun process, a typed HTTP API ov
 
 ## Run
 
+The tracker has to be up whenever you are working, and you are mostly working in other
+repositories — so it is a macOS LaunchAgent rather than a terminal you have to remember to
+leave open.
+
 ```sh
 bun install
-bun dev            # builds the GUI in watch mode and serves it from the API on http://127.0.0.1:4747
+cd cli && bun link         # `goblin`, the CLI — see below
+goblin service install     # builds the GUI, writes the agent, loads it
+```
+
+`http://127.0.0.1:4747` now answers from any shell; it comes up at login (`RunAtLoad`),
+comes back from any exit including a `kill -9` (`KeepAlive`), and logs to
+`~/.goblin-foundry/logs/service.{out,err}.log`.
+
+| | |
+|---|---|
+| `goblin service status` | loaded? listening? which checkout and database? — as JSON |
+| `goblin service restart` | rebuild the GUI and bounce the process: how a change to Goblin reaches the running tracker |
+| `goblin service stop` | until the next login. `uninstall` is the permanent off |
+| `goblin service logs` | the end of both log files (`--lines <n>`) |
+
+The agent runs this checkout's `api/src/server.ts` with `/opt/homebrew/bin/bun` — the stable
+symlink, so a bun upgrade cannot break it — and carries no environment of its own, so it is
+always the default database and the default port. Move the checkout and run `goblin service
+install` again. macOS only; anywhere else, run `bun api/src/server.ts` yourself.
+
+### Hacking on Goblin
+
+`bun dev` keeps port 4747, so the CLI and Playwright defaults never diverge from what is
+being hacked on — which means the service has to be out of the way first:
+
+```sh
+goblin service stop        # …or leave it up and run `GF_PORT=4748 bun dev` beside it
+bun dev                    # builds the GUI in watch mode and serves it from the API
+```
+
+Whichever of the two finds the port taken says in one line which one to move.
+
+The rest of the toolchain, none of which needs the service stopped:
+
+```sh
 bun run build      # one-off GUI build
 bun test           # in-process API + CLI tests (fresh temp database per test)
 bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium` once)
@@ -31,7 +69,8 @@ of DESIGN.md a machine can hold — colour comes from a token, radius is `0`, no
 shadows or blur, and opacity is never a state mark — and `scripts/unused-css.ts` finds rules
 the app no longer uses, which stylelint cannot see because it never reads the JSX.
 
-The database lives at `~/.goblin-foundry/foundry.db` (WAL). Set `GF_DB_PATH` to use another file (tests do), `GF_PORT` to change the port.
+The database lives at `~/.goblin-foundry/foundry.db` (WAL). Set `GF_DB_PATH` to use another
+file (tests do), `GF_PORT` to change the port — the LaunchAgent reads neither.
 
 ## `goblin`
 
@@ -59,6 +98,7 @@ lifecycle is documented by the lifecycle.
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
 | several at once | a transition or `trash` with several keys — `goblin ticket approve GF-1 GF-2 GF-3` — is one batch, committed for all of them or none (ADR-0010); one key is the single call. `goblin ticket move <keys> --project <id\|null>` / `--app <id>` / `--nowhere` sends a set to one place. A refused batch lists `refusals` by key on stderr |
 | elsewhere | `GF_URL` points at the API; `goblin backup <dir>` copies the database file itself, from `GF_DB_PATH` or the default |
+| the laptop | `goblin service` is the LaunchAgent above. Like `backup` it is not a client of the API — there is no endpoint that installs a plist — so it shells to `launchctl` through the CLI's own seam |
 
 ### A planning session
 
