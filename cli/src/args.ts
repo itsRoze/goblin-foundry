@@ -46,6 +46,8 @@ export interface Flag {
 export interface Operand {
   name: string;
   summary: string;
+  /** One or more, and only ever the last operand: `goblin ticket approve GF-1 GF-2 GF-3` is one batch (issue 03b). */
+  variadic?: boolean;
 }
 
 /** What a flag can carry once it is read. `null` is the cleared field, never "absent". */
@@ -132,7 +134,7 @@ export async function parseArgs(tokens: string[], spec: { operands?: Operand[]; 
 
   const wanted = spec.operands ?? [];
   if (operands.length < wanted.length) throw new UsageError(`<${(wanted[operands.length] as Operand).name}> is required`);
-  if (operands.length > wanted.length) throw new UsageError(`unexpected argument ${operands[wanted.length]}`);
+  if (operands.length > wanted.length && !wanted[wanted.length - 1]?.variadic) throw new UsageError(`unexpected argument ${operands[wanted.length]}`);
   for (const flag of flags.values()) if (flag.required && !raw.has(flag)) throw new UsageError(`--${flag.name} is required`);
 
   const values: Record<string, Value> = {};

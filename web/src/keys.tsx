@@ -1,7 +1,15 @@
 import { useEffect, useRef } from 'react';
 
+/**
+ * A field owns its keys — except a control that says it has none of its own
+ * (`data-passes-keys`): a card's Selection checkbox keeps the focus after a
+ * click, and `j`, `x` and `esc` must go on meaning the board (issue 03b). It is
+ * opt-in because other checkboxes live in popovers that answer `esc` themselves.
+ */
 const isTyping = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+  t instanceof HTMLElement &&
+  !('passesKeys' in t.dataset) &&
+  (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
 /**
  * Several keys at once, one handler each (DESIGN.md Interaction: keyboard
@@ -19,10 +27,15 @@ const isTyping = (t: EventTarget | null) =>
  * work from in there, or the numbers printed on every header are a mode with
  * no mode line. `⌘K` is not one of these — inside an editor it is the link
  * command, which is the whole reason the guard exists.
+ *
+ * `shift` is asked of *named* keys only (`ArrowDown`, `Enter`): a printable
+ * key already says whether shift was down — `x` is not `X` — but an arrow is
+ * `ArrowDown` either way, and `⇧↓` extends a Selection where `↓` moves the
+ * Cursor (issue 03b).
  */
 export function useKeyMap(
   map: Record<string, (() => void) | undefined>,
-  { meta = false, active = true, whileTyping = false }: { meta?: boolean; active?: boolean; whileTyping?: boolean } = {},
+  { meta = false, shift = false, active = true, whileTyping = false }: { meta?: boolean; shift?: boolean; active?: boolean; whileTyping?: boolean } = {},
 ) {
   const latest = useRef(map);
   useEffect(() => {
@@ -32,6 +45,7 @@ export function useKeyMap(
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) !== meta || e.altKey) return;
+      if (e.key.length > 1 && e.shiftKey !== shift) return;
       if (isTyping(e.target) && !whileTyping) return;
       const handler = latest.current[e.key];
       if (!handler) return;
@@ -40,7 +54,7 @@ export function useKeyMap(
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [meta, active]);
+  }, [meta, shift, active]);
 }
 
 /** One key: `⌘⌫` trashes, `c` creates. `⌘⏎` and `esc` inside forms are handled by the form itself. */

@@ -360,3 +360,41 @@ zoomed out, which is how a phone reports a 200px mistake. When a component borro
 clothes (`.gf-pop`) and overrides one of them, the override is `.gf-pop.gf-card-menu`, not a bare
 class that happens to sit earlier in the file; and the no-sideways-scroll check is worth running
 with every popover open, not only on a quiet page.
+
+## 2026-09-17 — a query builder is a thenable, and an `async` function runs what it returns
+
+Issue 03b needed writes that are *planned* now and *run* later, inside one atomic batch
+(ADR-0010). The obvious shape — `async function eventWrite(…) { return db.insert(event)… }` —
+executes the insert on the way out: a Drizzle builder has a `then`, and a promise resolving to
+a thenable calls it. The statement would have run outside any transaction, silently, and the
+batch would then have run it a second time. Anything built-but-not-run travels inside a plain
+object (`AtomicWrite { what, statement }`), which has no `then`. The rule: never let a query
+builder be the return value of an `async` function or the argument of `Promise.resolve`.
+
+The same ticket settled what "atomic" means on this driver. Drizzle's `transaction()` on
+`bun-sqlite` is synchronous, so an `async` callback commits at its first `await` — the wrapper
+looks like a transaction and is not one. `atomically()` in `db.ts` takes a *list* of built
+statements and runs `BEGIN IMMEDIATE … COMMIT` in one synchronous block, which is also the
+shape D1's `batch()` and a Durable Object's `transactionSync()` honour. Validation-only tests
+would have passed against the broken version; the evidence is a trigger in the test database
+that makes the second ticket's history insert abort after the first ticket's writes have run
+(`api/test/harness.ts` `failWrites`), and deleting the `BEGIN` turns those tests red.
+
+## 2026-09-17 — a checkbox is an `<input>`, and the keys go quiet behind it
+
+`useKeyMap` silences every key while the target is an `INPUT`, which is right for text and
+wrong for the card's Selection checkbox: click one and it keeps the focus, so `j`, `x` and
+`esc` died until you clicked elsewhere. Exempting every checkbox broke the status filter, whose
+popover *relies* on its focused checkbox swallowing the shell's `esc` (it answers `esc` itself
+and the shell would otherwise also walk back a page). So passing keys through is opt-in, per
+control: `data-passes-keys` on the one checkbox that takes no keys of its own. The rule: a guard
+that reads the DOM's tag is a guard on every future element with that tag — widen it by
+naming the exception, not by redefining the class.
+
+## 2026-09-17 — `?q=` is a substring over everything the earlier specs left behind
+
+The selection spec narrowed its board with `?q=Tick ` and passed alone, then failed in the full
+run: the filter trims and matches substrings, so `Tick` found every "ticket" the earlier specs
+had made, and the Cursor's first `j` landed on somebody else's card. Fixtures that are found by
+text are now coined words (`Tickbox`, `Shiftrange`, `Bulkaccept`). A spec that shares a database
+picks names no English sentence contains.

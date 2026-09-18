@@ -184,7 +184,36 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  * card sits under it in the same slot. The id row leaves the corner free for the mark.
  */
 .gf-card-slot { position: relative; display: flex; flex-direction: column; gap: var(--gf-s1); }
-.gf-card-slot .gf-card-id { padding-right: 22px; }
+.gf-card-slot .gf-card-id { padding-right: 22px; padding-left: 18px; }
+/*
+ * The Selection's checkbox (issue 03b), in the corner the `⋯` leaves free and built the same way: a 32px
+ * square to press, a 12px rule-drawn box to look at. A sibling of the link, so ticking a card never opens
+ * it and never starts a long-press. Checked, the box fills `--gf-system` inside its own rule — a filled
+ * square against the Cursor's 2px inset, so where you are and what you have gathered never look alike.
+ */
+.gf-card-check {
+  /* first in the slot for the tab order, so it needs lifting over the card that is painted after it */
+  appearance: none; position: absolute; z-index: 1; top: 0; left: 0; width: 32px; height: 32px; margin: 0;
+  display: grid; place-items: center; background: none; border: none; cursor: pointer;
+}
+.gf-card-check::before {
+  content: ''; box-sizing: border-box; width: 12px; height: 12px; padding: 2px;
+  border: 1px solid var(--gf-mute); background: none; background-clip: content-box;
+  transition: border-color var(--gf-fast) var(--gf-ease), background-color var(--gf-fast) var(--gf-ease);
+}
+.gf-card-check:hover::before { border-color: var(--gf-ink); }
+.gf-card-check:checked::before { border-color: var(--gf-system); background-color: var(--gf-system); }
+.gf-card-check:disabled { cursor: default; }
+/* a disabled control is a missing affordance, not a state mark (see `.gf-btn:disabled`) */
+/* stylelint-disable-next-line declaration-property-value-disallowed-list */
+.gf-card-check:disabled::before { opacity: .6; }
+/* the filled box *is* the mark. The card only steps its border to `--gf-rule-2` — hover's step, held — so a board with
+   everything ticked stays quiet and the Cursor's `--gf-system` inset is still the loudest edge on it */
+.gf-card.is-selected { border-color: var(--gf-rule-2); }
+.gf-card.is-selected.is-cursor { border-left-color: var(--gf-system); }
+/* the focus ring goes round the box that is drawn, not the 32px that is pressed, which would cut through the key */
+.gf-card-check:focus-visible { outline: none; }
+.gf-card-check:focus-visible::before { outline: 1px solid var(--gf-system); outline-offset: 1px; }
 /* the `⋯` is quiet — three dots in mute, no box — but its hit area is 32px square, the size a finger needs;
    the mark need not fill what it can be pressed on. It goes ink on hover and system while its menu is open. */
 .gf-card-menu-slot { position: absolute; top: 0; right: 0; }
@@ -196,6 +225,10 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 }
 .gf-card-menu-btn:hover { color: var(--gf-ink); }
 .gf-card-menu-btn[aria-expanded='true'] { color: var(--gf-system); }
+/* held by a bulk action (issue 03b): the same missing affordance a disabled button is */
+/* stylelint-disable-next-line declaration-property-value-disallowed-list */
+.gf-card-menu-btn:disabled { opacity: .6; cursor: default; }
+.gf-card-menu-btn:disabled:hover { color: var(--gf-mute); }
 /* the menu is the picker popover's clothes (Components), hung from the card's right edge so it never runs off a phone
    (`.gf-pop` anchors left and is declared later, so this has to outrank it) */
 .gf-pop.gf-card-menu { left: auto; right: 0; top: calc(100% - var(--gf-s1)); min-width: 160px; padding: var(--gf-s1) 0; display: flex; flex-direction: column; }
@@ -227,6 +260,39 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-section-head { width: 100%; min-height: 36px; align-items: center; background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; text-align: left; }
 .gf-section-head:hover { color: var(--gf-ink); }
 .gf-section-mark { display: inline-block; width: 14px; color: var(--gf-mute); }
+/*
+ * The selection bar (issue 03b): the count, the two ways to change it by hand, and the three things a
+ * Selection can have done to it. It sits *after* the board and sticks to the foot of the screen, the mode
+ * line's answer to the same problem (Interaction): a bar that arrives above the cards moves the card you
+ * were about to tick, and at the foot it is where a thumb is. Opaque `--gf-tile` under a rule, so cards pass
+ * beneath it rather than through it; below the popovers, which must open over it.
+ */
+.gf-selection {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; gap: var(--gf-s2);
+  padding: var(--gf-s3) 0 var(--gf-s2); background: var(--gf-tile); border-top: 1px solid var(--gf-rule-2);
+}
+.gf-selection-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gf-s2); }
+.gf-selection-count { font: var(--gf-t-meta); color: var(--gf-mute); margin-right: var(--gf-s2); }
+.gf-selection-count b { font: var(--gf-t-num); color: var(--gf-ink); margin-right: var(--gf-s1); }
+.gf-selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gf-s2); margin-left: auto; }
+/* the question stands where the verbs stood: a title's weight, because it is the one thing to read before pressing */
+.gf-selection-question { font: var(--gf-t-h); color: var(--gf-ink); margin-right: var(--gf-s1); }
+/* every button in the bar is one height, with a key drawn inside it or not */
+.gf-selection .gf-btn { min-height: 27px; }
+/* what is out, or how it ended: one mono line while it passes, a titled list when it has to be read */
+.gf-bulk-status { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
+.gf-bulk-status.is-held { display: flex; flex-direction: column; gap: var(--gf-s1); }
+.gf-bulk-title { margin: 0; display: flex; align-items: center; gap: var(--gf-s2); font: var(--gf-t-h); color: var(--gf-ink); }
+.gf-bulk-line { margin: 0; }
+/* a whole board can be refused, and the bar is stuck to the screen: past a third of it the list scrolls inside itself */
+.gf-bulk-lines {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;
+  font: var(--gf-t-meta); color: var(--gf-mute); max-height: 33vh; overflow-y: auto;
+}
+/* which Tickets, before why: the keys are what you act on, so they take ink */
+.gf-bulk-keys { color: var(--gf-ink); letter-spacing: .08em; margin-right: var(--gf-s2); }
+/* off the board the shell says it, in a strip under the bar */
+.gf-bulk-strip { padding: var(--gf-s2) var(--gf-gap) 0; }
 /* a move said where the card was: the confirm line's shape, with the way to it */
 .gf-notice { animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
 
@@ -641,3 +707,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 button.gf-hint { background: none; border: none; padding: 4px 2px; margin: -4px -2px; cursor: pointer; }
 button.gf-hint:hover { color: var(--gf-ink); }
 button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute); }
+
+/* the refusal's `×` borrows the filter's clear (Components) but not its seat: it stays after the title at every width,
+   pushed to the far edge, and is a finger wide (`.gf-filter-clear` reorders itself under 899px, and is declared earlier) */
+.gf-filter-clear.gf-bulk-dismiss { order: 0; margin-left: auto; min-width: 32px; }

@@ -4,7 +4,7 @@ import type { ZodType, z } from 'zod';
 export class ProblemError extends Error {
   constructor(
     public status: number,
-    public problem: { title?: string; detail?: string; hint?: string; issues?: { path: (string | number)[]; message: string }[] },
+    public problem: { title?: string; detail?: string; hint?: string; issues?: { path: (string | number)[]; message: string }[]; refusals?: { key: string; reason: string }[] },
   ) {
     super(problem.hint ?? problem.detail ?? problem.title ?? `HTTP ${status}`);
   }

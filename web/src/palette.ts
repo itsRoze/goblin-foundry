@@ -1,4 +1,4 @@
-import { TICKET_STATUSES, destinationOf, parseTicketKey, transitionsFrom, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { TICKET_STATUSES, destinationOf, parseTicketKey, transitionsFrom, type BulkAction, type TicketStatus, type TransitionName } from '@goblin/shared';
 
 /**
  * What `⌘K` offers, as data. The view builds the candidates (it is the half
@@ -41,6 +41,8 @@ export type PaletteAction =
   /** One step of a nested pick: the palette re-opens listing the live apps or projects. */
   | { kind: 'nest'; into: 'app' | 'project' }
   | { kind: 'place'; field: 'app_id' | 'project_id'; id: number | null }
+  /** One action on the whole Selection (issue 03b) — the only kind offered while there is one. */
+  | { kind: 'bulk'; action: BulkAction }
   | { kind: 'create'; what: CreateWhat }
   | { kind: 'clear-filters' };
 
@@ -131,4 +133,39 @@ export function rankedMoves(from: TicketStatus): TransitionName[] {
 
 export function transitionRows(from: TicketStatus): Candidate[] {
   return rankedMoves(from).map((name) => ({ id: `move-${name}`, group: 'actions', label: name, note: destinationOf(name), action: { kind: 'move', name } }));
+}
+
+const bulkMove = (name: TransitionName): Candidate => ({ id: `move-${name}`, group: 'actions', label: name, note: destinationOf(name), action: { kind: 'bulk', action: { kind: 'transition', name } } });
+
+/** `s` with a Selection: the verbs every member shares (`commonMoves`), each addressed to the whole set. */
+export const selectionTransitionRows = (shared: readonly TransitionName[]): Candidate[] => shared.map(bulkMove);
+
+/**
+ * Where a Selection can be sent. The two removals are rows of their own rather
+ * than a `no app` inside a nested pick: *remove from project* keeps each
+ * Ticket's App and *remove app and project* does not, and that difference has
+ * to be readable before it is chosen.
+ */
+export function selectionMoveRows(): Candidate[] {
+  return [
+    { id: 'act-move-app', group: 'actions', label: 'move to app…', action: { kind: 'nest', into: 'app' } },
+    { id: 'act-move-project', group: 'actions', label: 'move to project…', action: { kind: 'nest', into: 'project' } },
+    { id: 'act-no-project', group: 'actions', label: 'remove from project', note: 'keeps the app', action: { kind: 'bulk', action: { kind: 'move', to: { kind: 'no-project' } } } },
+    { id: 'act-nowhere', group: 'actions', label: 'remove app and project', action: { kind: 'bulk', action: { kind: 'move', to: { kind: 'nowhere' } } } },
+  ];
+}
+
+/**
+ * Everything the palette does to a Selection: transitions, moves and trash,
+ * and nothing else. `simple` and `blocked by…` are gone on purpose — they are
+ * about one Ticket, and a row that quietly meant the Cursor's would edit a
+ * Ticket nobody ticked.
+ */
+export function selectionRows(shared: readonly TransitionName[]): Candidate[] {
+  return [...selectionTransitionRows(shared), { id: 'act-trash', group: 'actions', label: 'trash', action: { kind: 'bulk', action: { kind: 'trash' } } }, ...selectionMoveRows()];
+}
+
+/** The second step of a bulk `move to…`: every live target — a Project brings its App, so none is ruled out by where the Tickets are now. */
+export function selectionPlaceRows(into: 'app' | 'project', targets: readonly { id: number; name: string }[] | undefined): Candidate[] {
+  return (targets ?? []).map((t): Candidate => ({ id: `place-${t.id}`, group: 'actions', label: t.name, action: { kind: 'bulk', action: { kind: 'move', to: { kind: into, id: t.id } } } }));
 }

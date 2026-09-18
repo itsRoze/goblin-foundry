@@ -57,6 +57,7 @@ lifecycle is documented by the lifecycle.
 | filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
 | actor | `--actor agent`, or `GF_ACTOR`; the flag wins. An agent creates tickets only into `planning` and owns no transition (CONTEXT.md *Actor*) |
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
+| several at once | a transition or `trash` with several keys — `goblin ticket approve GF-1 GF-2 GF-3` — is one batch, committed for all of them or none (ADR-0010); one key is the single call. `goblin ticket move <keys> --project <id\|null>` / `--app <id>` / `--nowhere` sends a set to one place. A refused batch lists `refusals` by key on stderr |
 | elsewhere | `GF_URL` points at the API; `goblin backup <dir>` copies the database file itself, from `GF_DB_PATH` or the default |
 
 ### A planning session

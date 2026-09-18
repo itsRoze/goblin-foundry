@@ -97,3 +97,6 @@ export const event = sqliteTable('event', {
   new: text('new', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   at: text('at').notNull(),
 });
+
+/** A ticket as stored — what every route that judges or writes one is handed. */
+export type TicketRow = typeof ticket.$inferSelect;

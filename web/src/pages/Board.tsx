@@ -18,16 +18,19 @@ import {
   type TransitionName,
 } from '@goblin/shared';
 import { ProblemError } from '../api';
-import { useOffersTicket } from '../current';
+import { commonMoves } from '../bulk';
+import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
-import { useKey } from '../keys';
+import { useKey, useKeyMap } from '../keys';
 import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
-import { useCrumb } from '../shell';
-import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type DraggedCard } from '../tickets';
+import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
+import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
+import { useCrumb, useOpenPalette } from '../shell';
+import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
-import { Confirm, Empty, Hint, Tile, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
 
 /**
  * Per-device display preferences, and nothing else: a View option decides how
@@ -174,15 +177,18 @@ interface Notice {
  * They differ only in which slot the sentence lands in — the column you
  * dropped on, or the card the key or the menu was about.
  */
-function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void) {
+function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
   const move = useTransition();
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
   const [pending, setPending] = useState<Pending | null>(null);
   const moved = useRef(onMoved);
+  /** Whether a bulk action holds this card *now* — asked when the move goes, not when it was first pressed: a question may have stood open meanwhile. */
+  const held = useRef(heldLine);
   useEffect(() => {
     moved.current = onMoved;
-  }, [onMoved]);
+    held.current = heldLine;
+  }, [onMoved, heldLine]);
 
   const run = useCallback(
     (card: DraggedCard, edge: Transition | undefined, slot: Slot, structural: string) => {
@@ -190,6 +196,10 @@ function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (ca
       if (!edge) return setRefusal({ ...slot, text: structural });
       const go = () => {
         setPending(null);
+        const line = held.current(card.key);
+        // after this click has finished bubbling: a refusal clears itself on the next click it hears (`useRefusal`),
+        // and said inside the click that caused it, that would be this one
+        if (line !== null) return void setTimeout(() => setRefusal({ ...slot, text: line }));
         move.mutate(
           { key: card.key, name: edge.name, to: edge.to },
           { onError: (error) => setRefusal({ ...slot, text: refusalLine(error) }), onSuccess: () => moved.current(card, edge.to) },
@@ -334,7 +344,16 @@ export function BoardPage() {
     },
     [columns, vertical, expansion],
   );
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, cancel } = useBoardMoves(lookup, onMoved);
+  const selecting = useSelecting();
+  const { selection, change, keepOnly, pending: sending } = selecting;
+  const heldLine = useCallback(
+    (key: string) => {
+      const ticket = lookup(key);
+      return ticket !== undefined && sending?.ids.has(ticket.id) ? `${key} is held by a bulk action — ${sending.label}` : null;
+    },
+    [lookup, sending],
+  );
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, cancel } = useBoardMoves(lookup, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -342,6 +361,61 @@ export function BoardPage() {
   const byKey = useMemo(() => cursorColumns(orientation, drawn.map((column) => ({ status: column.status, keys: column.tickets.map((t) => t.key) })), expansion), [orientation, drawn, expansion]);
   const cursor = useCursor({ tile: 'board', columns: byKey, pathOf: (key) => ticketPath({ key }) });
   const under = cursor.at === null ? undefined : lookup(cursor.at);
+
+  /**
+   * The Selection (issue 03b). It belongs to the *filtered* board, not to what
+   * is on screen: a folded section's Tickets stay in it and are counted, and
+   * whatever a poll or a Filter change takes off the board leaves it. It is
+   * the shell's state, so opening a Ticket and coming back keeps it.
+   */
+  useEffect(() => {
+    if (cards) keepOnly(new Set(cards.map((t) => t.id)));
+  }, [cards, keepOnly]);
+  const members = useMemo(() => (cards ?? []).filter((t) => isSelected(selection, t.id)), [cards, selection]);
+  /** The order a range runs in: lifecycle columns, top to bottom, folded sections left out (selection.ts). */
+  const order = useMemo(
+    () => rangeOrder(drawn.map((column) => ({ status: column.status, ids: column.tickets.map((t) => t.id) })), (status) => !vertical || isExpanded(expansion, status)),
+    [drawn, vertical, expansion],
+  );
+  const select = (t: Ticket, range: boolean) => change((current) => (range ? rangeTo(current, order, t.id) : toggleSelected(current, t.id)));
+  const selectEverything = () => change((current) => selectAll(current, (cards ?? []).map((t) => t.id)));
+  const clearSelection = () => change(() => EMPTY_SELECTION);
+  /** `⇧↓ ⇧↑`: the range's far end takes one step along that same order, and the Cursor goes with it so you can see where it is. */
+  const extend = (step: 1 | -1) => {
+    const anchored = selection.anchor !== null && order.includes(selection.anchor);
+    // with no anchor the press plants one first — on the Cursor's card, else on the first card, where it then stays put
+    const plant = anchored ? null : (under?.id ?? order[0] ?? null);
+    const target = anchored ? stepFrom(order, under?.id ?? selection.anchor, step) : under ? stepFrom(order, under.id, step) : plant;
+    if (target === null) return;
+    change((current) => rangeTo(plant === null ? current : rangeTo(current, order, plant), order, target));
+    const landed = cards?.find((t) => t.id === target);
+    if (landed) cursor.set(landed.key);
+  };
+  useKey('x', under === undefined ? undefined : () => select(under, false));
+  useKeyMap({ ArrowDown: () => extend(1), ArrowUp: () => extend(-1) }, { shift: true });
+  // a shifted letter is its own key, so `J K` need no flag: the same aliases the Cursor's arrows have
+  useKeyMap({ J: () => extend(1), K: () => extend(-1) });
+  useKeyMap({ a: selectEverything }, { meta: true });
+
+  const { report } = selecting;
+  /** One action on the whole Selection — from a key, the palette or the bar — and the one question it may have to ask first. */
+  const bulk = useBulkAction(members);
+  const { act } = bulk;
+  useOffersSelection(
+    members.length === 0
+      ? null
+      : {
+          members,
+          act,
+          explainDependencies: () => report({ kind: 'said', text: 'dependencies are declared from one ticket — clear the selection first' }),
+        },
+  );
+  const selectFor = (t: Ticket): CardSelect => ({
+    selected: isSelected(selection, t.id),
+    onSelect: (range) => select(t, range),
+    frozen: sending !== null,
+    locked: sending?.ids.has(t.id) ?? false,
+  });
 
   const patch = usePatchTicket();
   const intent = useTicketIntent();
@@ -370,7 +444,8 @@ export function BoardPage() {
         },
   );
 
-  // `esc` closes what is open — the view menu, the create row, a notice — then lets the Cursor go; the shell walks back from there
+  // `esc` closes what is open — the view menu, the create row, a notice, a question — then lets the Selection go,
+  // then the Cursor; the shell walks back from there
   useEscape(() => {
     if (menu) {
       setMenu(false);
@@ -382,6 +457,19 @@ export function BoardPage() {
     }
     if (notice !== null) {
       setNotice(null);
+      return true;
+    }
+    if (bulk.question !== null) {
+      bulk.cancel();
+      return true;
+    }
+    if (selecting.outcome?.kind === 'refused' || selecting.outcome?.kind === 'unknown') {
+      report(null);
+      return true;
+    }
+    // then what you have gathered, and only then where you are; a set that has been sent is not yours to drop
+    if (members.length > 0 && sending === null) {
+      clearSelection();
       return true;
     }
     if (cursor.at === null) return false;
@@ -445,6 +533,7 @@ export function BoardPage() {
     updated: view.updated,
     at,
     menuFor,
+    selectFor,
     canDrag: !vertical,
     refusal: refusal?.status === column.status ? refusal : null,
     pending: pending?.status === column.status ? pending : null,
@@ -468,16 +557,32 @@ export function BoardPage() {
           <Hint k="v" onClick={() => setMenu((m) => !m)} testId="hint-view">
             view
           </Hint>
-          {/* `a` is offered only where the card under the Cursor has that arrow, as the state tile offers it */}
-          {under !== undefined && keyedMove(under.status, 'approve').ok && (
-            <Hint k="a" onClick={() => press(under, 'approve')}>
-              approve
-            </Hint>
+          {under !== undefined && (
+            <>
+              <Hint k="x" onClick={() => select(under, false)}>
+                select
+              </Hint>
+              <Hint k="⇧↓">range</Hint>
+            </>
           )}
-          <Hint k="s">status</Hint>
-          <Hint k="d" onClick={under === undefined ? undefined : () => blockedBy(under)}>
-            deps
+          <Hint k="⌘A" onClick={selectEverything} testId="hint-select-all">
+            select all
           </Hint>
+          {/* with a Selection the verbs are the selection bar's, addressed to the set; these three are the Cursor's */}
+          {members.length === 0 && (
+            <>
+              {/* `a` is offered only where the card under the Cursor has that arrow, as the state tile offers it */}
+              {under !== undefined && keyedMove(under.status, 'approve').ok && (
+                <Hint k="a" onClick={() => press(under, 'approve')}>
+                  approve
+                </Hint>
+              )}
+              <Hint k="s">status</Hint>
+              <Hint k="d" onClick={under === undefined ? undefined : () => blockedBy(under)}>
+                deps
+              </Hint>
+            </>
+          )}
         </>
       }
       navigable
@@ -518,6 +623,9 @@ export function BoardPage() {
           ))}
         </div>
       )}
+      {/* after the board and out of its way: a bar that arrived above the cards would move the card you were about to tick
+          (DESIGN.md Interaction, the mode line's rule), and at the foot it is under a thumb */}
+      <SelectionBar count={members.length} total={cards?.length ?? 0} approvable={commonMoves(members).includes('approve')} bulk={bulk} onSelectAll={selectEverything} onClear={clearSelection} />
       {lift && (
         // the card under the finger, drawn where the finger is; the column marks say where it may go
         <div className="gf-card gf-ghost" style={{ left: lift.x, top: lift.y }} aria-hidden="true" data-testid="ghost">
@@ -532,6 +640,76 @@ export function BoardPage() {
   );
 }
 
+/**
+ * The Selection's bar (issue 03b): how many, the two ways to change that
+ * without a keyboard, and the three things a Selection can have done to it —
+ * every one a button, because a finger has no `a` and no `⌘A`. It is only
+ * there while there is something to say: a Selection, an action that is out,
+ * or how the last one ended. The count is of the Selection, so a Ticket in a
+ * folded section is in it.
+ */
+function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: { count: number; total: number; approvable: boolean; bulk: BulkAsk; onSelectAll: () => void; onClear: () => void }) {
+  const { pending, outcome, report } = useSelecting();
+  const openPalette = useOpenPalette();
+  const { question, act: onAct, confirm: onConfirm, cancel: onCancel } = bulk;
+  const busy = pending !== null;
+  if (count === 0 && pending === null && outcome === null) return null;
+  return (
+    <div className="gf-selection" role="region" aria-label="selection" data-testid="selection-bar">
+      {count > 0 && (
+        <div className="gf-selection-row">
+          {/* announced, because `x` and a shifted arrow change it with nothing else on screen to say so */}
+          <span className="gf-selection-count" data-testid="selection-count" aria-live="polite">
+            <b>{count}</b> selected
+          </span>
+          <button type="button" className="gf-btn" data-testid="select-all" disabled={busy || count === total} onClick={onSelectAll}>
+            select all
+          </button>
+          <button type="button" className="gf-btn" data-testid="clear-selection" disabled={busy} onClick={onClear}>
+            clear <Kbd>esc</Kbd>
+          </button>
+          {question === null ? (
+            <span className="gf-selection-actions">
+              {/* always there, as `a` always answers: on a set that does not share the arrow it refuses with each Ticket's reason */}
+              <button type="button" className={`gf-btn${approvable ? ' is-primary' : ''}`} data-testid="bulk-approve" disabled={busy} onClick={() => onAct({ kind: 'transition', name: 'approve' })}>
+                approve <Kbd>a</Kbd>
+              </button>
+              <button type="button" className="gf-btn" data-testid="bulk-status" disabled={busy} onClick={() => openPalette('status')}>
+                status… <Kbd>s</Kbd>
+              </button>
+              <button type="button" className="gf-btn" data-testid="bulk-move" disabled={busy} onClick={() => openPalette('move')}>
+                move…
+              </button>
+              <button type="button" className="gf-btn is-danger" data-testid="bulk-trash" disabled={busy} onClick={() => onAct({ kind: 'trash' })}>
+                trash
+              </button>
+            </span>
+          ) : (
+            // the question takes the verbs' place: it is asked where the verb was pressed, and no second verb is in reach meanwhile
+            <span className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
+              <span className="gf-selection-question">{question.text}</span>
+              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" onClick={onConfirm}>
+                {question.verb}
+              </button>
+              <button type="button" className="gf-btn" data-testid="bulk-confirm-cancel" onClick={onCancel}>
+                cancel <Kbd>esc</Kbd>
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+      {question !== null && question.lines.length > 0 && (
+        <ul className="gf-bulk-lines" data-testid="bulk-confirm-lines">
+          {question.lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+      <BulkStatus onDismiss={() => report(null)} />
+    </div>
+  );
+}
+
 /** Everything one status's cards need, whichever way the board is drawn. */
 interface CardsProps {
   status: TicketStatus;
@@ -542,6 +720,7 @@ interface CardsProps {
   updated: boolean;
   at: number;
   menuFor: (t: Ticket) => CardActions;
+  selectFor: (t: Ticket) => CardSelect;
   canDrag: boolean;
   /** The sentence filed under this status, if any: under its card when it names one that is here, else at the foot. */
   refusal: Refusal | null;
@@ -579,7 +758,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, updated, at, menuFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
@@ -590,7 +769,7 @@ function Cards({ status, tickets, cursor, meta, updated, at, menuFor, canDrag, r
   return (
     <>
       {tickets.map((t) => (
-        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} canDrag={canDrag}>
+        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
           <Said status={status} {...under(t.key)} notice={null} onCancel={onCancel} onShow={onShow} />
         </TicketCard>
       ))}

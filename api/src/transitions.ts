@@ -5,14 +5,13 @@
  */
 import { eq } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
-import { approveGuard, destinationOf, findTransition, guardRefusal, isTransitionName, ownerRefusal, ownsTransition, structuralRefusal } from '@goblin/shared';
+import { isTransitionName, judgeTransition } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import type { Db } from './db';
 import { now, recordEvent } from './events';
 import { conflict, notFound } from './problems';
-import { ticket as ticketTable } from './schema';
+import { ticket as ticketTable, type TicketRow } from './schema';
 
-type TicketRow = typeof ticketTable.$inferSelect;
 
 export interface TransitionDeps {
   db: Db;
@@ -33,15 +32,11 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, toWire }
     const row = await find(c);
     if (!row) return missing(c);
 
-    const edge = findTransition(row.status, name);
-    if (!edge) return conflict(c, structuralRefusal(row.status, destinationOf(name)));
-
-    // authority before requirements: an actor who owns no edge here is not told what the ticket is missing
+    // structure, then authority, then requirements — the order is the shared table's (ADR-0003)
     const actor = c.get('actor');
-    if (!ownsTransition(actor, edge.owner)) return conflict(c, ownerRefusal(name, edge.owner, actor), edge.owner);
-
-    const lacks = edge.guard ? approveGuard(row) : [];
-    if (lacks.length > 0) return conflict(c, guardRefusal(name, lacks), edge.owner);
+    const judged = judgeTransition(row, name, actor);
+    if (!judged.ok) return conflict(c, judged.reason, judged.owner);
+    const { edge } = judged;
 
     const at = now();
     const [updated] = await db.update(ticketTable).set({ status: edge.to, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();

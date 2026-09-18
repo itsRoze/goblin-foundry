@@ -23,10 +23,9 @@ import { now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable } from './problems';
-import { dependency, ticket as ticketTable } from './schema';
+import { dependency, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 
-type TicketRow = typeof ticketTable.$inferSelect;
 
 /** A blocker in a terminal status is *inert* (ADR-0009's word): finished or abandoned, either way out of the way. */
 const INERT: TicketStatus[] = [...TERMINAL_STATUSES];
