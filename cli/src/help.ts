@@ -42,13 +42,13 @@ export const nounHelp = (noun: Noun): string =>
   ].join('\n');
 
 export const commandHelp = (noun: Noun, command: Command): string => {
-  const operands = (command.operands ?? []).map((o) => `<${o.name}>`);
+  const operands = (command.operands ?? []).map((o) => (o.variadic ? `<${o.name}>...` : `<${o.name}>`));
   const flags: Flag[] = command.flags ?? [];
   return [
     `usage: goblin ${noun.name} ${command.verb} ${[...operands, ...flags.map(flagUsage)].join(' ')}`.trimEnd(),
     '',
     command.summary,
-    ...(command.operands?.length ? ['', 'operands:', rows(command.operands.map((o) => [`<${o.name}>`, o.summary]))] : []),
+    ...(command.operands?.length ? ['', 'operands:', rows(command.operands.map((o) => [o.variadic ? `<${o.name}>...` : `<${o.name}>`, o.summary]))] : []),
     ...(flags.length ? ['', 'flags:', rows(flags.map((f) => [flagSignature(f), f.required ? `${f.summary} (required)` : f.summary]))] : []),
   ].join('\n');
 };

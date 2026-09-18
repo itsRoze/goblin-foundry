@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { FILTER_PARAMS, TRANSITION_NAMES, TRANSITIONS, destinationOf, parseTicketFilter, serialiseTicketFilter, type TransitionName } from '@goblin/shared';
+import { FILTER_PARAMS, TRANSITION_NAMES, TRANSITIONS, destinationOf, parseTicketFilter, serialiseTicketFilter, type BulkAction, type BulkMoveTarget, type TransitionName } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 
@@ -188,6 +188,16 @@ function designCommands(kind: 'project' | 'ticket', address: (ctx: Ctx) => strin
 const ticketOperand: Operand[] = [{ name: 'ticket', summary: 'its key, e.g. GF-12 (a bare number works too)' }];
 const ticketAt = (ctx: Ctx) => `/api/tickets/${encodeURIComponent(ctx.args.operands[0] as string)}`;
 
+/**
+ * The same verb over several tickets (issue 03b): `goblin ticket approve GF-1
+ * GF-2` is one request, committed for the whole set or not at all
+ * (ADR-0010). One key stays the single-ticket call — its answer is the ticket,
+ * a batch's is `{tickets}` — so the planning transcript reads as it did.
+ */
+const ticketsOperand: Operand[] = [{ name: 'ticket', summary: 'its key, e.g. GF-12 (a bare number works too); several keys are one all-or-none batch', variadic: true }];
+const bulk = (ctx: Ctx, action: BulkAction) => ctx.api.post('/api/tickets/bulk', { tickets: ctx.args.operands, action });
+const oneOrAll = (one: (ctx: Ctx) => Promise<Response>, action: BulkAction) => (ctx: Ctx) => (ctx.args.operands.length === 1 ? one(ctx) : bulk(ctx, action));
+
 /** One verb per edge name in the table, with the statuses it leads out of read off the same rows. */
 const transitionCommands = (): Command[] =>
   TRANSITION_NAMES.map((name: TransitionName) => ({
@@ -195,9 +205,26 @@ const transitionCommands = (): Command[] =>
     summary: `${TRANSITIONS.filter((t) => t.name === name)
       .map((t) => t.from)
       .join(', ')} → ${destinationOf(name)}`,
-    operands: ticketOperand,
-    run: (ctx: Ctx) => ctx.api.post(`${ticketAt(ctx)}/${name}`),
+    operands: ticketsOperand,
+    run: oneOrAll((ctx) => ctx.api.post(`${ticketAt(ctx)}/${name}`), { kind: 'transition', name }),
   }));
+
+/** Where `ticket move` may send a set: the four named places the API knows, and no field-by-field edit (ADR-0007, issue 03b). */
+const MOVE_FLAGS: Flag[] = [
+  { name: 'project', kind: 'id', nullable: true, value: '<project|null>', summary: 'into this project, which brings its app; `null` takes them out of their projects and keeps each app' },
+  { name: 'app', kind: 'id', value: '<app>', summary: 'into this app, and out of any project' },
+  { name: 'nowhere', kind: 'boolean', summary: 'out of any app and any project' },
+];
+
+/** Exactly one destination: a move that names none, or two, has not said where. */
+function moveTarget(args: Args): BulkMoveTarget {
+  const { project, app, nowhere } = args.values;
+  const named = [project !== undefined, app !== undefined, nowhere === true].filter(Boolean).length;
+  if (named !== 1) throw new UsageError('say where: one of --project <id|null>, --app <id>, --nowhere');
+  if (nowhere === true) return { kind: 'nowhere' };
+  if (app !== undefined) return { kind: 'app', id: app as number };
+  return project === null ? { kind: 'no-project' } : { kind: 'project', id: project as number };
+}
 
 const DEPENDENCY_FLAGS: Flag[] = [
   { name: 'blocker', kind: 'string', required: true, value: '<ticket>', summary: 'the ticket that must be done first' },
@@ -231,7 +258,14 @@ export const NOUNS: Noun[] = [
       { verb: 'create', summary: 'a new ticket (design-less: write the design with `ticket design set`)', flags: ticketFields(true), run: ({ args, api }) => api.post('/api/tickets', args.values) },
       { verb: 'show', summary: 'one ticket, with the edges on both sides of it', operands: ticketOperand, run: (ctx) => ctx.api.get(ticketAt(ctx)) },
       { verb: 'update', summary: "change a ticket's fields (never its status — that is a verb)", operands: ticketOperand, flags: ticketFields(false), run: (ctx) => ctx.api.patch(ticketAt(ctx), ctx.args.values) },
-      { verb: 'trash', summary: 'a recoverable deletion, for a ticket made by mistake', operands: ticketOperand, run: (ctx) => ctx.api.del(ticketAt(ctx)) },
+      { verb: 'trash', summary: 'a recoverable deletion, for a ticket made by mistake', operands: ticketsOperand, run: oneOrAll((ctx) => ctx.api.del(ticketAt(ctx)), { kind: 'trash' }) },
+      {
+        verb: 'move',
+        summary: 'send tickets to a project, an app, out of their project, or nowhere — all of them, or none',
+        operands: ticketsOperand,
+        flags: MOVE_FLAGS,
+        run: (ctx) => bulk(ctx, { kind: 'move', to: moveTarget(ctx.args) }),
+      },
       { verb: 'restore', summary: 'take it back out of the trash', operands: ticketOperand, run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/restore`) },
       { verb: 'history', summary: 'every recorded change, newest first', operands: ticketOperand, run: (ctx) => ctx.api.get(`${ticketAt(ctx)}/events`) },
       ...designCommands('ticket', ticketAt, ticketOperand),

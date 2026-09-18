@@ -65,6 +65,66 @@ describe('goblin', () => {
     expect((await json(['ticket', 'show', 'GF-2'])).dependencies.depends_on).toEqual([expect.objectContaining({ key: 'GF-1', status: 'ready' })]);
   });
 
+  /**
+   * Several keys after a verb are one batch (issue 03b, ADR-0010): the same
+   * verb, sent once, committed for the whole set or not at all. One key is the
+   * single-ticket call it always was, so nothing about the planning transcript
+   * changes.
+   */
+  test('a transition or a trash with several keys is one atomic batch; one key is the call it always was', async () => {
+    await json(['app', 'create', '--name', 'Subway Reader']);
+    for (const title of ['one', 'two', 'three']) await json(['ticket', 'create', '--title', title, '--app', '1', '--simple', '--status', 'todo']);
+
+    const approved = await json(['ticket', 'approve', 'GF-1', 'GF-2', '3']);
+    expect(approved.tickets.map((t: { key: string; status: string }) => [t.key, t.status])).toEqual([
+      ['GF-1', 'ready'],
+      ['GF-2', 'ready'],
+      ['GF-3', 'ready'],
+    ]);
+    // one key answers with the ticket itself, as before
+    expect(await json(['ticket', 'start', 'GF-1'])).toMatchObject({ key: 'GF-1', status: 'building' });
+
+    // one member that cannot go stops all of them, and the refusal names it
+    const refused = await run(['ticket', 'submit', 'GF-1', 'GF-2']);
+    expect([refused.code, refused.out]).toEqual([1, '']);
+    expect(JSON.parse(refused.err)).toMatchObject({ status: 409, refusals: [{ key: 'GF-2', reason: 'a ticket in ready does not go to review' }] });
+    expect((await json(['ticket', 'show', 'GF-1'])).status).toBe('building');
+
+    await json(['ticket', 'trash', 'GF-2', 'GF-3']);
+    expect((await json(['trash'])).tickets.map((t: { key: string }) => t.key).sort()).toEqual(['GF-2', 'GF-3']);
+    await json(['ticket', 'trash', 'GF-1']);
+    expect((await json(['ticket', 'list'])).length).toBe(0);
+  });
+
+  test('`ticket move` sends a set to one named place: a project, an app, out of its project, or nowhere', async () => {
+    await json(['app', 'create', '--name', 'Subway Reader']);
+    await json(['project', 'create', '--name', 'MVP', '--app', '1']);
+    await json(['ticket', 'create', '--title', 'one']);
+    await json(['ticket', 'create', '--title', 'two']);
+    const keys = (r: { tickets: { key: string; app_id: number | null; project_id: number | null }[] }) => r.tickets.map((t) => [t.key, t.app_id, t.project_id]);
+
+    // the project brings its app, for every member; the GUI's slug address works here too
+    expect(keys(await json(['ticket', 'move', 'GF-1', 'GF-2', '--project', 'mvp-1']))).toEqual([
+      ['GF-1', 1, 1],
+      ['GF-2', 1, 1],
+    ]);
+    expect(keys(await json(['ticket', 'move', 'GF-1', '--project', 'null']))).toEqual([['GF-1', 1, null]]);
+    expect(keys(await json(['ticket', 'move', 'GF-2', '--app', '1']))).toEqual([['GF-2', 1, null]]);
+    expect(keys(await json(['ticket', 'move', 'GF-1', 'GF-2', '--nowhere']))).toEqual([
+      ['GF-1', null, null],
+      ['GF-2', null, null],
+    ]);
+
+    // exactly one destination, and the CLI says so before anything is sent
+    expect((await run(['ticket', 'move', 'GF-1'])).code).toBe(2);
+    expect((await run(['ticket', 'move', 'GF-1', '--app', '1', '--nowhere'])).code).toBe(2);
+    expect((await run(['ticket', 'move', 'GF-1', '--app', 'null'])).code).toBe(2);
+    // a destination the API refuses is its refusal, on `to`
+    const gone = await run(['ticket', 'move', 'GF-1', '--project', '99']);
+    expect(gone.code).toBe(1);
+    expect(JSON.parse(gone.err)).toMatchObject({ status: 422, issues: [{ path: ['action', 'to'] }] });
+  });
+
   test('GF_ACTOR says who is acting when --actor does not', async () => {
     const ticket = await json(['ticket', 'create', '--title', 'planned by the planner'], { env: { GF_ACTOR: 'agent' } });
     expect(ticket.status).toBe('planning');
