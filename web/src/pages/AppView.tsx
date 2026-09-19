@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { slugPath } from '@goblin/shared';
+import { repositoryHref, slugPath } from '@goblin/shared';
 import { useOpensCreate } from '../creating';
 import { useCursor } from '../desk';
 import { useSaving } from '../editor';
@@ -101,7 +101,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
           <Kv
             rows={[
               ['name', app.name],
-              ['repository', app.repository_url ? <a href={app.repository_url}>{app.repository_url}</a> : '—'],
+              ['repository', <Repository remote={app.repository_url} />],
               ['branch', app.default_branch ?? '—'],
               ['description', <DescriptionField kind="app" value={app.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
             ]}
@@ -112,5 +112,25 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         <History events={events.data} describe={(e) => describeEvent(e, appName)} />
       </Tile>
     </>
+  );
+}
+
+/**
+ * The remote as typed, linked to where a browser can follow it — an SSH remote
+ * has no href of its own, so one is derived (GF-8). A value the old rule let
+ * through has no link rather than a raw `href`.
+ */
+function Repository({ remote }: { remote: string | null }) {
+  if (!remote) return <>—</>;
+  const href = repositoryHref(remote);
+  // mono because a remote is a path (DESIGN.md Do's), which is also what tells it
+  // apart from the ink values stacked around it without leaning on hue alone
+  if (!href) return <span className="gf-remote">{remote}</span>;
+  // `title` because an SSH remote's href is a derived string the row never shows,
+  // and `_blank` because the tracker is what you had open (DESIGN.md Interaction)
+  return (
+    <a className="gf-remote" href={href} title={href} target="_blank" rel="noreferrer">
+      {remote}
+    </a>
   );
 }

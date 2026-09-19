@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { slugPath } from '@goblin/shared';
+import { REPOSITORY_EXAMPLES, slugPath } from '@goblin/shared';
+import { fieldLabel } from '../api';
 import { useOpensCreate } from '../creating';
 import { useCursor } from '../desk';
 import { useApps, useCreateApp } from '../queries';
 import { useCrumb } from '../shell';
-import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
+import { Chip, Empty, InlineForm, Plus, Row, Tile, type Field } from '../ui';
 
-export const appFormFields = [
+export const appFormFields: Field[] = [
   { name: 'name', label: 'name' },
-  { name: 'repository_url', label: 'repository url', placeholder: 'https://github.com/…' },
-  { name: 'default_branch', label: 'default branch', placeholder: 'main' },
-  { name: 'description', label: 'description', kind: 'textarea' as const },
+  // labelled from the one place that knows what the GUI calls a wire field, so the
+  // label above a field and the refusal under it cannot drift apart
+  { name: 'repository_url', label: fieldLabel('repository_url'), placeholder: REPOSITORY_EXAMPLES },
+  // a branch alone is a 422 (`DEFAULT_BRANCH_NEEDS_REPOSITORY`); the field says so before ⌘⏎ does.
+  // Not `branchWithoutRepository`: that asks whether the pair is illegal, this asks whether the
+  // field can be used at all, which is true before anything has been typed into it.
+  { name: 'default_branch', label: fieldLabel('default_branch'), placeholder: 'main', inertWhen: (v) => !v.repository_url?.trim() },
+  { name: 'description', label: 'description', kind: 'textarea' },
 ];
 
 /** A form that does not carry the description leaves it alone — the about tile's description saves itself. */

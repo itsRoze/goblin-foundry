@@ -3,7 +3,7 @@
 Glossary of the tracker's language. No implementation details here; decisions live in `docs/adr/`.
 
 ## App
-A product the factory works on; owns one git repository. Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
+A product the factory works on. Has at most one git repository, named by a git remote in whatever form git prints it (`https://…` or `git@host:owner/repo.git`) — a reference a human reads and follows, kept as typed. A repository is not exclusive: two Apps may name the same one (a monorepo). Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
 
 ## Project
 A body of work (e.g. "Subway Reader MVP"), usually inside an App. May exist with no App (created before it is known where it belongs) and may be moved to another App later; its Tickets go with it. Has a Project Design and contains Tickets. Renamable; identity is an opaque id, not its name.
