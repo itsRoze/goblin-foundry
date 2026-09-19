@@ -15,10 +15,25 @@ export class ProblemError extends Error {
    * `line` read as the source line the error was thrown from (issue 11).
    */
   get sentence(): string {
-    if (this.problem.issues?.length) return this.problem.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join(' · ');
+    if (this.problem.issues?.length) return this.problem.issues.map((i) => `${issuePath(i.path) || 'body'}: ${i.message}`).join(' · ');
     return this.message;
   }
 }
+
+/**
+ * What the GUI calls a field the API names differently. A refusal names the
+ * field the way the screen does, or it names nothing the reader can find: the
+ * API keeps `repository_url` (GF-8 decided not to migrate it), while every
+ * surface a human reads says `repository`. The form labels its fields from
+ * here too, so the sentence under a refused field and the label above it
+ * cannot drift apart.
+ */
+const FIELD_LABELS: Record<string, string> = { repository_url: 'repository', default_branch: 'branch' };
+
+export const fieldLabel = (name: string): string => FIELD_LABELS[name] ?? name;
+
+/** A zod issue's path, in the screen's words. */
+export const issuePath = (path: (string | number)[]): string => path.map((p) => fieldLabel(String(p))).join('.');
 
 async function call(method: string, path: string, body?: unknown): Promise<unknown> {
   const res = await fetch(path, {

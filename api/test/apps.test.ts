@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { REPOSITORY_WANTS } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -57,7 +58,8 @@ describe('/api/apps', () => {
 
     const badUrl = await req('/api/apps', json('POST', { name: 'X', repository_url: 'not a url' }));
     expect(badUrl.status).toBe(422);
-    expect((await badUrl.json()).issues[0].path).toEqual(['repository_url']);
+    // the refusal teaches the two shapes rather than naming the field and stopping (GF-8)
+    expect((await badUrl.json()).issues).toEqual([{ path: ['repository_url'], message: REPOSITORY_WANTS }]);
 
     const noName = await req('/api/apps', json('POST', { description: 'nameless' }));
     expect(noName.status).toBe(422);

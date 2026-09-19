@@ -101,7 +101,7 @@ export const GLOBAL_FLAGS: Flag[] = [
 
 const appFields = (creating: boolean): Flag[] => [
   { name: 'name', kind: 'string', required: creating, value: '<name>', summary: 'what it is called' },
-  { name: 'repository-url', kind: 'string', nullable: true, value: '<url|null>', summary: 'the git repository it owns' },
+  { name: 'repository-url', kind: 'string', nullable: true, value: '<remote|null>', summary: 'the git remote it lives at' },
   { name: 'default-branch', kind: 'string', nullable: true, value: '<branch|null>', summary: 'only alongside a repository url' },
   { name: 'description', kind: 'text', value: TEXT, summary: 'markdown' },
 ];
@@ -252,7 +252,7 @@ const blockedAt = (args: Args) => `/api/tickets/${encodeURIComponent(String(args
 export const NOUNS: Noun[] = [
   {
     name: 'app',
-    summary: 'a product the factory works on; owns one git repository',
+    summary: 'a product the factory works on; has at most one git repository',
     commands: entityCommands('app', appFields, [ARCHIVED]),
   },
   {

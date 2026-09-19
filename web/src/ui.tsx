@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
-import { ProblemError } from './api';
+import { ProblemError, fieldLabel } from './api';
 import { useTile } from './desk';
 import { formKeys } from './keys';
 
@@ -156,7 +156,30 @@ export interface Field {
   kind?: 'text' | 'textarea' | 'select';
   placeholder?: string;
   options?: { value: string; label: string }[];
+  /**
+   * When this field only means something alongside another one, and the API
+   * would refuse the pair anyway: an inert field says so before `⌘⏎` does.
+   * An inert field renders empty and is left out of what the form submits —
+   * the two together, because the body clears the field either way and a
+   * disabled input still showing `main` while `null` goes over the wire is
+   * the screen disagreeing with what was sent.
+   */
+  inertWhen?: (values: Record<string, string>) => boolean;
 }
+
+/** The fields `inertWhen` rules out for the values on screen right now. */
+const inertFields = (fields: Field[], values: Record<string, string>) =>
+  new Set(fields.filter((f) => f.inertWhen?.(values)).map((f) => f.name));
+
+/**
+ * What the form sends. An inert field is left out, so a value that only made
+ * sense beside another one is cleared rather than refused: the alternative is
+ * a 422 the operator can do nothing about except empty the field by hand.
+ */
+export const submittedValues = (fields: Field[], values: Record<string, string>): Record<string, string> => {
+  const inert = inertFields(fields, values);
+  return Object.fromEntries(Object.entries(values).filter(([name]) => !inert.has(name)));
+};
 
 /**
  * The inline create/edit form inside a tile: `⌘⏎` saves, `esc` cancels.
@@ -183,13 +206,14 @@ export function InlineForm({
   const [busy, setBusy] = useState(false);
   const first = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   useEffect(() => first.current?.focus(), []);
+  const inert = inertFields(fields, values);
 
   const save = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await onSubmit(values);
+      await onSubmit(submittedValues(fields, values));
     } catch (e) {
       setError(e instanceof ProblemError ? e.sentence : e instanceof Error ? e.message : String(e));
     } finally {
@@ -209,10 +233,16 @@ export function InlineForm({
     >
       {fields.map((f, i) => {
         const id = `f-${f.name}`;
+        const isInert = inert.has(f.name);
         const common = {
           id,
           name: f.name,
-          value: values[f.name] ?? '',
+          // an inert field shows nothing, because nothing is what it will send
+          value: isInert ? '' : (values[f.name] ?? ''),
+          // `readOnly`, not `disabled`: a disabled input leaves the tab order and the
+          // a11y tree, and the keyboard reaches everything here (PRODUCT.md)
+          readOnly: isInert,
+          'aria-disabled': isInert || undefined,
           onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setValues({ ...values, [f.name]: e.target.value }),
           ref: i === 0 ? (first as never) : undefined,
         };
@@ -230,7 +260,10 @@ export function InlineForm({
                 ))}
               </select>
             ) : (
-              <input {...common} type="text" placeholder={f.placeholder} autoComplete="off" />
+              // a remote, a key, a branch: none of them are prose, and a soft
+              // keyboard that capitalises `git@` or autocorrects a path is
+              // editing the one thing that has to survive verbatim
+              <input {...common} type="text" placeholder={f.placeholder} autoComplete="off" spellCheck={false} autoCapitalize="off" autoCorrect="off" />
             )}
           </label>
         );
@@ -346,7 +379,7 @@ export function describeEvent(e: Event, appName: Namer): string {
   // the bodies are in the event (recovery is the edit session, ADR-0008); the history says only that a sitting happened
   if (keys.length === 1 && keys[0] === 'design') return 'design edited';
   if (keys.length === 1 && keys[0] === 'description') return 'description edited';
-  return `updated ${keys.join(', ')}`;
+  return `updated ${keys.map(fieldLabel).join(', ')}`;
 }
 
 const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_PAST ? TRANSITION_PAST[name as TransitionName] : String(name));
