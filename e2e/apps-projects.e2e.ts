@@ -9,8 +9,8 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await page.getByRole('button', { name: 'new app' }).click();
   const appForm = page.getByTestId('new-app-form');
   await appForm.getByLabel('name').fill('Subway Reader');
-  await appForm.getByLabel('repository url').fill('https://github.com/itsRoze/subway-reader');
-  await appForm.getByLabel('default branch').fill('main');
+  await appForm.getByLabel('repository').fill('https://github.com/itsRoze/subway-reader');
+  await appForm.getByLabel('branch').fill('main');
   await appForm.getByLabel('description').fill('An RSS reader for the subway');
   await appForm.getByLabel('description').press('ControlOrMeta+Enter');
 
@@ -18,6 +18,20 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await expect(page.getByTestId('page-title')).toHaveText('Subway Reader');
   await expect(page.getByTestId('about-tile')).toContainText('https://github.com/itsRoze/subway-reader');
   await expect(page.getByTestId('history')).toContainText('created');
+
+  // GF-8: the field takes the SSH remote `git remote -v` prints, keeps it as typed, and links somewhere a browser can go
+  await page.getByRole('button', { name: 'edit app' }).click();
+  const editApp = page.getByTestId('edit-form');
+  await editApp.getByLabel('repository').fill('/Users/roze/dev/subway-reader');
+  await editApp.getByLabel('repository').press('ControlOrMeta+Enter');
+  // the refusal names the field the way the screen does, not the way the API does
+  await expect(editApp.getByRole('alert')).toHaveText('repository: wants a git remote — https://host/owner/repo or git@host:owner/repo.git');
+  await editApp.getByLabel('repository').fill('git@github.com:itsRoze/subway-reader.git');
+  await editApp.getByLabel('repository').press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('about-tile')).toContainText('git@github.com:itsRoze/subway-reader.git');
+  await page.reload(); // it was stored as typed, and a fresh page puts the focused tile back where the rest of this spec expects it
+  const remote = page.getByTestId('about-tile').getByRole('link', { name: 'git@github.com:itsRoze/subway-reader.git' });
+  await expect(remote).toHaveAttribute('href', 'https://github.com/itsRoze/subway-reader');
 
   // a project inside the app
   await page.getByRole('button', { name: 'new project' }).click();

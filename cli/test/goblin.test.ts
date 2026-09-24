@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { makeTestApp } from '@goblin/api/test/harness';
 import { createApp } from '@goblin/api/src/app';
 import { openDb } from '@goblin/api/src/db';
-import { TRANSITION_NAMES } from '@goblin/shared';
+import { REPOSITORY_WANTS, TRANSITION_NAMES } from '@goblin/shared';
 import { runGoblin, type GoblinDeps } from '../src/run';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -154,6 +154,16 @@ describe('goblin', () => {
     await json(['app', 'create', '--name', 'C', '--description', '-', '--json'], { io });
     expect((await json(['app', 'list'])).map((a: { description: string }) => a.description)).toEqual(['inline', 'from a file', 'from stdin']);
     expect((await run(['app', 'create', '--name', 'D', '--description', '@nowhere.md'])).code).toBe(2);
+  });
+
+  /** The value closest to hand is whatever `git remote -v` printed, and it is stored as typed (GF-8). */
+  test('`--repository-url` takes the SSH remote git prints, and teaches when it cannot', async () => {
+    const app = await json(['app', 'create', '--name', 'Goblin Foundry', '--repository-url', 'git@github.com:itsRoze/goblin-foundry.git']);
+    expect(app).toMatchObject({ repository_url: 'git@github.com:itsRoze/goblin-foundry.git' });
+
+    const refused = await run(['app', 'create', '--name', 'X', '--repository-url', '/Users/roze/dev/x']);
+    expect(refused.code).toBe(1);
+    expect(JSON.parse(refused.err).issues).toEqual([{ path: ['repository_url'], message: REPOSITORY_WANTS }]);
   });
 
   test('`null` clears a nullable field; an update never touches what it does not name', async () => {

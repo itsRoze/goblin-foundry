@@ -18,9 +18,63 @@ export const AppSchema = z.object({
 });
 export type App = z.infer<typeof AppSchema>;
 
+/**
+ * A git remote, in whatever form git prints it — the value closest to a human's
+ * hand (GF-8). `<user>@<host>:<path>` is git's SCP form; `user@` is required,
+ * because without it `javascript:alert(1)` is a host and a path and the
+ * narrowing is gone.
+ */
+const SCP_REMOTE = /^[^@/:]+@([^@/:]+):(.+)$/;
+const REMOTE_SCHEMES = new Set(['https:', 'http:', 'ssh:', 'git:']);
+
+/** The accepted set, as `{host, path}`; `null` is a refusal. Nothing here rewrites what was typed. */
+export function parseGitRemote(remote: string): { host: string; path: string } | null {
+  const value = remote.trim();
+  const scp = SCP_REMOTE.exec(value);
+  if (scp) return { host: scp[1]!, path: scp[2]! };
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (!REMOTE_SCHEMES.has(url.protocol) || !url.hostname) return null;
+  return { host: url.hostname, path: url.pathname.replace(/^\/+/, '') };
+}
+
+/**
+ * The two shapes a human has to hand, in one place: the field teaches them
+ * before the value is typed and the refusal repeats them after, and a
+ * correction that arrives in different words than the invitation reads as a
+ * new rule rather than the same one. `ssh://` and `git://` pass without being
+ * advertised.
+ */
+export const REPOSITORY_EXAMPLES = 'https://host/owner/repo or git@host:owner/repo.git';
+export const REPOSITORY_WANTS = `wants a git remote — ${REPOSITORY_EXAMPLES}`;
+
+/**
+ * Where a remote points a browser. An `http(s)` value links as typed; every
+ * other shape derives `https://<host>/<path>` (user, port and `.git` dropped),
+ * which is dead for an SSH host alias — only `~/.ssh/config` could resolve one.
+ * Invariant: the result is only ever `http(s)`, so a stored string never
+ * reaches `href` raw. `null` when it parses as no remote at all — reads are
+ * lenient, so a row stored under the old rule still loads.
+ */
+export function repositoryHref(remote: string): string | null {
+  const parsed = parseGitRemote(remote);
+  if (!parsed) return null;
+  const value = remote.trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  return `https://${parsed.host}/${parsed.path.replace(/\.git$/, '')}`;
+}
+
 const appFields = {
   name: z.string().trim().min(1).max(200),
-  repository_url: z.url().nullable(),
+  repository_url: z
+    .string()
+    .trim()
+    .refine((v) => parseGitRemote(v) !== null, REPOSITORY_WANTS)
+    .nullable(),
   default_branch: z.string().trim().min(1).max(200).nullable(),
   description: z.string().max(10_000),
 };

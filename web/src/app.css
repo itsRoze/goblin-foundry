@@ -74,6 +74,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--gf-s3); align-items: baseline; }
 .gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
+/* a git remote is a path, and a path is mono (DESIGN.md Typography): the face is
+   what tells the linked value from the ink ones above and below it, not the hue */
+.gf-remote { font: var(--gf-t-meta); }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
@@ -645,7 +648,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  */
 .gf-toggle input { accent-color: var(--gf-system); }
 /* placeholder text is text: the UA's grey fails the text-safe rule at 3.1:1 on `--gf-page` */
-.gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder { color: var(--gf-mute); }
+.gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder,
+.gf-field input::placeholder, .gf-field textarea::placeholder { color: var(--gf-mute); }
 
 /* the third chip's popover would hang off the tile at phone width, so it hangs from its right edge instead */
 @media (max-width: 899px) {
@@ -740,3 +744,9 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-implementation-form .gf-btn { align-self: flex-end; }
 .gf-implementation-notice { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-implementation-notice:empty { display: none; }
+
+/* an inert field (a branch with no repository) steps its border and text down rather than
+   fading: opacity is a state mark only on `.gf-btn:disabled` (DESIGN.md Components). It is
+   `aria-disabled` rather than `disabled` so the keyboard still reaches it. Last in the file
+   to satisfy stylelint's `no-descending-specificity`, which reads source order, not weight. */
+.gf-field input[aria-disabled='true'] { color: var(--gf-mute); border-color: var(--gf-rule); cursor: default; }
