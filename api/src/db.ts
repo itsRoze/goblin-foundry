@@ -176,6 +176,13 @@ async function ensureSchema(db: Db): Promise<void> {
     PRIMARY KEY (blocker_id, blocked_id)
   )`);
   db.run(sql`CREATE INDEX IF NOT EXISTS dependency_blocked ON dependency (blocked_id)`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS implementation_link (
+    id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    ticket_id integer NOT NULL REFERENCES ticket(id),
+    url text NOT NULL,
+    created_at text NOT NULL
+  )`);
+  db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS implementation_link_ticket_url ON implementation_link (ticket_id, url)`);
   db.run(sql`CREATE TABLE IF NOT EXISTS event (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     entity_kind text NOT NULL,

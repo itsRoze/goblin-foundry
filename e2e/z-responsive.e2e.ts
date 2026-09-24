@@ -13,19 +13,13 @@ import type { Page } from '@playwright/test';
  * where it is a kanban — and stacks where there is no room for one (issue 11).
  */
 
-/**
- * The band a tile has to stay inside *once the grid applies*. Below 1440 Layout asks
- * for a single column, so a tile there is as wide as the window — at 1200px that
- * is 1176px, wider than any grid tier produces. That is the spec's own choice
- * ("The tile grid appears at ≥1440"), not a regression, so the width check
- * starts where the grid does and the narrow range is checked for overflow only.
- */
-const GRID_FROM = 1440;
+/** Once two useful tiles fit, a wider window opens more panels. */
+const GRID_FROM = 876;
 const NARROWEST = 300;
 const WIDEST = 900;
 
 /** The ticket's five (390 · 768 · 1440 · 1920 · 2560) and the tiers' edges either side of them. */
-const WIDTHS = [375, 390, 600, 768, 900, 1200, 1440, 1920, 2560, 3440];
+const WIDTHS = [375, 390, 600, 768, 875, 876, 900, 1024, 1200, 1440, 1920, 2560, 3440];
 
 /** Every routine page, including the ticket view — the densest tile in the app. */
 const ROUTES = ['/', '/apps', '/projects', '/settings', '/trash'];
@@ -128,4 +122,63 @@ test('the board stacks where the columns would be cramped, and keeps the kanban 
   await page.waitForSelector('.gf-col');
   const widest = await page.evaluate(() => Math.max(...[...document.querySelectorAll('.gf-col')].map((c) => c.getBoundingClientRect().width)));
   expect(widest).toBeLessThanOrEqual(280);
+});
+
+test('project panels pack below shorter neighbors and repack after editing and resizing', async ({ page }, testInfo) => {
+  const project = await page.request.post('/api/projects', { data: {
+    name: 'Content height project', description: 'A short description.',
+    design: '# Reading experience\n\n' + '## Offline reading\n\nPrepare a finite edition for the commute. Articles remain available underground, and annotations stay with the reader.\n\n'.repeat(16),
+  } }).then((r) => r.json() as Promise<{ id: number }>);
+  const keys: string[] = [];
+  for (let i = 0; i < 22; i++) {
+    const ticket = await page.request.post('/api/tickets', { data: { project_id: project.id, title: `Prepare and read offline edition ${i + 1}`, status: 'planning' } }).then((r) => r.json() as Promise<{ key: string }>);
+    keys.push(ticket.key);
+    if (i > 0) await page.request.post(`/api/tickets/${ticket.key}/dependencies`, { data: { blocker: keys[Math.max(0, i - 4)] } });
+    if (i >= 8 && i < 16) await page.request.post(`/api/tickets/${ticket.key}/dependencies`, { data: { blocker: keys[i - 7] } });
+  }
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto(`/projects/content-height-project-${project.id}`);
+  await expect(page.getByTestId('ticket-rows').getByRole('link')).toHaveCount(22);
+  const bounds = () => page.evaluate(() => {
+    const tiles = [...document.querySelectorAll<HTMLElement>('.gf-tile')];
+    return tiles.map((tile) => ({ label: tile.getAttribute('aria-label'), x: tile.offsetLeft, y: tile.offsetTop, height: tile.getBoundingClientRect().height, width: tile.getBoundingClientRect().width }));
+  });
+  await expect.poll(async () => {
+    const tiles = await bounds();
+    const about = tiles.find((t) => t.label === 'about')!;
+    const design = tiles.find((t) => t.label === 'design')!;
+    const history = tiles.find((t) => t.label === 'history')!;
+    return about.height < 350 && history.y < design.y + design.height;
+  }).toBe(true);
+  const tiles = await bounds();
+  expect(tiles[0]!.y).toBe(tiles[1]!.y);
+  expect(tiles[0]!.x).not.toBe(tiles[1]!.x);
+  for (let i = 1; i < tiles.length; i++) expect(tiles[i]!.y).toBeGreaterThanOrEqual(tiles[i - 1]!.y);
+
+  // A tile shortcut still addresses the same DOM tile after packing.
+  await page.keyboard.press('ControlOrMeta+4');
+  await expect(page.getByRole('region', { name: 'about', exact: true })).toHaveAttribute('aria-current', 'true');
+  await page.getByRole('region', { name: 'about', exact: true }).getByRole('button', { name: 'edit project', exact: true }).click();
+  await expect.poll(async () => {
+    const current = await bounds();
+    const about = current.find((t) => t.label === 'about')!;
+    const history = current.find((t) => t.label === 'history')!;
+    return history.y >= about.y + about.height + 11;
+  }).toBe(true);
+  await page.keyboard.press('Escape');
+
+  for (const width of [1024, 1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => document.fonts.ready);
+    await expect.poll(async () => (await bounds()).every((tile) => tile.width <= width - 24)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`project-${width}.png`), fullPage: true });
+    const current = await bounds();
+    for (let i = 0; i < current.length; i++) {
+      for (let j = i + 1; j < current.length; j++) {
+        const a = current[i]!; const b = current[j]!;
+        expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y, 'panels must not overlap').toBe(true);
+      }
+    }
+    if (width === 390) expect(new Set(current.map((tile) => tile.x)).size).toBe(1);
+  }
 });

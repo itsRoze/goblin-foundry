@@ -18,6 +18,7 @@ import {
   type TransitionName,
 } from '@goblin/shared';
 import { ProblemError } from '../api';
+import { useBranchCopy } from '../branch-copy';
 import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
@@ -361,6 +362,7 @@ export function BoardPage() {
   const byKey = useMemo(() => cursorColumns(orientation, drawn.map((column) => ({ status: column.status, keys: column.tickets.map((t) => t.key) })), expansion), [orientation, drawn, expansion]);
   const cursor = useCursor({ tile: 'board', columns: byKey, pathOf: (key) => ticketPath({ key }) });
   const under = cursor.at === null ? undefined : lookup(cursor.at);
+  const branchCopy = useBranchCopy(under);
 
   /**
    * The Selection (issue 03b). It belongs to the *filtered* board, not to what
@@ -438,6 +440,8 @@ export function BoardPage() {
       : {
           key: under.key,
           ...menuFor(under),
+          copyBranch: () => void branchCopy.copy(),
+          addImplementationLink: () => navigate(ticketPath(under), { state: { implementation: 'add-link' } }),
           simple: (simple) => inSlot(under, () => patch.mutateAsync({ key: under.key, body: { simple } })),
           place: (field, id) =>
             inSlot(under, () => patch.mutateAsync({ key: under.key, body: field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id } })),
@@ -590,6 +594,8 @@ export function BoardPage() {
       testId="board-tile"
     >
       <FilterBar filter={filter} bad={bad} onChange={write} refusal={problem} findRef={find} />
+      {branchCopy.copied && <p className="gf-implementation-notice" role="status">{under?.key} branch name copied</p>}
+      {branchCopy.failed && <p className="gf-refusal" role="alert">Couldn’t copy. Copy this branch name manually: <code className="gf-branch-name">{branchCopy.branch}</code></p>}
       {menu && (
         <div className="gf-view-menu" data-testid="view-menu">
           <label className="gf-toggle">

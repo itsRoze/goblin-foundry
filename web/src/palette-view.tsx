@@ -128,6 +128,8 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     else if (action.kind === 'trash') act?.trash();
     else if (action.kind === 'simple') act?.simple(action.simple);
     else if (action.kind === 'blocked-by') act?.blockedBy();
+    else if (action.kind === 'copy-branch') act?.copyBranch();
+    else if (action.kind === 'add-implementation-link') act?.addImplementationLink();
     else act?.place(action.field, action.id);
     onClose();
   };
@@ -269,6 +271,8 @@ function CommandRow({
 function ticketActions(ticket: TicketDetail): Candidate[] {
   return [
     ...transitionRows(ticket.status),
+    { id: 'act-copy-branch', group: 'actions', label: 'copy branch name', aliases: ['copy git branch'], action: { kind: 'copy-branch' } },
+    { id: 'act-add-implementation-link', group: 'actions', label: 'add implementation link', aliases: ['add link', 'add PR', 'add commit', 'pull request'], action: { kind: 'add-implementation-link' } },
     { id: 'act-trash', group: 'actions', label: 'trash', action: { kind: 'trash' } },
     {
       id: 'act-simple',

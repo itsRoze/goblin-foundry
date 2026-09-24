@@ -15,7 +15,16 @@
     "designSystem": {
       "enabled": true
     },
-    "advisoryRules": "include"
+    "advisoryRules": "include",
+    "ignoreRules": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "#abb2bf",
+        "createdAt": "2026-09-24T01:08:55.370Z",
+        "reason": "Existing e2e/writing.e2e.ts paste fixture intentionally supplies foreign syntax-highlighting HTML to verify that the editor discards its styling."
+      }
+    ]
   },
   "hook": {
     "enabled": true,

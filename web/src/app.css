@@ -29,17 +29,12 @@ a:hover { text-decoration: underline; }
 /* narrower still, the crumb is the first thing to go: the page itself says where you are */
 @media (max-width: 599px) { .gf-crumb { display: none; } }
 
-/* the desk: a single column, a tile grid at laptop width and up (DESIGN.md Layout) */
-.gf-desk { padding: var(--gf-gap); display: grid; gap: var(--gf-gap); grid-template-columns: 1fr; align-content: start; }
+/* Content decides the column count, including windows sharing a desktop. */
+.gf-desk { padding: var(--gf-gap); display: grid; gap: var(--gf-gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); align-content: start; align-items: start; }
+/* Sparse placement preserves reading order; measured spans let the next tile fill below a short one. */
+.gf-desk.is-packed { grid-auto-rows: 1px; row-gap: 0; padding-bottom: 0; }
 .gf-title { grid-column: 1 / -1; margin: 0; font: var(--gf-t-title); }
 .gf-title-parent { color: var(--gf-mute); }
-/* DESIGN.md Layout: past laptop width the desk gains columns so more tiles open, rather than the
-   same tiles getting bigger. Without the tiers above 1440 an ultrawide gets two ~1250px tiles,
-   which is exactly the failure mode Layout names. The 1920 tier is drift from Layout's single 2560 step:
-   two columns already stretch past comfort well before 2560. */
-@media (min-width: 1440px) { .gf-desk { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1920px) { .gf-desk { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 2560px) { .gf-desk { grid-template-columns: repeat(4, 1fr); } }
 
 /* tile */
 .gf-tile { background: var(--gf-tile); border: 1px solid var(--gf-rule); border-radius: var(--gf-radius); display: flex; flex-direction: column; min-width: 0; transition: border-color var(--gf-fast) var(--gf-ease); }
@@ -54,7 +49,7 @@ a:hover { text-decoration: underline; }
 .gf-tile-keys { margin-left: auto; color: var(--gf-mute); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--gf-s2); align-items: center; text-transform: none; letter-spacing: 0; }
 /* the focused tile's move keys are one hint, not three, so they sit closer to each other than to the rest */
 .gf-tile-move { display: inline-flex; gap: 2px; }
-.gf-tile-body { padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); flex: 1; min-height: 0; }
+.gf-tile-body { container: tile / inline-size; padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); flex: 1; min-height: 0; }
 .gf-kbd { font: var(--gf-t-kbd); color: var(--gf-mute); border: 1px solid var(--gf-rule-2); padding: 0 5px; letter-spacing: .05em; }
 .gf-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }
 
@@ -178,7 +173,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* history */
 .gf-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .gf-history li { display: flex; flex-direction: column; gap: 2px; padding: var(--gf-s2) 0; border-bottom: 1px solid var(--gf-rule); }
-.gf-history-what { font: var(--gf-t-body); }
+.gf-history-what { font: var(--gf-t-body); overflow-wrap: anywhere; }
 .gf-history-meta { font: var(--gf-t-meta); color: var(--gf-mute); }
 
 /*
@@ -460,13 +455,13 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-md.is-inline { padding-bottom: 30px; }
 .gf-md.is-inline > .gf-mode { top: calc(100% - 30px); bottom: auto; border: 1px solid var(--gf-rule); }
 /*
- * At phone width the line is one row that scrolls sideways rather than two or three that wrap, and it is
+ * In a narrow tile the line is one row that scrolls sideways rather than two or three that wrap, and it is
  * *in flow* and sticky to the bottom of the screen: a field taller than what the software keyboard has
  * left of the viewport keeps `done`, the marks and the save word on screen while the caret is anywhere in
  * it (issue 11). The reserved seat is the same 42px the line takes, and the seat gives way to the line
  * while the field is engaged, so nothing under the field moves when the caret arrives or leaves.
  */
-@media (max-width: 599px) {
+@container tile (max-width: 599px) {
   .gf-md.is-block, .gf-md.is-inline { padding-bottom: 42px; }
   .gf-md.is-block.is-engaged, .gf-md.is-inline.is-engaged { padding-bottom: 0; }
   .gf-md > .gf-mode {
@@ -502,41 +497,62 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-saving { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-saving[data-state='saved'] { color: var(--gf-system); }
 
-/*
- * The dependency graph (DESIGN.md Components): our own SVG over a dagre layout, drawn
- * at its natural size in a box that scrolls both ways, so the page never does
- * (Layout). No arrowheads — rank order carries the direction — and no opacity: a
- * blocked node is the kanban's hollow ◇ and a struck title, never a colour.
- */
-.gf-graph { position: relative; overflow: auto; max-height: 480px; }
+/* Dependency map: responsive flow, bounded camera, and opaque status markers. */
+.gf-graph-workspace { display: flex; flex-direction: column; gap: var(--gf-s3); min-height: 0; }
+.gf-graph { position: relative; min-width: 0; background: var(--gf-page); border: 1px solid var(--gf-rule); }
+.gf-graph > svg { display: block; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
+.gf-graph.is-panning > svg { cursor: grabbing; }
+.gf-graph-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gf-s2); }
+.gf-graph-expand { margin-left: auto; }
+.gf-graph-scale { min-width: 4ch; text-align: center; font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-graph-help { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-graph-expanded { box-sizing: border-box; width: calc(100% - 24px); max-width: none; height: calc(100dvh - 24px); max-height: none; padding: var(--gf-pad-y) var(--gf-pad-x); border: 1px solid var(--gf-system); color: var(--gf-ink); background: var(--gf-tile); }
+.gf-graph-expanded[open] { display: flex; flex-direction: column; gap: var(--gf-s3); }
+.gf-graph-expanded::backdrop { background: var(--gf-page); }
+.gf-graph-expanded .gf-graph-workspace, .gf-graph-expanded .gf-graph { flex: 1; min-height: 0; }
+.gf-graph-heading { font: var(--gf-t-label); color: var(--gf-system); text-transform: uppercase; letter-spacing: var(--gf-track); }
+.gf-graph-heading span { margin-left: var(--gf-s3); color: var(--gf-mute); }
 .gf-graph-edge { fill: none; stroke: var(--gf-dim); stroke-width: 1; }
 /* dashed while the blocker is open, solid once it is satisfied — this reverses the rough-v5 mockup (Components) */
 .gf-graph-edge.is-open { stroke: var(--gf-mute); stroke-dasharray: 3 3; }
 .gf-graph-node:hover { text-decoration: none; }
 /* the box dagre reserved, so the whole node takes the click and the hover — not only the ink in it */
-.gf-graph-hit { fill: transparent; }
+.gf-graph-hit { fill: var(--gf-tile); stroke: var(--gf-mute); stroke-width: 1; }
 .gf-graph-diamond { fill: var(--gf-mute); stroke: var(--gf-mute); stroke-width: 1; }
-.gf-graph-key { font: var(--gf-t-meta); fill: var(--gf-mute); letter-spacing: .08em; }
-.gf-graph-title { font: var(--gf-t-h); fill: var(--gf-ink); }
+.gf-graph-key { font: var(--gf-t-num); fill: var(--gf-ink); }
 .gf-graph-node.is-draft .gf-graph-diamond { fill: var(--gf-draft); stroke: var(--gf-draft); }
 .gf-graph-node.is-system .gf-graph-diamond { fill: var(--gf-system); stroke: var(--gf-system); }
 .gf-graph-node.is-review .gf-graph-diamond { fill: var(--gf-review); stroke: var(--gf-review); }
 /* blocked keeps the status colour and empties the shape; the fill is the tile so the wire never shows through */
-.gf-graph-node.is-blocked .gf-graph-diamond { fill: var(--gf-tile); }
-.gf-graph-node.is-blocked .gf-graph-title { fill: var(--gf-mute); text-decoration: line-through; }
+.gf-graph-node.is-blocked .gf-graph-diamond { fill: var(--gf-page); }
 /* outside this project: context, not subject — mute, with no status treatment at all */
 .gf-graph-node.is-external .gf-graph-diamond { fill: var(--gf-mute); stroke: var(--gf-mute); }
-.gf-graph-node.is-external .gf-graph-title { fill: var(--gf-mute); }
 
-/* what the diamond had no room for; it rides in the scrolling content beside its node */
+/* what the diamond had no room for; readable at every zoom level */
+.gf-graph-node.is-unrelated .gf-graph-key { fill: var(--gf-mute); }
+
 .gf-graph-pop {
-  position: absolute; z-index: 2; max-width: 280px; pointer-events: none;
+  box-sizing: border-box; overflow-wrap: anywhere;
   display: flex; flex-direction: column; gap: var(--gf-s1);
   background: var(--gf-raised); border: 1px solid var(--gf-rule); padding: var(--gf-s2) var(--gf-s3);
 }
 .gf-graph-pop-head { display: flex; align-items: center; gap: var(--gf-s2); }
-.gf-graph-pop-title { font: var(--gf-t-h); }
+.gf-graph-pop-title { font: var(--gf-t-h); color: var(--gf-ink); }
 .gf-graph-pop-line { font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; }
+.gf-graph-inspect { box-sizing: border-box; height: 140px; flex-shrink: 0; overflow: auto; border-top: 1px solid var(--gf-rule); padding-top: var(--gf-s3); }
+.gf-graph-trace-key { display: flex; gap: var(--gf-s4); font: var(--gf-t-meta); }
+.gf-graph-trace-key .is-upstream { color: var(--gf-draft); }
+.gf-graph-trace-key .is-downstream { color: var(--gf-link); }
+.gf-graph-arrow { fill: none; stroke: var(--gf-mute); stroke-width: 1.5; }
+.gf-graph-arrow.is-upstream { stroke: var(--gf-draft); }
+.gf-graph-arrow.is-downstream { stroke: var(--gf-link); }
+.gf-graph-arrow.is-unrelated { stroke: var(--gf-rule); }
+.gf-graph-edge.is-upstream { stroke: var(--gf-draft); stroke-width: 2; }
+.gf-graph-edge.is-downstream { stroke: var(--gf-link); stroke-width: 2; }
+.gf-graph-edge.is-unrelated { stroke: var(--gf-rule); }
+.gf-graph-node.is-upstream .gf-graph-hit { stroke: var(--gf-draft); }
+.gf-graph-node.is-downstream .gf-graph-hit { stroke: var(--gf-link); }
+.gf-graph-node.is-selected .gf-graph-hit, .gf-graph-node:focus-visible .gf-graph-hit { stroke: var(--gf-system); stroke-width: 2; }
 /* the legend is copy, not a key (Components) */
 .gf-graph-legend { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }
 
@@ -715,6 +731,19 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 /* the refusal's `×` borrows the filter's clear (Components) but not its seat: it stays after the title at every width,
    pushed to the far edge, and is a finger wide (`.gf-filter-clear` reorders itself under 899px, and is declared earlier) */
 .gf-filter-clear.gf-bulk-dismiss { order: 0; margin-left: auto; min-width: 32px; }
+
+/* Ticket implementation references share the flat field and row vocabulary. */
+.gf-branch { display: flex; align-items: flex-start; gap: var(--gf-s3); }
+.gf-branch-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--gf-t-meta); user-select: all; }
+.gf-branch .gf-btn { flex-shrink: 0; }
+.gf-implementation-links { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0; padding: 0; list-style: none; }
+.gf-implementation-row { display: flex; align-items: baseline; gap: var(--gf-s2); }
+.gf-implementation-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.gf-implementation-form { display: flex; flex-direction: column; align-items: stretch; gap: var(--gf-s2); }
+.gf-implementation-form .gf-field { grid-template-columns: auto minmax(0, 1fr); }
+.gf-implementation-form .gf-btn { align-self: flex-end; }
+.gf-implementation-notice { font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-implementation-notice:empty { display: none; }
 
 /* an inert field (a branch with no repository) steps its border and text down rather than
    fading: opacity is a state mark only on `.gf-btn:disabled` (DESIGN.md Components). It is

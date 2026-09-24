@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-04T00:56:04.024Z",
+  "generatedAt": "2026-09-24T01:20:21.611750Z",
   "title": "Design System: Goblin Foundry",
   "extensions": {
     "colorMeta": {
@@ -314,19 +314,14 @@
         "purpose": "At and below this the bar shows workspace numbers and counts only."
       },
       {
-        "name": "laptop",
-        "value": "1440px",
-        "purpose": "The desk becomes a 2-column tile grid."
+        "name": "tile-grid",
+        "value": "876px",
+        "purpose": "Two 420px columns fit, including desk padding and gap; auto-fill adds columns as room permits. Content-height row spans pack panels without changing DOM order."
       },
       {
-        "name": "wide",
-        "value": "1920px",
-        "purpose": "3 columns: more tiles open rather than the same tiles getting bigger."
-      },
-      {
-        "name": "ultrawide",
-        "value": "2560px",
-        "purpose": "4 columns. The kanban spans every column and caps its own columns at 280px."
+        "name": "compact-editor",
+        "value": "599px",
+        "purpose": "Tile-body container query: a single scrolling mode-line row reserves 42px below the writing surface."
       }
     ]
   },
@@ -399,9 +394,9 @@
       "name": "Mode line",
       "kind": "custom",
       "refersTo": "mode-line",
-      "description": "The status bar a field grows along its bottom edge while the caret is in it: mono, lowercase, groups divided by hairlines; the active control takes the system colour.",
+      "description": "A compact editor mode line: one horizontally scrolling row in tile bodies under 600px, with a reserved seat below the text.",
       "html": "<div class=\"ds-mode\"><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">h1</button><button class=\"ds-mode-btn is-on\">h2</button><button class=\"ds-mode-btn\">h3</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">b</button><button class=\"ds-mode-btn\">i</button><button class=\"ds-mode-btn\">code</button><button class=\"ds-mode-btn\">s</button><button class=\"ds-mode-btn\">link</button></div><div class=\"ds-mode-group\"><button class=\"ds-mode-btn\">list</button><button class=\"ds-mode-btn\">1.</button><button class=\"ds-mode-btn\">task</button><button class=\"ds-mode-btn\">quote</button><button class=\"ds-mode-btn\">fence</button></div><span class=\"ds-mode-hint\"><kbd class=\"ds-kbd\">⌘⏎</kbd> done</span></div>",
-      "css": ".ds-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 8px;min-height:26px;width:520px;background:var(--gf-raised, #343F44);border-top:1px solid var(--gf-rule, #3D484D);}.ds-mode-group{display:flex;align-items:center;gap:1px;}.ds-mode-group+.ds-mode-group{padding-left:12px;border-left:1px solid var(--gf-rule-2, #475258);}.ds-mode-btn{font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);background:none;border:1px solid transparent;border-radius:0;padding:2px 5px;min-width:20px;cursor:pointer;transition:color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-mode-btn:hover{color:var(--gf-ink, #D3C6AA);border-color:var(--gf-rule-2, #475258);}.ds-mode-btn.is-on{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-mode-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-mode-hint{margin-left:auto;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);display:flex;align-items:center;gap:8px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 8px;min-height:26px;width:520px;background:var(--gf-raised, #343F44);border-top:1px solid var(--gf-rule, #3D484D);}.ds-mode-group{display:flex;align-items:center;gap:1px;}.ds-mode-group+.ds-mode-group{padding-left:12px;border-left:1px solid var(--gf-rule-2, #475258);}.ds-mode-btn{font:400 11px/1 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);background:none;border:1px solid transparent;border-radius:0;padding:2px 5px;min-width:20px;cursor:pointer;transition:color 120ms cubic-bezier(.2,.8,.2,1),border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-mode-btn:hover{color:var(--gf-ink, #D3C6AA);border-color:var(--gf-rule-2, #475258);}.ds-mode-btn.is-on{color:var(--gf-system, #A7C080);border-color:var(--gf-system, #A7C080);}.ds-mode-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-mode-hint{margin-left:auto;font: 400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);display:flex;align-items:center;gap:8px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}.ds-mode{flex-wrap:nowrap;overflow-x:auto;box-sizing:border-box;height:42px;}.ds-mode-group,.ds-mode-hint{flex:none;}"
     },
     {
       "name": "Refusal",

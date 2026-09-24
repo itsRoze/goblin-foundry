@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
   AppSchema,
+  ImplementationLinkSchema,
   EventSchema,
   ProjectGraphSchema,
   ProjectSchema,
@@ -106,6 +107,15 @@ export const useDependencyEdges = () => {
   const remove = useWrite(({ blocker, blocked }: Edge) => api.del(`/api/tickets/${blocked}/dependencies/${blocker}`));
   return { add, remove };
 };
+
+export const useImplementationLinks = (key: string) => useQuery({
+  queryKey: ['implementation-links', key],
+  queryFn: () => api.get(`/api/tickets/${key}/implementation-links`, z.array(ImplementationLinkSchema)),
+});
+export const useImplementationLinkWrites = () => ({
+  add: useWrite(({ key, url }: { key: string; url: string }) => api.post(`/api/tickets/${key}/implementation-links`, { url })),
+  remove: useWrite(({ key, id }: { key: string; id: number }) => api.del(`/api/tickets/${key}/implementation-links/${id}`)),
+});
 
 export const useEvents = (kind: EntityKind, id: number) =>
   useQuery({ queryKey: ['events', kind, id], queryFn: () => api.get(`/api/${kind}s/${id}/events`, Events) });

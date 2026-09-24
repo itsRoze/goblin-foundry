@@ -8,6 +8,7 @@ import { Palette, type PaletteMode } from './palette-view';
 import { useApps, useProjects } from './queries';
 import { BulkStatus, SelectingProvider, useSelecting } from './selecting';
 import { Kbd } from './ui';
+import { useTileLayout } from './tile-layout';
 
 const CrumbContext = createContext<(crumb: string) => void>(() => {});
 
@@ -52,6 +53,7 @@ export function Shell() {
 }
 
 function ShellBody() {
+  const desk = useTileLayout();
   const [crumb, setCrumb] = useState('');
   const apps = useApps();
   const projects = useProjects();
@@ -138,7 +140,7 @@ function ShellBody() {
           <BulkStatus onDismiss={() => selecting.report(null)} />
         </div>
       )}
-      <main className="gf-desk">
+      <main className="gf-desk" ref={desk}>
         <PaletteContext.Provider value={setPalette}>
           <Outlet />
         </PaletteContext.Provider>

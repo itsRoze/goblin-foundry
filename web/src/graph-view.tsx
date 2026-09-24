@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { isBlocked, type ProjectGraph } from '@goblin/shared';
-import { DIAMOND, LABEL_TOP, NODE_H, NODE_W, clipTitle, layoutGraph, type LaidNode } from './graph';
+import { DIAMOND, LABEL_TOP, NODE_H, layoutGraph, traceGraph, type LaidNode } from './graph';
 import { StatusChip, homeLine, statusTone, ticketPath } from './tickets';
 import { Empty } from './ui';
+import { useGraphViewport } from './graph-viewport';
 
 /*
  * The renderer is `graph-view.tsx` rather than `graph.tsx` because a bare
@@ -13,10 +15,10 @@ import { Empty } from './ui';
 
 /** A square on its point, drawn from its centre — the one shape in the graph (DESIGN.md Components). */
 const SHAPE = `M 0 ${-DIAMOND} L ${DIAMOND} 0 L 0 ${DIAMOND} L ${-DIAMOND} 0 Z`;
-/** Where the label sits around the diamond: the key beside it and above the edge line, the title beneath both. */
-const KEY_X = DIAMOND + 7;
-const KEY_Y = -5;
-const TITLE_Y = DIAMOND + 15;
+/** Ticket identifiers sit beside the status diamond; titles live in the detail area. */
+const KEY_X = 16;
+const KEY_Y = LABEL_TOP + 4;
+
 
 /** DESIGN.md Components: a popover is intent, not a twitch — hover waits, focus does not. */
 const HOVER_MS = 120;
@@ -33,19 +35,47 @@ export const graphSubtitle = (graph: ProjectGraph) => `${plural(graph.nodes.leng
 const legendFor = (edges: number) =>
   edges === 0
     ? 'no dependencies yet — declare one from a ticket'
-    : 'blocker → blocked · dashed while the blocker is open · ◇ blocked · mute is outside this project';
+    : 'left to right · dashed while the blocker is open · hollow diamond means blocked';
 
-/**
- * The project's dependency graph: our own SVG over a dagre layout, at its
- * natural size inside a box that scrolls both ways, so the page never does
- * (DESIGN.md Layout). No arrowheads — rank order carries the direction — and no
- * opacity anywhere: a blocked node is the kanban's hollow ◇ and a struck
- * title, never a colour and never a dimming (DESIGN.md Colors).
- */
+/** A fitted dependency map; hover or keyboard focus traces both directions. */
 export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
-  const layout = useMemo(() => layoutGraph(graph.nodes, graph.edges), [graph]);
+  const markerId = useId().replaceAll(':', '');
+  const workspace = useRef<HTMLDivElement>(null);
+  const [vertical, setVertical] = useState(false);
+  const layout = useMemo(() => layoutGraph(graph.nodes, graph.edges, vertical), [graph, vertical]);
+  const [expanded, setExpanded] = useState(false);
+  useLayoutEffect(() => {
+    const box = workspace.current;
+    if (!box) return;
+    const measure = () => setVertical(box.clientWidth < 760);
+    const observer = new ResizeObserver(measure);
+    measure();
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [expanded, graph.nodes.length]);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const expandButton = useRef<HTMLButtonElement>(null);
+  const restingHeight = useRef(0);
+  const entry = layout.nodes.reduce<LaidNode | undefined>((first, node) => {
+    if (!first) return node;
+    const order = vertical ? node.y - first.y || node.x - first.x : node.x - first.x || node.y - first.y;
+    return order < 0 ? node : first;
+  }, undefined);
+  const viewport = useGraphViewport(layout.width || 1, layout.height || 1, entry ?? { x: 0, y: 0 }, expanded);
   const [active, setActive] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useLayoutEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.current?.showModal();
+    return () => { document.body.style.overflow = previous; };
+  }, [expanded]);
+  const close = () => {
+    setExpanded(false);
+    setActive(null);
+    requestAnimationFrame(() => expandButton.current?.focus());
+  };
 
   const cancel = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -69,81 +99,100 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
   );
 
   if (layout.nodes.length === 0) return <Empty>no tickets — press c</Empty>;
-  const shown = layout.nodes.find((n) => n.key === active);
+  const shown = viewport.panning ? undefined : layout.nodes.find((n) => n.key === active);
+  const trace = traceGraph(shown?.key ?? null, layout.edges);
+  const relation = (key: string) => key === shown?.key ? 'selected' : trace.upstream.nodes.has(key) ? 'upstream' : trace.downstream.nodes.has(key) ? 'downstream' : shown ? 'unrelated' : '';
+  const edgeRelation = (key: string) => trace.upstream.paths.has(key) ? 'upstream' : trace.downstream.paths.has(key) ? 'downstream' : shown ? 'unrelated' : '';
 
-  return (
-    <>
-      <div className="gf-graph" data-testid="graph">
-      <svg width={layout.width} height={layout.height} aria-label="dependency graph">
-        {/* edges first, so an opaque diamond hides the end of its own wire rather than wearing it */}
+  const connections = layout.edges.map((edge) => ({ ...edge, tone: edgeRelation(`${edge.blocker}>${edge.blocked}`) }));
+  const highlighted = (tone: string) => tone === 'upstream' || tone === 'downstream';
+  connections.sort((a, b) => Number(highlighted(a.tone)) - Number(highlighted(b.tone)));
+
+  const content = (
+    <div ref={workspace} className="gf-graph-workspace">
+      <div className="gf-graph-tools" role="group" aria-label="graph view">
+        <button type="button" className="gf-btn" aria-label="zoom out" disabled={viewport.view.scale <= viewport.minScale} onClick={() => viewport.zoom(viewport.view.scale / 1.25)}>−</button>
+        <button type="button" className="gf-btn gf-graph-scale" aria-label="reset graph to 100%" title="Reset to 100%" onClick={viewport.reset}>{Math.round(viewport.view.scale * 100)}%</button>
+        <button type="button" className="gf-btn" aria-label="zoom in" disabled={viewport.view.scale >= 2} onClick={() => viewport.zoom(viewport.view.scale * 1.25)}>+</button>
+        <button type="button" className="gf-btn" onClick={viewport.fit}>fit</button>
+        <button ref={expanded ? undefined : expandButton} type="button" className="gf-btn gf-graph-expand" onClick={(event) => { if (expanded) close(); else { restingHeight.current = event.currentTarget.closest('.gf-graph-workspace')!.getBoundingClientRect().height; setActive(null); setExpanded(true); } }}>{expanded ? 'close' : 'expand'}</button>
+      </div>
+      <div ref={viewport.ref} className={`gf-graph${viewport.panning ? ' is-panning' : ''}`} data-testid="graph" style={expanded ? undefined : { height: Math.min(440, Math.max(200, layout.height + 32)) }}>
+      <svg width="100%" height="100%" aria-label="dependency graph" tabIndex={0} {...viewport.svgProps}>
+        <defs>
+          {['base', 'upstream', 'downstream', 'unrelated'].map((tone) => <marker key={tone} id={`${markerId}-${tone}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto" markerUnits="userSpaceOnUse"><path className={`gf-graph-arrow is-${tone}`} d="M 1 1 L 7 4 L 1 7" /></marker>)}
+        </defs>
         <g className="gf-graph-edges">
-          {layout.edges.map((e) => (
-            <path key={`${e.blocker}>${e.blocked}`} className={`gf-graph-edge${e.open ? ' is-open' : ''}`} d={e.path} data-testid={`edge-${e.blocker}-${e.blocked}`} />
-          ))}
+          {connections.map((e) => {
+            const tone = e.tone;
+            return <path key={`${e.blocker}>${e.blocked}`} className={`gf-graph-edge${e.open ? ' is-open' : ''}${tone ? ` is-${tone}` : ''}`} d={e.path} markerEnd={`url(#${markerId}-${tone || 'base'})`} data-testid={`edge-${e.blocker}-${e.blocked}`} />;
+          })}
         </g>
         {layout.nodes.map((n) => (
-          <Node key={n.key} node={n} onEnter={() => linger(n.key)} onLeave={() => show(null)} onFocus={() => show(n.key)} />
+          <Node key={n.key} node={n} relation={relation(n.key)} onEnter={() => linger(n.key)} onLeave={() => show(null)} onFocus={(keyboard) => { if (keyboard) viewport.focus(n); show(n.key); }} />
         ))}
       </svg>
-        {shown && <Popover node={shown} />}
       </div>
-      {/* the legend sits under the drawing and stays put while the drawing scrolls */}
+      <div className="gf-graph-inspect">
+        {shown ? <Popover node={shown} upstream={trace.upstream.nodes.size} downstream={trace.downstream.nodes.size} /> : <p className="gf-graph-help">Hover a ticket to trace its paths. Tab explores; click opens the ticket.</p>}
+      </div>
+      <div className="gf-graph-trace-key"><span className="is-upstream">prerequisites</span><span className="is-downstream">downstream</span></div>
+      <p className="gf-graph-help">drag or scroll to pan · pinch or ctrl-scroll to zoom</p>
       <p className="gf-graph-legend" data-testid="graph-legend">
-        {legendFor(layout.edges.length)}
+        {legendFor(layout.edges.length).replace('left to right', vertical ? 'top to bottom' : 'left to right')}
       </p>
-    </>
+    </div>
   );
+  return expanded ? <><div aria-hidden="true" style={{ height: restingHeight.current }} />{createPortal(
+    <dialog ref={dialog} className="gf-graph-expanded" aria-label="dependency graph" onCancel={(event) => { event.preventDefault(); close(); }} onKeyDown={(event) => event.stopPropagation()}>
+      <div className="gf-graph-heading">graph <span>{graphSubtitle(graph)}</span></div>
+      {content}
+    </dialog>, document.body,
+  )}</> : content;
 }
 
 /**
- * The whole node is the link: click opens the ticket, `tab` reaches it, and a
- * tap does the same (there is no hover on touch). The hit area is the box
- * dagre reserved, not just the shapes in it, so the title is as clickable as
- * the diamond.
+ * The whole marker opens its ticket. Hover and keyboard focus trace it.
+ * Layout reserves the hit area.
  */
-function Node({ node, onEnter, onLeave, onFocus }: { node: LaidNode; onEnter: () => void; onLeave: () => void; onFocus: () => void }) {
+function Node({ node, relation, onEnter, onLeave, onFocus }: { node: LaidNode; relation: string; onEnter: () => void; onLeave: () => void; onFocus: (keyboard: boolean) => void }) {
   // a ticket outside this project is context, not subject: mute, with no status treatment at all
   const tone = node.external ? 'mute' : statusTone(node.status);
   const marks = `${node.external ? ' is-external' : ''}${isBlocked(node) ? ' is-blocked' : ''}`;
   return (
     <g transform={`translate(${node.x} ${node.y})`}>
       <Link
-        className={`gf-graph-node is-${tone}${marks}`}
+        className={`gf-graph-node is-${tone}${marks}${relation ? ` is-${relation}` : ''}`}
         to={ticketPath(node)}
         tabIndex={0}
         aria-label={`${node.key} ${node.title}`}
         data-testid={`node-${node.key}`}
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
-        onFocus={onFocus}
+        onFocus={(event) => onFocus(event.currentTarget.matches(':focus-visible'))}
         onBlur={onLeave}
       >
-        <rect className="gf-graph-hit" x={-DIAMOND} y={-LABEL_TOP} width={NODE_W} height={NODE_H} />
-        <path className="gf-graph-diamond" d={SHAPE} />
+        <rect className="gf-graph-hit" width={node.width} height={NODE_H} />
+        <path className="gf-graph-diamond" transform={`translate(7 ${LABEL_TOP})`} d={SHAPE} />
         <text className="gf-graph-key" x={KEY_X} y={KEY_Y}>
           {node.key}
         </text>
-        <text className="gf-graph-title" x={-DIAMOND} y={TITLE_Y}>
-          {clipTitle(node.title)}
-        </text>
+
       </Link>
     </g>
   );
 }
 
-/**
- * What the diamond had no room for. It is placed in the scrolling content
- * beside its node, so it travels with the drawing, and it never takes the
- * pointer — a popover you can hover is a popover you can get stuck under.
- */
-function Popover({ node }: { node: LaidNode }) {
+/** Stable detail area: full titles never obscure the dependency lines. */
+function Popover({ node, upstream, downstream }: { node: LaidNode; upstream: number; downstream: number }) {
   return (
-    <div className="gf-graph-pop" role="tooltip" style={{ left: node.x + 16, top: node.y + 14 }} data-testid="graph-popover">
+    <div className="gf-graph-pop" role="status" data-testid="graph-popover">
       <span className="gf-graph-pop-head">
         <span className="gf-key">{node.key}</span>
         <StatusChip status={node.status} />
       </span>
-      <span className="gf-graph-pop-title">{node.title}</span>
+      <Link className="gf-graph-pop-title" to={ticketPath(node)}>{node.title}</Link>
+      <span className="gf-graph-pop-line">{plural(upstream, 'prerequisite')} · {plural(downstream, 'downstream ticket')}</span>
       {isBlocked(node) && <span className="gf-graph-pop-line">blocked by {node.blocked_by.join(', ')}</span>}
       {node.description_line !== '' && <span className="gf-graph-pop-line">{node.description_line}</span>}
       {node.external && <span className="gf-graph-pop-line">{homeLine(node.external.app, node.external.project)}</span>}

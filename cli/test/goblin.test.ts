@@ -29,6 +29,16 @@ describe('goblin', () => {
     return JSON.parse(result.out);
   };
 
+  test('implementation references can be added, listed and removed by an agent', async () => {
+    const ticket = await json(['ticket', 'create', '--title', 'Reference implementation', '--actor', 'agent']);
+    const url = 'https://github.com/example/app/pull/42';
+    const link = await json(['ticket', 'link', 'add', ticket.key, '--url', url, '--actor', 'agent']);
+    expect(await json(['ticket', 'link', 'list', ticket.key, '--actor', 'agent'])).toEqual([link]);
+    expect((await run(['ticket', 'link', 'remove', ticket.key, String(link.id), '--actor', 'agent'])).code).toBe(0);
+    expect(await json(['ticket', 'link', 'list', ticket.key, '--actor', 'agent'])).toEqual([]);
+    expect((await json(['ticket', 'show', ticket.key])).status).toBe('planning');
+  });
+
   test('a planning session, end to end: app → project → ticket → design → dependency → approve → frontier', async () => {
     const app = await json(['app', 'create', '--name', 'Subway Reader', '--repository-url', 'https://github.com/itsRoze/subway-reader']);
     expect(app).toMatchObject({ id: 1, name: 'Subway Reader' });

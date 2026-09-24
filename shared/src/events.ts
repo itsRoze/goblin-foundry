@@ -13,6 +13,8 @@ export const EventKindSchema = z.enum([
   // an edge is written on both its ends, so either ticket's history tells the whole story (ADR-0009)
   'dependency_added',
   'dependency_removed',
+  'implementation_link_added',
+  'implementation_link_removed',
 ]);
 export type EventKind = z.infer<typeof EventKindSchema>;
 

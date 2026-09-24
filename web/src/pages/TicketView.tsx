@@ -24,6 +24,8 @@ import { useCrumb } from '../shell';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
+import { ImplementationTile } from '../implementation';
+import { useBranchCopy } from '../branch-copy';
 
 export function TicketView() {
   const { key = '' } = useParams();
@@ -63,6 +65,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   /** The one question the tracker asks: `start` on a blocked ticket, whether the button or the key asked it. */
   const [confirming, setConfirming] = useState(false);
   const focusTile = useFocusTile();
+  const branchCopy = useBranchCopy(ticket);
+  const implementationInput = useRef<HTMLInputElement>(null);
+  const openImplementationLink = useCallback(() => {
+    focusTile('implementation');
+    requestAnimationFrame(() => implementationInput.current?.focus());
+  }, [focusTile]);
   /**
    * A bulk action that was sent with this Ticket in it holds it until it answers (issue 03b): every write this
    * screen makes goes through `guard`, which refuses in the API's shape, so each lands in the slot it already has.
@@ -117,13 +125,15 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
 
   // arriving from the board's `d`: go where the button is, and press it (issue 10)
   const { pathname, search, state: navState } = useLocation();
-  const asked = (navState as { picking?: Direction } | null)?.picking;
+  const request = navState as { picking?: Direction; implementation?: 'add-link' } | null;
+  const asked = request?.picking;
+  const implementationAsked = request?.implementation;
   useEffect(() => {
-    if (asked === undefined) return;
-    focusTile('dependencies');
-    setPicking(asked);
+    if (asked === undefined && implementationAsked === undefined) return;
+    if (implementationAsked === 'add-link') openImplementationLink();
+    else { focusTile('dependencies'); setPicking(asked!); }
     nav(pathname + search, { replace: true, state: null });
-  }, [asked, focusTile, nav, pathname, search]);
+  }, [asked, implementationAsked, openImplementationLink, focusTile, nav, pathname, search]);
 
   /** A write from the about tile's non-prose controls, reported in the tile's one line and rethrown so the caller knows it did not land. */
   const save = async (body: PatchTicketBody) => {
@@ -144,6 +154,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     trash: () => void trash(),
     simple: (simple) => void inState(() => edit({ simple })),
     blockedBy: openBlockedBy,
+    copyBranch: () => { focusTile('implementation'); void branchCopy.copy(); },
+    addImplementationLink: openImplementationLink,
     // ADR-0007 as the about tile's selects apply it — and a refused move lands in *their* line, not the state tile's
     place: (field, id) => trySave(field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id }),
   });
@@ -289,6 +301,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         }}
         refusal={state.refusal}
       />
+
+      <ImplementationTile key={ticket.key} ticket={ticket} branchCopy={branchCopy} input={implementationInput} />
 
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
         <History events={events.data} describe={(e) => describeTicketEvent(e, names)} quietActor />

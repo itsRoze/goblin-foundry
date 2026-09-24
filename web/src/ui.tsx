@@ -396,6 +396,8 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
     const undone = e.kind === 'dependency_removed' ? 'no longer ' : '';
     return 'blocker' in e.new ? `${undone}blocked by ${str(e.new.blocker)}` : `${undone}blocking ${str(e.new.blocked)}`;
   }
+  if (e.kind === 'implementation_link_added') return `linked implementation · ${str(e.new.url)}`;
+  if (e.kind === 'implementation_link_removed') return `removed implementation link · ${str(e.prior?.url)}`;
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];

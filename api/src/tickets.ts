@@ -20,6 +20,7 @@ import {
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
 import { bulkRoute } from './bulk';
+import { implementationLinkRoutes } from './implementation-links';
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { diff, listEvents, now, recordEvent } from './events';
@@ -206,6 +207,8 @@ export function ticketsRoutes(db: Db) {
     }
     return c.json(await one(restored));
   });
+
+  implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
 
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 

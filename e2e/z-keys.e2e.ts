@@ -143,7 +143,7 @@ test('⌘2 moves the focus to the design tile, and e lands the caret in it', asy
   // the about tile is tile 1 and has the focus until something says otherwise
   await expect(page.getByTestId('about-tile')).toHaveClass(/is-focus/);
 
-  // a Ticket view has five tiles, so every header names its own number
+  // a Ticket view has six tiles, so every header names its own number
   await expect(page.getByTestId('design-tile')).toContainText('⌘2');
   await page.keyboard.press('ControlOrMeta+2');
   await expect(page.getByTestId('design-tile')).toHaveClass(/is-focus/);
