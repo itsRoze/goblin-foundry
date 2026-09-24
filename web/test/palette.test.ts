@@ -62,6 +62,11 @@ describe('paletteHits', () => {
     expect(labels(paletteHits(all, 'nothing here'))).toEqual([]);
   });
 
+  test('command aliases match while preserving the visible name', () => {
+    const command: Candidate = { id: 'link', group: 'actions', label: 'add implementation link', aliases: ['add link', 'add PR', 'add commit'], action: { kind: 'add-implementation-link' } };
+    for (const query of ['add link', 'ADD PR', 'commit']) expect(labels(paletteHits([command], query))).toEqual(['add implementation link']);
+  });
+
   test('a done or cancelled ticket sorts after the open ones', () => {
     const all = [ticket('GF-1', 'shipped one', true), ticket('GF-2', 'open one'), ticket('GF-3', 'cancelled one', true)];
     expect(labels(paletteHits(all, 'one'))).toEqual(['open one', 'shipped one', 'cancelled one']);

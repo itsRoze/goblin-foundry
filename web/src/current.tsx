@@ -21,6 +21,8 @@ export interface TicketActions {
   simple: (simple: boolean) => void;
   /** `d`: open the `blocked by` picker — on the Ticket view, or on the way to it. */
   blockedBy: () => void;
+  copyBranch: () => void;
+  addImplementationLink: () => void;
   /** `move to app…` / `move to project…`, ADR-0007 applied as the Ticket view's selects apply it. */
   place: (field: 'app_id' | 'project_id', id: number | null) => void;
 }

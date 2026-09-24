@@ -26,6 +26,12 @@ A unit of work — or, early in its life, just an idea. May belong to an App and
 ## Ticket Key
 The display form of a Ticket's number: `<prefix>-<number>`, prefix configurable once per installation (default `GF`). Apps and Projects do not have keys.
 
+## Branch Suggestion
+A suggested git branch name for a Ticket, formed from its current Ticket Key and title. It is a naming aid, not a record of an existing branch.
+
+## Implementation Link
+A reference from a Ticket to a pull request or commit that implements its work. A Ticket may have several Implementation Links; adding or removing one does not change its Status or assert that the work has merged.
+
 ## Ticket Dependency
 A directed "A blocks B" relationship between two Tickets. B cannot proceed until A is done. Unconstrained by App or Project; only cycles are refused, judged over every declared edge whatever its Status (a reopened Ticket must never reveal a cycle nobody was asked about). An edge may be declared against an already-`done`/`cancelled` blocker — a true fact, inert unless the blocker is reopened. Edges survive a trip through the Trash; a new edge may not touch a Trashed Ticket. Advisory for humans: it never forbids a Transition (the board asks before `start`ing a blocked Ticket); the enforcement point is the Ready Frontier. (ADR-0009.)
 

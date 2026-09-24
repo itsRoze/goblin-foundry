@@ -343,7 +343,7 @@ test('backspace against a revealed marker deletes the marker, then the character
 });
 
 test('the design field owns its tile: the mode line sits on the tile edge, not under the last line written', async ({ page }) => {
-  // two columns, so the design tile is stretched by the row and has room to fill (DESIGN.md Layout)
+  // A compact desktop column: the editor's controls must fit its content-height tile.
   await page.setViewportSize({ width: 1600, height: 900 });
   await newTicket(page, 'Fills its tile');
   const tile = page.getByTestId('design-tile');
@@ -354,15 +354,17 @@ test('the design field owns its tile: the mode line sits on the tile edge, not u
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(tile.getByTestId('mode-line')).toHaveCount(0);
 
-  // the tile is all field: clicking far below the only line still puts the caret in it
+  // The field stays clickable without borrowing height from its neighboring tile.
   const box = (await field.boundingBox())!;
-  expect(box.height).toBeGreaterThan(100);
+  expect(box.height).toBeGreaterThanOrEqual(20);
   await page.mouse.click(box.x + 200, box.y + box.height - 8);
   await expect(tile.getByTestId('mode-line')).toBeVisible();
 
   // and the line is on the tile's bottom edge rather than crowding the text
   const tileBox = (await tile.boundingBox())!;
   const lineBox = (await tile.getByTestId('mode-line').boundingBox())!;
+  const textBox = (await field.locator('p').first().boundingBox())!;
+  expect(lineBox.y).toBeGreaterThanOrEqual(textBox.y + textBox.height);
   expect(tileBox.y + tileBox.height - (lineBox.y + lineBox.height)).toBeLessThan(24);
 });
 

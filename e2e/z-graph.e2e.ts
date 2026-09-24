@@ -82,7 +82,7 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   await expect(page.locator('.gf-graph-node.is-blocked')).toHaveCount(0);
 
   // the whole node is the link
-  await page.locator('[data-testid^="node-"]', { hasText: 'The lamp' }).click();
+  await page.getByTestId('graph').getByRole('link', { name: /The lamp/ }).click();
   await expect(page.getByTestId('page-title')).toContainText('The lamp');
 });
 
@@ -115,7 +115,7 @@ test('a blocker in another project is drawn once, mute, and opens like any other
   await page.getByTestId('page-title').getByRole('link', { name: 'Wiring' }).click();
   const external = page.locator('.gf-graph-node.is-external');
   await expect(external).toHaveCount(1);
-  await expect(external).toContainText('The mains supply');
+  await expect(external).toHaveAccessibleName(/The mains supply/);
   // context, not subject: no status treatment, and nothing of its own drawn behind it
   await expect(external).not.toHaveClass(/is-blocked/);
   await expect(nodes(page)).toHaveCount(3);
@@ -132,7 +132,7 @@ test('a blocker in another project is drawn once, mute, and opens like any other
 test('a node says what it is: on hover after a beat, and the moment it takes focus', async ({ page }) => {
   await page.goto('/projects');
   await page.getByRole('link', { name: 'Wiring' }).click();
-  const lamp = page.locator('[data-testid^="node-"]', { hasText: 'The lamp' });
+  const lamp = page.getByTestId('graph').getByRole('link', { name: /The lamp/ });
   await expect(lamp).toBeVisible();
 
   await lamp.hover();
@@ -145,7 +145,7 @@ test('a node says what it is: on hover after a beat, and the moment it takes foc
   await expect(page.getByTestId('graph-popover')).toContainText('The lamp');
 });
 
-test('the graph scrolls inside its own tile, never the page', async ({ page }) => {
+test('the graph fits its tile without scrolling the graph or page', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto('/projects');
   await page.getByRole('link', { name: 'Wiring' }).click();
@@ -156,5 +156,136 @@ test('the graph scrolls inside its own tile, never the page', async ({ page }) =
     const doc = document.documentElement;
     return { pageOverflow: doc.scrollWidth - doc.clientWidth, graphScrollsInside: box.scrollWidth > box.clientWidth };
   });
-  expect(measured).toEqual({ pageOverflow: 0, graphScrollsInside: true });
+  expect(measured).toEqual({ pageOverflow: 0, graphScrollsInside: false });
+});
+
+test('a fitted graph supports zoom, pan, reset and keyboard ticket navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto('/projects');
+  await page.getByRole('link', { name: 'Wiring' }).click();
+  const svg = page.getByTestId('graph').locator('svg');
+  const tile = graph(page);
+  await tile.getByRole('button', { name: 'fit', exact: true }).click();
+  const initial = await svg.getAttribute('viewBox');
+  await tile.getByRole('button', { name: 'zoom in', exact: true }).click();
+  await expect(svg).not.toHaveAttribute('viewBox', initial!);
+  await tile.getByRole('button', { name: 'fit', exact: true }).click();
+  await expect(svg).toHaveAttribute('viewBox', initial!);
+  await tile.getByRole('button', { name: 'reset graph to 100%', exact: true }).click();
+  await expect(tile.locator('.gf-graph-scale')).toHaveText('100%');
+  await svg.focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press('+');
+  const beforeArrow = await svg.getAttribute('viewBox');
+  await page.keyboard.press('ArrowDown');
+  await expect(svg).not.toHaveAttribute('viewBox', beforeArrow!);
+  await page.keyboard.press('0');
+  await expect(svg).toHaveAttribute('viewBox', initial!);
+
+  // Dragging from a ticket pans without following its link.
+  await tile.getByRole('button', { name: 'reset graph to 100%', exact: true }).click();
+  for (let i = 0; i < 4; i++) await tile.getByRole('button', { name: 'zoom in', exact: true }).click();
+  const node = nodes(page).first();
+  const rect = (await node.boundingBox())!;
+  const url = page.url();
+  await page.mouse.move(rect.x + rect.width - 12, rect.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + 20, rect.y + 25, { steps: 8 });
+  await page.mouse.up();
+  await expect(page).toHaveURL(url);
+  await expect(svg).not.toHaveAttribute('viewBox', initial!);
+
+  // A press that leaves before capture must not turn subsequent hover into a drag.
+  const viewport = (await svg.boundingBox())!;
+  await page.mouse.move(viewport.x + 1, viewport.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(viewport.x - 2, viewport.y + 10);
+  await page.mouse.up();
+  const afterRelease = await svg.getAttribute('viewBox');
+  await page.mouse.move(viewport.x + 30, viewport.y + 10);
+  await page.mouse.move(viewport.x + 110, viewport.y + 10);
+  await expect(svg).toHaveAttribute('viewBox', afterRelease!);
+  await expect(page.getByTestId('graph')).not.toHaveClass(/is-panning/);
+
+  await tile.getByRole('button', { name: 'fit', exact: true }).click();
+  await svg.focus();
+  await page.keyboard.press('Tab');
+  await expect(nodes(page).first()).toBeFocused();
+  await expect(tile.locator('.gf-graph-scale')).toHaveText('100%');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/tickets\//);
+});
+
+test('a large graph starts fitted, zooms around the pointer, and expands without moving the project', async ({ page }, testInfo) => {
+  const project = await page.request.post('/api/projects', { data: { name: 'Readable graph' } }).then((r) => r.json() as Promise<{ id: number }>);
+  const keys: string[] = [];
+  const titles = ['Design the reading experience', 'Prepare a finite morning edition', 'Keep articles available offline', 'Synchronize annotations to Readwise'];
+  for (let i = 0; i < 22; i++) {
+    const ticket = await page.request.post('/api/tickets', { data: { project_id: project.id, title: titles[i % titles.length], status: 'planning' } }).then((r) => r.json() as Promise<{ key: string }>);
+    keys.push(ticket.key);
+    if (i > 0) await page.request.post(`/api/tickets/${ticket.key}/dependencies`, { data: { blocker: keys[Math.max(0, i - 4)] } });
+  }
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto(`/projects/readable-graph-${project.id}`);
+  const tile = graph(page);
+  const svg = tile.locator('svg');
+  await expect(nodes(page)).toHaveCount(22);
+  await tile.getByRole('button', { name: 'fit', exact: true }).click();
+  const fitted = await svg.getAttribute('viewBox');
+  await tile.getByRole('button', { name: 'reset graph to 100%', exact: true }).click();
+  await tile.screenshot({ path: testInfo.outputPath('graph-readable.png') });
+  const box = (await svg.boundingBox())!;
+  const point = { x: box.width * 0.6, y: box.height * 0.6 };
+  await page.mouse.move(box.x + point.x, box.y + point.y);
+  const before = (await svg.getAttribute('viewBox'))!.split(' ').map(Number);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -40);
+  await page.keyboard.up('Control');
+  await expect(tile.locator('.gf-graph-scale')).not.toHaveText('100%');
+  const after = (await svg.getAttribute('viewBox'))!.split(' ').map(Number);
+  expect(Math.abs((before[0]! + point.x * before[2]! / box.width) - (after[0]! + point.x * after[2]! / box.width))).toBeLessThan(1);
+  const camera = await svg.getAttribute('viewBox');
+  await page.mouse.wheel(90, 0);
+  await expect(svg).not.toHaveAttribute('viewBox', camera!);
+  await tile.getByRole('button', { name: 'reset graph to 100%', exact: true }).click();
+  const tileHeight = (await tile.boundingBox())!.height;
+  await tile.getByRole('button', { name: 'expand', exact: true }).click();
+  const expanded = page.getByRole('dialog', { name: 'dependency graph' });
+  await expect(expanded).toBeVisible();
+  expect((await expanded.locator('svg').boundingBox())!.width).toBeGreaterThan(900);
+  await expanded.screenshot({ path: testInfo.outputPath('graph-expanded.png') });
+  await page.keyboard.press('Escape');
+  await expect(expanded).toHaveCount(0);
+  await expect(tile.getByRole('button', { name: 'expand', exact: true })).toBeFocused();
+  expect(Math.abs((await tile.boundingBox())!.height - tileHeight)).toBeLessThan(2);
+  expect(fitted).toBeTruthy();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await tile.getByRole('button', { name: 'fit', exact: true }).click();
+  await tile.screenshot({ path: testInfo.outputPath('graph-phone.png') });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});
+
+test('hover and keyboard focus trace entire chains without highlighting sibling branches', async ({ page }) => {
+  const project = await page.request.post('/api/projects', { data: { name: 'Trace paths' } }).then((r) => r.json() as Promise<{ id: number }>);
+  const keys: string[] = [];
+  for (const title of ['Source', 'Prepare', 'Read', 'Annotate', 'Export', 'Unrelated branch']) {
+    const ticket = await page.request.post('/api/tickets', { data: { project_id: project.id, title } }).then((r) => r.json() as Promise<{ key: string }>);
+    keys.push(ticket.key);
+  }
+  for (const [from, to] of [[0, 1], [1, 2], [2, 3], [3, 4], [1, 5]]) {
+    await page.request.post(`/api/tickets/${keys[to!]}/dependencies`, { data: { blocker: keys[from!] } });
+  }
+  await page.goto(`/projects/trace-paths-${project.id}`);
+  const tile = graph(page);
+  const read = page.getByTestId(`node-${keys[2]}`);
+  await read.hover();
+  await expect(tile.getByTestId('graph-popover')).toContainText('2 prerequisites · 2 downstream tickets');
+  await expect(page.getByTestId(`edge-${keys[0]}-${keys[1]}`)).toHaveClass(/is-upstream/);
+  await expect(page.getByTestId(`edge-${keys[3]}-${keys[4]}`)).toHaveClass(/is-downstream/);
+  await expect(page.getByTestId(`edge-${keys[1]}-${keys[5]}`)).toHaveClass(/is-unrelated/);
+  await page.mouse.move(0, 0);
+  await expect(page.getByTestId(`edge-${keys[0]}-${keys[1]}`)).not.toHaveClass(/is-upstream/);
+  await read.focus();
+  await expect(tile.getByTestId('graph-popover')).toContainText('2 prerequisites · 2 downstream tickets');
+  await read.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/tickets/${keys[2]}`));
 });

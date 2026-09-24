@@ -1,4 +1,4 @@
-import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { TICKET_STATUSES } from '@goblin/shared';
 
@@ -85,6 +85,14 @@ export const dependency = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.blocker_id, t.blocked_id] }), index('dependency_blocked').on(t.blocked_id)],
 );
+
+/** Saved references to implementation work; links survive ticket trash/restore. */
+export const implementationLink = sqliteTable('implementation_link', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  ticket_id: integer('ticket_id').notNull().references(() => ticket.id),
+  url: text('url').notNull(),
+  created_at: text('created_at').notNull(),
+}, (t) => [uniqueIndex('implementation_link_ticket_url').on(t.ticket_id, t.url)]);
 
 /** One row per write; `prior`/`new` are JSON of only the changed fields. */
 export const event = sqliteTable('event', {

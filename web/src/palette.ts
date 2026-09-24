@@ -38,6 +38,8 @@ export type PaletteAction =
   | { kind: 'simple'; simple: boolean }
   /** `d`: the dependencies tile's `blocked by` picker, wherever you pressed it from. */
   | { kind: 'blocked-by' }
+  | { kind: 'copy-branch' }
+  | { kind: 'add-implementation-link' }
   /** One step of a nested pick: the palette re-opens listing the live apps or projects. */
   | { kind: 'nest'; into: 'app' | 'project' }
   | { kind: 'place'; field: 'app_id' | 'project_id'; id: number | null }
@@ -52,6 +54,8 @@ export interface Candidate {
   group: PaletteGroup;
   /** What the row says, and the first thing a query is matched against. */
   label: string;
+  /** Alternate phrases for the same command, without lengthening its visible label. */
+  aliases?: string[];
   /** A ticket's key: searched alongside the label, and matched *exactly* to lift the row to the top. */
   key?: string;
   /** The right-hand note — where a transition lands, what kind of thing a `go to` row is. */
@@ -71,7 +75,7 @@ function namesExactly(key: string, needle: string): boolean {
 }
 
 const matches = (c: Candidate, needle: string) =>
-  c.label.toLowerCase().includes(needle) || (c.key !== undefined && c.key.toLowerCase().includes(needle));
+  c.label.toLowerCase().includes(needle) || (c.key !== undefined && c.key.toLowerCase().includes(needle)) || (c.aliases?.some((alias) => alias.toLowerCase().includes(needle)) ?? false);
 
 /**
  * The rows for a query. An empty one shows everything but the tickets —
