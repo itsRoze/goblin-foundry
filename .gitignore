@@ -19,3 +19,8 @@ playwright-report/
 !.impeccable/critique/
 .impeccable/critique/*
 !.impeccable/critique/ignore.md
+
+# Local credentials and machine-specific environment.
+.env
+.env.*
+!.env.example

@@ -1,6 +1,7 @@
 {
   "name": "goblin-foundry",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "shared",
     "api",

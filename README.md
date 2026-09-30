@@ -1,131 +1,121 @@
+<div align="center">
+
 # Goblin Foundry
 
-A solo software factory. S1 is the tracker: one Bun process, a typed HTTP API over one SQLite file, and a thin web GUI over that API. Domain language in `CONTEXT.md`; decisions in `docs/adr/`; the S1 spec in `docs/specs/S1-tracker-core.md`; house style in `design/DESIGN.md`. How agents work here, and which skill fits what, is in `CLAUDE.md` and `/ask-goblin`.
+**See what blocks shipping. Keep the decision to ship yours.**
 
-## Layout
+A local-first project tracker for developers working with AI agents.
+Dependency graphs, a keyboard-driven board, and a CLI that speaks JSON.
 
-| workspace | what |
-|---|---|
-| `shared` | zod schemas (and, later, the transition table) imported by all three |
-| `api` | Hono + Drizzle over `bun:sqlite`; serves the built GUI; `src/db.ts` is the only module that touches the driver |
-| `web` | React + Vite shell, tokens from `design/tokens.css` |
-| `cli` | `goblin`, a thin JSON client of the API |
-| `e2e` | Playwright smoke suite against the built GUI and a temp database |
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Development](docs/development.md) · [Contributing](CONTRIBUTING.md)
 
-## Run
+</div>
 
-The tracker has to be up whenever you are working, and you are mostly working in other
-repositories — so it is a macOS LaunchAgent rather than a terminal you have to remember to
-leave open.
+![Goblin project view showing tickets, blocking dependencies, and the project design](docs/images/project.png)
+
+*The project at a glance: tickets, their blocking relationships, and the plan. Screenshots use fictional demo data.*
+
+## Why Goblin?
+
+A list of tickets tells you what exists. Goblin shows you what can move next.
+
+Connect tickets with blocking edges, keep the plan beside the work, and let the ready frontier tell you which approved tickets have nothing in their way. Agents can write plans and arrange dependencies. A human decides when work is ready.
+
+- **Dependencies you can read.** Project graphs adapt to the space, connecting tickets horizontally or vertically. Dashed edges mark open blockers; hollow diamonds identify blocked tickets. Pan, zoom, or expand the graph to follow a larger project.
+- **A board built for the keyboard.** Navigate tickets, open the command palette, filter by project or status, and apply atomic bulk actions. Filters live in the URL, so bookmarks become saved views.
+- **Plans live with the work.** Markdown project and ticket designs, edit history, and links to implementing pull requests or commits stay together.
+- **One API, two interfaces.** The React interface and `goblin` CLI share the same typed HTTP API and lifecycle rules. CLI output is JSON; refusals explain what went wrong.
+- **Your machine, your database.** One Bun process serves the app over localhost. One SQLite file holds the data. No account or hosted service is required.
+
+Goblin is an early, working tracker. Autonomous execution, controller leases, and multi-user hosting are future work; the tracker and its human approval boundary are implemented today.
+
+## Follow the dependencies
+
+![Expanded graph tracing the prerequisites and downstream tickets for an offline reading release](docs/images/dependency-graph.png)
+
+Focus a ticket to trace its prerequisites and downstream work. Open blockers stay dashed; completed dependencies become solid.
+
+![Keyboard-driven Kanban board showing the same project across its lifecycle](docs/images/board.png)
+
+The same work on the board, with blocked tickets marked directly on their cards.
+
+## Quick start
+
+Install [Bun](https://bun.sh), then:
 
 ```sh
-bun install
-cd cli && bun link         # `goblin`, the CLI — see below
-goblin service install     # builds the GUI, writes the agent, loads it
+git clone https://github.com/itsRoze/goblin-foundry.git
+cd goblin-foundry
+bun install --frozen-lockfile
+bun run build
+bun api/src/server.ts
 ```
 
-`http://127.0.0.1:4747` now answers from any shell; it comes up at login (`RunAtLoad`),
-comes back from any exit including a `kill -9` (`KeepAlive`), and logs to
-`~/.goblin-foundry/logs/service.{out,err}.log`.
+Open **http://127.0.0.1:4747**. Create an app, add a project, and start planning tickets. The database is created automatically at `~/.goblin-foundry/foundry.db`.
 
-| | |
-|---|---|
-| `goblin service status` | loaded? listening? which checkout and database? — as JSON |
-| `goblin service restart` | rebuild the GUI and bounce the process: how a change to Goblin reaches the running tracker |
-| `goblin service stop` | until the next login. `uninstall` is the permanent off |
-| `goblin service logs` | the end of both log files (`--lines <n>`) |
+The server binds to localhost and has no authentication. It is intended for personal use on your machine.
 
-The agent runs this checkout's `api/src/server.ts` with `/opt/homebrew/bin/bun` — the stable
-symlink, so a bun upgrade cannot break it — and carries no environment of its own, so it is
-always the default database and the default port. Move the checkout and run `goblin service
-install` again. macOS only; anywhere else, run `bun api/src/server.ts` yourself.
-
-### Hacking on Goblin
-
-`bun dev` keeps port 4747, so the CLI and Playwright defaults never diverge from what is
-being hacked on — which means the service has to be out of the way first:
+To install the CLI, open another terminal in the checkout:
 
 ```sh
-goblin service stop        # …or leave it up and run `GF_PORT=4748 bun dev` beside it
-bun dev                    # builds the GUI in watch mode and serves it from the API
-```
-
-Whichever of the two finds the port taken says in one line which one to move.
-
-The rest of the toolchain, none of which needs the service stopped:
-
-```sh
-bun run build      # one-off GUI build
-bun test           # in-process API + CLI tests (fresh temp database per test)
-bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium` once)
-                   # set GF_E2E_PORT when another worktree is running its own suite
-bun run typecheck
-bun run lint       # stylelint (DESIGN.md as rules) + the dead-CSS check
-bun run db:push    # drizzle-kit push against the dev database
-```
-
-`bun run lint` is where the house style stops depending on review. stylelint holds the parts
-of DESIGN.md a machine can hold — colour comes from a token, radius is `0`, no gradients,
-shadows or blur, and opacity is never a state mark — and `scripts/unused-css.ts` finds rules
-the app no longer uses, which stylelint cannot see because it never reads the JSX.
-
-The database lives at `~/.goblin-foundry/foundry.db` (WAL). Set `GF_DB_PATH` to use another
-file (tests do), `GF_PORT` to change the port — the LaunchAgent reads neither.
-
-## `goblin`
-
-The CLI is a client of the same API the GUI uses, never a second write path (ADR-0004):
-one subcommand per endpoint, flags in and the API's own JSON out. Install it once —
-
-```sh
-cd cli && bun link   # puts `goblin` in ~/.bun/bin, which must be on your PATH
+(cd cli && bun link)
 goblin --help
 ```
 
-— and read it as **singular noun, then verb**: `goblin ticket create`, `goblin app list`,
-`goblin project show 3`, `goblin ticket approve GF-12`. Every noun and every command
-answers `--help`; the transition verbs are generated from the shared table, so the
-lifecycle is documented by the lifecycle.
+On macOS with Homebrew Bun at `/opt/homebrew/bin/bun`, `goblin service install` builds the GUI and installs a background LaunchAgent that starts at login. See the [service and development guide](docs/development.md#run).
 
-| | |
-|---|---|
-| output | the API body, verbatim, on stdout. `--json` is accepted and ignored. The one exception is `<noun> design get`, which prints raw markdown |
-| refusals | `application/problem+json` on stderr, stdout empty. Exit `1` the API refused, `2` the invocation was wrong, `3` nothing answered |
-| long text | `--description`, `--design` and `design set` take the text inline, `@path` to read a file, or `-` to read stdin |
-| clearing | `null` as the value of a nullable flag on `update` clears the field (`--app null`, `--design null`) |
-| filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
-| actor | `--actor agent`, or `GF_ACTOR`; the flag wins. An agent creates tickets only into `planning` and owns no transition (CONTEXT.md *Actor*) |
-| address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
-| several at once | a transition or `trash` with several keys — `goblin ticket approve GF-1 GF-2 GF-3` — is one batch, committed for all of them or none (ADR-0010); one key is the single call. `goblin ticket move <keys> --project <id\|null>` / `--app <id>` / `--nowhere` sends a set to one place. A refused batch lists `refusals` by key on stderr |
-| elsewhere | `GF_URL` points at the API; `goblin backup <dir>` copies the database file itself, from `GF_DB_PATH` or the default |
-| the laptop | `goblin service` is the LaunchAgent above. Like `backup` it is not a client of the API — there is no endpoint that installs a plist — so it shells to `launchctl` through the CLI's own seam |
+## How it works
 
-### A planning session
+```text
+backlog → todo → planning → ready → building → review → done
+                  agent      ↑
+                         human approval
+```
 
-Hand-written; ticket 12 replaces it with a transcript of the real one.
+This is the usual forward path; the lifecycle also supports shelving, cancellation, reopening, and closing completed work.
+
+Approval requires an app and a ticket design, unless the ticket is marked simple. **Blocked is a derived condition, not another status.** A ready ticket only appears in the frontier when its open blockers are gone. Dependency cycles are rejected.
+
+An agent can prepare a plan through the same CLI you use:
 
 ```sh
-$ goblin app create --name 'Subway Reader' --repository-url https://github.com/itsRoze/subway-reader
-{"id":1,"name":"Subway Reader",…}
-$ goblin project create --name MVP --app subway-reader-1
-{"id":1,"app_id":1,"name":"MVP",…}
-
-$ export GF_ACTOR=agent                       # everything below is the planner's hand
-$ goblin ticket create --title 'Parse an RSS feed' --project 1
-{"key":"GF-1","status":"planning",…}          # an agent creates only into planning
-$ goblin ticket design set GF-1 @plan.md      # creation is design-less; the design is a second call
-$ goblin ticket create --title 'Render the list' --project 1
-{"key":"GF-2","status":"planning",…}
-$ goblin dependency add --blocker GF-1 --blocked GF-2
-{"key":"GF-2","blocked_by":["GF-1"],…}
-
-$ goblin ticket approve GF-1
-{"type":"about:blank","title":"Conflict","status":409,"owner":"human",
- "hint":"approve is the human's move, not the agent's"}    # stderr, exit 1
-
-$ unset GF_ACTOR                              # the human reads the plan and approves it
-$ goblin ticket approve GF-1
-{"key":"GF-1","status":"ready",…}
-$ goblin frontier
-[{"key":"GF-1",…}]                            # GF-2 waits, because GF-1 still blocks it
+# Use an existing project ID from `goblin project list`.
+goblin ticket create --actor agent --project 1 --title 'Parse an RSS feed'
+goblin ticket design set --actor agent GF-1 @plan.md
+goblin ticket create --actor agent --project 1 --title 'Render the reading list'
+goblin dependency add --actor agent --blocker GF-1 --blocked GF-2
+goblin frontier --actor agent
 ```
+
+Replace the example keys with the returned keys. An agent's reach ends at planning: it cannot approve its own work or advance the lifecycle. Actor identity is a workflow convention enforced by the API, not an authentication system.
+
+## Small runtime, explicit rules
+
+| Piece | Responsibility |
+| --- | --- |
+| [`shared/`](shared) | Zod schemas, lifecycle transitions, and shared domain rules |
+| [`api/`](api) | Hono HTTP API, Drizzle queries, and the SQLite boundary |
+| [`web/`](web) | React UI, Vite build, dependency graph, and keyboard navigation |
+| [`cli/`](cli) | JSON client, database backups, and macOS service management |
+| [`e2e/`](e2e) | Browser coverage, including touch and responsive layouts |
+
+The database driver has one entry point. Bulk mutations commit together or roll back together. The visual system is documented and checked by lint rules. These choices have [architecture decision records](docs/adr), and the product vocabulary has a [domain glossary](CONTEXT.md).
+
+## Develop
+
+```sh
+bun dev                # watch the GUI and API
+bun test               # unit and in-process API/CLI tests
+bun run typecheck
+bun run lint
+bunx playwright install chromium webkit
+bun run test:e2e        # built app, isolated temporary database
+```
+
+If port 4747 is occupied, use `GF_PORT=4748 bun dev`. Set `GF_DB_PATH` to keep a development database separate from your everyday tracker.
+
+Read the [development and CLI reference](docs/development.md), [contribution guide](CONTRIBUTING.md), and [design system](design/DESIGN.md).
+
+## License
+
+[MIT](LICENSE). Third-party dependencies and bundled tools retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
