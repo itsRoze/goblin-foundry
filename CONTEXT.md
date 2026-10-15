@@ -50,7 +50,7 @@ Workflow state only (never CI or PR review state). S1 statuses, in order:
 - `done` — finished, however it got there: shipped out of `review`, or closed because it turned out to be done as a side effect of other work
 - `cancelled` — not doing; blocks nothing
 
-`needs_human` (agent stuck) is added when a controller exists (S5). Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned.
+`needs_human` (agent stuck) is added when a controller exists (S5). Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned except `submit`, which is the agent's (and so also the human's).
 
 ## Ready Frontier
 The set of Tickets the controller may claim: `ready` ∧ no incomplete blocker ∧ not leased (∧ within concurrency/risk limits, later). Computed, never stored.
@@ -73,7 +73,7 @@ The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spo
 ## Actor
 Who performed a mutation — the hands, never the authority: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
 
-In S1 an agent's reach ends at `planning`: it creates Tickets only into `planning` (any other Status is refused, never silently corrected) and it owns no Transition, so approving what an agent planned is always a human act. The Ready Frontier is therefore only ever reached by a human's hand.
+In S1 an agent creates Tickets only into `planning` (any other Status is refused, never silently corrected), and the one Transition it owns is `submit`: the agent that built a Ticket and opened its PR moves it `building → review`. Approving what an agent planned is always a human act, so the Ready Frontier is only ever reached by a human's hand. A human holds every authority an agent does.
 
 ## Edit session
 A stretch of continuous editing of one thing by one Actor, recorded as a single entry in that

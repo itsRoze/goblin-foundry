@@ -9,8 +9,8 @@ import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './ti
  * change. An edge is addressed by `(from, name)` and that pair is unique.
  */
 
-/** Who may trigger an edge. `controller` arrives with S5; in S1 everything is human-owned. */
-export const TRANSITION_OWNERS = ['human', 'controller'] as const;
+/** Who may trigger an edge. `controller` arrives with S5; in S1 every edge is human-owned but `submit`. */
+export const TRANSITION_OWNERS = ['human', 'agent', 'controller'] as const;
 export type TransitionOwner = (typeof TRANSITION_OWNERS)[number];
 
 /** The verb of an edge. A name has exactly one destination, so a refusal can name where you were heading. */
@@ -45,10 +45,10 @@ const DESTINATION: Record<TransitionName, TicketStatus> = {
 };
 
 /**
- * `start` and `submit` become controller-owned in S5 (ADR-0003); until the
- * controller exists there is nobody else to own them.
+ * `start` and `submit` become controller-owned in S5 (ADR-0003). Until then
+ * `submit` is the agent's: the hands that opened the PR say it is open.
  */
-const EDGES: { name: TransitionName; from: TicketStatus[]; guard?: 'approve' }[] = [
+const EDGES: { name: TransitionName; from: TicketStatus[]; owner?: TransitionOwner; guard?: 'approve' }[] = [
   { name: 'pick', from: ['backlog', 'planning'] },
   { name: 'plan', from: ['backlog', 'todo'] },
   { name: 'shelve', from: ['todo', 'planning'] },
@@ -56,7 +56,7 @@ const EDGES: { name: TransitionName; from: TicketStatus[]; guard?: 'approve' }[]
   { name: 'unapprove', from: ['ready'] },
   { name: 'start', from: ['ready'] },
   { name: 'stop', from: ['building'] },
-  { name: 'submit', from: ['building'] },
+  { name: 'submit', from: ['building'], owner: 'agent' },
   { name: 'ship', from: ['review'] },
   // `close` records work that turned out to be done as a side effect; deliberately unguarded.
   { name: 'close', from: ['backlog', 'todo', 'planning', 'ready', 'building'] },
@@ -66,8 +66,8 @@ const EDGES: { name: TransitionName; from: TicketStatus[]; guard?: 'approve' }[]
   { name: 'reopen', from: ['cancelled'] },
 ];
 
-export const TRANSITIONS: readonly Transition[] = EDGES.flatMap(({ name, from, guard }) =>
-  from.map((f): Transition => ({ from: f, to: DESTINATION[name], name, owner: 'human', since: 'S1', ...(guard ? { guard } : {}) })),
+export const TRANSITIONS: readonly Transition[] = EDGES.flatMap(({ name, from, owner = 'human', guard }) =>
+  from.map((f): Transition => ({ from: f, to: DESTINATION[name], name, owner, since: 'S1', ...(guard ? { guard } : {}) })),
 );
 
 export const isTransitionName = (name: string): name is TransitionName => (TRANSITION_NAMES as readonly string[]).includes(name);
@@ -148,12 +148,12 @@ export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
 const list = (missing: ApproveRequirement[]) => missing.map((m) => REQUIREMENT_LABEL[m]).join(' and ');
 
 /**
- * An agent is the hands, never the authority (CONTEXT.md "Actor"): in S1 its
- * reach ends at `planning`. It creates tickets only there, and it owns no
- * edge in the table, so approving what an agent planned is always a human act
- * and the ready frontier is only ever reached by a human's hand. Both halves
- * refuse rather than correct — quietly moving a ticket the planner asked for
- * in `backlog` would hide the misunderstanding instead of naming it.
+ * An agent is the hands, never the authority (CONTEXT.md "Actor"): in S1 it
+ * creates tickets only in `planning`, and the one edge it owns is `submit`,
+ * so approving what an agent planned is always a human act and the ready
+ * frontier is only ever reached by a human's hand. Both halves refuse rather
+ * than correct — quietly moving a ticket the planner asked for in `backlog`
+ * would hide the misunderstanding instead of naming it.
  */
 export const AGENT_CEILING: TicketStatus = 'planning';
 
@@ -165,11 +165,11 @@ export const ceilingRefusal = (actor: Actor, status: TicketStatus): string | nul
   actor === 'agent' && status !== AGENT_CEILING ? `an agent creates a ticket in ${AGENT_CEILING}, never ${status}` : null;
 
 /**
- * Whether the actor holds the authority an edge names. Actors and owners are
- * deliberately different lists: no edge is owned by `agent`, which is the rule
- * rather than an omission, and `controller` becomes an actor in S5.
+ * Whether the actor holds the authority an edge names. The human holds every
+ * authority an agent does, so an agent's edge is still the human's to take
+ * when they build by hand. `controller` becomes an actor in S5.
  */
-export const ownsTransition = (actor: Actor, owner: TransitionOwner): boolean => actor === owner;
+export const ownsTransition = (actor: Actor, owner: TransitionOwner): boolean => actor === owner || (actor === 'human' && owner === 'agent');
 
 /** *approve is the human's move, not the agent's* — the refusal about who, where the others are about where (DESIGN.md Components). */
 export const ownerRefusal = (name: TransitionName, owner: TransitionOwner, actor: Actor): string => `${name} is the ${owner}'s move, not the ${actor}'s`;

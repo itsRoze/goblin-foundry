@@ -10,7 +10,7 @@ At the end of `/implement`, when the diff touches `web/src`, `design/DESIGN.md` 
 
 ### Issue tracker
 
-Goblin itself, at `http://127.0.0.1:4747`, driven by the `goblin` CLI (on `PATH`, so it works from any directory). This repo is the `goblin-foundry` app. An agent acts with `--actor agent` and stops at `planning` — approving is the human's hand. See `docs/agents/issue-tracker.md`.
+Goblin itself, at `http://127.0.0.1:4747`, driven by the `goblin` CLI (on `PATH`, so it works from any directory). This repo is the `goblin-foundry` app. An agent acts with `--actor agent`: it creates tickets in `planning`, approving is the human's hand, and once it opens a PR for a ticket it submits that ticket to `review` itself. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

@@ -6,7 +6,7 @@ date: 2026-08-27
 
 Ticket status is workflow state only. The S1 set is `backlog → todo → planning → ready → building → review → done`, plus `cancelled`; `needs_human` is added with the controller (S5). The blueprint's names changed (`draft`→`backlog`/`todo`/`planning`, `running`→`building`, `ready_for_review`→`review`); its authority rules did not: humans approve, re-arm, ship and cancel; the controller (later) owns `ready→building` and `building→review`. The allowed transitions live in one table (`transitions.ts`) with a name and an owner per edge; the API validates against it and the kanban derives droppable columns and refusal text from it, so controller-owned edges become refusals in S5 without UI changes. An edge is addressed by `(current status, name)`, and that pair is unique — no two edges out of one status share a name.
 
-S1 transitions, all human-owned:
+S1 transitions, all human-owned but `submit` (see the amendment below):
 
 | from | name | to |
 | --- | --- | --- |
@@ -34,6 +34,7 @@ S1 transitions, all human-owned:
   - the `approve` transition;
   - **creation** in `ready`, `building` or `review` (a ticket may be created anywhere in the working lifecycle, default `backlog`; creation directly into `done` or `cancelled` is refused — the terminal states are earned, never declared);
   - a **`PATCH`** at `ready`, `building` or `review` that would break the guard — clearing the app, or un-flagging `simple` with no design — is refused, naming the field and saying to `unapprove` first.
+- Amended 2026-10-15: `submit` is agent-owned. The agent that built a ticket and opened its PR is the one that knows the PR is open, so it moves `building → review` itself; making the human type it was a relay, not a decision. The human holds every authority an agent does, so a human building by hand still submits. Nothing an agent owns reaches the ready frontier: `approve`, `start` and `ship` stay human. In S5 `submit` passes to the controller as planned.
 - Blocked is derived (an open blocker), never a status; `cancelled` blockers do not block.
 - The ready frontier in S1 is `ready ∧ no open blocker`; the lease/concurrency clauses arrive in S5.
 - Every mutation writes an `event` row: entity, actor (`human` | `agent`), kind, prior, new, timestamp. A transition's event is kind `transitioned`, carrying the name as well as the status pair, so history reads as decisions (`approved`) and not only as state (`planning → ready`). No auth in S1; the API binds to localhost and trusts a declared actor.

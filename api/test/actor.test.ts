@@ -11,12 +11,12 @@ const json = (method: string, body?: unknown, actor?: string) => ({
 });
 
 /**
- * CONTEXT.md "Actor": the hands, never the authority. An agent's reach ends at
- * `planning` — it creates only there, and it owns no transition, so the ready
+ * CONTEXT.md "Actor": the hands, never the authority. An agent creates only in
+ * `planning`, and the one transition it owns is `submit`, so the ready
  * frontier is only ever reached by a human's hand. Both halves refuse; neither
  * corrects.
  */
-describe("an agent's reach ends at planning", () => {
+describe("an agent plans and submits, and approves nothing", () => {
   let h: Harness;
   const req = (path: string, init?: RequestInit) => Promise.resolve(h.app.request(path, init));
   const post = (path: string, body?: unknown, actor?: string) => req(path, json('POST', body, actor));
@@ -83,6 +83,21 @@ describe("an agent's reach ends at planning", () => {
       expect([edge.name, (await res.json()).hint]).toEqual([edge.name, `${edge.name} is the human's move, not the agent's`]);
       expect([edge.name, (await req(`/api/tickets/${t.key}`).then((r) => r.json())).status]).toEqual([edge.name, 'backlog']);
     }
+  });
+
+  test("the agent that built it submits it: building → review is the agent's move, and still the human's", async () => {
+    const app = await newApp();
+    const building = () => post('/api/tickets', { title: 'built by the agent', status: 'building', simple: true, app_id: app.id }).then((r) => r.json());
+
+    const t = await building();
+    const submitted = await post(`/api/tickets/${t.key}/submit`, undefined, 'agent');
+    expect(submitted.status).toBe(200);
+    expect((await submitted.json()).status).toBe('review');
+    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'agent', new: { status: 'review', transition: 'submit' } });
+    expect((await post(`/api/tickets/${t.key}/ship`, undefined, 'agent').then((r) => r.json())).hint).toBe("ship is the human's move, not the agent's");
+
+    const byHand = await building();
+    expect((await post(`/api/tickets/${byHand.key}/submit`).then((r) => r.json())).status).toBe('review');
   });
 
   test('a verb with no edge from here is the same structural refusal for anyone — an owner lives on an edge, and there is none', async () => {

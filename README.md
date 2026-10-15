@@ -87,7 +87,7 @@ goblin dependency add --actor agent --blocker GF-1 --blocked GF-2
 goblin frontier --actor agent
 ```
 
-Replace the example keys with the returned keys. An agent's reach ends at planning: it cannot approve its own work or advance the lifecycle. Actor identity is a workflow convention enforced by the API, not an authentication system.
+Replace the example keys with the returned keys. An agent plans and submits: it creates tickets only in planning and may move a ticket it built from building to review once its PR is open, but it cannot approve, start or ship. Actor identity is a workflow convention enforced by the API, not an authentication system.
 
 ## Small runtime, explicit rules
 
