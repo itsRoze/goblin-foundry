@@ -31,10 +31,19 @@ it cannot go stale; prefer it over anything written here.
 
 Always pass `--actor agent`, or export `GF_ACTOR=agent`. This is not cosmetic:
 the API holds an agent to `planning` (ADR-0003, `AGENT_CEILING`). An agent
-creates tickets in `planning` and owns no lifecycle edge, so **an agent never
-approves a ticket into `ready`**. Reaching the ready frontier is a human's hand,
+creates tickets in `planning` and owns one lifecycle edge, `submit`, so **an
+agent never approves a ticket into `ready`**. Reaching the ready frontier is a human's hand,
 every time. If a skill's instructions imply otherwise, stop and hand back rather
 than acting as `human` to get past the refusal.
+
+## When you open a PR for a ticket
+
+The agent that built a ticket submits it once the PR is open:
+
+    goblin ticket submit --actor agent <key>
+
+That moves it `building → review`. Shipping it to `done` after the merge is the
+human's.
 
 ## When a skill says "publish to the issue tracker"
 
