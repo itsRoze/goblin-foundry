@@ -38,7 +38,12 @@ than acting as `human` to get past the refusal.
 
 ## When you open a PR for a ticket
 
-The agent that built a ticket submits it once the PR is open:
+The agent that built a ticket links every PR it opens for it, stacked ones
+included, as soon as each is open:
+
+    goblin ticket link add --actor agent <key> --url <pr-url>
+
+Then it submits the ticket:
 
     goblin ticket submit --actor agent <key>
 
