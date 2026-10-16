@@ -65,7 +65,7 @@ export class AtomicWriteError extends Error {
  *
  * Callers do their reading and deciding first and hand over writes whose
  * `WHERE` pins what they read; a statement that matches no row is `stale`.
- * `api/test/db.test.ts` and `bulk.test.ts` hold the rollback evidence.
+ * `api/test/db.test.ts`, `bulk.test.ts` and `transitions.test.ts` hold the rollback evidence.
  */
 export async function atomically(db: Db, writes: readonly AtomicWrite[]): Promise<void> {
   db.run(sql`BEGIN IMMEDIATE`);

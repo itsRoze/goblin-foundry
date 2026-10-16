@@ -156,6 +156,50 @@ describe('POST /api/tickets/:key/:name', () => {
     }
     expect(refused).toHaveLength(TICKET_STATUSES.length * TRANSITION_NAMES.length - TRANSITIONS.length);
   });
+
+  describe('a transition writes its status and its event together, against the status it judged', () => {
+    const read = (key: string) => req(`/api/tickets/${key}`).then((r) => r.json());
+    const transitioned = async (key: string) => (await events(key)).filter((e: { kind: string }) => e.kind === 'transitioned');
+
+    test('two transitions fired together from `ready`: one lands, the other is a 409, and history holds only the one that landed', async () => {
+      const t = await at('ready');
+      const before = await transitioned(t.key);
+      const [start, unapprove] = await Promise.all([post(`/api/tickets/${t.key}/start`), post(`/api/tickets/${t.key}/unapprove`)]);
+      expect([start.status, unapprove.status].sort()).toEqual([200, 409]);
+      const landed = start.status === 200 ? { name: 'start', to: 'building' } : { name: 'unapprove', to: 'planning' };
+      expect((await read(t.key)).status).toBe(landed.to);
+      const after = await transitioned(t.key);
+      expect(after.length - before.length).toBe(1);
+      expect(after[0]).toMatchObject({ prior: { status: 'ready' }, new: { status: landed.to, transition: landed.name } });
+    });
+
+    test('a history write that fails leaves the status where it was, and the same move goes through once the fault is gone', async () => {
+      const t = await at('backlog');
+      const before = await events(t.key);
+      h.failWrites('event', t.id);
+      const res = await post(`/api/tickets/${t.key}/pick`);
+      expect(res.status).toBe(500);
+      expect(res.headers.get('content-type')).toContain('application/problem+json');
+      expect((await res.json()).detail).toContain('nothing changed');
+      expect((await read(t.key)).status).toBe('backlog');
+      expect(await events(t.key)).toEqual(before);
+      h.healWrites();
+      expect((await post(`/api/tickets/${t.key}/pick`)).status).toBe(200);
+      expect((await read(t.key)).status).toBe('todo');
+    });
+
+    test('a ticket that changed between the judging and the write is a 409 naming its key, and nothing is written', async () => {
+      const t = await at('backlog');
+      const before = await events(t.key);
+      h.failWrites('ticket', t.id, 'vanish');
+      const res = await post(`/api/tickets/${t.id}/pick`);
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ owner: 'human', hint: `nothing changed — ticket ${t.key} changed while pick was being applied; try again` });
+      h.healWrites();
+      expect((await read(t.key)).status).toBe('backlog');
+      expect(await events(t.key)).toEqual(before);
+    });
+  });
 });
 
 describe('the approve guard at creation and on edit', () => {
