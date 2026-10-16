@@ -26,7 +26,7 @@ A recoverable deletion of an App, Project or Ticket (something created by accide
 A named grouping of Tickets inside a Project. Not in S1 (wanted later).
 
 ## Design
-A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place, always live (there is no draft and no save step); not versioned in S1. *(Later slices snapshot it at claim time so a run is judged against the design it started with.)*
+A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place, always live (there is no draft and no save step); not versioned.
 
 ## Ticket
 A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). A Ticket in a Project always shares that Project's App; a Ticket's App is chosen directly only when it has no Project. Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs no Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
@@ -53,33 +53,24 @@ Workflow state only (never CI or PR review state). S1 statuses, in order:
 - `todo` — decided: plan this next
 - `planning` — planning conversation / design in progress
 - `ready` — plan approved; developable
-- `building` — someone is on it (you by hand; the controller from S5)
+- `building` — someone is on it
 - `review` — PR open / being reviewed
 - `done` — finished, however it got there: shipped out of `review`, or closed because it turned out to be done as a side effect of other work
 - `cancelled` — not doing; blocks nothing
 
-`needs_human` (agent stuck) is added when a controller exists (S5). Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned except `submit`, which is the agent's (and so also the human's).
+Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned except `submit`, which is the agent's (and so also the human's).
 
 ## Ready Frontier
-The set of Tickets the controller may claim: `ready` ∧ no incomplete blocker ∧ not leased (∧ within concurrency/risk limits, later). Computed, never stored.
-
-## Claim Order
-The human-chosen ordering of the Ready Frontier; the controller takes the first. Not in S1 (arrives with the controller).
-
-## Lease
-The controller's atomic hold on a Ticket while a run is alive. Expiry routes to `needs_human`; it never re-queues. Not in S1.
+The set of Tickets ready to build: `ready` ∧ no incomplete blocker. Computed, never stored.
 
 ## Attention
-Everything waiting on the human: approvals, re-arms, answers, reviews, design reconciliations. In S1 only approvals exist (Tickets in `planning`); there is no Home screen — the Kanban is home.
+Everything waiting on the human. Today that is approvals (Tickets in `planning`); there is no Home screen — the Kanban is home.
 
 ## Simple
 A flag on a Ticket meaning "straightforward enough to build without a Ticket Design". A simple Ticket may go `todo → ready` directly, and may be *created* in `ready`. Simple means no plan is needed, not that no context is needed: a simple Ticket still needs an App, because an orphan can never be `ready`.
 
-## Lane (risk lane)
-The human review depth a Ticket requires: `L3` (read the full diff) or `L4` (spot-check with evidence). Not in S1; set at intake from S2.
-
 ## Actor
-Who performed a mutation — the hands, never the authority: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp. Later slices add `controller`.
+Who performed a mutation — the hands, never the authority: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp.
 
 In S1 an agent creates Tickets only into `planning` (any other Status is refused, never silently corrected), and the one Transition it owns is `submit`: the agent that built a Ticket and opened its PR moves it `building → review`. Approving what an agent planned is always a human act, so the Ready Frontier is only ever reached by a human's hand. A human holds every authority an agent does.
 

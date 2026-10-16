@@ -12,7 +12,7 @@ import { Chip, Empty, Kbd, Since, refusalLine, useCloseOnOutside, type Namer, ty
 /**
  * Status → meaning (DESIGN.md Colors). `backlog/todo/planning` are all "not yet
  * real" — the column header, not the colour, tells them apart. `building` is
- * `system` while it is built by hand; it turns `live` when a run exists (S5).
+ * `system`.
  */
 const TONE: Record<TicketStatus, Tone> = {
   backlog: 'draft',

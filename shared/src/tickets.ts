@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { designBody, designField } from './design';
 
 /**
- * Workflow state only, in lifecycle order (ADR-0003). `needs_human` arrives
- * with the controller (S5); the order here is the order of the kanban columns.
+ * Workflow state only, in lifecycle order (ADR-0003); the order here is the
+ * order of the kanban columns.
  */
 export const TICKET_STATUSES = ['backlog', 'todo', 'planning', 'ready', 'building', 'review', 'done', 'cancelled'] as const;
 export const TicketStatusSchema = z.enum(TICKET_STATUSES);

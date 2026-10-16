@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-A digest for design work, which is what impeccable reads. The sources of truth stay where they are: the domain language in `CONTEXT.md`, decisions in `docs/adr/`, the S1 spec in `docs/specs/S1-tracker-core.md`, the house style in `design/DESIGN.md`, and for the factory beyond S1 the blueprint `BLUEPRINT-v1.md` and the notes under `research/`. When this file and one of them disagree, the source wins and this file is corrected.
+A digest for design work, which is what impeccable reads. The sources of truth stay where they are: the domain language in `CONTEXT.md`, decisions in `docs/adr/`, the S1 spec in `docs/specs/S1-tracker-core.md`, the house style in `design/DESIGN.md`, and the direction beyond S1 in ADR-0011. The research record under `research/` holds the retired factory blueprint, `research/BLUEPRINT-v1.md`. When this file and one of them disagree, the source wins and this file is corrected.
 
 ## Platform
 
@@ -10,32 +10,32 @@ web
 
 ## Users
 
-One person: the solo developer who is building the factory and runs it. Keyboard first, at a laptop or a wide monitor for planning and building, and at phone width for triage (spec story 44). In S1 they operate the tracker entirely by hand, often with a Claude Code planning session in a terminal beside the browser (story 45). From S5 a controller and its agents act on the same tickets (`needs_human`, leases, runs) and the human becomes the one who approves, re-arms and answers.
+One person: the solo developer who builds Goblin and runs it. Keyboard first, at a laptop or a wide monitor for planning and building, and at phone width for triage (spec story 44). In S1 they operate the tracker entirely by hand, often with a Claude Code planning session in a terminal beside the browser (story 45).
 
 Developers who build their own tracker from Goblin's Pieces are an audience for the Pieces (ADR-0011, 2026-10-16). Goblin Foundry's own screens still serve only the operator, who knows the system's language and is owed no onboarding.
 
 ## Product Purpose
 
-Goblin Foundry is a solo software factory. S1 is its tracker: a durable place for Apps, Projects, Designs and Tickets that the human operates by hand. Capture an idea, plan it into vertical-slice tickets with a planning agent, declare what blocks what, approve plans, and see at a glance which tickets are actually ready to build (the Ready Frontier).
+Goblin Foundry is a ticket tracker: a durable place for Apps, Projects, Designs and Tickets that the human operates by hand. Capture an idea, plan it into vertical-slice tickets with a planning agent, declare what blocks what, approve plans, and see at a glance which tickets are actually ready to build (the Ready Frontier).
 
 S1 is done when a fresh project is created in the GUI, an agent-assisted planning conversation produces approved tickets with dependencies through the API, tickets drag between statuses, and the ready frontier is correct on screen (the spec's exit criterion). Beyond S1, Goblin is built as Pieces that other developers assemble into their own trackers, and Goblin Foundry is one Assembly of them (ADR-0011).
 
 ## Positioning
 
-A control surface and a memory, not a Linear clone. Status is a code-owned state machine whose transition table names an owner per edge, so when the controller arrives its columns refuse a drag and say why: authority is visible in the UI. Linear and GitHub Issues cannot express factory authority, and the human does not own them (v0 postmortem, BLUEPRINT-v1 §1).
+A control surface and a memory, not a Linear clone. Status is a code-owned state machine whose transition table names an owner per edge, so a column refuses a drag its dragger does not own and says why: authority is visible in the UI. Linear and GitHub Issues cannot express that authority, and the human does not own them (v0 postmortem, BLUEPRINT-v1 §1).
 
 ## Operating Context
 
 One Bun process on localhost: a typed HTTP API over one SQLite file, serving a thin web GUI; a `goblin` CLI wraps the API for the planning skill. No auth, no multi-user, no sync, no deployment. Screens: the kanban is home; Ticket, Project, App, the Apps and Projects lists, Settings, Trash. Every long text field is a Linear-style markdown editor that is also the read view (ADR-0005). Tickets are planned by hand or by a planning agent over the `goblin` CLI, and built by hand until the controller arrives (S5). Changes made from the terminal are meant to show up on the board within seconds, without a reload (story 45).
 
-The first product built with the factory is Subway Reader, an offline-first e-ink RSS reader for Android (`research/subway-reader/`); it enters as a freshly planned project created through the tracker (ticket 12).
+The first real project tracked in Goblin is Subway Reader, an offline-first e-ink RSS reader for Android (`research/subway-reader/`); it enters as a freshly planned project created through the tracker (ticket 12).
 
 ## Capabilities and Constraints
 
 One line each; the spec carries the user stories.
 
 - Statuses `backlog · todo · planning · ready · building · review · done · cancelled`, moved only by named transitions (`approve`, `start`, `ship`…). Blocked is a derived condition, never a status.
-- Every transition names its owner. In S1 every edge is human-owned but `submit`, which the agent that opened the PR takes (and a human building by hand still can); the owner is in the table so that when `ready → building` and `building → review` pass to the controller in S5 (ADR-0003), flipping ownership changes no UI code (story 30).
+- Every transition names its owner. In S1 every edge is human-owned but `submit`, which the agent that opened the PR takes (and a human building by hand still can); the owner is in the table, so changing who owns an edge changes no UI code (ADR-0003, story 30).
 - An agent creates a ticket only into `planning` (the default when it names none; any other status is refused, never corrected) and owns only `submit`, so approving what an agent planned is always the human's act (CONTEXT.md Actor; decided in ticket 09, `submit` added 2026-10-15).
 - Dependencies are advisory facts between any two tickets; only cycles are refused (ADR-0009). The Ready Frontier is where they bite.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
