@@ -3,7 +3,7 @@ import { DEFAULT_BOARD_STATUSES, TICKET_STATUSES, canonicalStatuses, serialiseTi
 import { useKey } from './keys';
 import { useApps, useProjects } from './queries';
 import { projectFitsApp, useNames } from './tickets';
-import { Kbd, useCloseOnOutside } from './ui';
+import { Hint, Kbd, useCloseOnOutside } from './ui';
 
 /**
  * The board's Filter bar (issue 06): the strip between the tile header and the
@@ -313,7 +313,9 @@ function SearchRows({
         </div>
       )}
       <span className="gf-tile-keys">
-        <Kbd>↑↓</Kbd> move <Kbd>⏎</Kbd> pick <Kbd>esc</Kbd> close
+        <Hint k="↑↓">move</Hint>
+        <Hint k="⏎">pick</Hint>
+        <Hint k="esc">close</Hint>
       </span>
     </div>
   );
@@ -407,7 +409,12 @@ function CheckRows({ chosen, onToggle, onClose }: { chosen: readonly TicketStatu
         </label>
       ))}
       <span className="gf-tile-keys">
-        <Kbd>↑↓</Kbd> move <Kbd>space</Kbd> <Kbd>⏎</Kbd> toggle <Kbd>esc</Kbd> close
+        <Hint k="↑↓">move</Hint>
+        {/* two keys, one word: the Hint's own clothes, so the pair still wraps and folds as one */}
+        <span className="gf-hint">
+          <Kbd>space</Kbd> <Kbd>⏎</Kbd> toggle
+        </span>
+        <Hint k="esc">close</Hint>
       </span>
     </div>
   );

@@ -7,7 +7,7 @@ import { commonMoves, countOf } from './bulk';
 import { paletteHits, selectionMoveRows, selectionPlaceRows, selectionRows, selectionTransitionRows, transitionRows, type Candidate, type PaletteAction } from './palette';
 import { useApps, useProjects, useTicket, useTickets } from './queries';
 import { StatusChip, ticketPath } from './tickets';
-import { Empty, Kbd } from './ui';
+import { Empty, Hint } from './ui';
 
 /*
  * `⌘K` and `s` are one component (issue 10): the same panel, opened with a
@@ -206,7 +206,9 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
         </div>
       )}
       <span className="gf-tile-keys">
-        <Kbd>↑↓</Kbd> move <Kbd>⏎</Kbd> run <Kbd>esc</Kbd> close
+        <Hint k="↑↓">move</Hint>
+        <Hint k="⏎">run</Hint>
+        <Hint k="esc">close</Hint>
       </span>
     </div>
   );

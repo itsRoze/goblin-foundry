@@ -529,6 +529,7 @@ export function BoardPage() {
   const cardsIn = (column: { status: TicketStatus; tickets: Ticket[] }) => ({
     status: column.status,
     tickets: column.tickets,
+    count: tickets.data === undefined ? null : column.tickets.length,
     cursor: cursor.at,
     meta: view.meta ? meta : undefined,
     updated: view.updated,
@@ -717,6 +718,8 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
 interface CardsProps {
   status: TicketStatus;
   tickets: Ticket[];
+  /** How many the Filter put here, or `null` until the board has been read: a `0` before then is a number that lies (Voice). */
+  count: number | null;
   /** The key the Cursor is on, wherever on the board it is; at most one column has it. */
   cursor: string | null;
   meta: ((t: Ticket) => string) | undefined;
@@ -792,7 +795,7 @@ function Column({
   /** The touch drag's finger is over this column; the mouse drag reports its own. */
   fingerOver: boolean;
 }) {
-  const { status, tickets } = cards;
+  const { status, count } = cards;
   const ref = useRef<HTMLDivElement>(null);
   const [over, setOver] = useState(false);
 
@@ -814,7 +817,7 @@ function Column({
     <div ref={ref} className={`gf-col${marks}${over || fingerOver ? ' is-over' : ''}`} data-testid={`col-${status}`} data-status={status}>
       <div className="gf-col-head">
         {status}
-        <b>{tickets.length}</b>
+        {count !== null && <b>{count}</b>}
       </div>
       <Cards {...cards} />
     </div>
@@ -828,7 +831,7 @@ function Column({
  * the card it is about.
  */
 function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: boolean; onToggle: () => void }) {
-  const { status, tickets, refusal, pending, notice, onCancel, onShow } = cards;
+  const { status, count, refusal, pending, notice, onCancel, onShow } = cards;
   return (
     <section className={`gf-section${expanded ? ' is-open' : ''}`} data-testid={`section-${status}`} data-status={status} aria-label={status}>
       <button type="button" className="gf-col-head gf-section-head" aria-expanded={expanded} data-testid={`section-head-${status}`} onClick={onToggle}>
@@ -838,7 +841,7 @@ function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: bool
           </span>
           {status}
         </span>
-        <b>{tickets.length}</b>
+        {count !== null && <b>{count}</b>}
       </button>
       {expanded ? <Cards {...cards} /> : <Said status={status} refusal={refusal} pending={pending} notice={notice} onCancel={onCancel} onShow={onShow} />}
     </section>

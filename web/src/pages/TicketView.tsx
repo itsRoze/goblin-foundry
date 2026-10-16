@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import {
   asksBeforeBlocked,
   blockedWarning,
+  isBlocked,
   isTerminal,
   lifecycle,
   slugPath,
@@ -588,7 +589,8 @@ function TicketPicker({
       )}
       {/* `esc` also closes, but the heading already carries a `close` — one way out on screen is enough */}
       <span className="gf-tile-keys">
-        <Kbd>↑↓</Kbd> move <Kbd>⏎</Kbd> add
+        <Hint k="↑↓">move</Hint>
+        <Hint k="⏎">add</Hint>
       </span>
     </div>
   );
@@ -624,6 +626,18 @@ function StateTile({
   refusal: string | null;
 }) {
   const edges = lifecycle.from(ticket.status);
+  const rows: [string, React.ReactNode][] = [['status', <StatusChip status={ticket.status} />]];
+  // the condition `start` asks about, said beside the verbs and not only in the dependencies tile further down
+  if (isBlocked(ticket))
+    rows.push([
+      'blocked by',
+      <span className="gf-state-blocked" data-testid="state-blocked">
+        <span className="gf-blocked-mark" aria-hidden="true">
+          ◇
+        </span>
+        {ticket.blocked_by.join(', ')}
+      </span>,
+    ]);
   return (
     <Tile
       label="state"
@@ -644,7 +658,7 @@ function StateTile({
       }
       testId="state-tile"
     >
-      <Kv rows={[['status', <StatusChip status={ticket.status} />]]} />
+      <Kv rows={rows} />
       <div className="gf-actions">
         {edges
           .filter((e) => e.name !== 'cancel')

@@ -114,6 +114,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-card.is-blocked .gf-card-title { text-decoration: line-through; color: var(--gf-mute); }
 /* inline-block so the title's strike stops at the glyph rather than running through it */
 .gf-blocked-mark { display: inline-block; margin-right: var(--gf-s2); color: var(--gf-mute); }
+.gf-state-blocked { font: var(--gf-t-meta); color: var(--gf-mute); }
 /* a key is one token: breaking `GF-10` across two lines reads as a strike, which here means something else */
 .gf-key { font: var(--gf-t-meta); color: var(--gf-mute); margin-right: var(--gf-s2); white-space: nowrap; }
 .gf-card-key { letter-spacing: .08em; }
@@ -649,7 +650,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-toggle input { accent-color: var(--gf-system); }
 /* placeholder text is text: the UA's grey fails the text-safe rule at 3.1:1 on `--gf-page` */
 .gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder,
-.gf-field input::placeholder, .gf-field textarea::placeholder { color: var(--gf-mute); }
+.gf-field input::placeholder, .gf-field textarea::placeholder, .gf-picker input::placeholder { color: var(--gf-mute); }
 
 /* the third chip's popover would hang off the tile at phone width, so it hangs from its right edge instead */
 @media (max-width: 899px) {
