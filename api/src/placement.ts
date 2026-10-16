@@ -4,7 +4,7 @@
  * inside either route.
  */
 import { eq } from 'drizzle-orm';
-import { approveGuard, guardHold, isGuarded, type ApproveRequirement, type GuardFields } from '@goblin/shared';
+import { guardHold, lifecycle, type ApproveRequirement, type GuardFields } from '@goblin/shared';
 import type { Db } from './db';
 import type { Issue } from './problems';
 import { app as appTable, project as projectTable, type TicketRow } from './schema';
@@ -61,9 +61,9 @@ const BLAMED: Record<ApproveRequirement, 'app_id' | 'design'> = { app: 'app_id',
  * is never blamed for something that was already absent.
  */
 export function wouldBreakGuard(row: TicketRow, next: GuardFields, body: { simple?: boolean }): Issue[] {
-  if (!isGuarded(row.status)) return [];
-  const before = new Set(approveGuard(row));
-  return approveGuard(next)
+  const before = new Set(lifecycle.missingAt(row.status, row));
+  return lifecycle
+    .missingAt(row.status, next)
     .filter((requirement) => !before.has(requirement))
     .map((requirement) => ({
       // un-flagging `simple` is what took the design away, so that is the field to name

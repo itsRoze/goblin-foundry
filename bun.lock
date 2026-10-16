@@ -53,6 +53,7 @@
     "shared": {
       "name": "@goblin/shared",
       "dependencies": {
+        "@goblin/workflow": "workspace:*",
         "zod": "^4.1.5",
       },
       "devDependencies": {

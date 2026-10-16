@@ -1,4 +1,4 @@
-import { TICKET_STATUSES, destinationOf, parseTicketKey, transitionsFrom, type BulkAction, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { lifecycle, parseTicketKey, type BulkAction, type TicketStatus, type Transition, type TransitionName } from '@goblin/shared';
 
 /**
  * What `⌘K` offers, as data. The view builds the candidates (it is the half
@@ -128,18 +128,15 @@ function shareOut(ordered: Candidate[]): Candidate[] {
  * that is `start` first rather than `unapprove`.
  */
 export function rankedMoves(from: TicketStatus): TransitionName[] {
-  const direction = (name: TransitionName) =>
-    name === 'cancel' ? 2 : TICKET_STATUSES.indexOf(destinationOf(name)) < TICKET_STATUSES.indexOf(from) ? 1 : 0;
-  return transitionsFrom(from)
-    .map((edge) => edge.name)
-    .sort((a, b) => direction(a) - direction(b));
+  const rank = (edge: Transition) => (edge.name === 'cancel' ? 2 : edge.direction === 'back' ? 1 : 0);
+  return [...lifecycle.from(from)].sort((a, b) => rank(a) - rank(b)).map((edge) => edge.name);
 }
 
 export function transitionRows(from: TicketStatus): Candidate[] {
-  return rankedMoves(from).map((name) => ({ id: `move-${name}`, group: 'actions', label: name, note: destinationOf(name), action: { kind: 'move', name } }));
+  return rankedMoves(from).map((name) => ({ id: `move-${name}`, group: 'actions', label: name, note: lifecycle.transitions[name].to, action: { kind: 'move', name } }));
 }
 
-const bulkMove = (name: TransitionName): Candidate => ({ id: `move-${name}`, group: 'actions', label: name, note: destinationOf(name), action: { kind: 'bulk', action: { kind: 'transition', name } } });
+const bulkMove = (name: TransitionName): Candidate => ({ id: `move-${name}`, group: 'actions', label: name, note: lifecycle.transitions[name].to, action: { kind: 'bulk', action: { kind: 'transition', name } } });
 
 /** `s` with a Selection: the verbs every member shares (`commonMoves`), each addressed to the whole set. */
 export const selectionTransitionRows = (shared: readonly TransitionName[]): Candidate[] => shared.map(bulkMove);

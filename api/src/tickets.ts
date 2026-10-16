@@ -4,11 +4,10 @@ import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
-  approveGuard,
   ceilingRefusal,
   defaultCreateStatus,
   guardHold,
-  isGuarded,
+  lifecycle,
   parseTicketKey,
   ticketKey,
   type Actor,
@@ -58,8 +57,7 @@ function creationRefusal(actor: Actor, status: TicketStatus, fields: GuardFields
   if (ceiling) return { path: ['status'], message: ceiling };
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
-  if (!isGuarded(status)) return null;
-  const lacks = approveGuard(fields);
+  const lacks = lifecycle.missingAt(status, fields);
   return lacks.length === 0 ? null : { path: ['status'], message: guardHold(status, lacks) };
 }
 

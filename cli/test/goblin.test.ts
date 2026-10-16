@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { makeTestApp } from '@goblin/api/test/harness';
 import { createApp } from '@goblin/api/src/app';
 import { openDb } from '@goblin/api/src/db';
-import { REPOSITORY_WANTS, TRANSITION_NAMES } from '@goblin/shared';
+import { REPOSITORY_WANTS, lifecycle } from '@goblin/shared';
 import { runGoblin, type GoblinDeps } from '../src/run';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -217,7 +217,7 @@ describe('goblin', () => {
   ];
 
   test('every transition in the shared table is a verb that reaches the API', async () => {
-    expect(new Set(WALK.map(([name]) => name))).toEqual(new Set(TRANSITION_NAMES));
+    expect(new Set(WALK.map(([name]) => name))).toEqual(new Set(lifecycle.names));
 
     await json(['app', 'create', '--name', 'Subway Reader']);
     await json(['ticket', 'create', '--title', 'a simple one', '--simple', '--app', '1']);
@@ -349,7 +349,7 @@ describe('goblin', () => {
       expect(create.err).toBe('');
 
       const verbs = await run(['ticket', '--help']);
-      for (const name of TRANSITION_NAMES) expect([name, verbs.out.includes(`\n  ${name} `)]).toEqual([name, true]);
+      for (const name of lifecycle.names) expect([name, verbs.out.includes(`\n  ${name} `)]).toEqual([name, true]);
     });
 
     test('a bare `goblin` is a usage refusal, not a wall of text', async () => {

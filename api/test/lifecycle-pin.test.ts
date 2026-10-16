@@ -10,12 +10,6 @@ const json = (method: string, body?: unknown, actor?: Actor) => ({
   body: body === undefined ? undefined : JSON.stringify(body),
 });
 
-/**
- * The lifecycle as a client sees it, pinned before the engine moves into
- * `@goblin/workflow` (GF-38): what creation refuses, what a refused move
- * answers and whose it says it is, and which `owner` a batch refused for
- * more than one reason carries.
- */
 describe('the lifecycle on the wire, pinned', () => {
   let h: Harness;
   const req = (path: string, init?: RequestInit) => Promise.resolve(h.app.request(path, init));
@@ -27,7 +21,6 @@ describe('the lifecycle on the wire, pinned', () => {
 
   const ROUTE: Partial<Record<TicketStatus, TransitionName[]>> = { todo: ['pick'], planning: ['plan'], building: ['pick', 'approve', 'start'] };
 
-  /** A ticket with an app parked at `status`, designed unless told otherwise. */
   const at = async (status: TicketStatus, designed = true) => {
     const app = await post('/api/apps', { name: `app-${Math.random()}` }).then((r) => r.json());
     const t = await post('/api/tickets', { title: `a ticket for ${status}`, app_id: app.id }).then((r) => r.json());

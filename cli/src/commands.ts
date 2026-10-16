@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { FILTER_PARAMS, TRANSITION_NAMES, TRANSITIONS, destinationOf, parseTicketFilter, serialiseTicketFilter, type BulkAction, type BulkMoveTarget, type TransitionName } from '@goblin/shared';
+import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, type BulkAction, type BulkMoveTarget } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
@@ -203,11 +203,9 @@ const oneOrAll = (one: (ctx: Ctx) => Promise<Response>, action: BulkAction) => (
 
 /** One verb per edge name in the table, with the statuses it leads out of read off the same rows. */
 const transitionCommands = (): Command[] =>
-  TRANSITION_NAMES.map((name: TransitionName) => ({
+  lifecycle.names.map((name) => ({
     verb: name,
-    summary: `${TRANSITIONS.filter((t) => t.name === name)
-      .map((t) => t.from)
-      .join(', ')} → ${destinationOf(name)}`,
+    summary: `${lifecycle.transitions[name].from.join(', ')} → ${lifecycle.transitions[name].to}`,
     operands: ticketsOperand,
     run: oneOrAll((ctx) => ctx.api.post(`${ticketAt(ctx)}/${name}`), { kind: 'transition', name }),
   }));

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TicketSchema } from './tickets';
-import { TRANSITION_NAMES } from './transitions';
+import { lifecycle } from './transitions';
 
 /**
  * Where a bulk move sends a Selection (issue 03b), named rather than spelled
@@ -18,7 +18,7 @@ export type BulkMoveTarget = z.infer<typeof BulkMoveTargetSchema>;
 
 /** The three things a Selection can have done to it. A transition is still a *named* intent (ADR-0004) — there is no status here to set. */
 export const BulkActionSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('transition'), name: z.enum(TRANSITION_NAMES) }),
+  z.strictObject({ kind: z.literal('transition'), name: z.enum(lifecycle.names) }),
   z.strictObject({ kind: z.literal('move'), to: BulkMoveTargetSchema }),
   z.strictObject({ kind: z.literal('trash') }),
 ]);

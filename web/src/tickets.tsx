@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { CREATABLE_STATUSES, destinationOf, isBlocked, isCreatable, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { CREATABLE_STATUSES, isBlocked, isCreatable, lifecycle, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { useOpensCreate } from './creating';
 import { useCursor } from './desk';
 import { formKeys, useKey } from './keys';
@@ -259,7 +259,7 @@ function CardMenu({ ticket, actions, disabled }: { ticket: Ticket; actions: Card
             {moves.map((name) => (
               <button key={name} type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-${name}`} onClick={() => run(() => actions.move(name))}>
                 {name}
-                <span className="gf-menu-note">{destinationOf(name)}</span>
+                <span className="gf-menu-note">{lifecycle.transitions[name].to}</span>
               </button>
             ))}
             <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-blocked-by`} onClick={() => run(actions.blockedBy)}>

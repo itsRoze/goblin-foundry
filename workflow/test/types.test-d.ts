@@ -1,10 +1,5 @@
 import { defineWorkflow, type NameOf, type StatusOf } from '../src/index';
 
-/**
- * What the types refuse. Checked by `tsc` (an unused `@ts-expect-error` is
- * itself an error), never run.
- */
-
 const plain = defineWorkflow({ noun: 'x', statuses: ['a', 'b'], actors: { me: ['me'] }, transitions: { go: { from: ['a'], to: 'b', owner: 'me' } } });
 
 const name: NameOf<typeof plain> = 'go';
@@ -33,7 +28,6 @@ const guarded = defineWorkflow({
   requires: { in: ['b'], missing: (subject: { x: number | null }) => (subject.x === null ? ['x' as const] : []), label: () => 'an x' },
 });
 
-// the subject type is read off the requirement
 // @ts-expect-error judge needs the requirement's fields
 guarded.judge({ status: 'a' }, 'go', 'me');
 guarded.judge({ status: 'a', x: 1 }, 'go', 'me');
@@ -45,5 +39,3 @@ plain.named('a', 'gone');
 // @ts-expect-error unknown status
 plain.toward('a', 'c');
 const missing: readonly 'x'[] = guarded.missingAt('b', { x: null });
-
-void [name, notAName, status, notAStatus, missing];

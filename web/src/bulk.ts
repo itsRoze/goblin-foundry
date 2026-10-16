@@ -1,4 +1,4 @@
-import { TRANSITION_PAST, asksBeforeBlocked, hasDesign, judgeTransition, transitionsFrom, type BulkAction, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
+import { TRANSITION_PAST, asksBeforeBlocked, hasDesign, lifecycle, type BulkAction, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
 import { rankedMoves } from './palette';
 
 /**
@@ -46,7 +46,7 @@ export function bulkLabel(action: BulkAction, n: number, tense: 'pending' | 'don
 export function commonMoves(members: readonly Pick<Ticket, 'status'>[]): TransitionName[] {
   const [first, ...rest] = members;
   if (!first) return [];
-  return rankedMoves(first.status).filter((name) => rest.every((t) => transitionsFrom(t.status).some((edge) => edge.name === name)));
+  return rankedMoves(first.status).filter((name) => rest.every((t) => lifecycle.named(t.status, name).ok));
 }
 
 /**
@@ -58,8 +58,8 @@ export function commonMoves(members: readonly Pick<Ticket, 'status'>[]): Transit
 export function preflight(action: BulkAction, members: readonly Member[]): BulkRefusal[] {
   if (action.kind !== 'transition') return [];
   return members.flatMap((t) => {
-    const judged = judgeTransition(t, action.name, 'human');
-    return judged.ok ? [] : [{ key: t.key, reason: judged.reason }];
+    const judged = lifecycle.judge(t, action.name, 'human');
+    return judged.ok ? [] : [{ key: t.key, reason: judged.refusal }];
   });
 }
 

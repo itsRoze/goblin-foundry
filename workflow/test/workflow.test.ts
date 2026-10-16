@@ -1,12 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { WorkflowDefinitionError, defineWorkflow } from '../src/index';
 
-/**
- * The engine's own invariants, on a fixture that is not Goblin's: a parcel
- * with a clerk who holds the courier's authority, a requirement that holds
- * while it is in transit, and one row leading out of two statuses.
- */
-
 interface Parcel {
   readonly label: string | null;
   readonly weight: number | null;

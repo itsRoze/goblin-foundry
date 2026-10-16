@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { TICKET_STATUSES, transitionsFrom } from '@goblin/shared';
+import { TICKET_STATUSES, lifecycle } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -75,7 +75,7 @@ describe("an agent plans and submits, and approves nothing", () => {
   });
 
   test('it is the whole table, not just approve: every edge out of backlog is refused to an agent', async () => {
-    for (const edge of transitionsFrom('backlog')) {
+    for (const edge of lifecycle.from('backlog')) {
       // created by a human, because an agent's own ticket is never in backlog
       const t = await post('/api/tickets', { title: `an agent tries ${edge.name}` }).then((r) => r.json());
       const res = await post(`/api/tickets/${t.key}/${edge.name}`, undefined, 'agent');

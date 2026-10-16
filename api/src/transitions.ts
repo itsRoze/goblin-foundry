@@ -5,7 +5,7 @@
  */
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
-import { isTransitionName, judgeTransition, ticketKey } from '@goblin/shared';
+import { lifecycle, ticketKey } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
 import { eventWrite, now } from './events';
@@ -29,14 +29,13 @@ export interface TransitionDeps {
 export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, prefix, toWire }: TransitionDeps) {
   r.post('/:key/:name', async (c) => {
     const name = c.req.param('name');
-    if (!isTransitionName(name)) return notFound(c, `no transition named ${name}`);
+    if (!lifecycle.isName(name)) return notFound(c, `no transition named ${name}`);
     const row = await find(c);
     if (!row) return missing(c);
 
-    // structure, then authority, then requirements — the order is the shared table's (ADR-0003)
     const actor = c.get('actor');
-    const judged = judgeTransition(row, name, actor);
-    if (!judged.ok) return conflict(c, judged.reason, judged.owner);
+    const judged = lifecycle.judge(row, name, actor);
+    if (!judged.ok) return conflict(c, judged.refusal, judged.owner);
     const { edge } = judged;
 
     const at = now();

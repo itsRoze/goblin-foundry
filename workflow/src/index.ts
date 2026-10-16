@@ -1,21 +1,5 @@
-/**
- * The workflow Piece (ADR-0011). An Assembly calls `defineWorkflow` once with
- * its whole lifecycle as a literal and gets back a `Workflow`: data and
- * closures every surface imports at compile time. The Piece owns the
- * mechanism (edge expansion, addressing, the judging order, authority, the
- * requirement and where it bites, status order). The Assembly owns every
- * rule.
- */
-
-/** Where `to` sits against `from` in the Assembly's status order. Drives "back to" wording and menu ranking. */
 export type Direction = 'back' | 'same' | 'forward';
 
-/**
- * One named transition as the Assembly writes it: every status it leads out
- * of, its one destination, and its one owner. Keyed by name in the
- * definition, so "a name has exactly one destination" and "every edge names
- * an owner" (ADR-0003) are the shape of the object, not checks.
- */
 export interface TransitionRow<S extends string, A extends string> {
   readonly from: readonly S[];
   readonly to: S;
@@ -42,9 +26,7 @@ export interface WorkflowDefinition<S extends string, N extends string, A extend
   /** Lifecycle order. Also the order `Direction` is read from. */
   readonly statuses: readonly [S, ...S[]];
   /**
-   * The authorities each actor holds, itself first. Goblin's
-   * `{ human: ['human', 'agent'], agent: ['agent'] }` is ADR-0003's "the human
-   * holds every authority an agent does", written as data.
+   * The authorities each actor holds, itself first.
    */
   readonly actors: { readonly [K in A]: readonly [K, ...NoInfer<A>[]] };
   /** In table order: `names`, `edges` and `from()` keep it. */
@@ -52,10 +34,8 @@ export interface WorkflowDefinition<S extends string, N extends string, A extend
   readonly requires?: Requirement<NoInfer<S>, Sub, M>;
 }
 
-/** Thrown at module load, so a lifecycle that cannot be addressed never reaches a surface. */
 export class WorkflowDefinitionError extends Error {}
 
-/** One arrow, expanded from a row: the unit the API commits and the kanban draws. */
 export interface Edge<S extends string, N extends string, A extends string> {
   readonly from: S;
   readonly to: S;
@@ -66,7 +46,6 @@ export interface Edge<S extends string, N extends string, A extends string> {
   readonly guarded: boolean;
 }
 
-/** Is there an arrow? Structure only, no subject and no actor: the board's columns, the state tile, the `a` hint. */
 export type Found<E> = { readonly ok: true; readonly edge: E } | { readonly ok: false; readonly refusal: string };
 
 /**
@@ -77,24 +56,20 @@ export type Found<E> = { readonly ok: true; readonly edge: E } | { readonly ok: 
 export type Judged<E, A extends string> = { readonly ok: true; readonly edge: E } | { readonly ok: false; readonly refusal: string; readonly owner?: A };
 
 /**
- * The Piece's whole public surface. Members are closures over the
- * definition, so `lifecycle.from` can be passed as a callback.
+ * Members are closures over the definition, so `lifecycle.from` can be
+ * passed as a callback.
  */
 export interface Workflow<S extends string, N extends string, A extends string, Sub, M> {
   readonly statuses: readonly [S, ...S[]];
   /** Every name, in table order; a tuple so `z.enum(lifecycle.names)` works. */
   readonly names: readonly [N, ...N[]];
-  /** The rows as written: `transitions[name].to` is where a name leads, `.from` what it leads out of. */
   readonly transitions: { readonly [K in N]: TransitionRow<S, A> };
   /** Every arrow, rows expanded in table order. */
   readonly edges: readonly Edge<S, N, A>[];
-  /** The boundary parse for a name off the wire or argv. */
   isName(name: string): name is N;
   /** Every arrow out of a status, in table order. */
   from(status: S): readonly Edge<S, N, A>[];
-  /** The arrow `(from, name)` addresses: a key, a menu row, a button. */
   named(from: S, name: N): Found<Edge<S, N, A>>;
-  /** The arrow `(from, to)` addresses: a drop on a column. Unique by construction (see `defineWorkflow`). */
   toward(from: S, to: S): Found<Edge<S, N, A>>;
   judge(subject: Sub & { readonly status: S }, name: N, actor: A): Judged<Edge<S, N, A>, A>;
   /** What the requirement finds missing for a subject standing in `status`; empty outside `requires.in`. */
@@ -112,20 +87,19 @@ export type EdgeOf<W extends { readonly edges: readonly unknown[] }> = W['edges'
  * - no transitions at all, so `names` is never an empty tuple;
  * - a status listed twice in `statuses`, or twice in one row's `from`
  *   (which would make `(from, name)` address two arrows);
- * - two arrows sharing `(from, to)`: a drop would name two verbs. The Piece
- *   grows a "which one?" answer the day an Assembly needs a second road.
+ * - two arrows sharing `(from, to)`: a drop would name two verbs.
  */
 export function defineWorkflow<const S extends string, const N extends string, const A extends string, Sub = unknown, M = never>(
   definition: WorkflowDefinition<S, N, A, Sub, M>,
 ): Workflow<S, N, A, Sub, M> {
   const { noun, statuses, actors, transitions, requires } = definition;
   const names = Object.keys(transitions) as N[];
-  const held = new Set<S>(requires?.in ?? []);
+  const requiredIn = new Set<S>(requires?.in ?? []);
   const direction = (from: S, to: S): Direction => (from === to ? 'same' : statuses.indexOf(to) < statuses.indexOf(from) ? 'back' : 'forward');
 
   const edges: Edge<S, N, A>[] = names.flatMap((name) => {
     const row = transitions[name];
-    return row.from.map((from) => ({ from, to: row.to, name, owner: row.owner, direction: direction(from, row.to), guarded: !held.has(from) && held.has(row.to) }));
+    return row.from.map((from) => ({ from, to: row.to, name, owner: row.owner, direction: direction(from, row.to), guarded: !requiredIn.has(from) && requiredIn.has(row.to) }));
   });
 
   const repeated = <T>(list: readonly T[]): T[] => [...new Set(list.filter((x, i) => list.indexOf(x) !== i))];
@@ -142,8 +116,8 @@ export function defineWorkflow<const S extends string, const N extends string, c
   if (faults.length > 0) throw new WorkflowDefinitionError(faults.join('; '));
 
   const byName = new Map(edges.map((edge) => [`${edge.from}/${edge.name}`, edge]));
-  const out = new Map<S, Edge<S, N, A>[]>();
-  for (const edge of edges) out.set(edge.from, [...(out.get(edge.from) ?? []), edge]);
+  const edgesFrom = new Map<S, Edge<S, N, A>[]>();
+  for (const edge of edges) edgesFrom.set(edge.from, [...(edgesFrom.get(edge.from) ?? []), edge]);
   const known = new Set<string>(names);
 
   const noArrow = (from: S, to: S): string => {
@@ -169,7 +143,7 @@ export function defineWorkflow<const S extends string, const N extends string, c
     }
     return { ok: true, edge };
   };
-  const missingAt = (status: S, subject: Sub): readonly M[] => (requires && held.has(status) ? requires.missing(subject) : []);
+  const missingAt = (status: S, subject: Sub): readonly M[] => (requires && requiredIn.has(status) ? requires.missing(subject) : []);
 
   return {
     statuses,
@@ -177,7 +151,7 @@ export function defineWorkflow<const S extends string, const N extends string, c
     transitions,
     edges,
     isName: (name): name is N => known.has(name),
-    from: (status) => out.get(status) ?? [],
+    from: (status) => edgesFrom.get(status) ?? [],
     named,
     toward,
     judge,
