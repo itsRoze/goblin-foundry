@@ -386,7 +386,7 @@ const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_
 
 /**
  * A ticket's history. A description edit is one quiet line — the body is in
- * the event (S2 wants prior bodies), never on screen here.
+ * the event, never on screen here.
  */
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
   // `approved · planning → ready`: the decision first, the state pair after it

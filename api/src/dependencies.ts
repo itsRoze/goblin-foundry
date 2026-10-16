@@ -1,7 +1,7 @@
 /**
  * Dependency edges and the ready frontier (ADR-0009). An edge is a durable
  * fact — "A blocks B" — that never gates a transition; the enforcement point
- * is `GET /api/frontier`, which a controller (S5) will drain. The only write
+ * is `GET /api/frontier`. The only write
  * that is ever refused is one that would close a cycle, because a cycle
  * starves the frontier silently with no actor left to blame.
  */
@@ -210,8 +210,8 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
 }
 
 /**
- * The ready frontier: what a controller may claim (CONTEXT.md). `ready`, no
- * open blocker, stalest first — the ordering is the only claim order S1 has.
+ * The ready frontier: what is ready to build (CONTEXT.md). `ready`, no open
+ * blocker, stalest first.
  * It narrows by app, project and text through the board's own parser (issue
  * 06), so every endpoint stays reachable from `goblin`.
  */

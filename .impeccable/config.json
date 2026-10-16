@@ -8,7 +8,6 @@
   "detector": {
     "ignoreFiles": [
       "design/rough-*/**",
-      "BLUEPRINT-v1.html",
       "research/**",
       "web/dist/**"
     ],

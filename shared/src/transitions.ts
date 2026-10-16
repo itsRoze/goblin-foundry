@@ -5,12 +5,12 @@ import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './ti
 /**
  * The lifecycle as data (ADR-0003). One table, read by the API to validate a
  * move and by the kanban to decide which columns a dragged card may land in,
- * so a controller-owned edge in S5 becomes a refusal in the GUI with no UI
- * change. An edge is addressed by `(from, name)` and that pair is unique.
+ * so an edge the dragger does not own is a refusal in the GUI. An edge is
+ * addressed by `(from, name)` and that pair is unique.
  */
 
-/** Who may trigger an edge. `controller` arrives with S5; in S1 every edge is human-owned but `submit`. */
-export const TRANSITION_OWNERS = ['human', 'agent', 'controller'] as const;
+/** Who may trigger an edge. Every edge is human-owned but `submit`. */
+export const TRANSITION_OWNERS = ['human', 'agent'] as const;
 export type TransitionOwner = (typeof TRANSITION_OWNERS)[number];
 
 /** The verb of an edge. A name has exactly one destination, so a refusal can name where you were heading. */
@@ -22,8 +22,6 @@ export interface Transition {
   to: TicketStatus;
   name: TransitionName;
   owner: TransitionOwner;
-  /** The slice the edge arrives in — S1 for all of them; later slices add their own. */
-  since: 'S1';
   /** The only guard in S1: what a ticket must have before it may be `ready` or beyond. */
   guard?: 'approve';
 }
@@ -44,10 +42,7 @@ const DESTINATION: Record<TransitionName, TicketStatus> = {
   reopen: 'backlog',
 };
 
-/**
- * `start` and `submit` become controller-owned in S5 (ADR-0003). Until then
- * `submit` is the agent's: the hands that opened the PR say it is open.
- */
+/** `submit` is the agent's: the hands that opened the PR say it is open (ADR-0003). */
 const EDGES: { name: TransitionName; from: TicketStatus[]; owner?: TransitionOwner; guard?: 'approve' }[] = [
   { name: 'pick', from: ['backlog', 'planning'] },
   { name: 'plan', from: ['backlog', 'todo'] },
@@ -67,7 +62,7 @@ const EDGES: { name: TransitionName; from: TicketStatus[]; owner?: TransitionOwn
 ];
 
 export const TRANSITIONS: readonly Transition[] = EDGES.flatMap(({ name, from, owner = 'human', guard }) =>
-  from.map((f): Transition => ({ from: f, to: DESTINATION[name], name, owner, since: 'S1', ...(guard ? { guard } : {}) })),
+  from.map((f): Transition => ({ from: f, to: DESTINATION[name], name, owner, ...(guard ? { guard } : {}) })),
 );
 
 export const isTransitionName = (name: string): name is TransitionName => (TRANSITION_NAMES as readonly string[]).includes(name);
@@ -167,7 +162,7 @@ export const ceilingRefusal = (actor: Actor, status: TicketStatus): string | nul
 /**
  * Whether the actor holds the authority an edge names. The human holds every
  * authority an agent does, so an agent's edge is still the human's to take
- * when they build by hand. `controller` becomes an actor in S5.
+ * when they build by hand.
  */
 export const ownsTransition = (actor: Actor, owner: TransitionOwner): boolean => actor === owner || (actor === 'human' && owner === 'agent');
 
