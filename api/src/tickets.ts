@@ -213,7 +213,7 @@ export function ticketsRoutes(db: Db) {
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 
   // last: `:name` would otherwise swallow `/:key/restore` and `/:key/dependencies` (ADR-0004)
-  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
+  transitionRoute(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;
