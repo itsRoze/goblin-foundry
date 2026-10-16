@@ -2,6 +2,14 @@
 
 Glossary of the tracker's language. No implementation details here; decisions live in `docs/adr/`.
 
+## Piece
+One body of tracker behaviour, such as a workflow, a history or a board, that takes its rules as input and holds none of its own. A developer builds a ticket tracker from Pieces. (ADR-0011.)
+_Avoid_: plugin, module, block, primitive
+
+## Assembly
+One ticket tracker built from Pieces, holding the rules the Pieces leave open: its statuses and Transitions, its guards, its hierarchy. Goblin Foundry is one Assembly, and every other term in this glossary is its language unless it says otherwise.
+_Avoid_: distribution, preset, template, configuration
+
 ## App
 A product the factory works on. Has at most one git repository, named by a git remote in whatever form git prints it (`https://…` or `git@host:owner/repo.git`) — a reference a human reads and follows, kept as typed. A repository is not exclusive: two Apps may name the same one (a monorepo). Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
 

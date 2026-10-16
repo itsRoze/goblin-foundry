@@ -12,13 +12,13 @@ web
 
 One person: the solo developer who is building the factory and runs it. Keyboard first, at a laptop or a wide monitor for planning and building, and at phone width for triage (spec story 44). In S1 they operate the tracker entirely by hand, often with a Claude Code planning session in a terminal beside the browser (story 45). From S5 a controller and its agents act on the same tickets (`needs_human`, leases, runs) and the human becomes the one who approves, re-arms and answers.
 
-Other solo developers who adopt the factory once it is open source are **not a design audience yet** (decided 2026-09-03): the operator knows the system's language, and no onboarding or self-explanation is owed to a stranger. Revisit when adoption is planned.
+Developers who build their own tracker from Goblin's Pieces are an audience for the Pieces (ADR-0011, 2026-10-16). Goblin Foundry's own screens still serve only the operator, who knows the system's language and is owed no onboarding.
 
 ## Product Purpose
 
 Goblin Foundry is a solo software factory. S1 is its tracker: a durable place for Apps, Projects, Designs and Tickets that the human operates by hand. Capture an idea, plan it into vertical-slice tickets with a planning agent, declare what blocks what, approve plans, and see at a glance which tickets are actually ready to build (the Ready Frontier).
 
-S1 is done when a fresh project is created in the GUI, an agent-assisted planning conversation produces approved tickets with dependencies through the API, tickets drag between statuses, and the ready frontier is correct on screen (the spec's exit criterion). The factory succeeds when one complete workflow runs end to end on one real product, Subway Reader, before anything is generalised (BLUEPRINT-v1 §1, `research/CRITIQUE-AND-PROPOSED-DIRECTION.md`).
+S1 is done when a fresh project is created in the GUI, an agent-assisted planning conversation produces approved tickets with dependencies through the API, tickets drag between statuses, and the ready frontier is correct on screen (the spec's exit criterion). Beyond S1, Goblin is built as Pieces that other developers assemble into their own trackers, and Goblin Foundry is one Assembly of them (ADR-0011).
 
 ## Positioning
 
@@ -56,7 +56,7 @@ The look is the house style in `design/DESIGN.md`, and it is binding. This file 
 - The browser suite `e2e/*.e2e.ts` is the exit criterion made executable, including the layout tiers in `e2e/z-responsive.e2e.ts`. `.claude/skills/ui-closeout/serve.ts` serves the built GUI over a scratch database seeded with one small world, for design review.
 - No logo, wordmark, icon set, characters or illustration exist. Do not invent them; DESIGN.md Deliberately not specified says when an icon set may arrive.
 - No customers, testimonials, benchmarks, pricing or press. Do not invent any.
-- Open source is the intent (BLUEPRINT-v1 §1); no licence has been chosen and there is no LICENSE file. Undecided.
+- Goblin is open source under the MIT licence (`LICENSE`).
 
 ## Product Principles
 
