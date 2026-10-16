@@ -4,7 +4,9 @@
 
 | workspace | what |
 |---|---|
-| `shared` | Zod schemas and the transition table imported by all three |
+| `workflow` | the workflow Piece (ADR-0011): `defineWorkflow`, with no dependencies |
+| `shared` | Zod schemas and Goblin's lifecycle definition, imported by all three |
+| `examples/todo` | the second Assembly: a three-status todo list on the Piece |
 | `api` | Hono + Drizzle over `bun:sqlite`; serves the built GUI; `src/db.ts` is the only module that touches the driver |
 | `web` | React + Vite shell, tokens from `design/tokens.css` |
 | `cli` | `goblin`, a thin JSON client of the API |

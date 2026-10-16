@@ -8,7 +8,7 @@
  */
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Hono } from 'hono';
-import { BulkTicketsBodySchema, judgeTransition, parseTicketKey, ticketKey, type Actor, type BulkMoveTarget, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
+import { BulkTicketsBodySchema, lifecycle, parseTicketKey, ticketKey, type Actor, type BulkMoveTarget, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
 import { diff, eventWrite, now, type EventInput } from './events';
@@ -60,8 +60,8 @@ export function bulkRoute(r: Hono<ActorEnv>, { db, prefix, toWire }: BulkDeps) {
   }
 
   function transition(row: TicketRow, name: TransitionName, actor: Actor): Verdict {
-    const judged = judgeTransition(row, name, actor);
-    if (!judged.ok) return { kind: 'refused', reason: judged.reason, owner: judged.owner };
+    const judged = lifecycle.judge(row, name, actor);
+    if (!judged.ok) return { kind: 'refused', reason: judged.refusal, owner: judged.owner };
     const { edge } = judged;
     return { kind: 'change', set: { status: edge.to }, event: { kind: 'transitioned', prior: { status: edge.from }, new: { status: edge.to, transition: edge.name } } };
   }

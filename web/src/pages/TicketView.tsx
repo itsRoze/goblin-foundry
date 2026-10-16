@@ -3,11 +3,9 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import {
   asksBeforeBlocked,
   blockedWarning,
-  findTransition,
   isTerminal,
-  keyedMove,
+  lifecycle,
   slugPath,
-  transitionsFrom,
   type DependencyRef,
   type PatchTicketBody,
   type TicketDetail,
@@ -109,8 +107,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   );
   const press = useCallback(
     (name: TransitionName) => {
-      // the structural refusal is the shared table's, said locally — the same sentence a refused drop gets
-      const asked = keyedMove(ticket.status, name);
+      const asked = lifecycle.named(ticket.status, name);
       if (!asked.ok) return setStateRefusal(asked.refusal);
       if (asksBeforeBlocked(name, ticket)) return setConfirming(true);
       runEdge(asked.edge);
@@ -296,8 +293,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onCancelConfirm={() => setConfirming(false)}
         onConfirm={() => {
           setConfirming(false);
-          const start = findTransition(ticket.status, 'start');
-          if (start) runEdge(start);
+          const start = lifecycle.named(ticket.status, 'start');
+          if (start.ok) runEdge(start.edge);
         }}
         refusal={state.refusal}
       />
@@ -626,7 +623,7 @@ function StateTile({
   onCancelConfirm: () => void;
   refusal: string | null;
 }) {
-  const edges = transitionsFrom(ticket.status);
+  const edges = lifecycle.from(ticket.status);
   return (
     <Tile
       label="state"
@@ -634,7 +631,7 @@ function StateTile({
         <>
           {/* `a` is offered only where the table has the arrow, exactly as the buttons below are: a hint
               that cannot work is worse than no hint (DESIGN.md Voice, and the close-out of issue 10) */}
-          {keyedMove(ticket.status, 'approve').ok && (
+          {lifecycle.named(ticket.status, 'approve').ok && (
             <Hint k="a" onClick={() => onPress('approve')}>
               approve
             </Hint>

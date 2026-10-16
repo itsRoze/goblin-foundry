@@ -6,14 +6,13 @@ import {
   FILTER_PARAMS,
   asksBeforeBlocked,
   blockedWarning,
-  keyedMove,
+  lifecycle,
   parseTicketFilter,
   serialiseTicketFilter,
-  structuralRefusal,
-  transitionTo,
   type Ticket,
   type TicketFilter,
   type TicketStatus,
+  type Found,
   type Transition,
   type TransitionName,
 } from '@goblin/shared';
@@ -192,9 +191,10 @@ function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (ca
   }, [onMoved, heldLine]);
 
   const run = useCallback(
-    (card: DraggedCard, edge: Transition | undefined, slot: Slot, structural: string) => {
+    (card: DraggedCard, found: Found<Transition>, slot: Slot) => {
       setPending(null);
-      if (!edge) return setRefusal({ ...slot, text: structural });
+      if (!found.ok) return setRefusal({ ...slot, text: found.refusal });
+      const { edge } = found;
       const go = () => {
         setPending(null);
         const line = held.current(card.key);
@@ -218,17 +218,14 @@ function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (ca
     (card: DraggedCard, to: TicketStatus) => {
       setPending(null);
       if (card.status === to) return; // a card dropped back where it came from has not moved — position in a column means nothing
-      run(card, transitionTo(card.status, to), { status: to, key: null }, structuralRefusal(card.status, to));
+      run(card, lifecycle.toward(card.status, to), { status: to, key: null });
     },
     [run],
   );
 
   /** A key or a menu row: the verb is named, so the refusal is about the arrow that is missing, said under the card. */
   const press = useCallback(
-    (card: DraggedCard, name: TransitionName) => {
-      const asked = keyedMove(card.status, name);
-      run(card, asked.ok ? asked.edge : undefined, { status: card.status, key: card.key }, asked.ok ? '' : asked.refusal);
-    },
+    (card: DraggedCard, name: TransitionName) => run(card, lifecycle.named(card.status, name), { status: card.status, key: card.key }),
     [run],
   );
 
@@ -576,7 +573,7 @@ export function BoardPage() {
           {members.length === 0 && (
             <>
               {/* `a` is offered only where the card under the Cursor has that arrow, as the state tile offers it */}
-              {under !== undefined && keyedMove(under.status, 'approve').ok && (
+              {under !== undefined && lifecycle.named(under.status, 'approve').ok && (
                 <Hint k="a" onClick={() => press(under, 'approve')}>
                   approve
                 </Hint>
@@ -623,7 +620,7 @@ export function BoardPage() {
               key={column.status}
               {...cardsIn(column)}
               // legal columns are marked, never the illegal ones dimmed (DESIGN.md Components)
-              legal={dragging === null ? null : dragging !== column.status && transitionTo(dragging, column.status) !== undefined}
+              legal={dragging === null ? null : dragging !== column.status && lifecycle.toward(dragging, column.status).ok}
               fingerOver={touchOver === column.status}
             />
           ))}

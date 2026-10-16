@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { TICKET_STATUSES, TRANSITIONS, TRANSITION_NAMES, findTransition, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { TICKET_STATUSES, lifecycle, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -43,7 +43,7 @@ describe('POST /api/tickets/:key/:name', () => {
   };
 
   test('every edge in the table is accepted and lands the ticket on its `to`', async () => {
-    for (const edge of TRANSITIONS) {
+    for (const edge of lifecycle.edges) {
       const t = await at(edge.from);
       const res = await post(`/api/tickets/${t.key}/${edge.name}`);
       expect([res.status, `${edge.from} -${edge.name}->`]).toEqual([200, `${edge.from} -${edge.name}->`]);
@@ -146,15 +146,15 @@ describe('POST /api/tickets/:key/:name', () => {
   test('the whole matrix: every (status, name) pair off the table is a 409', async () => {
     const refused: string[] = [];
     for (const from of TICKET_STATUSES) {
-      for (const name of TRANSITION_NAMES) {
-        if (findTransition(from, name)) continue; // acceptance is the first test's business
+      for (const name of lifecycle.names) {
+        if (lifecycle.named(from, name).ok) continue;
         const t = await at(from); // a fresh ticket per pair, so a refusal is never a side effect of an earlier one
         const res = await post(`/api/tickets/${t.key}/${name}`);
         expect([`${from}/${name}`, res.status]).toEqual([`${from}/${name}`, 409]);
         refused.push(`${from}/${name}`);
       }
     }
-    expect(refused).toHaveLength(TICKET_STATUSES.length * TRANSITION_NAMES.length - TRANSITIONS.length);
+    expect(refused).toHaveLength(TICKET_STATUSES.length * lifecycle.names.length - lifecycle.edges.length);
   });
 
   describe('a transition writes its status and its event together, against the status it judged', () => {

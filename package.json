@@ -3,10 +3,12 @@
   "private": true,
   "license": "MIT",
   "workspaces": [
+    "workflow",
     "shared",
     "api",
     "web",
-    "cli"
+    "cli",
+    "examples/todo"
   ],
   "scripts": {
     "dev": "bun run --filter '*' dev",

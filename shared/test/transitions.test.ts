@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { TICKET_STATUSES, type TicketStatus } from '../src/tickets';
-import { TRANSITIONS, approveGuard, destinationOf, findTransition, guardRefusal, keyedMove, structuralRefusal, transitionTo, transitionsFrom, type GuardFields } from '../src/transitions';
+import { TICKET_STATUSES } from '../src/tickets';
+import { approveGuard, guardHold, lifecycle, type GuardFields } from '../src/transitions';
 
 /**
  * ADR-0003's table, transcribed by hand as one flat arrow per line — a
- * different shape from the `{name, from[]}` rows the table is built from, so
+ * different shape from the `{from[], to}` rows the lifecycle is built from, so
  * this compares the lifecycle to the decision rather than to itself.
  */
 const ADR_0003 = `
@@ -38,48 +38,42 @@ cancelled -reopen->    backlog
 
 const arrows = (lines: string[]) => lines.map((l) => l.trim().split(/\s+/).join(' ')).filter(Boolean).sort();
 
-describe('the transition table is ADR-0003', () => {
+const ticket = (over: Partial<GuardFields> = {}): GuardFields => ({ app_id: 1, simple: false, design: 'a plan', ...over });
+
+describe('the lifecycle is ADR-0003', () => {
   test('every edge in the ADR is in the table and no others (26 edges)', () => {
-    const fromTable = TRANSITIONS.map((t) => `${t.from} -${t.name}-> ${t.to}`);
+    const fromTable = lifecycle.edges.map((t) => `${t.from} -${t.name}-> ${t.to}`);
     expect(arrows(fromTable)).toEqual(arrows(ADR_0003.trim().split('\n')));
-    expect(TRANSITIONS).toHaveLength(26);
+    expect(lifecycle.edges).toHaveLength(26);
   });
 
   test('`approve` is the only guarded edge — the ADR marks that one and no other', () => {
-    expect(TRANSITIONS.filter((t) => t.guard).map((t) => `${t.from} ${t.name}`)).toEqual(['todo approve', 'planning approve']);
-  });
-
-  test('the destination a refused drag names is the one the ADR gives that verb', () => {
-    expect(destinationOf('start')).toBe('building');
-    expect(destinationOf('ship')).toBe('done');
-    expect(destinationOf('reopen')).toBe('backlog');
-  });
-
-  test('(from, name) addresses exactly one edge, and so does (from, to) in S1', () => {
-    const byName = new Set(TRANSITIONS.map((t) => `${t.from}/${t.name}`));
-    const byTarget = new Set(TRANSITIONS.map((t) => `${t.from}/${t.to}`));
-    expect(byName.size).toBe(TRANSITIONS.length);
-    expect(byTarget.size).toBe(TRANSITIONS.length);
+    expect(lifecycle.edges.filter((t) => t.guarded).map((t) => `${t.from} ${t.name}`)).toEqual(['todo approve', 'planning approve']);
   });
 
   test('there is no way back into building from review, and no self-edge anywhere', () => {
-    expect(findTransition('review', 'start')).toBeUndefined();
-    expect(transitionTo('review', 'building')).toBeUndefined();
-    expect(TRANSITIONS.filter((t) => t.from === t.to)).toEqual([]);
+    expect(lifecycle.named('review', 'start')).toEqual({ ok: false, refusal: 'a ticket in review does not go back to building' });
+    expect(lifecycle.toward('review', 'building')).toEqual({ ok: false, refusal: 'a ticket in review does not go back to building' });
+    expect(lifecycle.edges.filter((t) => t.from === t.to)).toEqual([]);
   });
 
   test('every status but cancelled can be cancelled; a cancelled ticket only reopens', () => {
     for (const status of TICKET_STATUSES) {
-      const names = transitionsFrom(status).map((t) => t.name);
+      const names = lifecycle.from(status).map((t) => t.name);
       if (status === 'cancelled') expect(names).toEqual(['reopen']);
       else expect(names).toContain('cancel');
     }
   });
+
+  test('`submit` is the agent’s and so the human’s too; every other verb is the human’s alone', () => {
+    const building = { ...ticket(), status: 'building' } as const;
+    expect(lifecycle.judge(building, 'submit', 'agent').ok).toBe(true);
+    expect(lifecycle.judge(building, 'submit', 'human').ok).toBe(true);
+    expect(lifecycle.judge(building, 'stop', 'agent')).toEqual({ ok: false, refusal: "stop is the human's move, not the agent's", owner: 'human' });
+  });
 });
 
 describe('the approve guard', () => {
-  const ticket = (over: Partial<GuardFields> = {}): GuardFields => ({ app_id: 1, simple: false, design: 'a plan', ...over });
-
   test('an app and a design satisfy it', () => {
     expect(approveGuard(ticket())).toEqual([]);
   });
@@ -102,41 +96,54 @@ describe('the approve guard', () => {
   test('a description is not part of the guard', () => {
     expect(approveGuard({ app_id: 1, simple: true, design: null })).toEqual([]);
   });
+
+  test('it holds where a ticket stands at `ready` or beyond, and not below', () => {
+    expect(lifecycle.missingAt('ready', ticket({ app_id: null, simple: true, design: null }))).toEqual(['app']);
+    expect(lifecycle.missingAt('review', ticket({ design: null }))).toEqual(['design']);
+    expect(lifecycle.missingAt('planning', ticket({ app_id: null, design: null }))).toEqual([]);
+  });
 });
 
 describe('refusal sentences', () => {
   test('a structural refusal is generated from the status pair', () => {
-    expect(structuralRefusal('review', 'building')).toBe('a ticket in review does not go back to building');
-    expect(structuralRefusal('done', 'ready')).toBe('a ticket in done does not go back to ready');
-    expect(structuralRefusal('backlog', 'review')).toBe('a ticket in backlog does not go to review');
+    expect(lifecycle.toward('review', 'building')).toEqual({ ok: false, refusal: 'a ticket in review does not go back to building' });
+    expect(lifecycle.toward('done', 'ready')).toEqual({ ok: false, refusal: 'a ticket in done does not go back to ready' });
+    expect(lifecycle.toward('backlog', 'review')).toEqual({ ok: false, refusal: 'a ticket in backlog does not go to review' });
   });
 
   test('moving a ticket to the status it is already in says so', () => {
-    const status: TicketStatus = 'ready';
-    expect(structuralRefusal(status, status)).toBe('a ticket in ready is already in ready');
+    expect(lifecycle.toward('ready', 'ready')).toEqual({ ok: false, refusal: 'a ticket in ready is already in ready' });
   });
 
-  test('a guard refusal names what is missing', () => {
-    expect(guardRefusal('approve', ['design'])).toBe('approve needs a ticket design');
-    expect(guardRefusal('approve', ['app', 'design'])).toBe('approve needs an app and a ticket design');
+  test('a guard refusal names what is missing, and whose move it was', () => {
+    expect(lifecycle.judge({ ...ticket({ design: null }), status: 'planning' }, 'approve', 'human')).toEqual({ ok: false, refusal: 'approve needs a ticket design', owner: 'human' });
+    expect(lifecycle.judge({ ...ticket({ app_id: null, design: null }), status: 'todo' }, 'approve', 'human')).toEqual({
+      ok: false,
+      refusal: 'approve needs an app and a ticket design',
+      owner: 'human',
+    });
+  });
+
+  test('the same words hold a ticket that is standing there rather than walking in', () => {
+    expect(guardHold('ready', ['app'])).toBe('a ticket in ready needs an app');
+    expect(guardHold('building', ['app', 'design'])).toBe('a ticket in building needs an app and a ticket design');
   });
 });
 
 /**
  * A drag names a destination column and a key names the verb, so the two ask
- * the table different questions — and both the board's `a` and the Ticket
+ * the lifecycle different questions — and both the board's `a` and the Ticket
  * view's `a` have to answer with the same sentence (issue 10).
  */
-describe('keyedMove', () => {
+describe('a named move', () => {
   test('hands back the arrow when the table has one out of here', () => {
-    const asked = keyedMove('planning', 'approve');
-    expect(asked).toEqual({ ok: true, edge: findTransition('planning', 'approve')! });
+    expect(lifecycle.named('planning', 'approve')).toEqual({ ok: true, edge: { from: 'planning', to: 'ready', name: 'approve', owner: 'human', direction: 'forward', guarded: true } });
   });
 
   test('refuses by the verb, naming where that verb would have gone', () => {
     // `ready` has no `approve` arrow, and `stop` also lands in `ready` — so the pair alone could not say this
-    expect(keyedMove('ready', 'approve')).toEqual({ ok: false, refusal: 'a ticket in ready is already in ready' });
-    expect(keyedMove('building', 'approve')).toEqual({ ok: false, refusal: 'a ticket in building does not go back to ready' });
-    expect(keyedMove('backlog', 'approve')).toEqual({ ok: false, refusal: 'a ticket in backlog does not go to ready' });
+    expect(lifecycle.named('ready', 'approve')).toEqual({ ok: false, refusal: 'a ticket in ready is already in ready' });
+    expect(lifecycle.named('building', 'approve')).toEqual({ ok: false, refusal: 'a ticket in building does not go back to ready' });
+    expect(lifecycle.named('backlog', 'approve')).toEqual({ ok: false, refusal: 'a ticket in backlog does not go to ready' });
   });
 });

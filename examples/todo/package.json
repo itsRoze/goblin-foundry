@@ -1,0 +1,8 @@
+{
+  "name": "@goblin/example-todo",
+  "private": true,
+  "type": "module",
+  "scripts": { "typecheck": "tsc -p ." },
+  "dependencies": { "@goblin/workflow": "workspace:*" },
+  "devDependencies": { "typescript": "^5.9.2", "bun-types": "^1.3.9" }
+}
