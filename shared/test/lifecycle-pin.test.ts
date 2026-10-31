@@ -3,8 +3,8 @@ import { TICKET_STATUSES } from '../src/tickets';
 import { lifecycle, type GuardFields } from '../src/transitions';
 
 const FIXTURES: Record<'lacking' | 'satisfied', GuardFields> = {
-  lacking: { app_id: null, simple: false, design: null },
-  satisfied: { app_id: 1, simple: false, design: '# plan' },
+  lacking: { app_id: null, simple: false, design: null, description: '' },
+  satisfied: { app_id: 1, simple: false, design: '# plan', description: '' },
 };
 
 describe('the lifecycle, pinned', () => {

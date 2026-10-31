@@ -56,7 +56,7 @@ describe('designs', () => {
     expect(blank.design).toBeNull();
     const refused = await req(`/api/tickets/${ticket.key}/approve`, json('POST'));
     expect(refused.status).toBe(409);
-    expect((await refused.json()).hint).toBe('approve needs a ticket design');
+    expect((await refused.json()).hint).toBe('approve needs a description or a ticket design');
 
     await req(`/api/tickets/${ticket.key}`, json('PATCH', { design: DESIGN }));
     expect((await req(`/api/tickets/${ticket.key}/approve`, json('POST'))).status).toBe(200);

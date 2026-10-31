@@ -58,9 +58,9 @@ describe('either Actor makes every move, and history records which', () => {
 
   test('the guard still holds an agent at ready, as it holds a human', async () => {
     for (const actor of ['human', 'agent']) {
-      const res = await post('/api/tickets', { title: 'no app, no design', status: 'ready' }, actor);
+      const res = await post('/api/tickets', { title: 'no app, no intent', status: 'ready' }, actor);
       expect([actor, res.status]).toEqual([actor, 422]);
-      expect([actor, (await res.json()).issues]).toEqual([actor, [{ path: ['status'], message: 'a ticket in ready needs an app and a ticket design' }]]);
+      expect([actor, (await res.json()).issues]).toEqual([actor, [{ path: ['status'], message: 'a ticket in ready needs an app and a description or a ticket design' }]]);
     }
   });
 
@@ -101,10 +101,10 @@ describe('either Actor makes every move, and history records which', () => {
   });
 
   test('what refuses an agent is what refuses a human: no arrow, or the guard', async () => {
-    const t = await post('/api/tickets', { title: 'no app, no design', status: 'planning' }, 'agent').then((r) => r.json());
+    const t = await post('/api/tickets', { title: 'no app, no intent', status: 'planning' }, 'agent').then((r) => r.json());
     for (const actor of [undefined, 'agent']) {
       expect([actor, (await post(`/api/tickets/${t.key}/ship`, undefined, actor).then((r) => r.json())).hint]).toEqual([actor, 'a ticket in planning does not go to done']);
-      expect([actor, (await post(`/api/tickets/${t.key}/approve`, undefined, actor).then((r) => r.json())).hint]).toEqual([actor, 'approve needs an app and a ticket design']);
+      expect([actor, (await post(`/api/tickets/${t.key}/approve`, undefined, actor).then((r) => r.json())).hint]).toEqual([actor, 'approve needs an app and a description or a ticket design']);
     }
   });
 

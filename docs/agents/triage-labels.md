@@ -21,8 +21,9 @@ Two rules follow from the model rather than from taste:
   (ADR-0012), so a triage pass the human has agreed to ends at `ready`. When
   the human wants to review the result first, end at `planning` and say so.
 - **`ready` is earned, not declared.** The approve guard wants an app, and a
-  ticket design unless the ticket is `--simple`. A ticket that cannot be
-  approved is missing one of those two, and the refusal names which.
+  description or a ticket design unless the ticket is `--simple`. A ticket
+  that cannot be approved is missing one of those two, and the refusal names
+  which.
 
 Don't reintroduce the two dropped roles as a `Triage:` line in the description.
 That is a shadow field the tracker cannot filter, sort or refuse on, and it

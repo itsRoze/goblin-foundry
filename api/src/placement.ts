@@ -4,7 +4,7 @@
  * inside either route.
  */
 import { eq } from 'drizzle-orm';
-import { guardHold, lifecycle, type ApproveRequirement, type GuardFields } from '@goblin/shared';
+import { guardHold, hasDesign, lifecycle, type ApproveRequirement, type GuardFields } from '@goblin/shared';
 import type { Db } from './db';
 import type { Issue } from './problems';
 import { app as appTable, project as projectTable, type TicketRow } from './schema';
@@ -51,8 +51,17 @@ export async function resolvePlacement(db: Db, current: Placement, body: { app_i
   return { app_id: body.app_id, project_id: project?.app_id === body.app_id ? project_id : null };
 }
 
-/** Which field a missing requirement is the fault of, so the 422 points somewhere the GUI can highlight. */
-const BLAMED: Record<ApproveRequirement, 'app_id' | 'design'> = { app: 'app_id', design: 'design' };
+/**
+ * Which field a missing requirement is the fault of, so the 422 points
+ * somewhere the GUI can highlight. Intent is the last of three things to go:
+ * un-flagging `simple` is what took it away when the patch did that, then
+ * the design if the patch cleared one there was, and otherwise the description.
+ */
+function blamed(requirement: ApproveRequirement, row: TicketRow, body: { simple?: boolean; design?: string | null }): 'app_id' | 'simple' | 'design' | 'description' {
+  if (requirement === 'app') return 'app_id';
+  if (body.simple === false && row.simple) return 'simple';
+  return body.design !== undefined && hasDesign(row.design) ? 'design' : 'description';
+}
 
 /**
  * A ticket at `ready` or beyond must go on satisfying the guard, so an edit
@@ -60,15 +69,13 @@ const BLAMED: Record<ApproveRequirement, 'app_id' | 'design'> = { app: 'app_id',
  * of the frontier (ADR-0003). Only newly missing requirements count: a patch
  * is never blamed for something that was already absent.
  */
-export function wouldBreakGuard(row: TicketRow, next: GuardFields, body: { simple?: boolean }): Issue[] {
+export function wouldBreakGuard(row: TicketRow, next: GuardFields, body: { simple?: boolean; design?: string | null }): Issue[] {
   const before = new Set(lifecycle.missingAt(row.status, row));
   return lifecycle
     .missingAt(row.status, next)
     .filter((requirement) => !before.has(requirement))
     .map((requirement) => ({
-      // un-flagging `simple` is what took the design away, so that is the field to name
-      path: [requirement === 'design' && body.simple === false ? 'simple' : BLAMED[requirement]],
+      path: [blamed(requirement, row, body)],
       message: `${guardHold(row.status, [requirement])} — unapprove it first`,
     }));
 }
-

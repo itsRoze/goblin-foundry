@@ -64,8 +64,8 @@ work is on the board the moment it starts:
     goblin ticket create --actor agent --status building --simple \
       --title "<title>" --app goblin-foundry-2
 
-Drop `--simple` and write a design when the title alone does not carry the
-work. Then follow "When you open a PR for a ticket".
+Drop `--simple` and give it a `--description` (or a design) when the title
+alone does not carry the work. Then follow "When you open a PR for a ticket".
 
 ### Wayfinder
 
@@ -114,11 +114,12 @@ shows only the decisions that are open to take.
 `--status` is the workflow's: `ready` for to-tickets, `building` for poteto
 mode, `planning` to park it for the human's sign-off. Without it a ticket lands
 in `backlog`. `--description` and `--design` take literal text, `@<path>`, or
-`-` for stdin. A ticket design is a second call:
+`-` for stdin. The description is enough for the approve guard; a ticket design,
+when the slice needs a plan, is a second call:
 
     goblin ticket design set --actor agent <key> @<path>
 
-A ticket straightforward enough to need no design takes `--simple` instead.
+A ticket whose title says it all takes `--simple` instead.
 Declare blockers rather than ordering tickets by hand:
 
     goblin dependency add --blocker GF-12 --blocked GF-13

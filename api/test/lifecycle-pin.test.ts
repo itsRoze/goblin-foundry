@@ -52,7 +52,7 @@ describe('the lifecycle on the wire, pinned', () => {
 
     const bare = await post('/api/tickets', { title: 'nothing on it', status: 'todo' }).then((r) => r.json());
     const notYet = await post(`/api/tickets/${bare.key}/approve`);
-    expect([notYet.status, await notYet.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: 'approve needs an app and a ticket design' }]);
+    expect([notYet.status, await notYet.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: 'approve needs an app and a description or a ticket design' }]);
   });
 
   test("a batch refused for no arrow and then for the guard is the human's 409", async () => {
@@ -66,10 +66,10 @@ describe('the lifecycle on the wire, pinned', () => {
         title: 'Conflict',
         status: 409,
         owner: 'human',
-        hint: `nothing changed — ${building.key}: a ticket in building does not go back to ready · ${undesigned.key}: approve needs a ticket design`,
+        hint: `nothing changed — ${building.key}: a ticket in building does not go back to ready · ${undesigned.key}: approve needs a description or a ticket design`,
         refusals: [
           { key: building.key, reason: 'a ticket in building does not go back to ready' },
-          { key: undesigned.key, reason: 'approve needs a ticket design' },
+          { key: undesigned.key, reason: 'approve needs a description or a ticket design' },
         ],
       },
     ]);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { bulkLabel, commonMoves, eligibilitySignature, preflight, questionFor, setSignature, type Member } from '../src/bulk';
 
-const member = (id: number, over: Partial<Member> = {}): Member => ({ id, key: `GF-${id}`, status: 'todo', app_id: 1, simple: false, design: 'the plan', blocked_by: [], ...over });
+const member = (id: number, over: Partial<Member> = {}): Member => ({ id, key: `GF-${id}`, status: 'todo', app_id: 1, simple: false, design: 'the plan', description: '', blocked_by: [], ...over });
 
 describe('commonMoves', () => {
   test('todo and planning share approve; a shared destination does not make a shared verb', () => {
@@ -18,10 +18,16 @@ describe('commonMoves', () => {
 
 describe('preflight', () => {
   test('names every member the table or the guard would refuse, in the API’s own words', () => {
-    const refusals = preflight({ kind: 'transition', name: 'approve' }, [member(1), member(2, { status: 'ready' }), member(3, { design: null }), member(4, { app_id: null, simple: true })]);
+    const refusals = preflight({ kind: 'transition', name: 'approve' }, [
+      member(1),
+      member(2, { status: 'ready' }),
+      member(3, { design: null }),
+      member(4, { app_id: null, simple: true }),
+      member(5, { design: null, description: 'what to build' }),
+    ]);
     expect(refusals).toEqual([
       { key: 'GF-2', reason: 'a ticket in ready is already in ready' },
-      { key: 'GF-3', reason: 'approve needs a ticket design' },
+      { key: 'GF-3', reason: 'approve needs a description or a ticket design' },
       { key: 'GF-4', reason: 'approve needs an app' },
     ]);
   });
@@ -63,11 +69,14 @@ describe('questionFor', () => {
 });
 
 describe('what a confirmation is bound to', () => {
-  test('a retitled ticket changes nothing; a status, a blocker or a different set does', () => {
+  test('a retitled ticket changes nothing; a status, a blocker, its last intent or a different set does', () => {
     const before = [member(1), member(2)];
     expect(eligibilitySignature([member(1), member(2)])).toBe(eligibilitySignature(before));
     expect(eligibilitySignature([member(1), member(2, { blocked_by: ['GF-9'] })])).not.toBe(eligibilitySignature(before));
     expect(eligibilitySignature([member(1), member(2, { status: 'planning' })])).not.toBe(eligibilitySignature(before));
+    const described = [member(1), member(2, { design: null, description: 'what to build' })];
+    expect(eligibilitySignature([member(1), member(2, { design: null, description: 'what to build, reworded' })])).toBe(eligibilitySignature(described));
+    expect(eligibilitySignature([member(1), member(2, { design: null, description: '  ' })])).not.toBe(eligibilitySignature(described));
     expect(setSignature([member(1)])).not.toBe(setSignature(before));
     expect(setSignature([member(1, { status: 'done' }), member(2)])).toBe(setSignature(before));
   });
