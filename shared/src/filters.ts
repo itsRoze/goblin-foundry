@@ -8,7 +8,7 @@
  * Wire names are the API's own — `app_id`, `project_id`, `status`, `label`,
  * `q` — and the browser uses them unchanged.
  */
-import { ticketLabels } from './labels';
+import { splitLabels, ticketLabels } from './labels';
 import { TICKET_STATUSES, TicketStatusSchema, type TicketStatus } from './tickets';
 import { parseSlugId } from './slug';
 
@@ -88,7 +88,7 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
   const label = read(source, 'label');
   if (label !== undefined) {
     // the Piece's own judgement, so a name the board refuses is one a Ticket could never carry
-    const judged = ticketLabels.judge(label.split(',').filter((s) => s.trim() !== ''));
+    const judged = ticketLabels.judge(splitLabels(label));
     if (!judged.ok) issues.push({ path: ['label'], message: judged.refusal });
     else if (judged.labels.length > 0) filter.label = canonicalLabels(judged.labels);
   }
@@ -103,8 +103,12 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
 export const canonicalStatuses = (statuses: readonly TicketStatus[]): TicketStatus[] =>
   TICKET_STATUSES.filter((s) => statuses.includes(s));
 
-/** Normalised, deduped and sorted: a label set has no lifecycle to be ordered by, so it is ordered by name. */
-export const canonicalLabels = (labels: readonly string[]): string[] => [...new Set(labels.map(ticketLabels.normalise))].sort();
+/**
+ * Deduped and sorted: a label set has no lifecycle to be ordered by, so it is
+ * ordered by name. The names are already as the Piece writes them — judged by
+ * the parser, or read off a Ticket — so they are not normalised again.
+ */
+export const canonicalLabels = (labels: readonly string[]): string[] => [...new Set(labels)].sort();
 
 /** The query string, without the `?`; empty when nothing is filtered. */
 export function serialiseTicketFilter(filter: TicketFilter): string {

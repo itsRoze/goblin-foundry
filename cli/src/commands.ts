@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, ticketLabels, type BulkAction, type BulkMoveTarget, type Ticket } from '@goblin/shared';
+import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type Ticket } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
@@ -129,9 +129,6 @@ const ticketFields = (creating: boolean): Flag[] => [
   ...(creating ? [{ name: 'labels', kind: 'string' as const, value: '<a,b>', summary: 'its labels, comma-separated' }] : []),
 ];
 
-/** `a,b` as typed: commas separate, and an empty argument is no labels at all. Judging the names is the API's (ADR-0013). */
-const labelList = (written: readonly string[]): string[] => written.flatMap((w) => (w === '' ? [] : w.split(',')));
-
 /** Where an App or Project lives, and how it is addressed — one answer, so its verbs and its design commands cannot drift apart. */
 const entityAt = (kind: 'app' | 'project') => (ctx: Ctx) => `/api/${kind}s/${entityId(ctx.args.operands[0] as string, kind)}`;
 const entityOperand = (kind: 'app' | 'project'): Operand[] => [{ name: kind, summary: 'its id, or <slug>-<id> as the GUI writes it' }];
@@ -211,7 +208,7 @@ function labelCommand(verb: 'add' | 'remove' | 'set', summary: string, next: (ca
     summary,
     operands: labelsOperand,
     async run(ctx) {
-      const given = labelList(ctx.args.operands.slice(1));
+      const given = ctx.args.operands.slice(1).flatMap(splitLabels);
       let carried: string[] = [];
       if (verb !== 'set') {
         const res = await ctx.api.get(ticketAt(ctx));
@@ -318,7 +315,7 @@ export const NOUNS: Noun[] = [
         flags: ticketFields(true),
         run: ({ args, api }) => {
           const { labels, ...fields } = args.values;
-          return api.post('/api/tickets', labels === undefined ? fields : { ...fields, labels: labelList([String(labels)]) });
+          return api.post('/api/tickets', labels === undefined ? fields : { ...fields, labels: splitLabels(String(labels)) });
         },
       },
       { verb: 'show', summary: 'one ticket, with the edges on both sides of it', operands: ticketOperand, run: (ctx) => ctx.api.get(ticketAt(ctx)) },
@@ -361,6 +358,12 @@ export const NOUNS: Noun[] = [
     summary: 'everything recoverably deleted, most recent first',
     fallback: 'list',
     commands: [{ verb: 'list', summary: 'what is in the trash', run: ({ api }) => api.get('/api/trash') }],
+  },
+  {
+    name: 'label',
+    summary: 'the names in use on live tickets; a label is created by first use (`ticket label add`)',
+    fallback: 'list',
+    commands: [{ verb: 'list', summary: 'every name a live ticket carries, sorted', run: ({ api }) => api.get('/api/labels') }],
   },
   {
     name: 'settings',

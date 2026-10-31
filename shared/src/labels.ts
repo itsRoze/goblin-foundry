@@ -9,6 +9,14 @@ import { z } from 'zod';
 export const ticketLabels = defineLabels({ vocabulary: 'open' });
 
 /**
+ * A list of names as typed, `needs-info, wayfinder:task`: commas separate,
+ * and an empty segment (a trailing or doubled comma, how anyone types a list)
+ * is no name rather than a blank one. The names stay as typed; judging them is
+ * the Piece's.
+ */
+export const splitLabels = (typed: string): string[] => typed.split(',').filter((name) => name.trim() !== '');
+
+/**
  * What a body may send: names as typed. Normalising and refusing are the
  * Piece's `judge`, run by the API, so a refusal is the Piece's own sentence.
  */

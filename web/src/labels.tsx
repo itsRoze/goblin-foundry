@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ticketLabels, type Ticket } from '@goblin/shared';
+import { splitLabels, type Ticket } from '@goblin/shared';
 import { ProblemError } from './api';
 import { useSetLabels } from './queries';
 import { useBulkLock } from './selecting';
@@ -50,14 +50,14 @@ export function LabelsField({ ticket, adding, setAdding }: { ticket: Ticket; add
     setRefocus(ticket.labels.length);
   };
   // several at once, as the CLI takes them: `needs-info, wayfinder:task`
-  // a trailing or doubled comma is how anyone types a list, so an empty segment is no name rather than a blank one
   const add = async () => {
-    const names = draft.split(',').filter((name) => name.trim() !== '');
+    const names = splitLabels(draft);
     if (names.length === 0) return close();
     if (await send([...ticket.labels, ...names])) setDraft('');
   };
+  // a chip is a label the ticket carries, already written as the Piece writes it
   const drop = async (label: string, at: number) => {
-    if (await send(ticket.labels.filter((l) => l !== ticketLabels.normalise(label)))) setRefocus(at);
+    if (await send(ticket.labels.filter((l) => l !== label))) setRefocus(at);
   };
 
   return (

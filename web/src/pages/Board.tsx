@@ -534,7 +534,7 @@ export function BoardPage() {
     count: tickets.data === undefined ? null : column.tickets.length,
     cursor: cursor.at,
     meta: view.meta ? meta : undefined,
-    labels: view.labels,
+    showLabels: view.labels,
     updated: view.updated,
     at,
     menuFor,
@@ -729,7 +729,7 @@ interface CardsProps {
   /** The key the Cursor is on, wherever on the board it is; at most one column has it. */
   cursor: string | null;
   meta: ((t: Ticket) => string) | undefined;
-  labels: boolean;
+  showLabels: boolean;
   updated: boolean;
   at: number;
   menuFor: (t: Ticket) => CardActions;
@@ -771,7 +771,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, labels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
@@ -782,7 +782,7 @@ function Cards({ status, tickets, cursor, meta, labels, updated, at, menuFor, se
   return (
     <>
       {tickets.map((t) => (
-        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} labels={labels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
+        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} showLabels={showLabels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
           <Said status={status} {...under(t.key)} notice={null} onCancel={onCancel} onShow={onShow} />
         </TicketCard>
       ))}

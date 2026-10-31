@@ -98,7 +98,7 @@ export {
   type ProjectGraph,
   descriptionLine,
 } from './graph';
-export { ticketLabels, labelsBody, SetLabelsBodySchema, type SetLabelsBody } from './labels';
+export { ticketLabels, splitLabels, labelsBody, SetLabelsBodySchema, type SetLabelsBody } from './labels';
 export { slugify, slugPath, parseSlugId } from './slug';
 export { designField, designBody, hasDesign } from './design';
 export {

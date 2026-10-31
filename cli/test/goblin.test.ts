@@ -274,21 +274,31 @@ describe('goblin', () => {
       // removal matches the name as the Piece writes it, and a name the ticket lacks is not a refusal
       expect((await json(['ticket', 'label', 'remove', 'GF-1', 'NEEDS-INFO', 'absent'])).labels).toEqual(['wayfinder:research', 'ready-for-human', 'wayfinder:task']);
       expect((await json(['ticket', 'label', 'set', 'GF-1', 'wayfinder:prototype'])).labels).toEqual(['wayfinder:prototype']);
+      // a trailing or doubled comma is how anyone types a list: an empty segment is no name, never a blank one
+      expect((await json(['ticket', 'label', 'add', 'GF-1', 'a,', ',,b'])).labels).toEqual(['wayfinder:prototype', 'a', 'b']);
       // the empty set is written as an empty argument
       expect((await json(['ticket', 'label', 'set', 'GF-1', ''])).labels).toEqual([]);
     });
 
     test("a malformed name is the API's refusal, in the Piece's sentence, and nothing changes", async () => {
       await json(['ticket', 'create', '--title', 'x', '--labels', 'keep']);
-      const refused = await run(['ticket', 'label', 'add', 'GF-1', 'a,,b']);
+      const refused = await run(['ticket', 'label', 'add', 'GF-1', 'needs info']);
       expect(refused.code).toBe(1);
       expect(refused.out).toBe('');
-      expect(JSON.parse(refused.err).issues).toEqual([{ path: ['labels'], message: 'a label cannot be blank' }]);
+      expect(JSON.parse(refused.err).issues).toEqual([{ path: ['labels'], message: 'needs info is not one word: a label has no spaces or commas' }]);
       // a name only ever subtracted never reaches the API's judge, so the CLI asks the Piece itself: a usage refusal
       const removing = await run(['ticket', 'label', 'remove', 'GF-1', 'keep it']);
       expect(removing.code).toBe(2);
       expect(removing.err).toContain('keep it is not one word: a label has no spaces or commas');
       expect((await json(['ticket', 'show', 'GF-1'])).labels).toEqual(['keep']);
+    });
+
+    test('`goblin label` lists the names in use on live tickets, once each', async () => {
+      await json(['ticket', 'create', '--title', 'x', '--labels', 'needs-info,wayfinder:task']);
+      await json(['ticket', 'create', '--title', 'y', '--labels', 'wayfinder:task']);
+      await json(['ticket', 'create', '--title', 'z', '--labels', 'gone']);
+      await json(['ticket', 'trash', 'GF-3']);
+      expect(await json(['label'])).toEqual(['needs-info', 'wayfinder:task']);
     });
 
     test('the noun documents itself from the command table', async () => {
