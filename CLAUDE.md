@@ -14,7 +14,7 @@ Goblin itself, at `http://127.0.0.1:4747`, driven by the `goblin` CLI (on `PATH`
 
 ### Triage labels
 
-Goblin has no labels: triage state is the ticket's status, and two of the five canonical roles are dropped rather than simulated. See `docs/agents/triage-labels.md`.
+Triage state is the ticket's status where a status can carry it: `needs-triage`, `ready-for-agent` and `wontfix`. The other two canonical roles, `needs-info` and `ready-for-human`, are Labels (ADR-0013). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
