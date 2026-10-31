@@ -70,6 +70,36 @@ describe('Labels on a Ticket (ADR-0013)', () => {
     expect(history[2]).toMatchObject({ kind: 'created', new: expect.objectContaining({ labels: ['a'] }) });
   });
 
+  test('the same names in another order are the same set: no write, no history, the order kept', async () => {
+    await newTicket({ title: 'x', labels: ['a', 'b'] });
+    const res = await setLabels('GF-1', ['B', 'a']);
+    expect(res.status).toBe(200);
+    expect((await res.json()).labels).toEqual(['a', 'b']);
+    expect((await events('GF-1')).map((e: { kind: string }) => e.kind)).toEqual(['created']);
+  });
+
+  test('a create whose history cannot be written leaves no ticket behind', async () => {
+    await newTicket({ title: 'first' });
+    h.failWrites('event', 2);
+    const res = await post('/api/tickets', { title: 'second', labels: ['a'] });
+    expect(res.status).toBe(500);
+    h.healWrites();
+    expect((await req('/api/tickets').then((r) => r.json())).map((t: { key: string }) => t.key)).toEqual(['GF-1']);
+    expect((await req('/api/tickets/GF-2')).status).toBe(404);
+  });
+
+  test('the names in use: every label on a live ticket, once each and sorted, whatever its app or status; none from the trash', async () => {
+    const app = await post('/api/apps', { name: 'other' }).then((r) => r.json());
+    await newTicket({ title: 'x', labels: ['needs-info', 'wayfinder:task'] });
+    await newTicket({ title: 'y', labels: ['wayfinder:task', 'chore'], app_id: app.id });
+    await newTicket({ title: 'z', labels: ['gone'] });
+    await post('/api/tickets/GF-1/cancel');
+    await req('/api/tickets/GF-3', { method: 'DELETE' });
+    const res = await req('/api/labels');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(['chore', 'needs-info', 'wayfinder:task']);
+  });
+
   test('labels come back on every read of the ticket: the list, the frontier, a transition, an edit', async () => {
     const app = await post('/api/apps', { name: 'a' }).then((r) => r.json());
     await newTicket({ title: 'x', status: 'planning', simple: true, app_id: app.id, labels: ['wayfinder:task'] });

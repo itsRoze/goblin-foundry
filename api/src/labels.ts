@@ -6,8 +6,8 @@
  * history row commit together or not at all. Two clients adding at once can
  * still each send the set they read (no optimistic concurrency in S1).
  */
-import { and, asc, eq, isNull } from 'drizzle-orm';
-import type { Context, Hono } from 'hono';
+import { and, asc, eq, isNull, type SQL } from 'drizzle-orm';
+import { Hono, type Context } from 'hono';
 import { SetLabelsBodySchema, ticketKey, ticketLabels } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
@@ -22,12 +22,31 @@ export async function labelsOf(db: Db, id: number): Promise<string[]> {
   return rows.map((row) => row.name);
 }
 
-/** Every ticket's labels, by ticket id, in one query — a list read costs one statement, never one per row. */
-export async function labelsByTicket(db: Db): Promise<Map<number, string[]>> {
+/** Every ticket's labels in one query — a list read costs one statement, never one per row — looked up by ticket id; a ticket with none has `[]`. */
+export async function labelsByTicket(db: Db): Promise<(id: number) => string[]> {
   const map = new Map<number, string[]>();
   const rows = await db.select().from(ticketLabel).orderBy(asc(ticketLabel.ticket_id), asc(ticketLabel.position));
   for (const row of rows) map.set(row.ticket_id, [...(map.get(row.ticket_id) ?? []), row.name]);
-  return map;
+  return (id) => map.get(id) ?? [];
+}
+
+/**
+ * `GET /api/labels`: the names in use, sorted — every label a live ticket
+ * carries, whatever its app or status. A trashed ticket's are not in use:
+ * nothing on the board carries them, though they come back with it on restore.
+ */
+export function labelNamesRoutes(db: Db) {
+  const r = new Hono<ActorEnv>();
+  r.get('/', async (c) => {
+    const rows = await db
+      .selectDistinct({ name: ticketLabel.name })
+      .from(ticketLabel)
+      .innerJoin(ticketTable, eq(ticketTable.id, ticketLabel.ticket_id))
+      .where(isNull(ticketTable.trashed_at))
+      .orderBy(asc(ticketLabel.name));
+    return c.json(rows.map((row) => row.name));
+  });
+  return r;
 }
 
 /**
@@ -40,13 +59,14 @@ export function judgeLabels(proposed: readonly string[]): { ok: true; labels: st
 }
 
 /** The rows a fresh set is written as, one statement each so a batch can prove every one landed. */
-export const labelInserts = (db: Db, ticket_id: number, labels: readonly string[]): AtomicWrite[] =>
+export const labelInserts = (db: Db, ticket_id: number | SQL<number>, labels: readonly string[]): AtomicWrite[] =>
   labels.map((name, position) => ({
     what: `label ${name}`,
     statement: db.insert(ticketLabel).values({ ticket_id, name, position }).returning({ name: ticketLabel.name }),
   }));
 
-const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((name, i) => name === b[i]);
+/** Both are judged, so neither repeats a name: the same length and every name shared is the same set, whatever the order. */
+const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((name) => b.includes(name));
 
 export function labelRoutes(
   r: Hono<ActorEnv>,
@@ -62,7 +82,7 @@ export function labelRoutes(
     const judged = judgeLabels(body.data.labels);
     if (!judged.ok) return unprocessable(c, [judged.issue]);
     const prior = await labelsOf(db, row.id);
-    // the same set said twice is not news
+    // the same set said twice, in any order, is not news
     if (sameSet(prior, judged.labels)) return c.json(await toWire(row));
 
     const at = now();
