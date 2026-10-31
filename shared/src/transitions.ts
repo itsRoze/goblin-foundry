@@ -3,16 +3,20 @@ import type { Actor } from './actor';
 import { hasDesign } from './design';
 import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
-export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design'>;
+export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design' | 'description'>;
 
-export type ApproveRequirement = 'app' | 'design';
+/** `intent` is written down somewhere — a description or a Ticket Design — unless the title alone carries it (`simple`). */
+export type ApproveRequirement = 'app' | 'intent';
 
-const REQUIREMENT_LABEL: Record<ApproveRequirement, string> = { app: 'an app', design: 'a ticket design' };
+const REQUIREMENT_LABEL: Record<ApproveRequirement, string> = { app: 'an app', intent: 'a description or a ticket design' };
+
+/** A description is present on the same terms as a design: non-whitespace (ADR-0012). */
+export const hasIntent = (ticket: Pick<Ticket, 'simple' | 'design' | 'description'>): boolean => ticket.simple || hasDesign(ticket.design) || ticket.description.trim() !== '';
 
 export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
   const missing: ApproveRequirement[] = [];
   if (ticket.app_id === null) missing.push('app');
-  if (!ticket.simple && !hasDesign(ticket.design)) missing.push('design');
+  if (!hasIntent(ticket)) missing.push('intent');
   return missing;
 }
 

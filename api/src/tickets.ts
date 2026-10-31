@@ -152,7 +152,7 @@ export function ticketsRoutes(db: Db) {
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
     const { title, description, design, simple } = body.data;
-    const next = { ...row, ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
+    const next = { ...row, ...(description === undefined ? {} : { description }), ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
     const broken = wouldBreakGuard(row, next, body.data);
     if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });

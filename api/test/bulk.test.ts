@@ -85,17 +85,26 @@ describe('POST /api/tickets/bulk', () => {
 
     test('a guard one member fails refuses every member, naming each that lacks something', async () => {
       const fine = await at('todo');
-      const noDesign = await at('planning', { design: undefined });
+      const described = await at('planning', { design: undefined, description: 'what to build' });
+      const noIntent = await at('planning', { design: undefined, description: '  ' });
       const orphan = await post('/api/tickets', { title: 'an orphan', status: 'todo', simple: true }).then((r) => r.json());
-      const keys = [fine.key, noDesign.key, orphan.key];
+      const keys = [fine.key, described.key, noIntent.key, orphan.key];
       const before = await snapshot(keys);
       const res = await bulk(keys, { kind: 'transition', name: 'approve' });
       expect(res.status).toBe(409);
       expect((await res.json()).refusals).toEqual([
-        { key: noDesign.key, reason: 'approve needs a ticket design' },
+        { key: noIntent.key, reason: 'approve needs a description or a ticket design' },
         { key: orphan.key, reason: 'approve needs an app' },
       ]);
       expect(await snapshot(keys)).toEqual(before);
+    });
+
+    test('a batch parked in planning approves together when each member carries a description or a design', async () => {
+      const designed = await at('planning');
+      const described = await at('planning', { design: undefined, description: 'what to build' });
+      const res = await bulk([designed.key, described.key], { kind: 'transition', name: 'approve' });
+      expect(res.status).toBe(200);
+      for (const key of [designed.key, described.key]) expect((await read(key)).status).toBe('ready');
     });
 
     test('an agent hears what the tickets lack, as a human does', async () => {
@@ -104,7 +113,7 @@ describe('POST /api/tickets/bulk', () => {
       const before = await snapshot([a.key, b.key]);
       const res = await bulk([a.key, b.key], { kind: 'transition', name: 'approve' }, 'agent');
       expect(res.status).toBe(409);
-      expect((await res.json()).refusals).toEqual([{ key: b.key, reason: 'approve needs a ticket design' }]);
+      expect((await res.json()).refusals).toEqual([{ key: b.key, reason: 'approve needs a description or a ticket design' }]);
       expect(await snapshot([a.key, b.key])).toEqual(before);
     });
 

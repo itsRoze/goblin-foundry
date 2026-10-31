@@ -38,7 +38,7 @@ cancelled -reopen->    backlog
 
 const arrows = (lines: string[]) => lines.map((l) => l.trim().split(/\s+/).join(' ')).filter(Boolean).sort();
 
-const ticket = (over: Partial<GuardFields> = {}): GuardFields => ({ app_id: 1, simple: false, design: 'a plan', ...over });
+const ticket = (over: Partial<GuardFields> = {}): GuardFields => ({ app_id: 1, simple: false, design: 'a plan', description: '', ...over });
 
 describe('the lifecycle is ADR-0003', () => {
   test('every edge in the ADR is in the table and no others (26 edges)', () => {
@@ -79,28 +79,29 @@ describe('the approve guard', () => {
     expect(approveGuard(ticket())).toEqual([]);
   });
 
+  test('an app and a description satisfy it, with no design and no simple flag', () => {
+    expect(approveGuard(ticket({ design: null, description: 'what to build' }))).toEqual([]);
+  });
+
   test('it names each missing thing, and both when both are missing', () => {
-    expect(approveGuard(ticket({ design: null }))).toEqual(['design']);
+    expect(approveGuard(ticket({ design: null }))).toEqual(['intent']);
     expect(approveGuard(ticket({ app_id: null }))).toEqual(['app']);
-    expect(approveGuard(ticket({ app_id: null, design: '   ' }))).toEqual(['app', 'design']);
+    expect(approveGuard(ticket({ app_id: null, design: '   ' }))).toEqual(['app', 'intent']);
   });
 
-  test('a whitespace-only design is no design', () => {
-    expect(approveGuard(ticket({ design: ' \n\t ' }))).toEqual(['design']);
+  test('a whitespace-only design or description is none', () => {
+    expect(approveGuard(ticket({ design: ' \n\t ' }))).toEqual(['intent']);
+    expect(approveGuard(ticket({ design: null, description: ' \n\t ' }))).toEqual(['intent']);
   });
 
-  test('simple drops the design requirement but never the app — an orphan can never be ready', () => {
+  test('simple drops the intent requirement but never the app — an orphan can never be ready', () => {
     expect(approveGuard(ticket({ simple: true, design: null }))).toEqual([]);
     expect(approveGuard(ticket({ simple: true, design: null, app_id: null }))).toEqual(['app']);
   });
 
-  test('a description is not part of the guard', () => {
-    expect(approveGuard({ app_id: 1, simple: true, design: null })).toEqual([]);
-  });
-
   test('it holds where a ticket stands at `ready` or beyond, and not below', () => {
     expect(lifecycle.missingAt('ready', ticket({ app_id: null, simple: true, design: null }))).toEqual(['app']);
-    expect(lifecycle.missingAt('review', ticket({ design: null }))).toEqual(['design']);
+    expect(lifecycle.missingAt('review', ticket({ design: null }))).toEqual(['intent']);
     expect(lifecycle.missingAt('planning', ticket({ app_id: null, design: null }))).toEqual([]);
   });
 });
@@ -117,17 +118,17 @@ describe('refusal sentences', () => {
   });
 
   test('a guard refusal names what is missing, and whose move it was', () => {
-    expect(lifecycle.judge({ ...ticket({ design: null }), status: 'planning' }, 'approve', 'human')).toEqual({ ok: false, refusal: 'approve needs a ticket design', owner: 'human' });
+    expect(lifecycle.judge({ ...ticket({ design: null }), status: 'planning' }, 'approve', 'human')).toEqual({ ok: false, refusal: 'approve needs a description or a ticket design', owner: 'human' });
     expect(lifecycle.judge({ ...ticket({ app_id: null, design: null }), status: 'todo' }, 'approve', 'human')).toEqual({
       ok: false,
-      refusal: 'approve needs an app and a ticket design',
+      refusal: 'approve needs an app and a description or a ticket design',
       owner: 'human',
     });
   });
 
   test('the same words hold a ticket that is standing there rather than walking in', () => {
     expect(guardHold('ready', ['app'])).toBe('a ticket in ready needs an app');
-    expect(guardHold('building', ['app', 'design'])).toBe('a ticket in building needs an app and a ticket design');
+    expect(guardHold('ready', ['app', 'intent'])).toBe('a ticket in ready needs an app and a description or a ticket design');
   });
 });
 

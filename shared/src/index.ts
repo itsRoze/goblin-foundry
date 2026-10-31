@@ -84,6 +84,7 @@ export {
   CREATABLE_STATUSES,
   isCreatable,
   approveGuard,
+  hasIntent,
   guardHold,
 } from './transitions';
 export {
