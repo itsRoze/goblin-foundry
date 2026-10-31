@@ -9,7 +9,7 @@ import { frontierRoutes } from './dependencies';
 import { labelNamesRoutes } from './labels';
 import { projectsRoutes } from './projects';
 import { settingsRoutes } from './settings';
-import { ticketsRoutes, toTicket } from './tickets';
+import { ticketsRoutes, toSummary } from './tickets';
 import { trashRoutes } from './trash';
 
 const WEB_DIST = join(import.meta.dir, '..', '..', 'web', 'dist');
@@ -23,7 +23,7 @@ export function createApp(db: Db) {
   app.route('/api/apps', appsRoutes(db));
   app.route('/api/projects', projectsRoutes(db));
   app.route('/api/tickets', ticketsRoutes(db));
-  app.route('/api/frontier', frontierRoutes(db, toTicket));
+  app.route('/api/frontier', frontierRoutes(db, toSummary));
   app.route('/api/trash', trashRoutes(db));
   app.route('/api/labels', labelNamesRoutes(db));
 

@@ -228,6 +228,16 @@ describe('dependencies', () => {
       expect((await frontier()).map((t: { key: string }) => t.key)).toEqual([free.key, blocked.key]);
     });
 
+    test('a frontier row is the same summary as a list row: no description, no design', async () => {
+      const t = await ticket('described', 'ready');
+      await req(`/api/tickets/${t.key}`, json('PATCH', { description: 'a body worth not listing', design: '# the plan' }));
+      const [row] = await frontier();
+      expect(row).toEqual((await list())[0]);
+      expect(row).not.toHaveProperty('description');
+      expect(row).not.toHaveProperty('design');
+      expect(row).toMatchObject({ key: t.key, intent_written: true });
+    });
+
     test('done, cancelled and trashed blockers all leave the waiter on the frontier; an open one does not', async () => {
       const cases: [string, TicketStatus | 'trashed'][] = [
         ['done', 'done'],

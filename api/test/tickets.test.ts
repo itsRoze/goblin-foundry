@@ -191,6 +191,36 @@ describe('/api/tickets', () => {
     expect(await titles(`?project_id=${project.id}`)).toEqual(['in project']);
     expect(await titles('?app_id=null')).toEqual(['orphan']);
   });
+
+  test('a list row is a summary: every field of the ticket but its description and design, which a single read still carries', async () => {
+    const app = await newApp('A');
+    const t = await newTicket({ title: 'long one', description: 'a body worth not listing', app_id: app.id, labels: ['needs-info'] });
+    await req(`/api/tickets/${t.key}`, json('PATCH', { design: '# the plan' }));
+
+    const [row] = await req('/api/tickets').then((r) => r.json());
+    expect(Object.keys(row).sort()).toEqual(['app_id', 'blocked_by', 'created_at', 'id', 'intent_written', 'key', 'labels', 'project_id', 'simple', 'status', 'title', 'trashed_at', 'updated_at']);
+    expect(row).toMatchObject({ key: 'GF-1', title: 'long one', status: 'backlog', simple: false, app_id: app.id, project_id: null, labels: ['needs-info'], blocked_by: [], trashed_at: null });
+
+    expect(await req(`/api/tickets/${t.key}`).then((r) => r.json())).toMatchObject({ description: 'a body worth not listing', design: '# the plan' });
+  });
+
+  test('a list row says whether the intent is written down — a description or a ticket design — without carrying either', async () => {
+    await newTicket({ title: 'bare' });
+    await newTicket({ title: 'blank description', description: '   ' });
+    await newTicket({ title: 'described', description: 'why' });
+    const designed = await newTicket({ title: 'designed' });
+    await req(`/api/tickets/${designed.key}`, json('PATCH', { design: '# plan' }));
+    await newTicket({ title: 'simple', simple: true });
+
+    const rows: { title: string; intent_written: boolean }[] = await req('/api/tickets').then((r) => r.json());
+    expect(rows.map((t) => [t.title, t.intent_written])).toEqual([
+      ['bare', false],
+      ['blank description', false],
+      ['described', true],
+      ['designed', true],
+      ['simple', false],
+    ]);
+  });
 });
 
 describe('/api/settings', () => {
