@@ -23,6 +23,8 @@ export interface TicketActions {
   blockedBy: () => void;
   copyBranch: () => void;
   addImplementationLink: () => void;
+  /** `add label…`: the about tile's label input — on the Ticket view, or on the way to it. */
+  addLabel: () => void;
   /** `move to app…` / `move to project…`, ADR-0007 applied as the Ticket view's selects apply it. */
   place: (field: 'app_id' | 'project_id', id: number | null) => void;
 }

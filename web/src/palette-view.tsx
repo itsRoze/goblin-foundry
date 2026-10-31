@@ -130,6 +130,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     else if (action.kind === 'blocked-by') act?.blockedBy();
     else if (action.kind === 'copy-branch') act?.copyBranch();
     else if (action.kind === 'add-implementation-link') act?.addImplementationLink();
+    else if (action.kind === 'add-label') act?.addLabel();
     else act?.place(action.field, action.id);
     onClose();
   };
@@ -275,6 +276,7 @@ function ticketActions(ticket: TicketDetail): Candidate[] {
     ...transitionRows(ticket.status),
     { id: 'act-copy-branch', group: 'actions', label: 'copy branch name', aliases: ['copy git branch'], action: { kind: 'copy-branch' } },
     { id: 'act-add-implementation-link', group: 'actions', label: 'add implementation link', aliases: ['add link', 'add PR', 'add commit', 'pull request'], action: { kind: 'add-implementation-link' } },
+    { id: 'act-add-label', group: 'actions', label: 'add label…', aliases: ['label', 'tag'], action: { kind: 'add-label' } },
     { id: 'act-trash', group: 'actions', label: 'trash', action: { kind: 'trash' } },
     {
       id: 'act-simple',
