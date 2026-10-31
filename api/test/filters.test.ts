@@ -7,7 +7,7 @@ const json = (method: string, body?: unknown) => ({ method, headers: { 'content-
 
 /**
  * Issue 06: the board's Filter, on the wire. `/api/tickets` and `/api/frontier`
- * read the same four parameters through the shared parser.
+ * read the same five parameters through the shared parser.
  */
 describe('the filter parameters', () => {
   let h: Harness;
@@ -108,6 +108,47 @@ describe('the filter parameters', () => {
       { path: ['project_id'], message: 'expected an id or null' },
       { path: ['status'], message: 'nope is not a status' },
     ]);
+  });
+
+  describe('label (ADR-0013)', () => {
+    async function labelled() {
+      const app = await newApp('Subway Reader');
+      await newTicket({ title: 'asks a question', labels: ['needs-info'] });
+      await newTicket({ title: 'a research decision', app_id: app.id, labels: ['wayfinder:research', 'needs-info'] });
+      await newTicket({ title: 'a task decision', app_id: app.id, labels: ['wayfinder:task'] });
+      await newTicket({ title: 'unlabelled' });
+      return { app };
+    }
+
+    test('a label set matches tickets carrying any of them, as a status set does', async () => {
+      await labelled();
+      expect(await titles('/api/tickets?label=needs-info')).toEqual(['asks a question', 'a research decision']);
+      expect(await titles('/api/tickets?label=wayfinder:task,needs-info')).toEqual(['asks a question', 'a research decision', 'a task decision']);
+    });
+
+    test('names are normalised as a ticket\'s are, and a name nobody carries is an empty board, not a refusal', async () => {
+      await labelled();
+      expect(await titles('/api/tickets?label=%20NEEDS-Info%20')).toEqual(['asks a question', 'a research decision']);
+      expect(await titles('/api/tickets?label=ready-for-human')).toEqual([]);
+    });
+
+    test('it ANDs with the rest of the filter, the frontier included', async () => {
+      const { app } = await labelled();
+      expect(await titles(`/api/tickets?app_id=${app.id}&label=needs-info`)).toEqual(['a research decision']);
+      await newTicket({ title: 'ready research', app_id: app.id, simple: true, status: 'ready', labels: ['wayfinder:research'] });
+      await newTicket({ title: 'ready otherwise', app_id: app.id, simple: true, status: 'ready' });
+      expect(await titles('/api/frontier?label=wayfinder:research')).toEqual(['ready research']);
+    });
+
+    test('a name the Piece refuses is a 422 on label', async () => {
+      expect(await issues('/api/tickets?label=needs%20info')).toEqual([{ path: ['label'], message: 'needs info is not one word: a label has no spaces or commas' }]);
+    });
+
+    test('a trashed ticket keeps its labels but leaves the filtered read', async () => {
+      await labelled();
+      await req('/api/tickets/GF-1', { method: 'DELETE' });
+      expect(await titles('/api/tickets?label=needs-info')).toEqual(['a research decision']);
+    });
   });
 
   test('a trashed ticket is out of every filtered read', async () => {

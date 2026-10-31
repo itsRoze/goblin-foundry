@@ -423,6 +423,19 @@ describe('goblin', () => {
       expect((await run(['frontier', '--status', 'ready'])).code).toBe(2);
     });
 
+    test('`--label` matches tickets carrying any of the names, on the list and the frontier, as the board does', async () => {
+      await json(['app', 'create', '--name', 'Subway Reader']);
+      await json(['ticket', 'create', '--title', 'asks a question', '--labels', 'needs-info']);
+      await json(['ticket', 'create', '--title', 'a research decision', '--app', '1', '--simple', '--status', 'ready', '--labels', 'wayfinder:research']);
+      await json(['ticket', 'create', '--title', 'unlabelled', '--app', '1', '--simple', '--status', 'ready']);
+      expect(await titles(['ticket', 'list', '--label', 'Needs-Info,wayfinder:research'])).toEqual(['asks a question', 'a research decision']);
+      expect(await titles(['ticket', 'list', '--label', 'needs-info', '--status', 'ready'])).toEqual([]);
+      expect(await titles(['frontier', '--label', 'wayfinder:research'])).toEqual(['a research decision']);
+      const refused = await run(['ticket', 'list', '--label', 'needs info']);
+      expect(refused.code).toBe(2);
+      expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--label: needs info is not one word: a label has no spaces or commas' });
+    });
+
     test('a mistyped status is a usage error: nothing was sent, so the exit code says so', async () => {
       const refused = await run(['ticket', 'list', '--status', 'shipped']);
       expect(refused.code).toBe(2);

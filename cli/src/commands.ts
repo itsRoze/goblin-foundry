@@ -59,7 +59,7 @@ const query = (path: string, params: Record<string, string | undefined>) => {
 const filter = (value: Value | undefined) => (value === undefined ? undefined : value === null ? 'null' : String(value));
 
 /** Which flag a filter parameter arrived on, so a refusal names what was typed rather than a wire name. */
-const FILTER_FLAG: Record<(typeof FILTER_PARAMS)[number], string> = { app_id: 'app', project_id: 'project', status: 'status', q: 'q' };
+const FILTER_FLAG: Record<(typeof FILTER_PARAMS)[number], string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', q: 'q' };
 
 /**
  * The board's Filter (issue 06), read and written by the one parser in
@@ -71,6 +71,7 @@ function filterQuery(args: Args): string {
     app_id: filter(args.values.app_id),
     project_id: filter(args.values.project_id),
     status: args.values.status === undefined ? undefined : String(args.values.status),
+    label: args.values.label === undefined ? undefined : String(args.values.label),
     q: args.values.q === undefined ? undefined : String(args.values.q),
   });
   if (!parsed.ok) throw new UsageError(parsed.issues.map((i) => `--${FILTER_FLAG[i.path[0] as keyof typeof FILTER_FLAG]}: ${i.message}`).join(' · '));
@@ -84,6 +85,7 @@ const APP_FILTER: Flag = { name: 'app', kind: 'id', field: 'app_id', nullable: t
 const PROJECT_FILTER: Flag = { name: 'project', kind: 'id', field: 'project_id', nullable: true, value: '<project|null>', summary: 'only this project, or `null` for the ones with none' };
 const TEXT_FILTER: Flag = { name: 'q', kind: 'string', value: '<text>', summary: 'only the ones whose title or description contains this' };
 const STATUS_FILTER: Flag = { name: 'status', kind: 'string', value: '<a,b>', summary: 'only these statuses, comma-separated (default: every one)' };
+const LABEL_FILTER: Flag = { name: 'label', kind: 'string', value: '<a,b>', summary: 'only the ones carrying any of these labels, comma-separated' };
 
 /** A long field: written inline, read from a file, or piped in. Descriptions and designs are pasted, not typed. */
 const TEXT = '<text|@path|->';
@@ -307,7 +309,7 @@ export const NOUNS: Noun[] = [
       {
         verb: 'list',
         summary: 'every live ticket',
-        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, TEXT_FILTER],
+        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, TEXT_FILTER],
         run: ({ args, api }) => api.get(`/api/tickets${filterQuery(args)}`),
       },
       {
@@ -352,7 +354,7 @@ export const NOUNS: Noun[] = [
     summary: 'the ready tickets with nothing in their way, stalest first',
     fallback: 'show',
     // no `--status`: the frontier is `ready` by definition, and the endpoint says so
-    commands: [{ verb: 'show', summary: 'the ready frontier', flags: [APP_FILTER, PROJECT_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
+    commands: [{ verb: 'show', summary: 'the ready frontier', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
   },
   {
     name: 'trash',

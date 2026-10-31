@@ -131,7 +131,8 @@ moves all of them or none.
 
 `goblin ticket show <key>` — a bare number works, so `12` means `GF-12`. It
 returns the ticket with the edges on both sides of it. `goblin ticket list`
-filters with `--app`, `--project`, `--status a,b` and `--q <text>`.
+filters with `--app`, `--project`, `--status a,b`, `--label a,b` (any of them)
+and `--q <text>`.
 
 ## When a skill asks what to work on next
 

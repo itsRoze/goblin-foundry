@@ -94,7 +94,7 @@ lifecycle is documented by the lifecycle.
 | refusals | `application/problem+json` on stderr, stdout empty. Exit `1` the API refused, `2` the invocation was wrong, `3` nothing answered |
 | long text | `--description`, `--design` and `design set` take the text inline, `@path` to read a file, or `-` to read stdin |
 | clearing | `null` as the value of a nullable flag on `update` clears the field (`--app null`, `--design null`) |
-| filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
+| filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--label a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
 | actor | `--actor agent`, or `GF_ACTOR`; the flag wins. A record of whose hands made the change, never a permission: either Actor makes every transition (ADR-0012, GLOSSARY.md *Actor*) |
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
 | labels | `ticket create --labels a,b`; afterwards `ticket label add\|remove\|set <key> <names>`, names spaced or comma-separated, `''` for none with `set`. The API takes only the whole set, so `add` and `remove` read the ticket first; a malformed name is the labels Piece's sentence (ADR-0013) |
