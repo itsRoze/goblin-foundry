@@ -680,6 +680,10 @@ function StateTile({
           ))}
       </div>
       {confirming && <Confirm text={blockedWarning(ticket.blocked_by)} verb="start" testId="confirm-start" onCancel={onCancelConfirm} onConfirm={onConfirm} />}
+      {/* next to what it gates (approve, among the arrows above), not under the ways of stopping */}
+      <label className="gf-toggle">
+        <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all
+      </label>
       <div className="gf-actions is-separated">
         {edges
           .filter((e) => e.name === 'cancel')
@@ -692,9 +696,6 @@ function StateTile({
           trash <Kbd>⌘⌫</Kbd>
         </button>
       </div>
-      <label className="gf-toggle">
-        <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all
-      </label>
       {refusal && (
         <p className="gf-refusal" role="alert" data-testid="state-refusal">
           {refusal}

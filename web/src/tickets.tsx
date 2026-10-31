@@ -164,26 +164,30 @@ export function TicketCard({
         <span className="gf-card-title">
           {blocked && (
             <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
-              ◇
+              ◇<span className="gf-sr"> blocked </span>
             </span>
           )}
           {ticket.title}
         </span>
         {meta !== null && <span className="gf-card-meta">{meta}</span>}
-        {/* plain names, never a colour (ADR-0013): the Label chip's clothes, without the Ticket view's `×` */}
-        {labels && ticket.labels.length > 0 && (
-          <span className="gf-labels gf-card-labels" data-testid={`card-labels-${ticket.key}`}>
-            {ticket.labels.map((label) => (
-              <span key={label} className="gf-chip gf-label">
-                {label}
-              </span>
-            ))}
-          </span>
-        )}
         {updated !== null && (
           <span className="gf-card-meta">
             updated <Since iso={updated} at={at} />
           </span>
+        )}
+        {/* plain names, never a colour (ADR-0013): the Label chip's clothes, without the Ticket view's `×`, under both meta lines so they stay together */}
+        {labels && ticket.labels.length > 0 && (
+          <>
+            {/* the card is one link, read as one sentence: the word says these names are labels, not more of the title */}
+            <span className="gf-sr">labels </span>
+            <span className="gf-labels gf-card-labels" data-testid={`card-labels-${ticket.key}`}>
+              {ticket.labels.map((label) => (
+                <span key={label} className="gf-chip gf-label">
+                  {label}
+                </span>
+              ))}
+            </span>
+          </>
         )}
       </Link>
       <CardMenu ticket={ticket} actions={menu} disabled={select.locked} />
@@ -512,9 +516,21 @@ export function TicketRows({ tickets, tile = 'tickets' }: { tickets: Ticket[] | 
   return (
     <div className="gf-rows" data-testid="ticket-rows">
       {tickets.map((t) => (
-        <Link key={t.id} className={`gf-row${cursor.isAt(t.key) ? ' is-cursor' : ''}`} aria-current={cursor.isAt(t.key) ? true : undefined} to={ticketPath(t)}>
+        <Link
+          key={t.id}
+          // blocked and cancelled read here as they do on a card (DESIGN.md Do's): a struck title, ◇ for blocked, never a colour
+          className={`gf-row${t.status === 'cancelled' ? ' is-cancelled' : ''}${isBlocked(t) ? ' is-blocked' : ''}${cursor.isAt(t.key) ? ' is-cursor' : ''}`}
+          aria-current={cursor.isAt(t.key) ? true : undefined}
+          to={ticketPath(t)}
+        >
           <span className="gf-row-title">
-            <span className="gf-key">{t.key}</span> {t.title}
+            <span className="gf-key">{t.key}</span>{' '}
+            {isBlocked(t) && (
+              <span className="gf-blocked-mark" title={`blocked by ${t.blocked_by.join(', ')}`}>
+                ◇<span className="gf-sr"> blocked </span>
+              </span>
+            )}
+            <span className="gf-row-name">{t.title}</span>
           </span>
           <span className="gf-row-trail">
             <StatusChip status={t.status} />

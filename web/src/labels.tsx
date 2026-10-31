@@ -50,9 +50,11 @@ export function LabelsField({ ticket, adding, setAdding }: { ticket: Ticket; add
     setRefocus(ticket.labels.length);
   };
   // several at once, as the CLI takes them: `needs-info, wayfinder:task`
+  // a trailing or doubled comma is how anyone types a list, so an empty segment is no name rather than a blank one
   const add = async () => {
-    if (draft.trim() === '') return close();
-    if (await send([...ticket.labels, ...draft.split(',')])) setDraft('');
+    const names = draft.split(',').filter((name) => name.trim() !== '');
+    if (names.length === 0) return close();
+    if (await send([...ticket.labels, ...names])) setDraft('');
   };
   const drop = async (label: string, at: number) => {
     if (await send(ticket.labels.filter((l) => l !== ticketLabels.normalise(label)))) setRefocus(at);

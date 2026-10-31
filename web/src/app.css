@@ -111,7 +111,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-card-meta { font: var(--gf-t-meta); color: var(--gf-mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gf-card.is-cancelled .gf-card-title, .gf-card.is-cancelled .gf-card-id i { text-decoration: line-through; color: var(--gf-mute); }
 /* blocked is a derived condition, never a colour (DESIGN.md Colors): the outline glyph and a struck title, no dimming */
-.gf-card.is-blocked .gf-card-title { text-decoration: line-through; color: var(--gf-mute); }
+.gf-card.is-blocked .gf-card-title,
+.gf-row.is-blocked .gf-row-name, .gf-row.is-cancelled .gf-row-name { text-decoration: line-through; color: var(--gf-mute); }
 /* inline-block so the title's strike stops at the glyph rather than running through it */
 .gf-blocked-mark { display: inline-block; margin-right: var(--gf-s2); color: var(--gf-mute); }
 .gf-state-blocked { font: var(--gf-t-meta); color: var(--gf-mute); }
@@ -351,6 +352,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* on a card there is no `×` to sit inside the border, so the chip keeps its own padding; tighter, as the card's rows are */
 .gf-card-labels { gap: var(--gf-s1); }
 .gf-card-labels .gf-label { padding-right: 6px; }
+/* said to a screen reader, not drawn: a word the eye gets from the chips' shape */
+.gf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* the picker: an open input over candidate rows, the highlighted one wearing
    the selected-row treatment from DESIGN.md Components — that inset is what says these
@@ -631,6 +634,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  */
 .gf-pop .gf-picker-hit.is-on, .gf-check.is-on { background: var(--gf-rule-2); }
 .gf-checks { display: flex; flex-direction: column; gap: var(--gf-s1); }
+/* wide enough that the key strip at its foot stays one line, as a tile header's does; at phone width the
+   popover hangs from its chip's right edge and the room is not there, so the strip wraps as before */
+@media (min-width: 900px) { .gf-checks { min-width: 272px; } }
 /* the highlighted row takes the Attention row's selected treatment, as the picker's does */
 .gf-check {
   display: flex; align-items: center; gap: var(--gf-s2); cursor: pointer;
@@ -680,11 +686,15 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
   .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
   .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }
+  /* the label's `×` is inside the chip's border, so its box spills past it rather than stretching the chip */
+  .gf-label-drop { margin-block: -8px; }
   button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
+  /* the `board` link in a tile header is inline, so its padding grows what a finger hits and moves nothing */
+  .gf-tile-link { padding: 11px 4px; margin: 0 -4px; }
   span.gf-hint, .gf-tile-move, .gf-tile-keys > .gf-kbd { display: none; }
   /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */
   .gf-btn .gf-kbd, .gf-mode-done .gf-kbd { display: none; }
-  .gf-toggle { min-height: 32px; }
+  .gf-toggle, .gf-check { min-height: 32px; }
   .gf-mode-btn { min-width: 32px; }
 }
 
