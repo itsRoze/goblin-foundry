@@ -65,11 +65,12 @@ describe('the lifecycle is ADR-0003', () => {
     }
   });
 
-  test('`submit` is the agent’s and so the human’s too; every other verb is the human’s alone', () => {
-    const building = { ...ticket(), status: 'building' } as const;
-    expect(lifecycle.judge(building, 'submit', 'agent').ok).toBe(true);
-    expect(lifecycle.judge(building, 'submit', 'human').ok).toBe(true);
-    expect(lifecycle.judge(building, 'stop', 'agent')).toEqual({ ok: false, refusal: "stop is the human's move, not the agent's", owner: 'human' });
+  test('either Actor takes every arrow (ADR-0012)', () => {
+    for (const edge of lifecycle.edges)
+      for (const actor of ['human', 'agent'] as const) {
+        const judged = lifecycle.judge({ ...ticket({ simple: true }), status: edge.from }, edge.name, actor);
+        expect([edge.from, edge.name, actor, judged.ok]).toEqual([edge.from, edge.name, actor, true]);
+      }
   });
 });
 

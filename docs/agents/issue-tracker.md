@@ -29,12 +29,47 @@ it cannot go stale; prefer it over anything written here.
 
 ## An agent acts as an agent
 
-Always pass `--actor agent`, or export `GF_ACTOR=agent`. This is not cosmetic:
-the API holds an agent to `planning` (ADR-0003, `AGENT_CEILING`). An agent
-creates tickets in `planning` and owns one lifecycle edge, `submit`, so **an
-agent never approves a ticket into `ready`**. Reaching the ready frontier is a human's hand,
-every time. If a skill's instructions imply otherwise, stop and hand back rather
-than acting as `human` to get past the refusal.
+Always pass `--actor agent`, or export `GF_ACTOR=agent`. Actor is a record, not
+a permission (ADR-0012): either Actor makes every transition and creates in any
+status but `done` and `cancelled`, and history says whose hands made each
+change. That record is only true if you pass the flag on every call.
+
+The human's instruction is the authority. Make the moves the workflow you are
+running makes, below, and nothing it doesn't. When the human wants to sign off
+first, create in `planning` and stop: a ticket parked there is the human's
+Attention, and `approve` waits for their word.
+
+## The three workflows
+
+Each one moves tickets differently. Find the one you are in.
+
+### Spec first: to-spec → to-tickets → implement-spec
+
+- **to-spec** writes the spec as a project's design (`goblin project create`,
+  then `goblin project design set`). It moves no ticket.
+- **to-tickets** shows the breakdown and waits for the human's OK. That OK is
+  the approval, so it then creates each ticket straight in `ready`, inside the
+  spec's project, with its blockers (see "publish to the issue tracker"). If the
+  approve guard refuses a create, the 422 names what is missing: create in
+  `todo`, add it, then `approve`.
+- **implement-spec** works the ready frontier: for each ticket, `start` it
+  (`ready → building`), build it, open the PR, then follow "When you open a PR
+  for a ticket".
+
+### No spec: poteto mode
+
+The human says "do X". Create the ticket for X directly in `building`, so the
+work is on the board the moment it starts:
+
+    goblin ticket create --actor agent --status building --simple \
+      --title "<title>" --app goblin-foundry-2
+
+Drop `--simple` and write a design when the title alone does not carry the
+work. Then follow "When you open a PR for a ticket".
+
+### Wayfinder
+
+A map of decisions rather than a build. See "Wayfinding operations".
 
 ## When you open a PR for a ticket
 
@@ -47,16 +82,39 @@ Then it submits the ticket:
 
     goblin ticket submit --actor agent <key>
 
-That moves it `building → review`. Shipping it to `done` after the merge is the
-human's.
+That moves it `building → review`. When you have verified the PR merged
+(`gh pr view <pr-url> --json state` says `MERGED`), ship it:
+
+    goblin ticket ship --actor agent <key>
+
+A PR still open or closed unmerged leaves the ticket in `review`.
+
+## Wayfinding operations
+
+Wayfinder's vocabulary maps onto Goblin like this:
+
+| Wayfinder        | Goblin                                                                  |
+| ---------------- | ----------------------------------------------------------------------- |
+| the map          | a Project; its design is the map's index (`goblin project design set`)   |
+| a decision       | a ticket in that project, created in `ready` so it is on the frontier    |
+| its type         | a title prefix until Goblin has labels: `[research] Which feed parser`  |
+| claim it         | `goblin ticket start` (`ready → building`)                               |
+| answer it        | the ticket's design (`goblin ticket design set`)                         |
+| resolve it       | `goblin ticket close` (`→ done` from any status before `review`)        |
+| the frontier     | `goblin frontier --project <map>`                                        |
+
+Declare one decision's reliance on another as a dependency, so the frontier
+shows only the decisions that are open to take.
 
 ## When a skill says "publish to the issue tracker"
 
-    goblin ticket create --actor agent \
+    goblin ticket create --actor agent --status <status> \
       --title "<title>" --description @<path> --app goblin-foundry-2
 
-`--description` and `--design` take literal text, `@<path>`, or `-` for stdin.
-Then write the design, which is the body the approve guard looks for:
+`--status` is the workflow's: `ready` for to-tickets, `building` for poteto
+mode, `planning` to park it for the human's sign-off. Without it a ticket lands
+in `backlog`. `--description` and `--design` take literal text, `@<path>`, or
+`-` for stdin. A ticket design is a second call:
 
     goblin ticket design set --actor agent <key> @<path>
 
@@ -64,6 +122,9 @@ A ticket straightforward enough to need no design takes `--simple` instead.
 Declare blockers rather than ordering tickets by hand:
 
     goblin dependency add --blocker GF-12 --blocked GF-13
+
+Several tickets at once take one batch: `goblin ticket approve GF-1 GF-2 GF-3`
+moves all of them or none.
 
 ## When a skill says "fetch the relevant ticket"
 

@@ -98,18 +98,13 @@ describe('POST /api/tickets/bulk', () => {
       expect(await snapshot(keys)).toEqual(before);
     });
 
-    test('an agent owns no edge in a batch either, and is not told what the tickets lack', async () => {
+    test('an agent hears what the tickets lack, as a human does', async () => {
       const a = await at('todo');
       const b = await at('planning', { design: undefined });
       const before = await snapshot([a.key, b.key]);
       const res = await bulk([a.key, b.key], { kind: 'transition', name: 'approve' }, 'agent');
       expect(res.status).toBe(409);
-      const problem = await res.json();
-      expect(problem.owner).toBe('human');
-      expect(problem.refusals).toEqual([
-        { key: a.key, reason: "approve is the human's move, not the agent's" },
-        { key: b.key, reason: "approve is the human's move, not the agent's" },
-      ]);
+      expect((await res.json()).refusals).toEqual([{ key: b.key, reason: 'approve needs a ticket design' }]);
       expect(await snapshot([a.key, b.key])).toEqual(before);
     });
 

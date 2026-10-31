@@ -22,7 +22,7 @@ S1 is done when a fresh project is created in the GUI, an agent-assisted plannin
 
 ## Positioning
 
-A control surface and a memory, not a Linear clone. Status is a code-owned state machine whose transition table names an owner per edge, so a column refuses a drag its dragger does not own and says why: authority is visible in the UI. Linear and GitHub Issues cannot express that authority, and the human does not own them (v0 postmortem, BLUEPRINT-v1 §1).
+A control surface and a memory, not a Linear clone. Status is a code-owned state machine, so a column refuses a drag the lifecycle has no arrow for, or a ticket the approve guard holds back, and says why. Every change records whose hands made it, so history tells the operator's work from an agent's. Linear and GitHub Issues cannot be shaped that way, and the human does not own them (v0 postmortem, BLUEPRINT-v1 §1).
 
 ## Operating Context
 
@@ -35,8 +35,7 @@ The first real project tracked in Goblin is Subway Reader, an offline-first e-in
 One line each; the spec carries the user stories.
 
 - Statuses `backlog · todo · planning · ready · building · review · done · cancelled`, moved only by named transitions (`approve`, `start`, `ship`…). Blocked is a derived condition, never a status.
-- Every transition names its owner. In S1 every edge is human-owned but `submit`, which the agent that opened the PR takes (and a human building by hand still can); the owner is in the table, so changing who owns an edge changes no UI code (ADR-0003, story 30).
-- An agent creates a ticket only into `planning` (the default when it names none; any other status is refused, never corrected) and owns only `submit`, so approving what an agent planned is always the human's act (GLOSSARY.md Actor; decided in ticket 09, `submit` added 2026-10-15).
+- Actor is a record, not a permission (ADR-0012): either Actor makes every transition, `approve` included, and creates in any status but `done` and `cancelled`, defaulting to `backlog`. A workflow that wants the operator's sign-off parks its tickets in `planning` (GLOSSARY.md Actor, Attention).
 - Dependencies are advisory facts between any two tickets; only cycles are refused (ADR-0009). The Ready Frontier is where they bite.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
 - Designs are markdown columns in the tracker, edited in place, always live; there is no draft and no save step (ADR-0005). Editing text never changes status.

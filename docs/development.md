@@ -94,7 +94,7 @@ lifecycle is documented by the lifecycle.
 | long text | `--description`, `--design` and `design set` take the text inline, `@path` to read a file, or `-` to read stdin |
 | clearing | `null` as the value of a nullable flag on `update` clears the field (`--app null`, `--design null`) |
 | filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
-| actor | `--actor agent`, or `GF_ACTOR`; the flag wins. An agent creates tickets only into `planning` and owns one transition, `submit` (GLOSSARY.md *Actor*) |
+| actor | `--actor agent`, or `GF_ACTOR`; the flag wins. A record of whose hands made the change, never a permission: either Actor makes every transition (ADR-0012, GLOSSARY.md *Actor*) |
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |
 | several at once | a transition or `trash` with several keys — `goblin ticket approve GF-1 GF-2 GF-3` — is one batch, committed for all of them or none (ADR-0010); one key is the single call. `goblin ticket move <keys> --project <id\|null>` / `--app <id>` / `--nowhere` sends a set to one place. A refused batch lists `refusals` by key on stderr |
 | elsewhere | `GF_URL` points at the API; `goblin backup <dir>` copies the database file itself, from `GF_DB_PATH` or the default |
@@ -110,18 +110,14 @@ $ goblin app create --name 'Subway Reader' --repository-url https://github.com/i
 $ goblin project create --name MVP --app subway-reader-1
 {"id":1,"app_id":1,"name":"MVP",…}
 
-$ export GF_ACTOR=agent                       # everything below is the planner's hand
-$ goblin ticket create --title 'Parse an RSS feed' --project 1
-{"key":"GF-1","status":"planning",…}          # an agent creates only into planning
+$ export GF_ACTOR=agent                       # everything below is recorded as the planner's hand
+$ goblin ticket create --title 'Parse an RSS feed' --project 1 --status planning
+{"key":"GF-1","status":"planning",…}          # parked for the human's sign-off
 $ goblin ticket design set GF-1 @plan.md      # creation is design-less; the design is a second call
-$ goblin ticket create --title 'Render the list' --project 1
+$ goblin ticket create --title 'Render the list' --project 1 --status planning
 {"key":"GF-2","status":"planning",…}
 $ goblin dependency add --blocker GF-1 --blocked GF-2
 {"key":"GF-2","blocked_by":["GF-1"],…}
-
-$ goblin ticket approve GF-1
-{"type":"about:blank","title":"Conflict","status":409,"owner":"human",
- "hint":"approve is the human's move, not the agent's"}    # stderr, exit 1
 
 $ unset GF_ACTOR                              # the human reads the plan and approves it
 $ goblin ticket approve GF-1

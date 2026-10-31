@@ -36,7 +36,7 @@ describe('goblin', () => {
     expect(await json(['ticket', 'link', 'list', ticket.key, '--actor', 'agent'])).toEqual([link]);
     expect((await run(['ticket', 'link', 'remove', ticket.key, String(link.id), '--actor', 'agent'])).code).toBe(0);
     expect(await json(['ticket', 'link', 'list', ticket.key, '--actor', 'agent'])).toEqual([]);
-    expect((await json(['ticket', 'show', ticket.key])).status).toBe('planning');
+    expect((await json(['ticket', 'show', ticket.key])).status).toBe('backlog');
   });
 
   test('a planning session, end to end: app → project → ticket → design → dependency → approve → frontier', async () => {
@@ -47,8 +47,8 @@ describe('goblin', () => {
     const project = await json(['project', 'create', '--name', 'MVP', '--app', 'subway-reader-1']);
     expect(project).toMatchObject({ id: 1, app_id: 1 });
 
-    // an agent's ticket lands in planning, and the project brings the app with it (ADR-0007)
-    const ticket = await json(['ticket', 'create', '--title', 'Parse an RSS feed', '--project', '1', '--actor', 'agent']);
+    // an agent parks its ticket in planning for the human's sign-off, and the project brings the app with it (ADR-0007)
+    const ticket = await json(['ticket', 'create', '--title', 'Parse an RSS feed', '--status', 'planning', '--project', '1', '--actor', 'agent']);
     expect(ticket).toMatchObject({ key: 'GF-1', status: 'planning', app_id: 1, project_id: 1 });
 
     const design = '# The plan\n\nFetch, parse, store.\n';
@@ -61,12 +61,6 @@ describe('goblin', () => {
     expect(other).toMatchObject({ key: 'GF-2', status: 'backlog' });
     const blocked = await json(['dependency', 'add', '--blocker', 'GF-1', '--blocked', 'GF-2']);
     expect(blocked.blocked_by).toEqual(['GF-1']);
-
-    // approving what an agent planned is a human act
-    const refused = await run(['ticket', 'approve', 'GF-1', '--actor', 'agent']);
-    expect(refused.code).toBe(1);
-    expect(refused.out).toBe('');
-    expect(JSON.parse(refused.err)).toMatchObject({ status: 409, owner: 'human', hint: "approve is the human's move, not the agent's" });
 
     expect(await json(['ticket', 'approve', 'GF-1'])).toMatchObject({ key: 'GF-1', status: 'ready' });
 
@@ -136,15 +130,16 @@ describe('goblin', () => {
   });
 
   test('GF_ACTOR says who is acting when --actor does not', async () => {
+    const actors = async (key: string) => (await json(['ticket', 'history', key])).map((e: { kind: string; actor: string }) => `${e.kind} ${e.actor}`);
     const ticket = await json(['ticket', 'create', '--title', 'planned by the planner'], { env: { GF_ACTOR: 'agent' } });
-    expect(ticket.status).toBe('planning');
-    const refused = await run(['ticket', 'pick', 'GF-1'], { env: { GF_ACTOR: 'agent' } });
-    expect(refused.code).toBe(1);
-    // the flag wins over the environment, which is how a human approves in a shell an agent set up
-    expect((await run(['ticket', 'pick', 'GF-1', '--actor', 'human'], { env: { GF_ACTOR: 'agent' } })).code).toBe(0);
+    expect((await run(['ticket', 'pick', ticket.key], { env: { GF_ACTOR: 'agent' } })).code).toBe(0);
+    // the flag wins over the environment, so a human typing in a shell an agent set up is recorded as the human
+    expect((await run(['ticket', 'shelve', ticket.key, '--actor', 'human'], { env: { GF_ACTOR: 'agent' } })).code).toBe(0);
+    expect(await actors(ticket.key)).toEqual(['transitioned human', 'transitioned agent', 'created agent']);
     expect((await run(['frontier', '--actor', 'robot'])).code).toBe(2);
     // a global may also lead, before the noun
-    expect((await json(['--actor', 'agent', 'ticket', 'create', '--title', 'led by a global'])).status).toBe('planning');
+    const led = await json(['--actor', 'agent', 'ticket', 'create', '--title', 'led by a global']);
+    expect(await actors(led.key)).toEqual(['created agent']);
   });
 
   test('long text arrives inline, from a file, or on stdin; `--json` is accepted and ignored', async () => {
@@ -279,13 +274,13 @@ describe('goblin', () => {
     };
 
     test("the API's own problem+json is relayed verbatim, and stdout stays empty", async () => {
-      const { code, problem } = await badRun(['ticket', 'create', '--title', 'straight to the board', '--status', 'backlog', '--actor', 'agent']);
+      const { code, problem } = await badRun(['ticket', 'create', '--title', 'straight to the end', '--status', 'done', '--actor', 'agent']);
       expect(code).toBe(1);
       expect(problem).toEqual({
         type: 'about:blank',
         title: 'Unprocessable Entity',
         status: 422,
-        issues: [{ path: ['status'], message: 'an agent creates a ticket in planning, never backlog' }],
+        issues: [{ path: ['status'], message: 'a ticket is never created in done — it is earned, not declared' }],
       });
     });
 
