@@ -60,19 +60,16 @@ Each one moves tickets differently. Find the one you are in.
 
 Hand each implementer a pointer to this section. In its worktree it:
 
-1. Resets onto the integration branch before anything else
-   (`git reset --hard <integration-branch>`). The Agent tool's worktree can
-   start on another commit, such as `main`.
-2. Runs `bun install`. A fresh worktree has no `node_modules`.
-3. Leaves the live tracker alone except for reads. Tests get their own database
+1. Runs `bun install` once it is on the integration branch. A fresh worktree
+   has no `node_modules`, and the Agent tool's worktree can start on `main`.
+2. Leaves the live tracker alone except for reads. Tests get their own database
    from the API harness, and no test data goes into `127.0.0.1:4747`.
-4. Runs Playwright with its own `GF_E2E_PORT`, since the suites of other
+3. Runs Playwright with its own `GF_E2E_PORT`, since the suites of other
    worktrees may be running at the same time.
-5. Edits every doc the spec names, `AGENTS.md` included. The spec is the
+4. Edits every doc the spec names, `AGENTS.md` included. The spec is the
    operator's authorisation.
 
-Run `ui-closeout` once, on the integration branch after the last merge, not
-per ticket. The integration branch is checked out in the main checkout, which
+The integration branch is checked out in the main checkout, which
 the service runs from, so a merge there changes nothing live until
 `goblin service restart`.
 
@@ -161,10 +158,8 @@ moves all of them or none.
 
 `goblin ticket show <key>` — a bare number works, so `12` means `GF-12`. It
 returns the ticket, its description and design, and the edges on both sides
-of it. `goblin ticket list` returns summary rows — everything but the
-description and design, with `intent_written` saying whether either is there —
-so read a body with `show`. It filters with `--app`, `--project`, `--status a,b`, `--label a,b` (any of them)
-and `--q <text>`. `goblin label` lists the label names already in use, so a
+of it. `goblin ticket list` returns summary rows without
+the bodies, so read a body with `show`; `--help` lists its filters. `goblin label` lists the label names already in use, so a
 new ticket reuses one rather than inventing a near-twin.
 
 ## When a skill asks what to work on next
