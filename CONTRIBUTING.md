@@ -27,4 +27,4 @@ Keep pull requests focused. Explain the problem, the resulting behavior, and how
 
 ## Working with agents
 
-Agents must use `--actor agent` when changing Goblin records. They can prepare work in planning; lifecycle approval belongs to a human. See [the tracker instructions](docs/agents/issue-tracker.md).
+Agents must use `--actor agent` when changing Goblin records. The flag records whose hands made a change and permits nothing: either Actor makes every transition, `approve` included (ADR-0012). A workflow that wants the human's sign-off parks its tickets in `planning`. See [the tracker instructions](docs/agents/issue-tracker.md).

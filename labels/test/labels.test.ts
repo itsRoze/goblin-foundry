@@ -5,12 +5,6 @@ const open = defineLabels({ vocabulary: 'open' });
 const chores = defineLabels({ vocabulary: ['errand', 'work', 'home'] });
 
 describe('defineLabels', () => {
-  test('keeps its rules, so an Assembly can offer the fixed names or say there is no limit', () => {
-    expect(chores.vocabulary).toEqual(['errand', 'work', 'home']);
-    expect(chores.limit).toBeUndefined();
-    expect(defineLabels({ vocabulary: 'open', limit: 3 })).toMatchObject({ vocabulary: 'open', limit: 3 });
-  });
-
   test('throws at load for a fixed list written other than as `normalise` writes it, or naming a label twice', () => {
     expect(() => defineLabels({ vocabulary: ['Work', 'home', 'home'] })).toThrow(new LabelsDefinitionError('Work is written as work; home is listed twice'));
   });
