@@ -16,7 +16,7 @@ Labels are built as a Piece, `@goblin/labels`, not inside the Goblin Foundry Ass
 
 ## Consequences
 
-- The Piece owns data, so its ticket must first answer ADR-0011's open question of the storage seam a table-owning Piece is given.
+- The Piece is pure, like `@goblin/workflow`: rules and matching only. Each Assembly stores labels its own way (Goblin Foundry in a table, todo on the in-memory item), so ADR-0011's open question of a table-owning Piece's storage seam stays open.
 - Labels apply to Tickets only. A card shows them as plain text chips; the board's Filter gains an any-of `label` set in the address, and `goblin ticket list` gains `--label`.
 - Triage keeps `needs-triage`, `ready-for-agent` and `wontfix` as Statuses and gains `needs-info` and `ready-for-human` as labels; `docs/agents/triage-labels.md` changes with it.
 - Until labels ship, wayfinder writes its type as a title prefix (`[research]`).
