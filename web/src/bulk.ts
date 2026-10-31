@@ -1,4 +1,4 @@
-import { TRANSITION_PAST, asksBeforeBlocked, hasDesign, lifecycle, type BulkAction, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
+import { TRANSITION_PAST, asksBeforeBlocked, hasIntent, lifecycle, type BulkAction, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
 import { rankedMoves } from './palette';
 
 /**
@@ -9,7 +9,7 @@ import { rankedMoves } from './palette';
  */
 
 /** What the board knows about a member: enough to judge a move, ask about blockers and name it. */
-export type Member = Pick<Ticket, 'id' | 'key' | 'status' | 'app_id' | 'simple' | 'design' | 'blocked_by'>;
+export type Member = Pick<Ticket, 'id' | 'key' | 'status' | 'app_id' | 'simple' | 'design' | 'description' | 'blocked_by'>;
 
 const PRESENT: Record<TransitionName, string> = {
   pick: 'Picking',
@@ -105,5 +105,5 @@ export function questionFor(action: BulkAction, members: readonly Member[]): Que
  */
 export const setSignature = (members: readonly Member[]): string => members.map((t) => t.id).join(',');
 
-/** …and what makes its answer stale without changing the set: a status or a blocker. A retitled Ticket changes neither. */
-export const eligibilitySignature = (members: readonly Member[]): string => members.map((t) => `${t.id}:${t.status}:${t.app_id}:${t.simple}:${hasDesign(t.design)}:${t.blocked_by.join('+')}`).join(',');
+/** …and what makes its answer stale without changing the set: a status, a blocker or the guard's reading. A retitled Ticket changes none. */
+export const eligibilitySignature = (members: readonly Member[]): string => members.map((t) => `${t.id}:${t.status}:${t.app_id}:${hasIntent(t)}:${t.blocked_by.join('+')}`).join(',');

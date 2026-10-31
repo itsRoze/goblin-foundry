@@ -74,7 +74,7 @@ backlog → todo → planning → ready → building → review → done
 
 This is the usual forward path; the lifecycle also supports shelving, cancellation, reopening, and closing completed work.
 
-Approval requires an app and a ticket design, unless the ticket is marked simple. **Blocked is a derived condition, not another status.** A ready ticket only appears in the frontier when its open blockers are gone. Dependency cycles are rejected.
+Approval requires an app and a description or a ticket design, unless the ticket is marked simple. **Blocked is a derived condition, not another status.** A ready ticket only appears in the frontier when its open blockers are gone. Dependency cycles are rejected.
 
 An agent can prepare a plan through the same CLI you use:
 

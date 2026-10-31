@@ -44,39 +44,15 @@ describe('the lifecycle on the wire, pinned', () => {
     expect(lines).toMatchSnapshot();
   });
 
-  test('a refused move answers 409 with the sentence and its owner: no arrow, not yours, not yet', async () => {
+  test('a refused move answers 409 with the sentence and its owner: no arrow, not yet', async () => {
     const review = await at('building').then((t) => post(`/api/tickets/${t.key}/submit`, undefined, 'agent').then((r) => r.json()));
     expect(review.status).toBe('review');
     const noArrow = await post(`/api/tickets/${review.key}/start`);
     expect([noArrow.status, await noArrow.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: 'a ticket in review does not go back to building' }]);
 
-    const todo = await at('todo');
-    const notYours = await post(`/api/tickets/${todo.key}/approve`, undefined, 'agent');
-    expect([notYours.status, await notYours.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: "approve is the human's move, not the agent's" }]);
-
     const bare = await post('/api/tickets', { title: 'nothing on it', status: 'todo' }).then((r) => r.json());
     const notYet = await post(`/api/tickets/${bare.key}/approve`);
-    expect([notYet.status, await notYet.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: 'approve needs an app and a ticket design' }]);
-  });
-
-  test("a batch refused for no arrow and then for authority is the human's 409", async () => {
-    const building = await at('building');
-    const todo = await at('todo');
-    const res = await post('/api/tickets/bulk', { tickets: [building.key, todo.key], action: { kind: 'transition', name: 'approve' } }, 'agent');
-    expect([res.status, await res.json()]).toEqual([
-      409,
-      {
-        type: 'about:blank',
-        title: 'Conflict',
-        status: 409,
-        owner: 'human',
-        hint: `nothing changed — ${building.key}: a ticket in building does not go back to ready · ${todo.key}: approve is the human's move, not the agent's`,
-        refusals: [
-          { key: building.key, reason: 'a ticket in building does not go back to ready' },
-          { key: todo.key, reason: "approve is the human's move, not the agent's" },
-        ],
-      },
-    ]);
+    expect([notYet.status, await notYet.json()]).toEqual([409, { type: 'about:blank', title: 'Conflict', status: 409, owner: 'human', hint: 'approve needs an app and a description or a ticket design' }]);
   });
 
   test("a batch refused for no arrow and then for the guard is the human's 409", async () => {
@@ -90,10 +66,10 @@ describe('the lifecycle on the wire, pinned', () => {
         title: 'Conflict',
         status: 409,
         owner: 'human',
-        hint: `nothing changed — ${building.key}: a ticket in building does not go back to ready · ${undesigned.key}: approve needs a ticket design`,
+        hint: `nothing changed — ${building.key}: a ticket in building does not go back to ready · ${undesigned.key}: approve needs a description or a ticket design`,
         refusals: [
           { key: building.key, reason: 'a ticket in building does not go back to ready' },
-          { key: undesigned.key, reason: 'approve needs a ticket design' },
+          { key: undesigned.key, reason: 'approve needs a description or a ticket design' },
         ],
       },
     ]);

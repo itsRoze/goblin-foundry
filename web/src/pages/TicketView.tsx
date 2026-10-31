@@ -684,7 +684,7 @@ function StateTile({
         </button>
       </div>
       <label className="gf-toggle">
-        <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — no ticket design needed
+        <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all
       </label>
       {refusal && (
         <p className="gf-refusal" role="alert" data-testid="state-refusal">

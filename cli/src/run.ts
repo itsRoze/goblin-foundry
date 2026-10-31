@@ -107,7 +107,7 @@ function fallback(noun: Noun, tokens: string[]): Command {
   throw new UsageError(written === undefined ? `goblin ${noun.name} needs a verb` : `${noun.name} has no verb '${written}'`, `try \`goblin ${noun.name} --help\``);
 }
 
-/** `--actor`, then `GF_ACTOR`, then the default — the flag wins, so a human can approve in a shell an agent set up. */
+/** `--actor`, then `GF_ACTOR`, then the default — the flag wins, so a human typing in a shell an agent set up is recorded as the human. */
 function resolveActor(written: Value | undefined): Actor {
   const parsed = ActorSchema.safeParse(written ?? DEFAULT_ACTOR);
   if (!parsed.success) throw new UsageError(`'${written}' is not an actor`, 'human or agent');

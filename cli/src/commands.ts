@@ -118,9 +118,9 @@ const ticketFields = (creating: boolean): Flag[] => [
   { name: 'description', kind: 'text', value: TEXT, summary: 'markdown' },
   // creation is design-less on purpose: writing a design is a second call (`design set`)
   ...(creating
-    ? [{ name: 'status', kind: 'string' as const, value: '<status>', summary: 'where it starts (human: backlog; agent: planning, and only planning)' }]
+    ? [{ name: 'status', kind: 'string' as const, value: '<status>', summary: 'where it starts (default backlog; never done or cancelled)' }]
     : [{ name: 'design', kind: 'text' as const, nullable: true, value: TEXT, summary: 'the ticket design; `null` clears it' }]),
-  { name: 'simple', kind: 'boolean', summary: 'straightforward enough to be ready with no design (--no-simple undoes it)' },
+  { name: 'simple', kind: 'boolean', summary: 'the title says it all: ready with no description or design (--no-simple undoes it)' },
   { name: 'app', kind: 'id', field: 'app_id', nullable: true, value: '<app|null>', summary: 'the app it belongs to; `null` detaches it' },
   { name: 'project', kind: 'id', field: 'project_id', nullable: true, value: '<project|null>', summary: 'the project it belongs to; its app follows' },
   // changing them afterwards is its own intent (`ticket label`), never a field edit

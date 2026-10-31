@@ -4,13 +4,10 @@ import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
-  ceilingRefusal,
-  defaultCreateStatus,
   guardHold,
   lifecycle,
   parseTicketKey,
   ticketKey,
-  type Actor,
   type GuardFields,
   type Ticket,
   type TicketDetail,
@@ -49,14 +46,12 @@ export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, 
 
 /**
  * Why this ticket may not be created at this status (ADR-0003), or `null` when
- * it may: an agent's reach ends at `planning`, the terminal statuses are
- * earned rather than declared, and a ticket born in the working end of the
- * lifecycle must already satisfy the approve guard. Every refusal is on
+ * it may: the terminal statuses are earned rather than declared, and a ticket
+ * born in the working end of the lifecycle must already satisfy the approve
+ * guard. Whoever asks, the answer is the same (ADR-0012). Every refusal is on
  * `status`, because the status is what the body asked for that it cannot have.
  */
-function creationRefusal(actor: Actor, status: TicketStatus, fields: GuardFields): Issue | null {
-  const ceiling = ceilingRefusal(actor, status);
-  if (ceiling) return { path: ['status'], message: ceiling };
+function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | null {
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
   const lacks = lifecycle.missingAt(status, fields);
@@ -117,12 +112,12 @@ export function ticketsRoutes(db: Db) {
     const fields = {
       title: body.data.title,
       description: body.data.description ?? '',
-      status: body.data.status ?? defaultCreateStatus(actor),
+      status: body.data.status ?? 'backlog',
       simple: body.data.simple ?? false,
       design: null,
       ...placement,
     };
-    const refused = creationRefusal(actor, fields.status, fields);
+    const refused = creationRefusal(fields.status, fields);
     if (refused) return unprocessable(c, [refused]);
     const labels = judgeLabels(body.data.labels ?? []);
     if (!labels.ok) return unprocessable(c, [labels.issue]);
@@ -164,7 +159,7 @@ export function ticketsRoutes(db: Db) {
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
     const { title, description, design, simple } = body.data;
-    const next = { ...row, ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
+    const next = { ...row, ...(description === undefined ? {} : { description }), ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
     const broken = wouldBreakGuard(row, next, body.data);
     if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });

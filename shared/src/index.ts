@@ -84,9 +84,7 @@ export {
   CREATABLE_STATUSES,
   isCreatable,
   approveGuard,
-  AGENT_CEILING,
-  defaultCreateStatus,
-  ceilingRefusal,
+  hasIntent,
   guardHold,
 } from './transitions';
 export {

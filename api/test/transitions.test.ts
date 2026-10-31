@@ -83,19 +83,26 @@ describe('POST /api/tickets/:key/:name', () => {
     expect((await restored.json()).trashed_at).toBe(null);
   });
 
-  test('the approve guard names an app, a design, or both', async () => {
+  test('the approve guard names an app, intent, or both', async () => {
     const orphan = await post('/api/tickets', { title: 'no home', status: 'todo' }).then((r) => r.json());
-    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs an app and a ticket design');
+    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs an app and a description or a ticket design');
 
     const app = await post('/api/apps', { name: 'Reader' }).then((r) => r.json());
     await patch(`/api/tickets/${orphan.key}`, { app_id: app.id });
-    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs a ticket design');
+    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs a description or a ticket design');
 
-    await patch(`/api/tickets/${orphan.key}`, { design: '   \n  ' });
-    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs a ticket design');
+    await patch(`/api/tickets/${orphan.key}`, { design: '   \n  ', description: ' \t ' });
+    expect((await (await post(`/api/tickets/${orphan.key}/approve`)).json()).hint).toBe('approve needs a description or a ticket design');
 
     await patch(`/api/tickets/${orphan.key}`, { design: '# plan' });
     expect((await post(`/api/tickets/${orphan.key}/approve`)).status).toBe(200);
+  });
+
+  test('a description is intent enough: an app and a description approve with no design and no simple flag', async () => {
+    const app = await post('/api/apps', { name: 'Reader' }).then((r) => r.json());
+    const t = await post('/api/tickets', { title: 'described', description: 'what to build', status: 'planning', app_id: app.id }).then((r) => r.json());
+    const res = await post(`/api/tickets/${t.key}/approve`);
+    expect([res.status, (await res.json()).status]).toEqual([200, 'ready']);
   });
 
   test('simple bypasses the design but never the app', async () => {
@@ -134,13 +141,16 @@ describe('POST /api/tickets/:key/:name', () => {
   });
 
   // who may move a ticket at all is `actor.test.ts`; this is only about where the answer is read from
-  test('the actor comes from the header, not the body — and in S1 the header decides whether the move happens', async () => {
+  test('the actor comes from the header, not the body — and it is only a record', async () => {
     const t = await at('backlog');
     const asAgent = await req(`/api/tickets/${t.key}/pick`, { method: 'POST', headers: { 'x-goblin-actor': 'agent' } });
-    expect(asAgent.status).toBe(409);
-    const claiming = await post(`/api/tickets/${t.key}/pick`, { actor: 'agent' });
+    expect(asAgent.status).toBe(200);
+    const claiming = await post(`/api/tickets/${t.key}/shelve`, { actor: 'agent' });
     expect(claiming.status).toBe(200);
-    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'human' });
+    expect((await events(t.key)).slice(0, 2)).toMatchObject([
+      { kind: 'transitioned', actor: 'human', new: { transition: 'shelve' } },
+      { kind: 'transitioned', actor: 'agent', new: { transition: 'pick' } },
+    ]);
   });
 
   test('the whole matrix: every (status, name) pair off the table is a 409', async () => {
@@ -226,11 +236,14 @@ describe('the approve guard at creation and on edit', () => {
     for (const status of ['ready', 'building', 'review'] as const) {
       const orphan = await post('/api/tickets', { title: 'born there', status });
       expect(orphan.status).toBe(422);
-      expect((await orphan.json()).issues).toEqual([{ path: ['status'], message: `a ticket in ${status} needs an app and a ticket design` }]);
+      expect((await orphan.json()).issues).toEqual([{ path: ['status'], message: `a ticket in ${status} needs an app and a description or a ticket design` }]);
 
-      // a design cannot be given at creation, so only a simple ticket may be born past `planning`
-      const withApp = await post('/api/tickets', { title: 'born there', status, app_id: app.id });
-      expect((await withApp.json()).issues).toEqual([{ path: ['status'], message: `a ticket in ${status} needs a ticket design` }]);
+      // a design cannot be given at creation, so a ticket born past `planning` carries a description or is simple
+      const withApp = await post('/api/tickets', { title: 'born there', status, app_id: app.id, description: '  \n ' });
+      expect((await withApp.json()).issues).toEqual([{ path: ['status'], message: `a ticket in ${status} needs a description or a ticket design` }]);
+
+      const described = await post('/api/tickets', { title: 'born there', status, app_id: app.id, description: 'what to build' });
+      expect([described.status, (await described.json()).status]).toEqual([201, status]);
 
       const simple = await post('/api/tickets', { title: 'born there', status, app_id: app.id, simple: true });
       expect(simple.status).toBe(201);
@@ -260,7 +273,7 @@ describe('the approve guard at creation and on edit', () => {
     const t = await post('/api/tickets', { title: 'quick fix', status: 'building', app_id: app.id, simple: true }).then((r) => r.json());
     const res = await patch(`/api/tickets/${t.key}`, { simple: false });
     expect(res.status).toBe(422);
-    expect((await res.json()).issues).toEqual([{ path: ['simple'], message: 'a ticket in building needs a ticket design — unapprove it first' }]);
+    expect((await res.json()).issues).toEqual([{ path: ['simple'], message: 'a ticket in building needs a description or a ticket design — unapprove it first' }]);
   });
 
   test('un-flagging simple is fine in the same breath as giving the ticket a design', async () => {
@@ -270,7 +283,25 @@ describe('the approve guard at creation and on edit', () => {
     // and once it is the design that holds the ticket up, taking the design away is what the guard refuses
     const gone = await patch(`/api/tickets/${t.key}`, { design: null });
     expect(gone.status).toBe(422);
-    expect((await gone.json()).issues).toEqual([{ path: ['design'], message: 'a ticket in ready needs a ticket design — unapprove it first' }]);
+    expect((await gone.json()).issues).toEqual([{ path: ['design'], message: 'a ticket in ready needs a description or a ticket design — unapprove it first' }]);
+  });
+
+  test('clearing the description of a designless ticket at `ready` is refused, and blamed on `description`', async () => {
+    const app = await newApp();
+    const t = await post('/api/tickets', { title: 'described', description: 'what to build', status: 'ready', app_id: app.id }).then((r) => r.json());
+    const res = await patch(`/api/tickets/${t.key}`, { description: '   ' });
+    expect(res.status).toBe(422);
+    expect((await res.json()).issues).toEqual([{ path: ['description'], message: 'a ticket in ready needs a description or a ticket design — unapprove it first' }]);
+    expect((await req(`/api/tickets/${t.key}`).then((r) => r.json())).description).toBe('what to build');
+  });
+
+  test('clearing the description is fine while a design holds the ticket up, and clearing both names the design', async () => {
+    const app = await newApp();
+    const t = await post('/api/tickets', { title: 'described', description: 'what to build', status: 'ready', app_id: app.id }).then((r) => r.json());
+    await patch(`/api/tickets/${t.key}`, { design: '# the plan' });
+    const both = await patch(`/api/tickets/${t.key}`, { design: null, description: '' });
+    expect((await both.json()).issues).toEqual([{ path: ['design'], message: 'a ticket in ready needs a description or a ticket design — unapprove it first' }]);
+    expect((await patch(`/api/tickets/${t.key}`, { description: '' })).status).toBe(200);
   });
 
   test('a simple ticket may clear a design it never needed', async () => {
