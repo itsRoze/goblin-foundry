@@ -52,4 +52,4 @@ bun .claude/skills/ui-closeout/serve.ts stop
 
 Then `mattpocock-skills:code-review` and the commit, as `/implement` says. In the commit message or PR body, one short block per target: the critique's score and P0/P1 count, what polish changed, what was left and where it was written down.
 
-Done when `ls .impeccable/critique/*__<slug>.md` lists a file per target (the slug comes from `critique-storage.mjs slug <file>` in impeccable's scripts folder; a `closed: true` line in the file means polish cleared its backlog), every P0 and P1 is fixed or written down, the four commands above are green, and `bun .claude/skills/ui-closeout/serve.ts status` prints `nothing running`.
+Done when `ls .impeccable/critique/*__<slug>.md` lists a file per target (the slug comes from `critique-storage.mjs slug <file>` in impeccable's scripts folder; a `closed: true` line in the file means polish cleared its backlog), every P0 and P1 is fixed or written down (the snapshots are gitignored and stay local; the PR body carries their scores), the four commands above are green, and `bun .claude/skills/ui-closeout/serve.ts status` prints `nothing running`.
