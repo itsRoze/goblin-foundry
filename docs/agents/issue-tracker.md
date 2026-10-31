@@ -54,7 +54,27 @@ Each one moves tickets differently. Find the one you are in.
   `todo`, add it, then `approve`.
 - **implement-spec** works the ready frontier: for each ticket, `start` it
   (`ready → building`), build it, open the PR, then follow "When you open a PR
-  for a ticket".
+  for a ticket". Its implementers each work in a worktree; see below.
+
+#### An implementer in a worktree
+
+Hand each implementer a pointer to this section. In its worktree it:
+
+1. Resets onto the integration branch before anything else
+   (`git reset --hard <integration-branch>`). The Agent tool's worktree can
+   start on another commit, such as `main`.
+2. Runs `bun install`. A fresh worktree has no `node_modules`.
+3. Leaves the live tracker alone except for reads. Tests get their own database
+   from the API harness, and no test data goes into `127.0.0.1:4747`.
+4. Runs Playwright with its own `GF_E2E_PORT`, since the suites of other
+   worktrees may be running at the same time.
+5. Edits every doc the spec names, `AGENTS.md` included. The spec is the
+   operator's authorisation.
+
+Run `ui-closeout` once, on the integration branch after the last merge, not
+per ticket. The integration branch is checked out in the main checkout, which
+the service runs from, so a merge there changes nothing live until
+`goblin service restart`.
 
 ### No spec: poteto mode
 
