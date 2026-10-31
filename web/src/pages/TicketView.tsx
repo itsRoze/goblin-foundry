@@ -24,6 +24,7 @@ import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
+import { LabelsField } from '../labels';
 import { useBranchCopy } from '../branch-copy';
 
 export function TicketView() {
@@ -253,6 +254,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                   ))}
               </select>,
             ],
+            ['labels', <LabelsField ticket={ticket} />],
             ['created', <Since iso={ticket.created_at} at={at} />],
             ['updated', <Since iso={ticket.updated_at} at={at} />],
           ]}
