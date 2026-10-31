@@ -1,0 +1,4 @@
+#!/bin/sh
+# A merge that changes bun.lock (a new workspace, a new dependency) leaves node_modules
+# stale, and the next `bun test` fails on imports it cannot resolve. Reinstall first.
+git diff --quiet ORIG_HEAD HEAD -- bun.lock || bun install
