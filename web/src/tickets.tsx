@@ -76,6 +76,15 @@ export interface CardSelect {
   locked: boolean;
 }
 
+/** ◇ before a blocked title, on a card and a row alike, with its blockers in the title and a hidden word for a screen reader (DESIGN.md Row). */
+function BlockedMark({ ticket, testId }: { ticket: Pick<Ticket, 'blocked_by'>; testId?: string }) {
+  return (
+    <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={testId}>
+      ◇<span className="gf-sr"> blocked </span>
+    </span>
+  );
+}
+
 /**
  * The kanban card: key + status note, title, then whatever the view options
  * ask for (DESIGN.md Components). The card is a link and the whole of it is
@@ -87,7 +96,7 @@ export function TicketCard({
   ticket,
   cursor,
   meta,
-  labels,
+  showLabels,
   updated,
   at,
   menu,
@@ -100,7 +109,7 @@ export function TicketCard({
   cursor: boolean;
   meta: string | null;
   /** Whether the card shows its Labels — a View option, so a dense board can do without them. */
-  labels: boolean;
+  showLabels: boolean;
   updated: string | null;
   at: number;
   menu: CardActions;
@@ -162,11 +171,7 @@ export function TicketCard({
           <i>{ticket.status}</i>
         </span>
         <span className="gf-card-title">
-          {blocked && (
-            <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
-              ◇<span className="gf-sr"> blocked </span>
-            </span>
-          )}
+          {blocked && <BlockedMark ticket={ticket} testId={`blocked-${ticket.key}`} />}
           {ticket.title}
         </span>
         {meta !== null && <span className="gf-card-meta">{meta}</span>}
@@ -176,7 +181,7 @@ export function TicketCard({
           </span>
         )}
         {/* plain names, never a colour (ADR-0013): the Label chip's clothes, without the Ticket view's `×`, under both meta lines so they stay together */}
-        {labels && ticket.labels.length > 0 && (
+        {showLabels && ticket.labels.length > 0 && (
           <>
             {/* the card is one link, read as one sentence: the word says these names are labels, not more of the title */}
             <span className="gf-sr">labels </span>
@@ -525,11 +530,7 @@ export function TicketRows({ tickets, tile = 'tickets' }: { tickets: Ticket[] | 
         >
           <span className="gf-row-title">
             <span className="gf-key">{t.key}</span>{' '}
-            {isBlocked(t) && (
-              <span className="gf-blocked-mark" title={`blocked by ${t.blocked_by.join(', ')}`}>
-                ◇<span className="gf-sr"> blocked </span>
-              </span>
-            )}
+            {isBlocked(t) && <BlockedMark ticket={t} />}
             <span className="gf-row-name">{t.title}</span>
           </span>
           <span className="gf-row-trail">

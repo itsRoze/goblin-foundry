@@ -30,6 +30,7 @@ const Projects = z.array(ProjectSchema);
 const Events = z.array(EventSchema);
 const Tickets = z.array(TicketSchema);
 const Trash = z.object({ apps: Apps, projects: Projects, tickets: Tickets });
+const LabelNames = z.array(z.string());
 
 /** Everything recoverable; `kind` is what the restore intent addresses. */
 export type TrashKind = 'app' | 'project' | 'ticket';
@@ -121,6 +122,9 @@ export const useEvents = (kind: EntityKind, id: number) =>
   useQuery({ queryKey: ['events', kind, id], queryFn: () => api.get(`/api/${kind}s/${id}/events`, Events) });
 
 export const useTrash = () => useQuery({ queryKey: ['trash'], queryFn: () => api.get('/api/trash', Trash) });
+
+/** The label names a live Ticket carries, sorted (ADR-0013); every write refreshes it, as it does everything. */
+export const useLabelNames = () => useQuery({ queryKey: ['labels'], queryFn: () => api.get('/api/labels', LabelNames) });
 
 /** Every write invalidates everything; the data set is tiny and the API is local (ADR-0004: plain fetch + a query cache). */
 function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>) {

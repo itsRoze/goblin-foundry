@@ -25,7 +25,7 @@ const IN_LIST_MAX = 100;
 type Verdict =
   | { kind: 'change'; set: Partial<TicketRow>; event: Pick<EventInput, 'kind' | 'prior' | 'new'> }
   | { kind: 'unchanged' }
-  | { kind: 'refused'; reason: string; owner?: string };
+  | { kind: 'refused'; reason: string; owner?: Actor };
 
 /** What a named move target asks of a Ticket, in the body shape a single edit would send (ADR-0007). */
 function moveBody(to: BulkMoveTarget): { app_id?: number | null; project_id?: number | null } {
@@ -130,7 +130,7 @@ export function bulkRoute(r: Hono<ActorEnv>, { db, prefix, toWire }: BulkDeps) {
     if (Array.isArray(moving)) return unprocessable(c, moving.map((issue) => ({ path: ['action', 'to'], message: issue.message })));
 
     const refusals: BulkRefusal[] = [];
-    let owner: string | undefined;
+    let owner: Actor | undefined;
     const writes: AtomicWrite[] = [...(moving?.pins ?? [])];
     /** Which member a statement is about, so a write that fails can still name its Ticket. */
     const memberOf = new Map<string, string>();

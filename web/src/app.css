@@ -669,9 +669,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder,
 .gf-field input::placeholder, .gf-field textarea::placeholder, .gf-picker input::placeholder, .gf-label-input::placeholder { color: var(--gf-mute); }
 
-/* the third and fourth chips' popovers would hang off the tile at phone width, so they hang from their right edge instead */
 @media (max-width: 899px) {
-  .gf-filter-slot:nth-of-type(n+3) .gf-pop { left: auto; right: 0; }
   .gf-filter-clear { order: -1; }
 }
 

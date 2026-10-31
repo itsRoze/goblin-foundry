@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
@@ -18,14 +18,14 @@ import type { ActorEnv } from './actor';
 import { bulkRoute } from './bulk';
 import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
-import { atomically, type Db } from './db';
+import { AtomicWriteError, atomically, type Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { diff, eventWrite, listEvents, now, recordEvent } from './events';
+import { diff, listEvents, now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
-import { conflict, notFound, unprocessable, type Issue } from './problems';
-import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
+import { conflict, failed, notFound, unprocessable, type Issue } from './problems';
+import { app as appTable, event, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 import { transitionRoute } from './transitions';
 
@@ -99,7 +99,7 @@ export function ticketsRoutes(db: Db) {
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);
     const labels = await labelsByTicket(db);
-    return c.json(rows.map((row) => toTicket(row, p, labels.get(row.id) ?? [], blockers.get(row.id) ?? [])));
+    return c.json(rows.map((row) => toTicket(row, p, labels(row.id), blockers.get(row.id) ?? [])));
   });
 
   r.post('/', async (c) => {
@@ -121,15 +121,25 @@ export function ticketsRoutes(db: Db) {
     if (refused) return unprocessable(c, [refused]);
     const labels = judgeLabels(body.data.labels ?? []);
     if (!labels.ok) return unprocessable(c, [labels.issue]);
-    const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
-    if (!row) throw new Error('insert returned no row');
-    // the labels and the history that records them land together; a ticket with no labels is a fine thing to be left with
-    await atomically(db, [
-      ...labelInserts(db, row.id, labels.labels),
-      await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }),
-    ]);
+    // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
+    // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
+    const born = sql<number>`(SELECT max(id) FROM ticket)`;
+    let written: unknown[];
+    try {
+      written = await atomically(db, [
+        { what: 'ticket', statement: db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
+        ...labelInserts(db, born, labels.labels),
+        {
+          what: 'created event',
+          statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
+        },
+      ]);
+    } catch (error) {
+      if (!(error instanceof AtomicWriteError)) throw error;
+      return failed(c, `nothing changed — the ticket was not created (${error.message})`);
+    }
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
-    return c.json(toTicket(row, await prefix(), labels.labels), 201);
+    return c.json(toTicket(written[0] as TicketRow, await prefix(), labels.labels), 201);
   });
 
   bulkRoute(r, {
@@ -140,7 +150,7 @@ export function ticketsRoutes(db: Db) {
       const blockers = await openBlockers(db, p);
       const labels = await labelsByTicket(db);
       // a Ticket in the trash is nobody's blocked work (`toTicket`)
-      return rows.map((row) => toTicket(row, p, labels.get(row.id) ?? [], row.trashed_at === null ? (blockers.get(row.id) ?? []) : []));
+      return rows.map((row) => toTicket(row, p, labels(row.id), row.trashed_at === null ? (blockers.get(row.id) ?? []) : []));
     },
   });
 

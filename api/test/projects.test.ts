@@ -110,7 +110,7 @@ describe('/api/projects', () => {
     expect((await req('/api/projects?archived=1').then((r) => r.json())).map((x: { id: number }) => x.id)).toEqual([p.id]);
     const again = await req(`/api/projects/${p.id}/archive`, json('POST'));
     expect(again.status).toBe(409);
-    expect(await again.json()).toMatchObject({ owner: 'human', hint: expect.stringContaining('already archived') });
+    expect(await again.json()).toMatchObject({ hint: expect.stringContaining('already archived') });
     expect((await req(`/api/projects/${p.id}/unarchive`, json('POST'))).status).toBe(200);
   });
 

@@ -231,7 +231,7 @@ export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, 
     const { ticket_prefix } = await readSettings(db);
     const blockers = await openBlockers(db, ticket_prefix);
     const labels = await labelsByTicket(db);
-    return c.json(rows.filter((row) => (blockers.get(row.id) ?? []).length === 0).map((row) => toWire(row, ticket_prefix, labels.get(row.id) ?? [])));
+    return c.json(rows.filter((row) => (blockers.get(row.id) ?? []).length === 0).map((row) => toWire(row, ticket_prefix, labels(row.id))));
   });
   return r;
 }

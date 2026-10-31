@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_BOARD_STATUSES,
   TICKET_STATUSES,
@@ -10,7 +10,7 @@ import {
   type TicketStatus,
 } from '@goblin/shared';
 import { useKey } from './keys';
-import { useApps, useProjects, useTicketList } from './queries';
+import { useApps, useLabelNames, useProjects } from './queries';
 import { projectFitsApp, useNames } from './tickets';
 import { Hint, Kbd, useCloseOnOutside } from './ui';
 
@@ -155,10 +155,32 @@ function ChipButton({
   );
 }
 
-/** The popover itself: anchored beneath its chip, closed by `esc` or by a press outside its slot. */
+/**
+ * The popover itself: anchored beneath its chip, closed by `esc` or by a press
+ * outside its slot. It starts at the chip's left edge and slides left only as
+ * far as it must to stay inside the bar. Where a chip sits depends on how the
+ * bar wrapped, so that is measured, never assumed — and measured again as the
+ * rows arrive, since the label names come from a read.
+ */
 function Popover({ children, testId }: { children: React.ReactNode; testId: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const pop = ref.current;
+    const slot = pop?.parentElement;
+    const bar = pop?.closest('.gf-filters');
+    if (!pop || !slot || !bar) return;
+    const place = () => {
+      const [at, within] = [slot.getBoundingClientRect(), bar.getBoundingClientRect()];
+      setShift(Math.max(within.left, Math.min(at.left, within.right - pop.offsetWidth)) - at.left);
+    };
+    place();
+    const watch = new ResizeObserver(place);
+    watch.observe(pop);
+    return () => watch.disconnect();
+  }, []);
   return (
-    <div className="gf-pop" data-testid={testId}>
+    <div ref={ref} className="gf-pop" style={{ left: shift }} data-testid={testId}>
       {children}
     </div>
   );
@@ -332,7 +354,7 @@ function SearchRows({
 }
 
 /** `status: ready, building`, or the count once there are more names than a chip can hold. */
-function setLabel(names: readonly string[]): string {
+function setSummary(names: readonly string[]): string {
   return names.length >= 3 ? String(names.length) : names.join(', ');
 }
 
@@ -366,7 +388,7 @@ function StatusChipButton({
     <span className="gf-filter-slot" ref={slot}>
       <ChipButton
         label="status"
-        value={filter.status === undefined ? null : setLabel(filter.status)}
+        value={filter.status === undefined ? null : setSummary(filter.status)}
         bad={bad}
         // the count form is short by design; the whole set is a hover away, so a bookmark stays readable
         title={chosen.join(', ')}
@@ -488,7 +510,7 @@ function LabelChipButton({
     <span className="gf-filter-slot" ref={slot}>
       <ChipButton
         label="label"
-        value={filter.label === undefined ? null : setLabel(filter.label)}
+        value={filter.label === undefined ? null : setSummary(filter.label)}
         bad={bad}
         title={chosen.length > 0 ? chosen.join(', ') : undefined}
         open={open}
@@ -497,7 +519,7 @@ function LabelChipButton({
       />
       {open && (
         <Popover testId="pop-label">
-          <LabelChecks filter={filter} chosen={chosen} onToggle={toggle} onClose={onClose} />
+          <LabelChecks chosen={chosen} onToggle={toggle} onClose={onClose} />
         </Popover>
       )}
     </span>
@@ -505,16 +527,14 @@ function LabelChipButton({
 }
 
 /**
- * The names in use on the board's scope: every label carried by a ticket the
- * rest of the Filter lets on, so a second name widens the board rather than
- * being offered only where it overlaps the first. With no `label` set this is
- * the board's own read, already in the cache. A name already chosen is always
- * a row, so one nobody carries can still be let go.
+ * The names in use: every label a live ticket carries, whatever the rest of
+ * the Filter says, so the popover is the vocabulary rather than this board's
+ * corner of it. A name already chosen is always a row, so one nobody carries
+ * any more can still be let go.
  */
-function LabelChecks({ filter, chosen, onToggle, onClose }: { filter: TicketFilter; chosen: readonly string[]; onToggle: (name: string) => void; onClose: () => void }) {
-  const { label: _, ...scope } = filter;
-  const tickets = useTicketList(serialiseTicketFilter({ ...scope, status: [...(filter.status ?? DEFAULT_BOARD_STATUSES)] }));
-  const names = useMemo(() => canonicalLabels([...chosen, ...(tickets.data ?? []).flatMap((t) => t.labels)]), [chosen, tickets.data]);
+function LabelChecks({ chosen, onToggle, onClose }: { chosen: readonly string[]; onToggle: (name: string) => void; onClose: () => void }) {
+  const inUse = useLabelNames();
+  const names = useMemo(() => canonicalLabels([...chosen, ...(inUse.data ?? [])]), [chosen, inUse.data]);
   return (
     <CheckRows
       label="label"
@@ -523,7 +543,7 @@ function LabelChecks({ filter, chosen, onToggle, onClose }: { filter: TicketFilt
       onToggle={onToggle}
       onClose={onClose}
       testId={(name) => `check-label-${name}`}
-      empty={tickets.data === undefined ? 'reading labels…' : 'no labels in use'}
+      empty={inUse.data === undefined ? 'reading labels…' : 'no labels in use'}
     />
   );
 }

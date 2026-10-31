@@ -21,7 +21,7 @@ export function trashRoutes(db: Db) {
     return c.json({
       apps: apps.map(toApp),
       projects: projects.map(toProject),
-      tickets: tickets.map((t) => toTicket(t, ticket_prefix, labels.get(t.id) ?? [])),
+      tickets: tickets.map((t) => toTicket(t, ticket_prefix, labels(t.id))),
     });
   });
   return r;
