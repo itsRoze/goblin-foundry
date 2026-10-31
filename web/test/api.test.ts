@@ -43,7 +43,7 @@ describe('ProblemError.sentence', () => {
   });
 
   test("a 409 falls back to its hint, which is the GUI's sentence for a refused intent", () => {
-    expect(new ProblemError(409, { hint: "approve is the human's move" }).sentence).toBe("approve is the human's move");
+    expect(new ProblemError(409, { hint: 'a ticket in review does not go back to building' }).sentence).toBe('a ticket in review does not go back to building');
   });
 });
 

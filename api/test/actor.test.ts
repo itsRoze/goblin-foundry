@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { TICKET_STATUSES, lifecycle } from '@goblin/shared';
+import { lifecycle, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -11,12 +11,11 @@ const json = (method: string, body?: unknown, actor?: string) => ({
 });
 
 /**
- * GLOSSARY.md "Actor": the hands, never the authority. An agent creates only in
- * `planning`, and the one transition it owns is `submit`, so the ready
- * frontier is only ever reached by a human's hand. Both halves refuse; neither
- * corrects.
+ * GLOSSARY.md "Actor": a record, never a permission (ADR-0012). Either Actor
+ * creates anywhere the lifecycle allows and makes every move; history says
+ * whose hands made each one.
  */
-describe("an agent plans and submits, and approves nothing", () => {
+describe('either Actor makes every move, and history records which', () => {
   let h: Harness;
   const req = (path: string, init?: RequestInit) => Promise.resolve(h.app.request(path, init));
   const post = (path: string, body?: unknown, actor?: string) => req(path, json('POST', body, actor));
@@ -25,104 +24,92 @@ describe("an agent plans and submits, and approves nothing", () => {
   beforeEach(async () => (h = await makeTestApp()));
   afterEach(() => h.close());
 
-  const newApp = () => post('/api/apps', { name: 'Reader' }).then((r) => r.json());
+  const newApp = () => post('/api/apps', { name: `app-${Math.random()}` }).then((r) => r.json());
 
-  test('an agent creating a ticket with no status lands it in planning, recorded as the agent', async () => {
-    const res = await post('/api/tickets', { title: 'planned by the planner' }, 'agent');
-    expect(res.status).toBe(201);
-    const created = await res.json();
-    expect(created.status).toBe('planning');
-    expect((await events(created.key))[0]).toMatchObject({ kind: 'created', actor: 'agent', new: { status: 'planning' } });
-  });
+  /** The terminal statuses are earned, so the agent walks there from one it may create in. */
+  const EARNED: Partial<Record<TicketStatus, [TicketStatus, TransitionName]>> = { done: ['review', 'ship'], cancelled: ['backlog', 'cancel'] };
 
-  test('an agent asking for any other status is refused on `status`, and nothing is created', async () => {
-    const res = await post('/api/tickets', { title: 'straight to the board', status: 'backlog' }, 'agent');
-    expect(res.status).toBe(422);
-    expect(res.headers.get('content-type')).toContain('application/problem+json');
-    expect((await res.json()).issues).toEqual([{ path: ['status'], message: 'an agent creates a ticket in planning, never backlog' }]);
-    expect(await req('/api/tickets').then((r) => r.json())).toEqual([]);
-  });
-
-  test('an agent may say `planning` out loud', async () => {
-    const res = await post('/api/tickets', { title: 'planned by the planner', status: 'planning' }, 'agent');
-    expect(res.status).toBe(201);
-    expect((await res.json()).status).toBe('planning');
-  });
-
-  test('a human still creates anywhere the guard allows, defaulting to backlog', async () => {
-    expect((await post('/api/tickets', { title: 'an idea' }).then((r) => r.json())).status).toBe('backlog');
+  /** A ticket the agent put in `status`, simple and housed so the approve guard never speaks. */
+  const agentAt = async (status: TicketStatus) => {
     const app = await newApp();
-    const ready = await post('/api/tickets', { title: 'a simple one', status: 'ready', simple: true, app_id: app.id });
-    expect((await ready.json()).status).toBe('ready');
-  });
+    const [born, move] = EARNED[status] ?? [status];
+    const t = await post('/api/tickets', { title: `a ticket for ${status}`, status: born, app_id: app.id, simple: true }, 'agent').then((r) => r.json());
+    return move ? post(`/api/tickets/${t.key}/${move}`, undefined, 'agent').then((r) => r.json()) : t;
+  };
 
-  test('approving what an agent planned is a human act: the agent is refused with the owner and a hint', async () => {
-    const app = await newApp();
-    const t = await post('/api/tickets', { title: 'planned by the planner', app_id: app.id }, 'agent').then((r) => r.json());
-    await req(`/api/tickets/${t.key}`, json('PATCH', { design: '# the plan' }, 'agent'));
-
-    const refused = await post(`/api/tickets/${t.key}/approve`, undefined, 'agent');
-    expect(refused.status).toBe(409);
-    expect(refused.headers.get('content-type')).toContain('application/problem+json');
-    expect(await refused.json()).toMatchObject({ owner: 'human', hint: "approve is the human's move, not the agent's" });
-    expect((await req(`/api/tickets/${t.key}`).then((r) => r.json())).status).toBe('planning');
-    expect((await events(t.key)).some((e: { kind: string }) => e.kind === 'transitioned')).toBe(false);
-
-    const approved = await post(`/api/tickets/${t.key}/approve`);
-    expect(approved.status).toBe(200);
-    expect((await approved.json()).status).toBe('ready');
-    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'human', new: { status: 'ready', transition: 'approve' } });
-  });
-
-  test('it is the whole table, not just approve: every edge out of backlog is refused to an agent', async () => {
-    for (const edge of lifecycle.from('backlog')) {
-      // created by a human, because an agent's own ticket is never in backlog
-      const t = await post('/api/tickets', { title: `an agent tries ${edge.name}` }).then((r) => r.json());
-      const res = await post(`/api/tickets/${t.key}/${edge.name}`, undefined, 'agent');
-      expect([edge.name, res.status]).toEqual([edge.name, 409]);
-      expect([edge.name, (await res.json()).hint]).toEqual([edge.name, `${edge.name} is the human's move, not the agent's`]);
-      expect([edge.name, (await req(`/api/tickets/${t.key}`).then((r) => r.json())).status]).toEqual([edge.name, 'backlog']);
+  test('a create with no status lands in backlog, whoever makes it, and records who did', async () => {
+    for (const actor of ['human', 'agent']) {
+      const res = await post('/api/tickets', { title: `an idea of the ${actor}'s` }, actor);
+      expect([actor, res.status]).toEqual([actor, 201]);
+      const created = await res.json();
+      expect([actor, created.status]).toEqual([actor, 'backlog']);
+      expect((await events(created.key))[0]).toMatchObject({ kind: 'created', actor, new: { status: 'backlog' } });
     }
   });
 
-  test("the agent that built it submits it: building → review is the agent's move, and still the human's", async () => {
+  test('an agent creates in every creatable status, the guard permitting', async () => {
     const app = await newApp();
-    const building = () => post('/api/tickets', { title: 'built by the agent', status: 'building', simple: true, app_id: app.id }).then((r) => r.json());
-
-    const t = await building();
-    const submitted = await post(`/api/tickets/${t.key}/submit`, undefined, 'agent');
-    expect(submitted.status).toBe(200);
-    expect((await submitted.json()).status).toBe('review');
-    expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'agent', new: { status: 'review', transition: 'submit' } });
-    expect((await post(`/api/tickets/${t.key}/ship`, undefined, 'agent').then((r) => r.json())).hint).toBe("ship is the human's move, not the agent's");
-
-    const byHand = await building();
-    expect((await post(`/api/tickets/${byHand.key}/submit`).then((r) => r.json())).status).toBe('review');
+    for (const status of ['backlog', 'todo', 'planning', 'ready', 'building', 'review'] as const) {
+      const res = await post('/api/tickets', { title: `born in ${status}`, status, app_id: app.id, simple: true }, 'agent');
+      expect([status, res.status]).toEqual([status, 201]);
+      expect([status, (await res.json()).status]).toEqual([status, status]);
+    }
   });
 
-  test('a verb with no edge from here is the same structural refusal for anyone — an owner lives on an edge, and there is none', async () => {
-    const t = await post('/api/tickets', { title: 'planned by the planner' }, 'agent').then((r) => r.json());
+  test('the guard still holds an agent at ready, as it holds a human', async () => {
+    for (const actor of ['human', 'agent']) {
+      const res = await post('/api/tickets', { title: 'no app, no design', status: 'ready' }, actor);
+      expect([actor, res.status]).toEqual([actor, 422]);
+      expect([actor, (await res.json()).issues]).toEqual([actor, [{ path: ['status'], message: 'a ticket in ready needs an app and a ticket design' }]]);
+    }
+  });
+
+  test('done and cancelled stay earned, for either Actor', async () => {
+    const app = await newApp();
+    for (const actor of ['human', 'agent'])
+      for (const status of ['done', 'cancelled']) {
+        const res = await post('/api/tickets', { title: 'nope', status, app_id: app.id, simple: true }, actor);
+        expect([actor, status, res.status]).toEqual([actor, status, 422]);
+        expect([actor, status, (await res.json()).issues]).toEqual([actor, status, [{ path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` }]]);
+      }
+  });
+
+  test('an agent makes every transition in the table, and each event records the agent and the name', async () => {
+    for (const { from, name, to } of lifecycle.edges) {
+      const t = await agentAt(from);
+      expect([from, name, t.status]).toEqual([from, name, from]);
+      const res = await post(`/api/tickets/${t.key}/${name}`, undefined, 'agent');
+      expect([from, name, res.status]).toEqual([from, name, 200]);
+      expect([from, name, (await res.json()).status]).toEqual([from, name, to]);
+      expect((await events(t.key))[0]).toMatchObject({ kind: 'transitioned', actor: 'agent', prior: { status: from }, new: { status: to, transition: name } });
+    }
+  });
+
+  test('a human makes the same moves, recorded as the human', async () => {
+    const t = await agentAt('planning');
+    for (const name of ['approve', 'start', 'submit', 'ship'] as const) expect([name, (await post(`/api/tickets/${t.key}/${name}`)).status]).toEqual([name, 200]);
+    const history = (await events(t.key)).filter((e: { kind: string }) => e.kind === 'transitioned');
+    expect(history.map((e: { actor: string; new: { transition: string } }) => `${e.actor} ${e.new.transition}`)).toEqual(['human ship', 'human submit', 'human start', 'human approve']);
+  });
+
+  test('an agent moves a batch, every member recorded as the agent', async () => {
+    const a = await agentAt('todo');
+    const b = await agentAt('planning');
+    const res = await post('/api/tickets/bulk', { tickets: [a.key, b.key], action: { kind: 'transition', name: 'approve' } }, 'agent');
+    expect(res.status).toBe(200);
+    for (const key of [a.key, b.key]) expect((await events(key))[0]).toMatchObject({ kind: 'transitioned', actor: 'agent', new: { status: 'ready', transition: 'approve' } });
+  });
+
+  test('what refuses an agent is what refuses a human: no arrow, or the guard', async () => {
+    const t = await post('/api/tickets', { title: 'no app, no design', status: 'planning' }, 'agent').then((r) => r.json());
     for (const actor of [undefined, 'agent']) {
-      const res = await post(`/api/tickets/${t.key}/ship`, undefined, actor);
-      expect([actor, (await res.json()).hint]).toEqual([actor, 'a ticket in planning does not go to done']);
+      expect([actor, (await post(`/api/tickets/${t.key}/ship`, undefined, actor).then((r) => r.json())).hint]).toEqual([actor, 'a ticket in planning does not go to done']);
+      expect([actor, (await post(`/api/tickets/${t.key}/approve`, undefined, actor).then((r) => r.json())).hint]).toEqual([actor, 'approve needs an app and a ticket design']);
     }
   });
 
-  test('authority is asked before requirements: an agent hears whose move it is, not what the ticket lacks', async () => {
-    const t = await post('/api/tickets', { title: 'no app, no design' }, 'agent').then((r) => r.json());
-    expect((await post(`/api/tickets/${t.key}/approve`, undefined, 'agent').then((r) => r.json())).hint).toBe("approve is the human's move, not the agent's");
-    expect((await post(`/api/tickets/${t.key}/approve`).then((r) => r.json())).hint).toBe('approve needs an app and a ticket design');
-  });
-
-  test('an unknown verb is still a 404 for an agent — there is no authority over a move that does not exist', async () => {
-    const t = await post('/api/tickets', { title: 'planned by the planner' }, 'agent').then((r) => r.json());
+  test('an unknown verb is a 404 for an agent as for anyone', async () => {
+    const t = await agentAt('planning');
     expect((await post(`/api/tickets/${t.key}/promote`, undefined, 'agent')).status).toBe(404);
-  });
-
-  test('the statuses an agent may not create in are all of them but planning', async () => {
-    for (const status of TICKET_STATUSES.filter((s) => s !== 'planning')) {
-      const res = await post('/api/tickets', { title: 'nope', status }, 'agent');
-      expect([status, res.status]).toEqual([status, 422]);
-    }
   });
 });

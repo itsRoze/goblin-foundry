@@ -4,13 +4,10 @@ import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
-  ceilingRefusal,
-  defaultCreateStatus,
   guardHold,
   lifecycle,
   parseTicketKey,
   ticketKey,
-  type Actor,
   type GuardFields,
   type Ticket,
   type TicketDetail,
@@ -47,14 +44,12 @@ export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, 
 
 /**
  * Why this ticket may not be created at this status (ADR-0003), or `null` when
- * it may: an agent's reach ends at `planning`, the terminal statuses are
- * earned rather than declared, and a ticket born in the working end of the
- * lifecycle must already satisfy the approve guard. Every refusal is on
+ * it may: the terminal statuses are earned rather than declared, and a ticket
+ * born in the working end of the lifecycle must already satisfy the approve
+ * guard. Whoever asks, the answer is the same (ADR-0012). Every refusal is on
  * `status`, because the status is what the body asked for that it cannot have.
  */
-function creationRefusal(actor: Actor, status: TicketStatus, fields: GuardFields): Issue | null {
-  const ceiling = ceilingRefusal(actor, status);
-  if (ceiling) return { path: ['status'], message: ceiling };
+function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | null {
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
   const lacks = lifecycle.missingAt(status, fields);
@@ -114,12 +109,12 @@ export function ticketsRoutes(db: Db) {
     const fields = {
       title: body.data.title,
       description: body.data.description ?? '',
-      status: body.data.status ?? defaultCreateStatus(actor),
+      status: body.data.status ?? 'backlog',
       simple: body.data.simple ?? false,
       design: null,
       ...placement,
     };
-    const refused = creationRefusal(actor, fields.status, fields);
+    const refused = creationRefusal(fields.status, fields);
     if (refused) return unprocessable(c, [refused]);
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');

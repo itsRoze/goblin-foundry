@@ -22,7 +22,7 @@ describe('implementation links', () => {
     try {
       expect((await (await createApp(reopened.db).request(path)).json()).length).toBe(2);
     } finally { reopened.close(); }
-    expect((await (await h.app.request('/api/tickets/GF-1')).json()).status).toBe('planning');
+    expect((await (await h.app.request('/api/tickets/GF-1')).json()).status).toBe('backlog');
     expect((await h.app.request(`${path}/${pr.id}`, { method: 'DELETE', headers: { 'X-Goblin-Actor': 'agent' } })).status).toBe(204);
     expect(await list()).toHaveLength(1);
     const history = await (await h.app.request('/api/tickets/GF-1/events')).json();
