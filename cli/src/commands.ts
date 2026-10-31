@@ -224,7 +224,10 @@ function labelCommand(verb: 'add' | 'remove' | 'set', summary: string, next: (ca
 const LABEL_COMMANDS: Command[] = [
   labelCommand('add', 'put labels on a ticket, keeping the ones it has', (carried, given) => [...carried, ...given]),
   labelCommand('remove', 'take labels off a ticket; one it does not carry is no change', (carried, given) => {
-    const gone = new Set(given.map(ticketLabels.normalise));
+    // nothing judges a name that is only ever subtracted, so the Piece is asked here, in its own words
+    const judged = ticketLabels.judge(given);
+    if (!judged.ok) throw new UsageError(judged.refusal);
+    const gone = new Set<string>(judged.labels);
     return carried.filter((label) => !gone.has(label));
   }),
   labelCommand('set', "replace a ticket's labels with exactly these ('' for none)", (_, given) => given),

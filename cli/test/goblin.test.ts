@@ -284,6 +284,10 @@ describe('goblin', () => {
       expect(refused.code).toBe(1);
       expect(refused.out).toBe('');
       expect(JSON.parse(refused.err).issues).toEqual([{ path: ['labels'], message: 'a label cannot be blank' }]);
+      // a name only ever subtracted never reaches the API's judge, so the CLI asks the Piece itself: a usage refusal
+      const removing = await run(['ticket', 'label', 'remove', 'GF-1', 'keep it']);
+      expect(removing.code).toBe(2);
+      expect(removing.err).toContain('keep it is not one word: a label has no spaces or commas');
       expect((await json(['ticket', 'show', 'GF-1'])).labels).toEqual(['keep']);
     });
 

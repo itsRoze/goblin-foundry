@@ -20,7 +20,7 @@ import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
 import { atomically, type Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { diff, listEvents, now, recordEvent } from './events';
+import { diff, eventWrite, listEvents, now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
@@ -123,8 +123,11 @@ export function ticketsRoutes(db: Db) {
     if (!labels.ok) return unprocessable(c, [labels.issue]);
     const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
     if (!row) throw new Error('insert returned no row');
-    await atomically(db, labelInserts(db, row.id, labels.labels));
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at });
+    // the labels and the history that records them land together; a ticket with no labels is a fine thing to be left with
+    await atomically(db, [
+      ...labelInserts(db, row.id, labels.labels),
+      await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }),
+    ]);
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
     return c.json(toTicket(row, await prefix(), labels.labels), 201);
   });

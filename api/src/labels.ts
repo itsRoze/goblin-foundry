@@ -2,7 +2,9 @@
  * A Ticket's Labels (ADR-0013). The rules are the `@goblin/labels` Piece's,
  * read through `ticketLabels` in `shared`; this module is only where they are
  * stored. The one write is the whole set (ADR-0004): add and remove are a
- * client's arithmetic over it, so no client can leave a half-written set.
+ * client's arithmetic over it, and the set, the ticket's `updated_at` and the
+ * history row commit together or not at all. Two clients adding at once can
+ * still each send the set they read (no optimistic concurrency in S1).
  */
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
