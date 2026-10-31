@@ -87,6 +87,7 @@ export function TicketCard({
   ticket,
   cursor,
   meta,
+  labels,
   updated,
   at,
   menu,
@@ -98,6 +99,8 @@ export function TicketCard({
   /** The Cursor is on this card: the selected-row mark, never the full border, which is the drag's. */
   cursor: boolean;
   meta: string | null;
+  /** Whether the card shows its Labels — a View option, so a dense board can do without them. */
+  labels: boolean;
   updated: string | null;
   at: number;
   menu: CardActions;
@@ -167,6 +170,16 @@ export function TicketCard({
           {ticket.title}
         </span>
         {meta !== null && <span className="gf-card-meta">{meta}</span>}
+        {/* plain names, never a colour (ADR-0013): the Label chip's clothes, without the Ticket view's `×` */}
+        {labels && ticket.labels.length > 0 && (
+          <span className="gf-labels gf-card-labels" data-testid={`card-labels-${ticket.key}`}>
+            {ticket.labels.map((label) => (
+              <span key={label} className="gf-chip gf-label">
+                {label}
+              </span>
+            ))}
+          </span>
+        )}
         {updated !== null && (
           <span className="gf-card-meta">
             updated <Since iso={updated} at={at} />

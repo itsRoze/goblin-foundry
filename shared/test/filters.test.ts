@@ -52,6 +52,15 @@ describe('parseTicketFilter', () => {
     expect(issues({ status: 'backlog,shipped' })).toEqual([{ path: ['status'], message: 'shipped is not a status' }]);
   });
 
+  test('a label set is normalised through the Piece, deduped and sorted, so it is one string however it was typed', () => {
+    expect(ok({ label: ' Wayfinder:Research ,needs-info,NEEDS-INFO' })).toEqual({ label: ['needs-info', 'wayfinder:research'] });
+    expect(ok({ label: ' , ' })).toEqual({});
+  });
+
+  test('a name the Piece refuses is refused on label, in its own sentence', () => {
+    expect(issues({ label: 'needs-info,needs info' })).toEqual([{ path: ['label'], message: 'needs info is not one word: a label has no spaces or commas' }]);
+  });
+
   test('q is trimmed', () => {
     expect(ok({ q: '  e-ink  ' })).toEqual({ q: 'e-ink' });
   });
@@ -66,12 +75,14 @@ describe('parseTicketFilter', () => {
 
 describe('serialiseTicketFilter', () => {
   test('canonical order, empties omitted, so equal filters make equal bookmarks', () => {
-    expect(serialiseTicketFilter({ q: 'rss', status: ['ready', 'backlog'], project_id: 2, app_id: 1 })).toBe('app_id=1&project_id=2&status=backlog,ready&q=rss');
+    expect(serialiseTicketFilter({ q: 'rss', label: ['wayfinder:research', 'needs-info'], status: ['ready', 'backlog'], project_id: 2, app_id: 1 })).toBe(
+      'app_id=1&project_id=2&status=backlog,ready&label=needs-info,wayfinder:research&q=rss',
+    );
   });
 
   test('nothing set is an empty string, not a bare ?', () => {
     expect(serialiseTicketFilter({})).toBe('');
-    expect(serialiseTicketFilter({ status: [], q: '' })).toBe('');
+    expect(serialiseTicketFilter({ status: [], label: [], q: '' })).toBe('');
   });
 
   test('null is written as the literal the parser reads back', () => {
@@ -79,7 +90,7 @@ describe('serialiseTicketFilter', () => {
   });
 
   test('a round trip is a fixed point', () => {
-    const filter: TicketFilter = { app_id: null, project_id: 4, status: ['todo', 'done'], q: '100% of the _rest_' };
+    const filter: TicketFilter = { app_id: null, project_id: 4, status: ['todo', 'done'], label: ['needs-info', 'wayfinder:research'], q: '100% of the _rest_' };
     const written = serialiseTicketFilter(filter);
     expect(parseTicketFilter(new URLSearchParams(written))).toEqual({ ok: true, filter });
   });

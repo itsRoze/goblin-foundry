@@ -111,6 +111,7 @@ export {
   type ParseOptions,
   DEFAULT_BOARD_STATUSES,
   canonicalStatuses,
+  canonicalLabels,
   parseTicketFilter,
   serialiseTicketFilter,
 } from './filters';
