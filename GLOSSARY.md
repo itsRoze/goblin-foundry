@@ -87,7 +87,7 @@ Design. A human's session and an agent's session are always distinct, even back 
 A per-device display preference on the Kanban: which card properties are shown. It decides how the board shows what the Filter chose, never *which* Tickets are on it, so it never hides a Status.
 
 ## Filter
-Which Tickets are on the board: any combination of an App, a Project, a set of Statuses, and text matched against title or description. Lives in the board's address, so a bookmarked URL is a saved view. The default Status set is the seven live statuses; `cancelled` is on the board only when the Filter names it. The Filter chooses, the View option dresses; the two never overlap.
+Which Tickets are on the board: any combination of an App, a Project, a set of Statuses, a set of Labels (a Ticket carrying any of them), and text matched against title or description. Lives in the board's address, so a bookmarked URL is a saved view. The default Status set is the seven live statuses; `cancelled` is on the board only when the Filter names it. The Filter chooses, the View option dresses; the two never overlap.
 
 ## Scope
 The App or Project a screen is narrowed to: the thing an App or Project view is about, or the App and Project a board Filter names. A new Ticket starts in the Scope on screen.

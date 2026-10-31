@@ -1,20 +1,29 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { DEFAULT_BOARD_STATUSES, TICKET_STATUSES, canonicalStatuses, serialiseTicketFilter, type FilterParam, type TicketFilter, type TicketStatus } from '@goblin/shared';
+import {
+  DEFAULT_BOARD_STATUSES,
+  TICKET_STATUSES,
+  canonicalLabels,
+  canonicalStatuses,
+  serialiseTicketFilter,
+  type FilterParam,
+  type TicketFilter,
+  type TicketStatus,
+} from '@goblin/shared';
 import { useKey } from './keys';
-import { useApps, useProjects } from './queries';
+import { useApps, useProjects, useTicketList } from './queries';
 import { projectFitsApp, useNames } from './tickets';
 import { Hint, Kbd, useCloseOnOutside } from './ui';
 
 /**
  * The board's Filter bar (issue 06): the strip between the tile header and the
- * columns. Three chips, the text input, and `×`. Every change writes the
+ * columns. Four chips, the text input, and `×`. Every change writes the
  * address — which is where the filter lives (GLOSSARY.md "Filter") — so this
  * component holds no state of its own but the popover that is open and the
  * text that has not settled yet.
  */
 
 /** Which chip's popover is open; one at a time, so the bar never asks two questions at once. */
-type Which = 'app' | 'project' | 'status';
+type Which = 'app' | 'project' | 'status' | 'label';
 
 /** How long the text input waits for quiet before it writes the address; the chips write at once. */
 const SETTLE_MS = 200;
@@ -54,6 +63,7 @@ export function FilterBar({
       <EntityChip which="app" filter={filter} bad={bad.app_id} onChange={onChange} open={open === 'app'} onOpen={setOpen} onClose={close} />
       <EntityChip which="project" filter={filter} bad={bad.project_id} onChange={onChange} open={open === 'project'} onOpen={setOpen} onClose={close} />
       <StatusChipButton filter={filter} bad={bad.status} onChange={onChange} open={open === 'status'} onOpen={setOpen} onClose={close} />
+      <LabelChipButton filter={filter} bad={bad.label} onChange={onChange} open={open === 'label'} onOpen={setOpen} onClose={close} />
       <TextFilter q={filter.q} onChange={(q) => onChange({ ...filter, q })} inputRef={text} />
       <button
         type="button"
@@ -322,8 +332,8 @@ function SearchRows({
 }
 
 /** `status: ready, building`, or the count once there are more names than a chip can hold. */
-function statusLabel(statuses: readonly TicketStatus[]): string {
-  return statuses.length >= 3 ? String(statuses.length) : statuses.join(', ');
+function setLabel(names: readonly string[]): string {
+  return names.length >= 3 ? String(names.length) : names.join(', ');
 }
 
 function StatusChipButton({
@@ -356,7 +366,7 @@ function StatusChipButton({
     <span className="gf-filter-slot" ref={slot}>
       <ChipButton
         label="status"
-        value={filter.status === undefined ? null : statusLabel(filter.status)}
+        value={filter.status === undefined ? null : setLabel(filter.status)}
         bad={bad}
         // the count form is short by design; the whole set is a hover away, so a bookmark stays readable
         title={chosen.join(', ')}
@@ -366,48 +376,73 @@ function StatusChipButton({
       />
       {open && (
         <Popover testId="pop-status">
-          <CheckRows chosen={chosen} onToggle={toggle} onClose={onClose} />
+          <CheckRows label="status" options={TICKET_STATUSES} chosen={chosen} onToggle={toggle} onClose={onClose} testId={(status) => `check-${status}`} />
         </Popover>
       )}
     </span>
   );
 }
 
-/** Eight check rows in lifecycle order — no input, because eight is a list you read rather than search. */
-function CheckRows({ chosen, onToggle, onClose }: { chosen: readonly TicketStatus[]; onToggle: (status: TicketStatus) => void; onClose: () => void }) {
+/**
+ * Check rows over a short set — eight statuses, or the labels in use — with no
+ * input, because a list that size is one you read rather than search.
+ */
+function CheckRows<T extends string>({
+  label,
+  options,
+  chosen,
+  onToggle,
+  onClose,
+  testId,
+  empty,
+}: {
+  label: string;
+  options: readonly T[];
+  chosen: readonly T[];
+  onToggle: (option: T) => void;
+  onClose: () => void;
+  testId: (option: T) => string;
+  /** What an empty set says; it stays inside the group, so `esc` still closes it. */
+  empty?: string;
+}) {
   const [cursor, setCursor] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => box.current?.focus(), []);
+  // the rows can change under the cursor (a poll brings a new label), so it is clamped rather than trusted
+  const at = Math.min(cursor, Math.max(options.length - 1, 0));
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') return e.preventDefault(), onClose();
+    const option = options[at];
+    if (option === undefined) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onToggle(TICKET_STATUSES[cursor] as TicketStatus);
+      onToggle(option);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      setCursor((c) => (c + (e.key === 'ArrowDown' ? 1 : -1) + TICKET_STATUSES.length) % TICKET_STATUSES.length);
+      setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
     }
   };
 
   return (
     // the group takes the focus and `↑↓` moves inside it, so a check row never needs to be tab-reachable
-    <div ref={box} className="gf-checks" tabIndex={-1} role="group" aria-label="filter by status" onKeyDown={onKeyDown}>
-      {TICKET_STATUSES.map((status, i) => (
-        <label key={status} className={`gf-check${i === cursor ? ' is-on' : ''}`} onMouseMove={() => setCursor(i)}>
+    <div ref={box} className="gf-checks" tabIndex={-1} role="group" aria-label={`filter by ${label}`} onKeyDown={onKeyDown}>
+      {options.map((option, i) => (
+        <label key={option} className={`gf-check${i === at ? ' is-on' : ''}`} onMouseMove={() => setCursor(i)}>
           <input
             type="checkbox"
-            checked={chosen.includes(status)}
+            checked={chosen.includes(option)}
             // the cursor follows the click, so `space` afterwards toggles the row you just touched
             onChange={() => {
               setCursor(i);
-              onToggle(status);
+              onToggle(option);
             }}
-            data-testid={`check-${status}`}
+            data-testid={testId(option)}
           />
-          {status}
+          {option}
         </label>
       ))}
+      {options.length === 0 && <p className="gf-empty">{empty}</p>}
       <span className="gf-tile-keys">
         <Hint k="↑↓">move</Hint>
         {/* two keys, one word: the Hint's own clothes, so the pair still wraps and folds as one */}
@@ -417,5 +452,78 @@ function CheckRows({ chosen, onToggle, onClose }: { chosen: readonly TicketStatu
         <Hint k="esc">close</Hint>
       </span>
     </div>
+  );
+}
+
+/**
+ * The `label` chip (ADR-0013): any of these names, as `status` is any of
+ * those. Unset is no parameter at all — every ticket is on the board whatever
+ * it carries — so it has no default set to compare against.
+ */
+function LabelChipButton({
+  filter,
+  bad,
+  onChange,
+  open,
+  onOpen,
+  onClose,
+}: {
+  filter: TicketFilter;
+  bad: string | undefined;
+  onChange: (next: TicketFilter) => void;
+  open: boolean;
+  onOpen: (which: Which) => void;
+  onClose: () => void;
+}) {
+  const slot = useRef<HTMLSpanElement>(null);
+  useCloseOnOutside(slot, open, onClose);
+  const chosen = filter.label ?? [];
+  const toggle = (name: string) => {
+    const next = chosen.includes(name) ? chosen.filter((l) => l !== name) : canonicalLabels([...chosen, name]);
+    const { label: _, ...rest } = filter;
+    onChange(next.length === 0 ? rest : { ...rest, label: next });
+  };
+
+  return (
+    <span className="gf-filter-slot" ref={slot}>
+      <ChipButton
+        label="label"
+        value={filter.label === undefined ? null : setLabel(filter.label)}
+        bad={bad}
+        title={chosen.length > 0 ? chosen.join(', ') : undefined}
+        open={open}
+        testId="chip-label"
+        onClick={() => (open ? onClose() : onOpen('label'))}
+      />
+      {open && (
+        <Popover testId="pop-label">
+          <LabelChecks filter={filter} chosen={chosen} onToggle={toggle} onClose={onClose} />
+        </Popover>
+      )}
+    </span>
+  );
+}
+
+/**
+ * The names in use on the board's scope: every label carried by a ticket the
+ * rest of the Filter lets on, so a second name widens the board rather than
+ * being offered only where it overlaps the first. With no `label` set this is
+ * the board's own read, already in the cache. A name already chosen is always
+ * a row, so one nobody carries can still be let go.
+ */
+function LabelChecks({ filter, chosen, onToggle, onClose }: { filter: TicketFilter; chosen: readonly string[]; onToggle: (name: string) => void; onClose: () => void }) {
+  const { label: _, ...scope } = filter;
+  const tickets = useTicketList(serialiseTicketFilter({ ...scope, status: [...(filter.status ?? DEFAULT_BOARD_STATUSES)] }));
+  const names = useMemo(() => canonicalLabels([...chosen, ...(tickets.data ?? []).flatMap((t) => t.labels)]), [chosen, tickets.data]);
+  return (
+    <CheckRows
+      label="label"
+      options={names}
+      chosen={chosen}
+      onToggle={onToggle}
+      onClose={onClose}
+      testId={(name) => `check-label-${name}`}
+      empty={tickets.data === undefined ? 'reading labels…' : 'no labels in use'}
+    />
   );
 }

@@ -348,6 +348,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-label-drop:hover { color: var(--gf-ink); }
 .gf-label-input { font: var(--gf-t-label); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 2px 6px; width: 20ch; }
 .gf-labels .gf-refusal { flex-basis: 100%; margin: 0; }
+/* on a card there is no `×` to sit inside the border, so the chip keeps its own padding; tighter, as the card's rows are */
+.gf-card-labels { gap: var(--gf-s1); }
+.gf-card-labels .gf-label { padding-right: 6px; }
 
 /* the picker: an open input over candidate rows, the highlighted one wearing
    the selected-row treatment from DESIGN.md Components — that inset is what says these
@@ -615,7 +618,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* the refusal takes the whole width under the controls, where the problem was */
 .gf-filter-refusal { flex-basis: 100%; }
 
-/* one popover for all three chips, shaped like the Ticket picker (DESIGN.md Components) */
+/* one popover for every chip, shaped like the Ticket picker (DESIGN.md Components) */
 .gf-pop {
   position: absolute; top: calc(100% + var(--gf-s1)); left: 0; z-index: 3; min-width: 200px;
   max-width: calc(100vw - 2 * var(--gf-pad-x));
@@ -660,9 +663,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder,
 .gf-field input::placeholder, .gf-field textarea::placeholder, .gf-picker input::placeholder, .gf-label-input::placeholder { color: var(--gf-mute); }
 
-/* the third chip's popover would hang off the tile at phone width, so it hangs from its right edge instead */
+/* the third and fourth chips' popovers would hang off the tile at phone width, so they hang from their right edge instead */
 @media (max-width: 899px) {
-  .gf-filter-slot:nth-of-type(3) .gf-pop { left: auto; right: 0; }
+  .gf-filter-slot:nth-of-type(n+3) .gf-pop { left: auto; right: 0; }
   .gf-filter-clear { order: -1; }
 }
 

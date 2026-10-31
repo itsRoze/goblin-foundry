@@ -40,9 +40,10 @@ import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } f
  */
 interface View {
   meta: boolean;
+  labels: boolean;
   updated: boolean;
 }
-const DEFAULT_VIEW: View = { meta: true, updated: false };
+const DEFAULT_VIEW: View = { meta: true, labels: true, updated: false };
 const VIEW_STORAGE_KEY = 'gf.board.view';
 
 /** Read one per-device preference back, or fall back to its default when the device has none or refuses storage. */
@@ -533,6 +534,7 @@ export function BoardPage() {
     count: tickets.data === undefined ? null : column.tickets.length,
     cursor: cursor.at,
     meta: view.meta ? meta : undefined,
+    labels: view.labels,
     updated: view.updated,
     at,
     menuFor,
@@ -599,6 +601,9 @@ export function BoardPage() {
         <div className="gf-view-menu" data-testid="view-menu">
           <label className="gf-toggle">
             <input type="checkbox" checked={view.meta} onChange={() => toggle('meta')} /> app / project
+          </label>
+          <label className="gf-toggle">
+            <input type="checkbox" checked={view.labels} onChange={() => toggle('labels')} /> labels
           </label>
           <label className="gf-toggle">
             <input type="checkbox" checked={view.updated} onChange={() => toggle('updated')} /> updated
@@ -724,6 +729,7 @@ interface CardsProps {
   /** The key the Cursor is on, wherever on the board it is; at most one column has it. */
   cursor: string | null;
   meta: ((t: Ticket) => string) | undefined;
+  labels: boolean;
   updated: boolean;
   at: number;
   menuFor: (t: Ticket) => CardActions;
@@ -765,7 +771,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, labels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
@@ -776,7 +782,7 @@ function Cards({ status, tickets, cursor, meta, updated, at, menuFor, selectFor,
   return (
     <>
       {tickets.map((t) => (
-        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
+        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} labels={labels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
           <Said status={status} {...under(t.key)} notice={null} onCancel={onCancel} onShow={onShow} />
         </TicketCard>
       ))}

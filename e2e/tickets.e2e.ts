@@ -19,8 +19,8 @@ test('a ticket through the GUI: c on the board, edit the title, view options, tr
   await expect(page).toHaveURL(/\/tickets\/GF-1$/);
   await expect(page.getByTestId('about-tile')).toBeVisible();
   await page.getByTestId('ticket-title').click();
-  await page.getByLabel('title').fill('Article list screen: e-ink pagination');
-  await page.getByLabel('title').press('ControlOrMeta+Enter');
+  await page.getByLabel('title', { exact: true }).fill('Article list screen: e-ink pagination');
+  await page.getByLabel('title', { exact: true }).press('ControlOrMeta+Enter');
   await expect(page.getByTestId('page-title')).toContainText('Article list screen: e-ink pagination');
   await expect(page.getByTestId('history').locator('li').first()).toContainText('renamed Article list screen → Article list screen: e-ink pagination');
 
