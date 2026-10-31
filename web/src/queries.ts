@@ -30,6 +30,7 @@ const Projects = z.array(ProjectSchema);
 const Events = z.array(EventSchema);
 const Tickets = z.array(TicketSchema);
 const Trash = z.object({ apps: Apps, projects: Projects, tickets: Tickets });
+const LabelNames = z.array(z.string());
 
 /** Everything recoverable; `kind` is what the restore intent addresses. */
 export type TrashKind = 'app' | 'project' | 'ticket';
@@ -122,6 +123,9 @@ export const useEvents = (kind: EntityKind, id: number) =>
 
 export const useTrash = () => useQuery({ queryKey: ['trash'], queryFn: () => api.get('/api/trash', Trash) });
 
+/** The label names a live Ticket carries, sorted (ADR-0013); every write refreshes it, as it does everything. */
+export const useLabelNames = () => useQuery({ queryKey: ['labels'], queryFn: () => api.get('/api/labels', LabelNames) });
+
 /** Every write invalidates everything; the data set is tiny and the API is local (ADR-0004: plain fetch + a query cache). */
 function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>) {
   const qc = useQueryClient();
@@ -137,7 +141,9 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
  * card it is on, so the key travels with the body rather than with the hook.
  */
 export const usePatchTicket = () => useWrite(({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body));
-/** A ticket is never archived (CONTEXT.md): trash and restore are all it has. */
+/** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
+export const useSetLabels = () => useWrite(({ key, labels }: { key: string; labels: string[] }) => api.post(`/api/tickets/${key}/labels`, { labels }));
+/** A ticket is never archived (GLOSSARY.md): trash and restore are all it has. */
 export const useTicketIntent = () =>
   useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>
     intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`),

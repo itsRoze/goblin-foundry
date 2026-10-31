@@ -69,11 +69,11 @@ test('a description, a title, a design and a link are all edited and finished by
 
   // the title has a save and a cancel of its own
   await page.getByTestId('ticket-title').tap();
-  await page.getByLabel('title').fill('Retitled by tapping');
+  await page.getByLabel('title', { exact: true }).fill('Retitled by tapping');
   await page.getByTestId('title-save').tap();
   await expect(page.getByTestId('page-title')).toContainText('Retitled by tapping');
   await page.getByTestId('ticket-title').tap();
-  await page.getByLabel('title').fill('Not this title');
+  await page.getByLabel('title', { exact: true }).fill('Not this title');
   await page.getByTestId('title-cancel').tap();
   await expect(page.getByTestId('page-title')).toContainText('Retitled by tapping');
 

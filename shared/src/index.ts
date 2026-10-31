@@ -84,10 +84,9 @@ export {
   CREATABLE_STATUSES,
   isCreatable,
   approveGuard,
-  AGENT_CEILING,
-  defaultCreateStatus,
-  ceilingRefusal,
+  hasIntent,
   guardHold,
+  decidingOwner,
 } from './transitions';
 export {
   GraphExternalSchema,
@@ -100,6 +99,7 @@ export {
   type ProjectGraph,
   descriptionLine,
 } from './graph';
+export { ticketLabels, splitLabels, labelsBody, SetLabelsBodySchema, type SetLabelsBody } from './labels';
 export { slugify, slugPath, parseSlugId } from './slug';
 export { designField, designBody, hasDesign } from './design';
 export {
@@ -112,6 +112,7 @@ export {
   type ParseOptions,
   DEFAULT_BOARD_STATUSES,
   canonicalStatuses,
+  canonicalLabels,
   parseTicketFilter,
   serialiseTicketFilter,
 } from './filters';

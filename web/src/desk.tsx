@@ -5,7 +5,7 @@ import { useKeyMap } from './keys';
 
 /**
  * Where keys land on a screen: which tile has the focus, and where the Cursor
- * is inside it (CONTEXT.md "Focused tile", "Cursor").
+ * is inside it (GLOSSARY.md "Focused tile", "Cursor").
  *
  * Tiles register themselves and are numbered in *reading order* — sorted by
  * their position in the document, not by the order their effects happened to
@@ -223,6 +223,6 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
     { active: focused },
   );
 
-  // the Cursor sits in the Focused tile (CONTEXT.md), so the mark leaves with the focus and comes back with it
+  // the Cursor sits in the Focused tile (GLOSSARY.md), so the mark leaves with the focus and comes back with it
   return { at, set, isAt: (id: string) => focused && id === at };
 }

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { firstSpot, moveCursor, stillThere } from '../src/cursor';
 
 /**
- * The Cursor is keyed by ticket key, never by index (CONTEXT.md "Cursor"), so
+ * The Cursor is keyed by ticket key, never by index (GLOSSARY.md "Cursor"), so
  * everything worth proving about it is a pure question about a board shaped as
  * columns of keys: where a move lands, where it refuses to go, and what
  * happens when the card under it leaves.

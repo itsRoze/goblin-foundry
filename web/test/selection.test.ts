@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { EMPTY_SELECTION, membersOf, rangeOrder, rangeTo, reconcile, selectAll, stepFrom, toggle, type Selection } from '../src/selection';
 
 /**
- * A Selection is a set of Ticket ids (CONTEXT.md "Selection"), and everything
+ * A Selection is a set of Ticket ids (GLOSSARY.md "Selection"), and everything
  * subtle about it is about ranges: where one starts, what it crosses, and what
  * it leaves alone. The browser suite proves the gestures reach this; these
  * prove what the gestures mean.

@@ -1,15 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { TICKET_STATUSES } from '../src/tickets';
-import { lifecycle, type GuardFields } from '../src/transitions';
+import { decidingOwner, lifecycle, type GuardFields } from '../src/transitions';
 
 const FIXTURES: Record<'lacking' | 'satisfied', GuardFields> = {
-  lacking: { app_id: null, simple: false, design: null },
-  satisfied: { app_id: 1, simple: false, design: '# plan' },
+  lacking: { app_id: null, simple: false, design: null, description: '' },
+  satisfied: { app_id: 1, simple: false, design: '# plan', description: '' },
 };
 
 describe('the lifecycle, pinned', () => {
+  // an owner every Actor holds the authority of decides nothing, so it is written `either`
   test('every edge, in table order', () => {
-    expect(lifecycle.edges.map((t) => `${t.from} -${t.name}-> ${t.to} ${t.owner}${t.guarded ? ' guarded' : ''}`)).toMatchSnapshot();
+    expect(lifecycle.edges.map((t) => `${t.from} -${t.name}-> ${t.to} ${decidingOwner(t.owner) ?? 'either'}${t.guarded ? ' guarded' : ''}`)).toMatchSnapshot();
   });
 
   test('every (status, name, actor), judged on a ticket lacking everything and on one with everything', () => {
@@ -19,7 +20,9 @@ describe('the lifecycle, pinned', () => {
         for (const actor of ['human', 'agent'] as const)
           for (const [fixture, fields] of Object.entries(FIXTURES)) {
             const judged = lifecycle.judge({ ...fields, status }, name, actor);
-            lines.push(`${status} ${name} ${actor} ${fixture}: ${judged.ok ? `-> ${judged.edge.to}` : `409 ${judged.owner ?? 'human'} ${judged.refusal}`}`);
+            // a refusal names its owner only when that owner decides something, as the API's 409 does
+            const owner = judged.ok ? undefined : decidingOwner(judged.owner);
+            lines.push(`${status} ${name} ${actor} ${fixture}: ${judged.ok ? `-> ${judged.edge.to}` : `409 ${owner ? `${owner} ` : ''}${judged.refusal}`}`);
           }
     expect(lines).toMatchSnapshot();
   });

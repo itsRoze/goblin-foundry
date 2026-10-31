@@ -3,7 +3,7 @@ import type { BulkAction, TransitionName } from '@goblin/shared';
 import type { Member } from './bulk';
 
 /**
- * The current Ticket, and what this screen can do to it (CONTEXT.md
+ * The current Ticket, and what this screen can do to it (GLOSSARY.md
  * "Cursor"): the open Ticket on a Ticket view, otherwise the Ticket under the
  * Cursor. Two screens supply one — the board and the Ticket view — and they
  * supply the *same* verbs, wired to the same mutations their own buttons use.
@@ -23,6 +23,8 @@ export interface TicketActions {
   blockedBy: () => void;
   copyBranch: () => void;
   addImplementationLink: () => void;
+  /** `add label…`: the about tile's label input — on the Ticket view, or on the way to it. */
+  addLabel: () => void;
   /** `move to app…` / `move to project…`, ADR-0007 applied as the Ticket view's selects apply it. */
   place: (field: 'app_id' | 'project_id', id: number | null) => void;
 }

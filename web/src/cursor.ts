@@ -1,5 +1,5 @@
 /**
- * Where the Cursor is, and where a key moves it (CONTEXT.md "Cursor").
+ * Where the Cursor is, and where a key moves it (GLOSSARY.md "Cursor").
  *
  * The board is handed over as columns of row ids, and the answer is always
  * another id — never an index. That is the whole reason this module is worth
@@ -12,7 +12,7 @@
 /**
  * The board as the cursor sees it: columns of row ids, in the order they are
  * drawn. On every tile whose rows are Tickets the id *is* the Ticket Key,
- * which is the promise CONTEXT.md makes about the Cursor; the all-apps and
+ * which is the promise GLOSSARY.md makes about the Cursor; the all-apps and
  * all-projects lists have no keys, so there the id is the row's own path.
  */
 export type Columns = readonly (readonly string[])[];

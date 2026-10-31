@@ -41,7 +41,7 @@ export const project = sqliteTable('project', {
 export const statusList = () => sql.raw(TICKET_STATUSES.map((s) => `'${s}'`).join(','));
 
 /**
- * A ticket is never archived (CONTEXT.md) — it is `cancelled` (a decision) or
+ * A ticket is never archived (GLOSSARY.md) — it is `cancelled` (a decision) or
  * trashed (a mistake). `status` is a checked text column, not an enum table
  * (ADR-0003); `id` is the ticket's permanent number (ADR-0002) and the key
  * `GF-<id>` is derived at the edge from the installation prefix.
@@ -93,6 +93,24 @@ export const implementationLink = sqliteTable('implementation_link', {
   url: text('url').notNull(),
   created_at: text('created_at').notNull(),
 }, (t) => [uniqueIndex('implementation_link_ticket_url').on(t.ticket_id, t.url)]);
+
+/**
+ * A Ticket's Labels (ADR-0013). The normalised name is the identity, so there
+ * is no Label entity: an open vocabulary has nothing to declare. `position`
+ * keeps the order they were set in. Rows survive a trip through the trash,
+ * which is why nothing here cascades.
+ */
+export const ticketLabel = sqliteTable(
+  'ticket_label',
+  {
+    ticket_id: integer('ticket_id')
+      .notNull()
+      .references(() => ticket.id),
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.ticket_id, t.name] })],
+);
 
 /** One row per write; `prior`/`new` are JSON of only the changed fields. */
 export const event = sqliteTable('event', {

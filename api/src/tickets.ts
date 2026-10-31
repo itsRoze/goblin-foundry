@@ -1,16 +1,13 @@
 import { Hono } from 'hono';
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
-  ceilingRefusal,
-  defaultCreateStatus,
   guardHold,
   lifecycle,
   parseTicketKey,
   ticketKey,
-  type Actor,
   type GuardFields,
   type Ticket,
   type TicketDetail,
@@ -20,41 +17,41 @@ import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
 import { bulkRoute } from './bulk';
 import { implementationLinkRoutes } from './implementation-links';
-import type { Db } from './db';
+import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
+import { AtomicWriteError, atomically, type Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { diff, listEvents, now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
-import { conflict, notFound, unprocessable, type Issue } from './problems';
-import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
+import { conflict, failed, notFound, unprocessable, type Issue } from './problems';
+import { app as appTable, event, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 import { transitionRoute } from './transitions';
 
 type Parent = typeof appTable | typeof projectTable;
 
 /**
- * The wire ticket carries the canonical key; `trashed_via` is bookkeeping and
- * stays inside. `blocked_by` defaults to none for the reads that do not ask —
- * `/api/trash` has no use for a derived condition on something nobody is
- * working on.
+ * The wire ticket carries the canonical key and its labels; `trashed_via` is
+ * bookkeeping and stays inside. `blocked_by` defaults to none for the reads
+ * that do not ask — `/api/trash` has no use for a derived condition on
+ * something nobody is working on.
  */
-export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, blocked_by: string[] = []): Ticket => ({
+export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, labels: string[], blocked_by: string[] = []): Ticket => ({
   ...row,
   key: ticketKey(prefix, row.id),
+  labels,
   blocked_by,
 });
 
 /**
  * Why this ticket may not be created at this status (ADR-0003), or `null` when
- * it may: an agent's reach ends at `planning`, the terminal statuses are
- * earned rather than declared, and a ticket born in the working end of the
- * lifecycle must already satisfy the approve guard. Every refusal is on
+ * it may: the terminal statuses are earned rather than declared, and a ticket
+ * born in the working end of the lifecycle must already satisfy the approve
+ * guard. Whoever asks, the answer is the same (ADR-0012). Every refusal is on
  * `status`, because the status is what the body asked for that it cannot have.
  */
-function creationRefusal(actor: Actor, status: TicketStatus, fields: GuardFields): Issue | null {
-  const ceiling = ceilingRefusal(actor, status);
-  if (ceiling) return { path: ['status'], message: ceiling };
+function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | null {
   if ((UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(status))
     return { path: ['status'], message: `a ticket is never created in ${status} — it is earned, not declared` };
   const lacks = lifecycle.missingAt(status, fields);
@@ -80,7 +77,7 @@ export function ticketsRoutes(db: Db) {
   /** One live ticket on the wire, with the blockers still standing in its way. */
   async function one(row: TicketRow): Promise<Ticket> {
     const p = await prefix();
-    return toTicket(row, p, await openBlockersOf(db, row.id, p));
+    return toTicket(row, p, await labelsOf(db, row.id), await openBlockersOf(db, row.id, p));
   }
 
   /** The single-ticket read: the ticket, plus every edge it has declared in either direction. */
@@ -101,7 +98,8 @@ export function ticketsRoutes(db: Db) {
     const p = await prefix();
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);
-    return c.json(rows.map((row) => toTicket(row, p, blockers.get(row.id) ?? [])));
+    const labels = await labelsByTicket(db);
+    return c.json(rows.map((row) => toTicket(row, p, labels(row.id), blockers.get(row.id) ?? [])));
   });
 
   r.post('/', async (c) => {
@@ -114,18 +112,34 @@ export function ticketsRoutes(db: Db) {
     const fields = {
       title: body.data.title,
       description: body.data.description ?? '',
-      status: body.data.status ?? defaultCreateStatus(actor),
+      status: body.data.status ?? 'backlog',
       simple: body.data.simple ?? false,
       design: null,
       ...placement,
     };
-    const refused = creationRefusal(actor, fields.status, fields);
+    const refused = creationRefusal(fields.status, fields);
     if (refused) return unprocessable(c, [refused]);
-    const [row] = await db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning();
-    if (!row) throw new Error('insert returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'created', prior: null, new: fields, at });
+    const labels = judgeLabels(body.data.labels ?? []);
+    if (!labels.ok) return unprocessable(c, [labels.issue]);
+    // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
+    // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
+    const born = sql<number>`(SELECT max(id) FROM ticket)`;
+    let written: unknown[];
+    try {
+      written = await atomically(db, [
+        { what: 'ticket', statement: db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
+        ...labelInserts(db, born, labels.labels),
+        {
+          what: 'created event',
+          statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
+        },
+      ]);
+    } catch (error) {
+      if (!(error instanceof AtomicWriteError)) throw error;
+      return failed(c, `nothing changed — the ticket was not created (${error.message})`);
+    }
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
-    return c.json(toTicket(row, await prefix()), 201);
+    return c.json(toTicket(written[0] as TicketRow, await prefix(), labels.labels), 201);
   });
 
   bulkRoute(r, {
@@ -134,8 +148,9 @@ export function ticketsRoutes(db: Db) {
     toWire: async (rows) => {
       const p = await prefix();
       const blockers = await openBlockers(db, p);
+      const labels = await labelsByTicket(db);
       // a Ticket in the trash is nobody's blocked work (`toTicket`)
-      return rows.map((row) => toTicket(row, p, row.trashed_at === null ? (blockers.get(row.id) ?? []) : []));
+      return rows.map((row) => toTicket(row, p, labels(row.id), row.trashed_at === null ? (blockers.get(row.id) ?? []) : []));
     },
   });
 
@@ -157,7 +172,7 @@ export function ticketsRoutes(db: Db) {
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
     const { title, description, design, simple } = body.data;
-    const next = { ...row, ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
+    const next = { ...row, ...(description === undefined ? {} : { description }), ...(design === undefined ? {} : { design }), ...(simple === undefined ? {} : { simple }), ...placement };
     const broken = wouldBreakGuard(row, next, body.data);
     if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });
@@ -180,7 +195,7 @@ export function ticketsRoutes(db: Db) {
     const [updated] = await db.update(ticketTable).set({ trashed_at: at, trashed_via: null, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
     if (!updated) throw new Error('update returned no row');
     await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at });
-    return c.json(toTicket(updated, await prefix()));
+    return c.json(toTicket(updated, await prefix(), await labelsOf(db, row.id)));
   });
 
   r.post('/:key/restore', async (c) => {
@@ -207,6 +222,8 @@ export function ticketsRoutes(db: Db) {
   });
 
   implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
+
+  labelRoutes(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
 
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 

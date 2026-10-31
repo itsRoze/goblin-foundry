@@ -66,10 +66,12 @@ export class AtomicWriteError extends Error {
  * Callers do their reading and deciding first and hand over writes whose
  * `WHERE` pins what they read; a statement that matches no row is `stale`.
  * `api/test/db.test.ts`, `bulk.test.ts` and `transitions.test.ts` hold the rollback evidence.
+ * It answers with the row each statement returned, in order.
  */
-export async function atomically(db: Db, writes: readonly AtomicWrite[]): Promise<void> {
+export async function atomically(db: Db, writes: readonly AtomicWrite[]): Promise<unknown[]> {
   db.run(sql`BEGIN IMMEDIATE`);
   try {
+    const written: unknown[] = [];
     for (const write of writes) {
       let rows: unknown[];
       try {
@@ -78,8 +80,10 @@ export async function atomically(db: Db, writes: readonly AtomicWrite[]): Promis
         throw new AtomicWriteError('fault', write.what, cause);
       }
       if (rows.length !== 1) throw new AtomicWriteError('stale', write.what);
+      written.push(rows[0]);
     }
     db.run(sql`COMMIT`);
+    return written;
   } catch (error) {
     try {
       db.run(sql`ROLLBACK`);
@@ -183,6 +187,12 @@ async function ensureSchema(db: Db): Promise<void> {
     created_at text NOT NULL
   )`);
   db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS implementation_link_ticket_url ON implementation_link (ticket_id, url)`);
+  db.run(sql`CREATE TABLE IF NOT EXISTS ticket_label (
+    ticket_id integer NOT NULL REFERENCES ticket(id),
+    name text NOT NULL,
+    position integer NOT NULL,
+    PRIMARY KEY (ticket_id, name)
+  )`);
   db.run(sql`CREATE TABLE IF NOT EXISTS event (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     entity_kind text NOT NULL,

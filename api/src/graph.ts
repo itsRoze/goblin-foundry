@@ -5,7 +5,7 @@
  *
  * What is *not* here is half the point. A Trashed thing is hidden everywhere
  * and a `cancelled` one blocks nothing and is waited on by nothing
- * (CONTEXT.md), so both go together with their edges: a chain
+ * (GLOSSARY.md), so both go together with their edges: a chain
  * A → C(cancelled) → B draws A and B with no edge between them, which is
  * accurate rather than a gap. Every other declared edge is drawn, satisfied
  * ones included (ADR-0009: an edge is a durable fact).

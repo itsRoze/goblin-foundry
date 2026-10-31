@@ -35,6 +35,7 @@ describe('/api/tickets', () => {
       design: null,
       app_id: null,
       project_id: null,
+      labels: [],
       trashed_at: null,
     });
 
@@ -45,7 +46,7 @@ describe('/api/tickets', () => {
         actor: 'human',
         kind: 'created',
         prior: null,
-        new: { title: 'Article list screen', description: '', status: 'backlog', simple: false, design: null, app_id: null, project_id: null },
+        new: { title: 'Article list screen', description: '', status: 'backlog', simple: false, design: null, app_id: null, project_id: null, labels: [] },
       }),
     ]);
   });

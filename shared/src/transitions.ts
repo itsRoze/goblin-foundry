@@ -1,25 +1,47 @@
 import { defineWorkflow, type EdgeOf, type NameOf } from '@goblin/workflow';
-import type { Actor } from './actor';
+import { ActorSchema, type Actor } from './actor';
 import { hasDesign } from './design';
 import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
-export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design'>;
+export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design' | 'description'>;
 
-export type ApproveRequirement = 'app' | 'design';
+/** `intent` is written down somewhere — a description or a Ticket Design — unless the title alone carries it (`simple`). */
+export type ApproveRequirement = 'app' | 'intent';
 
-const REQUIREMENT_LABEL: Record<ApproveRequirement, string> = { app: 'an app', design: 'a ticket design' };
+const REQUIREMENT_LABEL: Record<ApproveRequirement, string> = { app: 'an app', intent: 'a description or a ticket design' };
+
+/** A description is present on the same terms as a design: non-whitespace (ADR-0012). */
+export const hasIntent = (ticket: Pick<Ticket, 'simple' | 'design' | 'description'>): boolean => ticket.simple || hasDesign(ticket.design) || ticket.description.trim() !== '';
 
 export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
   const missing: ApproveRequirement[] = [];
   if (ticket.app_id === null) missing.push('app');
-  if (!ticket.simple && !hasDesign(ticket.design)) missing.push('design');
+  if (!hasIntent(ticket)) missing.push('intent');
   return missing;
 }
+
+/**
+ * Whose moves each Actor may make. Actor is a record, never a permission
+ * (ADR-0012), so each holds both authorities and every edge is owned by both.
+ */
+const AUTHORITY = { human: ['human', 'agent'], agent: ['agent', 'human'] } as const satisfies Record<Actor, readonly Actor[]>;
+
+/**
+ * The owner worth naming: one some Actor lacks the authority of, so it
+ * decides who may move. Here every Actor holds every authority, so none is,
+ * and a refusal names no owner.
+ */
+export const decidingOwner = (owner: Actor | undefined): Actor | undefined =>
+  owner !== undefined && ActorSchema.options.some((actor) => !(AUTHORITY[actor] as readonly Actor[]).includes(owner)) ? owner : undefined;
 
 export const lifecycle = defineWorkflow({
   noun: 'ticket',
   statuses: TICKET_STATUSES,
-  actors: { human: ['human', 'agent'], agent: ['agent'] } as const satisfies Record<Actor, readonly Actor[]>,
+  actors: AUTHORITY,
+  // `owner: 'human'` on every row is a placeholder. `@goblin/workflow` asks
+  // each row for one owner so that another Assembly can say "only a human
+  // approves"; Goblin Foundry says nobody's move is theirs alone, and with
+  // AUTHORITY giving each Actor both, whatever is written here decides nothing.
   transitions: {
     pick: { from: ['backlog', 'planning'], to: 'todo', owner: 'human' },
     plan: { from: ['backlog', 'todo'], to: 'planning', owner: 'human' },
@@ -28,7 +50,7 @@ export const lifecycle = defineWorkflow({
     unapprove: { from: ['ready'], to: 'planning', owner: 'human' },
     start: { from: ['ready'], to: 'building', owner: 'human' },
     stop: { from: ['building'], to: 'ready', owner: 'human' },
-    submit: { from: ['building'], to: 'review', owner: 'agent' },
+    submit: { from: ['building'], to: 'review', owner: 'human' },
     ship: { from: ['review'], to: 'done', owner: 'human' },
     close: { from: ['backlog', 'todo', 'planning', 'ready', 'building'], to: 'done', owner: 'human' },
     cancel: { from: TICKET_STATUSES.filter((s) => s !== 'cancelled'), to: 'cancelled', owner: 'human' },
@@ -63,23 +85,6 @@ export const UNCREATABLE_STATUSES = ['done', 'cancelled'] as const satisfies rea
 export const CREATABLE_STATUSES: readonly TicketStatus[] = TICKET_STATUSES.filter((s) => !(UNCREATABLE_STATUSES as readonly TicketStatus[]).includes(s));
 
 export const isCreatable = (status: TicketStatus): boolean => CREATABLE_STATUSES.includes(status);
-
-/**
- * An agent is the hands, never the authority (CONTEXT.md "Actor"): in S1 it
- * creates tickets only in `planning`, and the one edge it owns is `submit`,
- * so approving what an agent planned is always a human act and the ready
- * frontier is only ever reached by a human's hand. Both halves refuse rather
- * than correct — quietly moving a ticket the planner asked for in `backlog`
- * would hide the misunderstanding instead of naming it.
- */
-export const AGENT_CEILING: TicketStatus = 'planning';
-
-/** Where a ticket this actor creates lands when the body names no status. */
-export const defaultCreateStatus = (actor: Actor): TicketStatus => (actor === 'agent' ? AGENT_CEILING : 'backlog');
-
-/** Why this actor may not create a ticket *there*, or `null` when it may. */
-export const ceilingRefusal = (actor: Actor, status: TicketStatus): string | null =>
-  actor === 'agent' && status !== AGENT_CEILING ? `an agent creates a ticket in ${AGENT_CEILING}, never ${status}` : null;
 
 /** History reads as decisions, not only as state (ADR-0003) — the verb, in the past, beside the table it comes from. */
 export const TRANSITION_PAST: Record<TransitionName, string> = {

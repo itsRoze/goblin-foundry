@@ -1,7 +1,7 @@
 # S1 — Tracker core
 
 Labels: `ready-for-agent`
-Inputs: `CONTEXT.md`, `docs/adr/0001–0006`, `design/DESIGN.md`, `design/tokens.css`, `design/rough-v5/` (mockups are rough ideas, not commitments), `BLUEPRINT-v1.md` §1, §3.1, §6.
+Inputs: `GLOSSARY.md`, `docs/adr/0001–0006`, `design/DESIGN.md`, `design/tokens.css`, `design/rough-v5/` (mockups are rough ideas, not commitments), `BLUEPRINT-v1.md` §1, §3.1, §6.
 
 ## Problem Statement
 

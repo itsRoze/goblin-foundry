@@ -61,7 +61,7 @@ test('approve names what the ticket is missing, and simple is what lets it throu
   await page.getByTestId('move-pick').click();
 
   await page.getByTestId('move-approve').click();
-  await expect(page.getByTestId('state-refusal')).toHaveText('approve needs a ticket design');
+  await expect(page.getByTestId('state-refusal')).toHaveText('approve needs a description or a ticket design');
   await expect(page.getByTestId('state-tile')).toContainText('todo');
 
   await page.getByTestId('simple-toggle').click();

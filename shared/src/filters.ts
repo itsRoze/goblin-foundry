@@ -1,13 +1,14 @@
 /**
- * The board's Filter (CONTEXT.md), as one parser and one serialiser: which
+ * The board's Filter (GLOSSARY.md), as one parser and one serialiser: which
  * Tickets are on the board, written in the address so a bookmarked URL is a
  * saved view. `GET /api/tickets`, `GET /api/frontier`, the web and `goblin`
  * all read and write it here, so a parameter cannot mean one thing in the
  * address bar and another on the wire.
  *
- * Wire names are the API's own — `app_id`, `project_id`, `status`, `q` — and
- * the browser uses them unchanged.
+ * Wire names are the API's own — `app_id`, `project_id`, `status`, `label`,
+ * `q` — and the browser uses them unchanged.
  */
+import { splitLabels, ticketLabels } from './labels';
 import { TICKET_STATUSES, TicketStatusSchema, type TicketStatus } from './tickets';
 import { parseSlugId } from './slug';
 
@@ -15,6 +16,8 @@ export interface TicketFilter {
   app_id?: number | null;
   project_id?: number | null;
   status?: TicketStatus[];
+  /** Any of these Labels (ADR-0013), the way `status` is any of those statuses. */
+  label?: string[];
   q?: string;
 }
 
@@ -27,13 +30,13 @@ export interface FilterIssue {
 export type ParsedFilter = { ok: true; filter: TicketFilter } | { ok: false; issues: FilterIssue[] };
 
 /** Canonical parameter order: empties are omitted, so equal filters make equal bookmarks. */
-export const FILTER_PARAMS = ['app_id', 'project_id', 'status', 'q'] as const;
+export const FILTER_PARAMS = ['app_id', 'project_id', 'status', 'label', 'q'] as const;
 export type FilterParam = (typeof FILTER_PARAMS)[number];
 
 /**
  * What the board shows when the address names no status set: everything but
  * `cancelled`, which is on the board only when the Filter asks for it
- * (CONTEXT.md "Filter"). The API's own default is every status — a `goblin
+ * (GLOSSARY.md "Filter"). The API's own default is every status — a `goblin
  * ticket list` is not a board.
  */
 export const DEFAULT_BOARD_STATUSES: readonly TicketStatus[] = TICKET_STATUSES.filter((s) => s !== 'cancelled');
@@ -82,6 +85,14 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
     else if (written.length > 0) filter.status = canonicalStatuses(written as TicketStatus[]);
   }
 
+  const label = read(source, 'label');
+  if (label !== undefined) {
+    // the Piece's own judgement, so a name the board refuses is one a Ticket could never carry
+    const judged = ticketLabels.judge(splitLabels(label));
+    if (!judged.ok) issues.push({ path: ['label'], message: judged.refusal });
+    else if (judged.labels.length > 0) filter.label = canonicalLabels(judged.labels);
+  }
+
   const q = read(source, 'q')?.trim();
   if (q !== undefined && q !== '') filter.q = q;
 
@@ -92,6 +103,13 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
 export const canonicalStatuses = (statuses: readonly TicketStatus[]): TicketStatus[] =>
   TICKET_STATUSES.filter((s) => statuses.includes(s));
 
+/**
+ * Deduped and sorted: a label set has no lifecycle to be ordered by, so it is
+ * ordered by name. The names are already as the Piece writes them — judged by
+ * the parser, or read off a Ticket — so they are not normalised again.
+ */
+export const canonicalLabels = (labels: readonly string[]): string[] => [...new Set(labels)].sort();
+
 /** The query string, without the `?`; empty when nothing is filtered. */
 export function serialiseTicketFilter(filter: TicketFilter): string {
   const params = new URLSearchParams();
@@ -100,7 +118,8 @@ export function serialiseTicketFilter(filter: TicketFilter): string {
     if (value !== undefined) params.set(name, value === null ? 'null' : String(value));
   }
   if (filter.status && filter.status.length > 0) params.set('status', canonicalStatuses(filter.status).join(','));
+  if (filter.label && filter.label.length > 0) params.set('label', canonicalLabels(filter.label).join(','));
   if (filter.q !== undefined && filter.q.trim() !== '') params.set('q', filter.q.trim());
-  // a comma is legal unescaped in a query value, and `status=ready,building` is meant to be read
-  return params.toString().replaceAll('%2C', ',');
+  // a comma and a colon are legal unescaped in a query value, and `label=needs-info,wayfinder:research` is meant to be read
+  return params.toString().replaceAll('%2C', ',').replaceAll('%3A', ':');
 }

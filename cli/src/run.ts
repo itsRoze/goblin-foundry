@@ -107,7 +107,7 @@ function fallback(noun: Noun, tokens: string[]): Command {
   throw new UsageError(written === undefined ? `goblin ${noun.name} needs a verb` : `${noun.name} has no verb '${written}'`, `try \`goblin ${noun.name} --help\``);
 }
 
-/** `--actor`, then `GF_ACTOR`, then the default — the flag wins, so a human can approve in a shell an agent set up. */
+/** `--actor`, then `GF_ACTOR`, then the default — the flag wins, so a human typing in a shell an agent set up is recorded as the human. */
 function resolveActor(written: Value | undefined): Actor {
   const parsed = ActorSchema.safeParse(written ?? DEFAULT_ACTOR);
   if (!parsed.success) throw new UsageError(`'${written}' is not an actor`, 'human or agent');
@@ -126,7 +126,7 @@ async function report(outcome: Outcome): Promise<GoblinResult> {
   return { code: EXIT.problem, out: '', err: shaped ? body : problem(outcome.status, outcome.statusText || 'Error', body.trim().slice(0, 500)) };
 }
 
-/** Every request carries the actor (CONTEXT.md "Actor"); a failure to reach the API at all is a different exit code, so it is caught here. */
+/** Every request carries the actor (GLOSSARY.md "Actor"); a failure to reach the API at all is a different exit code, so it is caught here. */
 function client(fetch: GoblinFetch, actor: Actor): Api {
   const send = async (method: string, path: string, body?: unknown): Promise<Response> => {
     try {

@@ -74,7 +74,7 @@ backlog → todo → planning → ready → building → review → done
 
 This is the usual forward path; the lifecycle also supports shelving, cancellation, reopening, and closing completed work.
 
-Approval requires an app and a ticket design, unless the ticket is marked simple. **Blocked is a derived condition, not another status.** A ready ticket only appears in the frontier when its open blockers are gone. Dependency cycles are rejected.
+Approval requires an app and a description or a ticket design, unless the ticket is marked simple. **Blocked is a derived condition, not another status.** A ready ticket only appears in the frontier when its open blockers are gone. Dependency cycles are rejected.
 
 An agent can prepare a plan through the same CLI you use:
 
@@ -99,7 +99,7 @@ Replace the example keys with the returned keys. An agent plans and submits: it 
 | [`cli/`](cli) | JSON client, database backups, and macOS service management |
 | [`e2e/`](e2e) | Browser coverage, including touch and responsive layouts |
 
-The database driver has one entry point. Bulk mutations commit together or roll back together. The visual system is documented and checked by lint rules. These choices have [architecture decision records](docs/adr), and the product vocabulary has a [domain glossary](CONTEXT.md).
+The database driver has one entry point. Bulk mutations commit together or roll back together. The visual system is documented and checked by lint rules. These choices have [architecture decision records](docs/adr), and the product vocabulary has a [domain glossary](GLOSSARY.md).
 
 ## Develop
 

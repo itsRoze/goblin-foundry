@@ -21,6 +21,7 @@ import type { ActorEnv } from './actor';
 import type { Db } from './db';
 import { now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
+import { labelsByTicket } from './labels';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable } from './problems';
 import { dependency, ticket as ticketTable, type TicketRow } from './schema';
@@ -210,12 +211,12 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
 }
 
 /**
- * The ready frontier: what is ready to build (CONTEXT.md). `ready`, no open
+ * The ready frontier: what is ready to build (GLOSSARY.md). `ready`, no open
  * blocker, stalest first.
  * It narrows by app, project and text through the board's own parser (issue
  * 06), so every endpoint stays reachable from `goblin`.
  */
-export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, blocked_by: string[]) => unknown) {
+export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, labels: string[]) => unknown) {
   const r = new Hono<ActorEnv>();
   r.get('/', async (c) => {
     const filter = readFilter(c);
@@ -229,7 +230,8 @@ export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, 
       .orderBy(asc(ticketTable.updated_at), asc(ticketTable.id));
     const { ticket_prefix } = await readSettings(db);
     const blockers = await openBlockers(db, ticket_prefix);
-    return c.json(rows.filter((row) => (blockers.get(row.id) ?? []).length === 0).map((row) => toWire(row, ticket_prefix, [])));
+    const labels = await labelsByTicket(db);
+    return c.json(rows.filter((row) => (blockers.get(row.id) ?? []).length === 0).map((row) => toWire(row, ticket_prefix, labels(row.id))));
   });
   return r;
 }

@@ -1,29 +1,40 @@
 # Triage Labels
 
-Goblin has no labels. A ticket's triage state is its **status**, and the five
-canonical roles the skills speak in collapse onto three of them.
+A ticket's triage state is its **status** where a status can carry it, and a
+**label** where it cannot (ADR-0013). Three of the five canonical roles the
+skills speak in are statuses; the other two are labels.
 
-| Role in mattpocock/skills | In Goblin                                                                   |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `needs-triage`            | `backlog` — an idea, not yet evaluated                                       |
-| `ready-for-agent`         | `ready`, and so on the frontier                                              |
-| `wontfix`                 | `cancelled`, via `goblin ticket cancel`                                      |
-| `needs-info`              | _dropped_ — leave it in `backlog` with the open question in the description  |
-| `ready-for-human`         | _dropped_ — S1 has no assignee; every `ready` ticket is the human's          |
+| Role in mattpocock/skills | In Goblin                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `needs-triage`            | the status `backlog`: an idea, not yet evaluated                                 |
+| `ready-for-agent`         | the status `ready`, and so on the frontier                                       |
+| `wontfix`                 | the status `cancelled`, via `goblin ticket cancel`                               |
+| `needs-info`              | the label `needs-info` on a `backlog` ticket; the question is in its description |
+| `ready-for-human`         | the label `ready-for-human` on a `ready` ticket; Goblin has no assignee          |
 
-Apply a role by moving the ticket, never by tagging it: `pick`, `plan`,
-`shelve`, `approve`, `cancel`. `goblin ticket --help` lists every verb, and
-`goblin ticket <verb> --help` the edges it travels.
+Apply a status role by moving the ticket: `pick`, `plan`, `shelve`, `approve`,
+`cancel`. `goblin ticket --help` lists every verb, and `goblin ticket <verb>
+--help` the edges it travels. Apply a label role with `goblin ticket label add
+<key> needs-info` (or `--labels needs-info` on `ticket create`), and take it off
+with `goblin ticket label remove <key> needs-info` once the question is answered
+or the human has taken the ticket. `goblin ticket list --label needs-info` is
+the queue for a role, and so is the board at `?label=needs-info`.
+
+The frontier still lists a `ready-for-human` ticket. When you work the
+frontier, pass over any ticket carrying it.
 
 Two rules follow from the model rather than from taste:
 
-- **An agent cannot reach `ready-for-agent`.** `approve` is human-owned
-  (ADR-0003), so a triage pass run by an agent ends at `planning` and hands
-  back. Say so plainly instead of leaving the ticket looking finished.
+- **An agent reaches `ready-for-agent` itself.** Either Actor may `approve`
+  (ADR-0012), so a triage pass the human has agreed to ends at `ready`. When
+  the human wants to review the result first, end at `planning` and say so.
 - **`ready` is earned, not declared.** The approve guard wants an app, and a
-  ticket design unless the ticket is `--simple`. A ticket that cannot be
-  approved is missing one of those two, and the refusal names which.
+  description or a ticket design unless the ticket is `--simple`. A ticket
+  that cannot be approved is missing one of those two, and the refusal names
+  which.
 
-Don't reintroduce the two dropped roles as a `Triage:` line in the description.
-That is a shadow field the tracker cannot filter, sort or refuse on, and it
-would drift from the status that actually governs the ticket.
+Never label a ticket with a status role (`needs-triage`, `ready-for-agent`,
+`wontfix`): the status already says it, and a label would drift from the
+status that actually governs the ticket. Never write a role as a `Triage:`
+line in the description either: that is a shadow field the tracker cannot
+filter on.

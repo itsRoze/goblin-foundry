@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { designBody, designField } from './design';
+import { labelsBody } from './labels';
 
 /**
  * Workflow state only, in lifecycle order (ADR-0003); the order here is the
@@ -20,10 +21,12 @@ export const TicketSchema = z.object({
   design: designField,
   app_id: z.number().int().nullable(),
   project_id: z.number().int().nullable(),
+  /** Normalised, in the order they were set (ADR-0013). */
+  labels: z.array(z.string()),
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
-  /** The keys of the blockers that are still *open* — a derived condition, never a status (CONTEXT.md "Blocked"). */
+  /** The keys of the blockers that are still *open* — a derived condition, never a status (GLOSSARY.md "Blocked"). */
   blocked_by: z.array(z.string()),
 });
 export type Ticket = z.infer<typeof TicketSchema>;
@@ -63,7 +66,7 @@ export const isTerminal = (status: TicketStatus): boolean => (TERMINAL_STATUSES 
 
 /**
  * "A blocker is open unless it is `done`, `cancelled`, or Trashed"
- * (CONTEXT.md "Blocked"). Only the status half is answerable here: whether a
+ * (GLOSSARY.md "Blocked"). Only the status half is answerable here: whether a
  * ticket is in the trash is a fact about the row, and every read that asks
  * this question has already dropped the trashed ones.
  */
@@ -72,7 +75,7 @@ export const isOpenBlocker = (status: TicketStatus): boolean => !isTerminal(stat
 /**
  * Blockedness is a property of a *non-terminal* ticket: a `done` or `cancelled`
  * ticket is never blocked however many open blockers it still names
- * (CONTEXT.md "Blocked").
+ * (GLOSSARY.md "Blocked").
  */
 export const isBlocked = (t: Pick<Ticket, 'status' | 'blocked_by'>): boolean => t.blocked_by.length > 0 && !isTerminal(t.status);
 
@@ -99,6 +102,7 @@ export const CreateTicketBodySchema = z.strictObject({
   simple: ticketFields.simple.optional(),
   app_id: ticketFields.app_id.optional(),
   project_id: ticketFields.project_id.optional(),
+  labels: labelsBody.optional(),
 });
 export type CreateTicketBody = z.infer<typeof CreateTicketBodySchema>;
 

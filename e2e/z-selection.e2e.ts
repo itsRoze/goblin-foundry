@@ -232,7 +232,7 @@ test('three tickets move to a project together; one ineligible ticket stops an a
   for (const t of [a, b, c]) expect(await read(page, t.key)).toMatchObject({ app_id: appId, project_id: project.id });
   await expect(card(page, 'Bulkaccept alpha')).toContainText('Selection / Bulk landing');
 
-  // `charlie` has no design and is not simple: `a` refuses the set, names it, and nothing moves
+  // `charlie` has no description or design and is not simple: `a` refuses the set, names it, and nothing moves
   await page.keyboard.press('ControlOrMeta+a');
   await expect(count(page)).toHaveText('3 selected');
   const before = await Promise.all([a, b, c].map((t) => history(page, t.key)));
@@ -240,7 +240,7 @@ test('three tickets move to a project together; one ineligible ticket stops an a
   const refused = page.getByTestId('bulk-refused');
   await expect(refused).toContainText('Nothing changed');
   await expect(refused).toContainText(c.key);
-  await expect(refused).toContainText('approve needs a ticket design');
+  await expect(refused).toContainText('approve needs a description or a ticket design');
   expect((await read(page, a.key)).status).toBe('todo');
   expect((await read(page, b.key)).status).toBe('planning');
   expect(await Promise.all([a, b, c].map((t) => history(page, t.key)))).toEqual(before);

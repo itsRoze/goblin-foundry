@@ -48,7 +48,7 @@ export function useCloseOnOutside(slot: React.RefObject<HTMLElement | null>, ope
 /**
  * A tile, and its place in the keyboard: it registers itself with the desk,
  * which numbers the tiles in reading order and says which one has the focus
- * (CONTEXT.md "Focused tile"). The label is the address — unique on a page,
+ * (GLOSSARY.md "Focused tile"). The label is the address — unique on a page,
  * and what `useCursor` and `d` name a tile by — so it is also what the header
  * shows. Focus follows a click, as it does in a tiling window manager.
  */
@@ -398,6 +398,7 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
   }
   if (e.kind === 'implementation_link_added') return `linked implementation · ${str(e.new.url)}`;
   if (e.kind === 'implementation_link_removed') return `removed implementation link · ${str(e.prior?.url)}`;
+  if (e.kind === 'labelled') return describeLabels(e);
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];
@@ -409,6 +410,17 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
   if ('project_id' in e.new) parts.push(toProject ? `moved to project ${name.project(e.new.project_id)}` : 'removed from project');
   if ('app_id' in e.new && !toProject) parts.push(e.new.app_id === null ? 'removed from app' : `moved to app ${name.app(e.new.app_id)}`);
   return parts.length ? parts.join(' · ') : `updated ${Object.keys(e.new).join(', ')}`;
+}
+
+/** `labelled needs-info · unlabelled wayfinder:task`: the change, read off the two whole sets the event carries. */
+function describeLabels(e: Event): string {
+  const names = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+  const before = names(e.prior?.labels);
+  const after = names(e.new.labels);
+  const added = after.filter((l) => !before.includes(l));
+  const removed = before.filter((l) => !after.includes(l));
+  const parts = [...(added.length ? [`labelled ${added.join(', ')}`] : []), ...(removed.length ? [`unlabelled ${removed.join(', ')}`] : [])];
+  return parts.length ? parts.join(' · ') : 'labels reordered';
 }
 
 /** `quietActor` names the actor only when it is not you — an agent edit is worth seeing. */

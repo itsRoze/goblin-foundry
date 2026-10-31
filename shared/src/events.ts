@@ -15,6 +15,8 @@ export const EventKindSchema = z.enum([
   'dependency_removed',
   'implementation_link_added',
   'implementation_link_removed',
+  // the whole set before and after, one row per change: a label edit is a decision, never folded into an edit session (ADR-0008)
+  'labelled',
 ]);
 export type EventKind = z.infer<typeof EventKindSchema>;
 

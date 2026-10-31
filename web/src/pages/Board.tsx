@@ -35,14 +35,15 @@ import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } f
 /**
  * Per-device display preferences, and nothing else: a View option decides how
  * the board shows what the Filter chose, never *which* tickets are on it, so
- * it never hides a status (CONTEXT.md "View option"). `show cancelled` used to
+ * it never hides a status (GLOSSARY.md "View option"). `show cancelled` used to
  * live here; it is the status Filter now (issue 06 reverses issue 03).
  */
 interface View {
   meta: boolean;
+  labels: boolean;
   updated: boolean;
 }
-const DEFAULT_VIEW: View = { meta: true, updated: false };
+const DEFAULT_VIEW: View = { meta: true, labels: true, updated: false };
 const VIEW_STORAGE_KEY = 'gf.board.view';
 
 /** Read one per-device preference back, or fall back to its default when the device has none or refuses storage. */
@@ -168,7 +169,7 @@ interface Notice {
 
 /**
  * Every way the board moves a card, in one place, because they must agree:
- * dragging a card between columns *is* a transition (CONTEXT.md), and so is
+ * dragging a card between columns *is* a transition (GLOSSARY.md), and so is
  * pressing the key for one, or choosing it from the card's menu. The move is
  * looked up in the table, applied optimistically, and put back with the API's
  * `hint` if it is refused; a move the table has no arrow for is refused here,
@@ -273,7 +274,7 @@ function rawFilterSearch(params: URLSearchParams): string {
 }
 
 /**
- * The kanban is home (CONTEXT.md), and the Filter in the address says what is
+ * The kanban is home (GLOSSARY.md), and the Filter in the address says what is
  * on it: one column per status in the filter's set — the seven live ones by
  * default — in lifecycle order. The address is always *replaced*, never
  * pushed, so back never steps through filters.
@@ -439,6 +440,7 @@ export function BoardPage() {
           ...menuFor(under),
           copyBranch: () => void branchCopy.copy(),
           addImplementationLink: () => navigate(ticketPath(under), { state: { implementation: 'add-link' } }),
+          addLabel: () => navigate(ticketPath(under), { state: { labels: 'add' } }),
           simple: (simple) => inSlot(under, () => patch.mutateAsync({ key: under.key, body: { simple } })),
           place: (field, id) =>
             inSlot(under, () => patch.mutateAsync({ key: under.key, body: field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id } })),
@@ -532,6 +534,7 @@ export function BoardPage() {
     count: tickets.data === undefined ? null : column.tickets.length,
     cursor: cursor.at,
     meta: view.meta ? meta : undefined,
+    showLabels: view.labels,
     updated: view.updated,
     at,
     menuFor,
@@ -598,6 +601,9 @@ export function BoardPage() {
         <div className="gf-view-menu" data-testid="view-menu">
           <label className="gf-toggle">
             <input type="checkbox" checked={view.meta} onChange={() => toggle('meta')} /> app / project
+          </label>
+          <label className="gf-toggle">
+            <input type="checkbox" checked={view.labels} onChange={() => toggle('labels')} /> labels
           </label>
           <label className="gf-toggle">
             <input type="checkbox" checked={view.updated} onChange={() => toggle('updated')} /> updated
@@ -723,6 +729,7 @@ interface CardsProps {
   /** The key the Cursor is on, wherever on the board it is; at most one column has it. */
   cursor: string | null;
   meta: ((t: Ticket) => string) | undefined;
+  showLabels: boolean;
   updated: boolean;
   at: number;
   menuFor: (t: Ticket) => CardActions;
@@ -764,7 +771,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
@@ -775,7 +782,7 @@ function Cards({ status, tickets, cursor, meta, updated, at, menuFor, selectFor,
   return (
     <>
       {tickets.map((t) => (
-        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
+        <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} showLabels={showLabels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
           <Said status={status} {...under(t.key)} notice={null} onCancel={onCancel} onShow={onShow} />
         </TicketCard>
       ))}

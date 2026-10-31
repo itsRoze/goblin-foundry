@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, type BulkAction, type BulkMoveTarget } from '@goblin/shared';
+import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type Ticket } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
@@ -59,7 +59,7 @@ const query = (path: string, params: Record<string, string | undefined>) => {
 const filter = (value: Value | undefined) => (value === undefined ? undefined : value === null ? 'null' : String(value));
 
 /** Which flag a filter parameter arrived on, so a refusal names what was typed rather than a wire name. */
-const FILTER_FLAG: Record<(typeof FILTER_PARAMS)[number], string> = { app_id: 'app', project_id: 'project', status: 'status', q: 'q' };
+const FILTER_FLAG: Record<(typeof FILTER_PARAMS)[number], string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', q: 'q' };
 
 /**
  * The board's Filter (issue 06), read and written by the one parser in
@@ -71,6 +71,7 @@ function filterQuery(args: Args): string {
     app_id: filter(args.values.app_id),
     project_id: filter(args.values.project_id),
     status: args.values.status === undefined ? undefined : String(args.values.status),
+    label: args.values.label === undefined ? undefined : String(args.values.label),
     q: args.values.q === undefined ? undefined : String(args.values.q),
   });
   if (!parsed.ok) throw new UsageError(parsed.issues.map((i) => `--${FILTER_FLAG[i.path[0] as keyof typeof FILTER_FLAG]}: ${i.message}`).join(' · '));
@@ -84,6 +85,7 @@ const APP_FILTER: Flag = { name: 'app', kind: 'id', field: 'app_id', nullable: t
 const PROJECT_FILTER: Flag = { name: 'project', kind: 'id', field: 'project_id', nullable: true, value: '<project|null>', summary: 'only this project, or `null` for the ones with none' };
 const TEXT_FILTER: Flag = { name: 'q', kind: 'string', value: '<text>', summary: 'only the ones whose title or description contains this' };
 const STATUS_FILTER: Flag = { name: 'status', kind: 'string', value: '<a,b>', summary: 'only these statuses, comma-separated (default: every one)' };
+const LABEL_FILTER: Flag = { name: 'label', kind: 'string', value: '<a,b>', summary: 'only the ones carrying any of these labels, comma-separated' };
 
 /** A long field: written inline, read from a file, or piped in. Descriptions and designs are pasted, not typed. */
 const TEXT = '<text|@path|->';
@@ -118,11 +120,13 @@ const ticketFields = (creating: boolean): Flag[] => [
   { name: 'description', kind: 'text', value: TEXT, summary: 'markdown' },
   // creation is design-less on purpose: writing a design is a second call (`design set`)
   ...(creating
-    ? [{ name: 'status', kind: 'string' as const, value: '<status>', summary: 'where it starts (human: backlog; agent: planning, and only planning)' }]
+    ? [{ name: 'status', kind: 'string' as const, value: '<status>', summary: 'where it starts (default backlog; never done or cancelled)' }]
     : [{ name: 'design', kind: 'text' as const, nullable: true, value: TEXT, summary: 'the ticket design; `null` clears it' }]),
-  { name: 'simple', kind: 'boolean', summary: 'straightforward enough to be ready with no design (--no-simple undoes it)' },
+  { name: 'simple', kind: 'boolean', summary: 'the title says it all: ready with no description or design (--no-simple undoes it)' },
   { name: 'app', kind: 'id', field: 'app_id', nullable: true, value: '<app|null>', summary: 'the app it belongs to; `null` detaches it' },
   { name: 'project', kind: 'id', field: 'project_id', nullable: true, value: '<project|null>', summary: 'the project it belongs to; its app follows' },
+  // changing them afterwards is its own intent (`ticket label`), never a field edit
+  ...(creating ? [{ name: 'labels', kind: 'string' as const, value: '<a,b>', summary: 'its labels, comma-separated' }] : []),
 ];
 
 /** Where an App or Project lives, and how it is addressed — one answer, so its verbs and its design commands cannot drift apart. */
@@ -190,6 +194,43 @@ function designCommands(kind: 'project' | 'ticket', address: (ctx: Ctx) => strin
 /** A ticket is addressed by its key, and leniently (`GF-7`, a stale `SR-7`, a bare `7`): the API owns that rule, so the CLI passes it through (ADR-0002). */
 const ticketOperand: Operand[] = [{ name: 'ticket', summary: 'its key, e.g. GF-12 (a bare number works too)' }];
 const ticketAt = (ctx: Ctx) => `/api/tickets/${encodeURIComponent(ctx.args.operands[0] as string)}`;
+
+const labelsOperand: Operand[] = [...ticketOperand, { name: 'label', summary: 'a label name; several, spaced or comma-separated, are one change', variadic: true }];
+
+/**
+ * The API has one label write, the whole set (ADR-0004); `add` and `remove`
+ * are this client's arithmetic over what the ticket carries now, so the
+ * history still reads one change per command.
+ */
+function labelCommand(verb: 'add' | 'remove' | 'set', summary: string, next: (carried: string[], given: string[]) => string[]): Command {
+  return {
+    verb: `label ${verb}`,
+    summary,
+    operands: labelsOperand,
+    async run(ctx) {
+      const given = ctx.args.operands.slice(1).flatMap(splitLabels);
+      let carried: string[] = [];
+      if (verb !== 'set') {
+        const res = await ctx.api.get(ticketAt(ctx));
+        if (!res.ok) return res;
+        carried = ((await res.json()) as Ticket).labels;
+      }
+      return ctx.api.post(`${ticketAt(ctx)}/labels`, { labels: next(carried, given) });
+    },
+  };
+}
+
+const LABEL_COMMANDS: Command[] = [
+  labelCommand('add', 'put labels on a ticket, keeping the ones it has', (carried, given) => [...carried, ...given]),
+  labelCommand('remove', 'take labels off a ticket; one it does not carry is no change', (carried, given) => {
+    // nothing judges a name that is only ever subtracted, so the Piece is asked here, in its own words
+    const judged = ticketLabels.judge(given);
+    if (!judged.ok) throw new UsageError(judged.refusal);
+    const gone = new Set<string>(judged.labels);
+    return carried.filter((label) => !gone.has(label));
+  }),
+  labelCommand('set', "replace a ticket's labels with exactly these ('' for none)", (_, given) => given),
+];
 
 /**
  * The same verb over several tickets (issue 03b): `goblin ticket approve GF-1
@@ -265,10 +306,18 @@ export const NOUNS: Noun[] = [
       {
         verb: 'list',
         summary: 'every live ticket',
-        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, TEXT_FILTER],
+        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, TEXT_FILTER],
         run: ({ args, api }) => api.get(`/api/tickets${filterQuery(args)}`),
       },
-      { verb: 'create', summary: 'a new ticket (design-less: write the design with `ticket design set`)', flags: ticketFields(true), run: ({ args, api }) => api.post('/api/tickets', args.values) },
+      {
+        verb: 'create',
+        summary: 'a new ticket (design-less: write the design with `ticket design set`)',
+        flags: ticketFields(true),
+        run: ({ args, api }) => {
+          const { labels, ...fields } = args.values;
+          return api.post('/api/tickets', labels === undefined ? fields : { ...fields, labels: splitLabels(String(labels)) });
+        },
+      },
       { verb: 'show', summary: 'one ticket, with the edges on both sides of it', operands: ticketOperand, run: (ctx) => ctx.api.get(ticketAt(ctx)) },
       { verb: 'update', summary: "change a ticket's fields (never its status — that is a verb)", operands: ticketOperand, flags: ticketFields(false), run: (ctx) => ctx.api.patch(ticketAt(ctx), ctx.args.values) },
       { verb: 'trash', summary: 'a recoverable deletion, for a ticket made by mistake', operands: ticketsOperand, run: oneOrAll((ctx) => ctx.api.del(ticketAt(ctx)), { kind: 'trash' }) },
@@ -284,6 +333,7 @@ export const NOUNS: Noun[] = [
       { verb: 'link list', summary: 'the saved PR and commit URLs', operands: ticketOperand, run: (ctx) => ctx.api.get(`${ticketAt(ctx)}/implementation-links`) },
       { verb: 'link add', summary: 'save a PR or commit URL without changing status', operands: ticketOperand, flags: [{ name: 'url', kind: 'string', required: true, value: '<url>', summary: 'the PR or commit URL' }], run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/implementation-links`, { url: ctx.args.values.url }) },
       { verb: 'link remove', summary: 'remove a saved reference, leaving the PR or commit untouched', operands: [...ticketOperand, { name: 'link-id', summary: 'the id from link list' }], run: (ctx) => ctx.api.del(`${ticketAt(ctx)}/implementation-links/${encodeURIComponent(ctx.args.operands[1] as string)}`) },
+      ...LABEL_COMMANDS,
       ...designCommands('ticket', ticketAt, ticketOperand),
       ...transitionCommands(),
     ],
@@ -301,13 +351,19 @@ export const NOUNS: Noun[] = [
     summary: 'the ready tickets with nothing in their way, stalest first',
     fallback: 'show',
     // no `--status`: the frontier is `ready` by definition, and the endpoint says so
-    commands: [{ verb: 'show', summary: 'the ready frontier', flags: [APP_FILTER, PROJECT_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
+    commands: [{ verb: 'show', summary: 'the ready frontier', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
   },
   {
     name: 'trash',
     summary: 'everything recoverably deleted, most recent first',
     fallback: 'list',
     commands: [{ verb: 'list', summary: 'what is in the trash', run: ({ api }) => api.get('/api/trash') }],
+  },
+  {
+    name: 'label',
+    summary: 'the names in use on live tickets; a label is created by first use (`ticket label add`)',
+    fallback: 'list',
+    commands: [{ verb: 'list', summary: 'every name a live ticket carries, sorted', run: ({ api }) => api.get('/api/labels') }],
   },
   {
     name: 'settings',

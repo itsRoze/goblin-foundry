@@ -46,7 +46,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const nav = useNavigate();
   const location = useLocation();
   const [query, setQuery] = useState('');
-  /** The highlighted candidate (DESIGN.md Components), not the Cursor — CONTEXT.md keeps that word for the board. */
+  /** The highlighted candidate (DESIGN.md Components), not the Cursor — GLOSSARY.md keeps that word for the board. */
   const [highlight, setHighlight] = useState(0);
   /** A nested pick, one level deep: `move to app…` re-opens the panel on the live apps. */
   const [nest, setNest] = useState<'app' | 'project' | null>(null);
@@ -130,6 +130,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     else if (action.kind === 'blocked-by') act?.blockedBy();
     else if (action.kind === 'copy-branch') act?.copyBranch();
     else if (action.kind === 'add-implementation-link') act?.addImplementationLink();
+    else if (action.kind === 'add-label') act?.addLabel();
     else act?.place(action.field, action.id);
     onClose();
   };
@@ -275,6 +276,7 @@ function ticketActions(ticket: TicketDetail): Candidate[] {
     ...transitionRows(ticket.status),
     { id: 'act-copy-branch', group: 'actions', label: 'copy branch name', aliases: ['copy git branch'], action: { kind: 'copy-branch' } },
     { id: 'act-add-implementation-link', group: 'actions', label: 'add implementation link', aliases: ['add link', 'add PR', 'add commit', 'pull request'], action: { kind: 'add-implementation-link' } },
+    { id: 'act-add-label', group: 'actions', label: 'add label…', aliases: ['label', 'tag'], action: { kind: 'add-label' } },
     { id: 'act-trash', group: 'actions', label: 'trash', action: { kind: 'trash' } },
     {
       id: 'act-simple',
@@ -292,7 +294,7 @@ function ticketActions(ticket: TicketDetail): Candidate[] {
  * The second step of `move to app…` / `move to project…`. ADR-0007 as the
  * Ticket view's own selects apply it: a project is only offered under the
  * app the ticket is already in, and an archived target is not somewhere a
- * ticket goes (CONTEXT.md "Archived").
+ * ticket goes (GLOSSARY.md "Archived").
  */
 function placeRows(into: 'app' | 'project', ticket: TicketDetail | null, targets: { id: number; name: string; app_id?: number | null }[] | undefined): Candidate[] {
   const field = into === 'app' ? 'app_id' : 'project_id';

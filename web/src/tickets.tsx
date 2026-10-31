@@ -76,6 +76,15 @@ export interface CardSelect {
   locked: boolean;
 }
 
+/** ◇ before a blocked title, on a card and a row alike, with its blockers in the title and a hidden word for a screen reader (DESIGN.md Row). */
+function BlockedMark({ ticket, testId }: { ticket: Pick<Ticket, 'blocked_by'>; testId?: string }) {
+  return (
+    <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={testId}>
+      ◇<span className="gf-sr"> blocked </span>
+    </span>
+  );
+}
+
 /**
  * The kanban card: key + status note, title, then whatever the view options
  * ask for (DESIGN.md Components). The card is a link and the whole of it is
@@ -87,6 +96,7 @@ export function TicketCard({
   ticket,
   cursor,
   meta,
+  showLabels,
   updated,
   at,
   menu,
@@ -98,6 +108,8 @@ export function TicketCard({
   /** The Cursor is on this card: the selected-row mark, never the full border, which is the drag's. */
   cursor: boolean;
   meta: string | null;
+  /** Whether the card shows its Labels — a View option, so a dense board can do without them. */
+  showLabels: boolean;
   updated: string | null;
   at: number;
   menu: CardActions;
@@ -159,11 +171,7 @@ export function TicketCard({
           <i>{ticket.status}</i>
         </span>
         <span className="gf-card-title">
-          {blocked && (
-            <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={`blocked-${ticket.key}`}>
-              ◇
-            </span>
-          )}
+          {blocked && <BlockedMark ticket={ticket} testId={`blocked-${ticket.key}`} />}
           {ticket.title}
         </span>
         {meta !== null && <span className="gf-card-meta">{meta}</span>}
@@ -171,6 +179,20 @@ export function TicketCard({
           <span className="gf-card-meta">
             updated <Since iso={updated} at={at} />
           </span>
+        )}
+        {/* plain names, never a colour (ADR-0013): the Label chip's clothes, without the Ticket view's `×`, under both meta lines so they stay together */}
+        {showLabels && ticket.labels.length > 0 && (
+          <>
+            {/* the card is one link, read as one sentence: the word says these names are labels, not more of the title */}
+            <span className="gf-sr">labels </span>
+            <span className="gf-labels gf-card-labels" data-testid={`card-labels-${ticket.key}`}>
+              {ticket.labels.map((label) => (
+                <span key={label} className="gf-chip gf-label">
+                  {label}
+                </span>
+              ))}
+            </span>
+          </>
         )}
       </Link>
       <CardMenu ticket={ticket} actions={menu} disabled={select.locked} />
@@ -321,7 +343,7 @@ export const projectFitsApp = (project: { app_id: number | null } | undefined, a
 
 /**
  * `c` on the board (issue 06): one row under the filter bar, prefilled from
- * the Filter — the Scope on screen (CONTEXT.md "Scope"). Every field is
+ * the Filter — the Scope on screen (GLOSSARY.md "Scope"). Every field is
  * editable before saving, so the ticket lands where you sent it, on this board
  * or off it.
  */
@@ -445,7 +467,7 @@ const FormButtons = ({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
 
 /**
  * A ticket from a title alone. One line, because at this point the ticket is
- * only an idea (CONTEXT.md).
+ * only an idea (GLOSSARY.md).
  */
 export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: string) => Promise<unknown>; onCancel: () => void; testId?: string }) {
   const [title, setTitle] = useState('');
@@ -499,9 +521,17 @@ export function TicketRows({ tickets, tile = 'tickets' }: { tickets: Ticket[] | 
   return (
     <div className="gf-rows" data-testid="ticket-rows">
       {tickets.map((t) => (
-        <Link key={t.id} className={`gf-row${cursor.isAt(t.key) ? ' is-cursor' : ''}`} aria-current={cursor.isAt(t.key) ? true : undefined} to={ticketPath(t)}>
+        <Link
+          key={t.id}
+          // blocked and cancelled read here as they do on a card (DESIGN.md Do's): a struck title, ◇ for blocked, never a colour
+          className={`gf-row${t.status === 'cancelled' ? ' is-cancelled' : ''}${isBlocked(t) ? ' is-blocked' : ''}${cursor.isAt(t.key) ? ' is-cursor' : ''}`}
+          aria-current={cursor.isAt(t.key) ? true : undefined}
+          to={ticketPath(t)}
+        >
           <span className="gf-row-title">
-            <span className="gf-key">{t.key}</span> {t.title}
+            <span className="gf-key">{t.key}</span>{' '}
+            {isBlocked(t) && <BlockedMark ticket={t} />}
+            <span className="gf-row-name">{t.title}</span>
           </span>
           <span className="gf-row-trail">
             <StatusChip status={t.status} />

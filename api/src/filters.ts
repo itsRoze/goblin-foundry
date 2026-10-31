@@ -8,7 +8,7 @@ import { parseTicketFilter, type TicketFilter } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { unprocessable } from './problems';
-import { ticket as ticketTable } from './schema';
+import { ticket as ticketTable, ticketLabel } from './schema';
 
 /** The filter these parameters describe, or the 422 the handler returns instead. */
 export function readFilter(c: Context): TicketFilter | Response {
@@ -39,6 +39,8 @@ export function ticketWhere(filter: TicketFilter): SQL[] {
     conditions.push(value === null ? isNull(column) : eq(column, value));
   }
   if (filter.status) conditions.push(inArray(ticketTable.status, filter.status));
+  // any of them, as a status set is: the names arrive normalised, which is how they are stored
+  if (filter.label) conditions.push(sql`${ticketTable.id} IN (SELECT ${ticketLabel.ticket_id} FROM ${ticketLabel} WHERE ${inArray(ticketLabel.name, filter.label)})`);
   // one condition, so a `q` beside an `app_id` reads as "in this app *and* matching", never as an alternative
   if (filter.q !== undefined) conditions.push(or(contains(ticketTable.title, filter.q), contains(ticketTable.description, filter.q)) as SQL);
   return conditions;

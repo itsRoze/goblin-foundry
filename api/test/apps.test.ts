@@ -129,7 +129,7 @@ describe('/api/apps', () => {
     const again = await req(`/api/apps/${b.id}/archive`, json('POST'));
     expect(again.status).toBe(409);
     expect(again.headers.get('content-type')).toContain('application/problem+json');
-    expect(await again.json()).toMatchObject({ status: 409, owner: 'human', hint: expect.stringContaining('already archived') });
+    expect(await again.json()).toMatchObject({ status: 409, hint: expect.stringContaining('already archived') });
 
     const notArchived = await req(`/api/apps/${a.id}/unarchive`, json('POST'));
     expect(notArchived.status).toBe(409);

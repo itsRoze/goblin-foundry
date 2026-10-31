@@ -1,5 +1,5 @@
 /**
- * Archive / unarchive / trash / restore for Apps and Projects (CONTEXT.md
+ * Archive / unarchive / trash / restore for Apps and Projects (GLOSSARY.md
  * "Archived" vs "Trashed"), plus per-entity events and the id lookups every
  * resource route needs. Same rules for both; what differs — what happens to
  * children on trash and restore — is passed in as hooks (ADR-0007).

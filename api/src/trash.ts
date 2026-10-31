@@ -3,6 +3,7 @@ import { desc, isNotNull } from 'drizzle-orm';
 import type { ActorEnv } from './actor';
 import { toApp } from './apps';
 import type { Db } from './db';
+import { labelsByTicket } from './labels';
 import { toProject } from './projects';
 import { app as appTable, project as projectTable, ticket as ticketTable } from './schema';
 import { readSettings } from './settings';
@@ -16,10 +17,11 @@ export function trashRoutes(db: Db) {
     const projects = await db.select().from(projectTable).where(isNotNull(projectTable.trashed_at)).orderBy(desc(projectTable.trashed_at), desc(projectTable.id));
     const tickets = await db.select().from(ticketTable).where(isNotNull(ticketTable.trashed_at)).orderBy(desc(ticketTable.trashed_at), desc(ticketTable.id));
     const { ticket_prefix } = await readSettings(db);
+    const labels = await labelsByTicket(db);
     return c.json({
       apps: apps.map(toApp),
       projects: projects.map(toProject),
-      tickets: tickets.map((t) => toTicket(t, ticket_prefix)),
+      tickets: tickets.map((t) => toTicket(t, ticket_prefix, labels(t.id))),
     });
   });
   return r;

@@ -6,6 +6,7 @@ import type { Db } from './db';
 import { actorMiddleware } from './actor';
 import { appsRoutes } from './apps';
 import { frontierRoutes } from './dependencies';
+import { labelNamesRoutes } from './labels';
 import { projectsRoutes } from './projects';
 import { settingsRoutes } from './settings';
 import { ticketsRoutes, toTicket } from './tickets';
@@ -24,6 +25,7 @@ export function createApp(db: Db) {
   app.route('/api/tickets', ticketsRoutes(db));
   app.route('/api/frontier', frontierRoutes(db, toTicket));
   app.route('/api/trash', trashRoutes(db));
+  app.route('/api/labels', labelNamesRoutes(db));
 
   if (existsSync(WEB_DIST)) {
     app.use('/*', serveStatic({ root: WEB_DIST }));
