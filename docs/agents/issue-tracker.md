@@ -93,15 +93,25 @@ A PR still open or closed unmerged leaves the ticket in `review`.
 
 Wayfinder's vocabulary maps onto Goblin like this:
 
-| Wayfinder        | Goblin                                                                  |
-| ---------------- | ----------------------------------------------------------------------- |
-| the map          | a Project; its design is the map's index (`goblin project design set`)   |
-| a decision       | a ticket in that project, created in `ready` so it is on the frontier    |
-| its type         | a title prefix until Goblin has labels: `[research] Which feed parser`  |
-| claim it         | `goblin ticket start` (`ready → building`)                               |
-| answer it        | the ticket's design (`goblin ticket design set`)                         |
-| resolve it       | `goblin ticket close` (`→ done` from any status before `review`)        |
-| the frontier     | `goblin frontier --project <map>`                                        |
+| Wayfinder    | Goblin                                                                    |
+| ------------ | ------------------------------------------------------------------------- |
+| the map      | a Project; its design is the map's index (`goblin project design set`)    |
+| a decision   | a ticket in that project, created in `ready` so it is on the frontier     |
+| its type     | one Label: `wayfinder:` + `research`, `prototype`, `grilling` or `task`   |
+| claim it     | `goblin ticket start` (`ready → building`)                                |
+| answer it    | the ticket's design (`goblin ticket design set`)                          |
+| resolve it   | `goblin ticket close` (`→ done` from any status before `review`)          |
+| the frontier | `goblin frontier --project <map>`; add `--label wayfinder:<type>` for one |
+
+Create a decision with its type:
+
+    goblin ticket create --actor agent --status ready --project <map> \
+      --title "Which feed parser" --description @<path> \
+      --labels wayfinder:research
+
+The title is the question alone; the Label carries the type, and the
+description is enough for the approve guard. Every decision of a type, open or
+not: `goblin ticket list --project <map> --label wayfinder:research`.
 
 Declare one decision's reliance on another as a dependency, so the frontier
 shows only the decisions that are open to take.
@@ -147,8 +157,9 @@ Both are raw markdown and both are tracker records, not files (ADR-0005).
 
 ## What is not here
 
-Goblin has no labels, no assignee and no comment thread. Don't simulate them in
-a description; see `triage-labels.md`.
+Goblin has no assignee and no comment thread. Don't simulate them in a
+description: the triage roles that would lean on them are Labels, see
+`triage-labels.md`.
 
 ## The historical record
 

@@ -4,20 +4,24 @@ A ticket's triage state is its **status** where a status can carry it, and a
 **label** where it cannot (ADR-0013). Three of the five canonical roles the
 skills speak in are statuses; the other two are labels.
 
-| Role in mattpocock/skills | In Goblin                                                                   |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `needs-triage`            | `backlog` — an idea, not yet evaluated                                       |
-| `ready-for-agent`         | `ready`, and so on the frontier                                              |
-| `wontfix`                 | `cancelled`, via `goblin ticket cancel`                                      |
-| `needs-info`              | the label `needs-info`, with the open question in the description           |
-| `ready-for-human`         | the label `ready-for-human` — Goblin has no assignee                         |
+| Role in mattpocock/skills | In Goblin                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `needs-triage`            | the status `backlog`: an idea, not yet evaluated                                 |
+| `ready-for-agent`         | the status `ready`, and so on the frontier                                       |
+| `wontfix`                 | the status `cancelled`, via `goblin ticket cancel`                               |
+| `needs-info`              | the label `needs-info` on a `backlog` ticket; the question is in its description |
+| `ready-for-human`         | the label `ready-for-human` on a `ready` ticket; Goblin has no assignee          |
 
 Apply a status role by moving the ticket: `pick`, `plan`, `shelve`, `approve`,
 `cancel`. `goblin ticket --help` lists every verb, and `goblin ticket <verb>
 --help` the edges it travels. Apply a label role with `goblin ticket label add
 <key> needs-info` (or `--labels needs-info` on `ticket create`), and take it off
-with `goblin ticket label remove` once the question is answered or the human
-has taken the ticket.
+with `goblin ticket label remove <key> needs-info` once the question is answered
+or the human has taken the ticket. `goblin ticket list --label needs-info` is
+the queue for a role, and so is the board at `?label=needs-info`.
+
+The frontier still lists a `ready-for-human` ticket. When you work the
+frontier, pass over any ticket carrying it.
 
 Two rules follow from the model rather than from taste:
 

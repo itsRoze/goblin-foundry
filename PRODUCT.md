@@ -39,8 +39,9 @@ One line each; the spec carries the user stories.
 - Dependencies are advisory facts between any two tickets; only cycles are refused (ADR-0009). The Ready Frontier is where they bite.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
 - Designs are markdown columns in the tracker, edited in place, always live; there is no draft and no save step (ADR-0005). Editing text never changes status.
-- Not in S1 (ADR-0006): runs, evidence, leases, costs, `needs_human`, labels, milestones, priority, claim order, light mode, deployment, an in-tracker planning feature.
-- Terminology is fixed by `GLOSSARY.md`: App, Project, Ticket, Ticket Key, Design, Transition, Ready Frontier, Approve Guard, Edit session, View option, Filter. Use those words.
+- Labels are free-form names on a ticket, several per ticket, plain text chips and a Filter set, never a status or a colour (ADR-0013).
+- Not in S1 (ADR-0006): runs, evidence, leases, costs, `needs_human`, milestones, priority, claim order, light mode, deployment, an in-tracker planning feature.
+- Terminology is fixed by `GLOSSARY.md`: App, Project, Ticket, Ticket Key, Design, Transition, Ready Frontier, Approve Guard, Label, Edit session, View option, Filter. Use those words.
 
 ## Brand Commitments
 
