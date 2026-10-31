@@ -4,6 +4,7 @@
   "license": "MIT",
   "workspaces": [
     "workflow",
+    "labels",
     "shared",
     "api",
     "web",
