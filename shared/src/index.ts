@@ -86,6 +86,7 @@ export {
   approveGuard,
   hasIntent,
   guardHold,
+  decidingOwner,
 } from './transitions';
 export {
   GraphExternalSchema,

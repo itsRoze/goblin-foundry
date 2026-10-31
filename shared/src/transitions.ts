@@ -1,5 +1,5 @@
 import { defineWorkflow, type EdgeOf, type NameOf } from '@goblin/workflow';
-import type { Actor } from './actor';
+import { ActorSchema, type Actor } from './actor';
 import { hasDesign } from './design';
 import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
 
@@ -20,12 +20,28 @@ export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
   return missing;
 }
 
+/**
+ * Whose moves each Actor may make. Actor is a record, never a permission
+ * (ADR-0012), so each holds both authorities and every edge is owned by both.
+ */
+const AUTHORITY = { human: ['human', 'agent'], agent: ['agent', 'human'] } as const satisfies Record<Actor, readonly Actor[]>;
+
+/**
+ * The owner worth naming: one some Actor lacks the authority of, so it
+ * decides who may move. Here every Actor holds every authority, so none is,
+ * and a refusal names no owner.
+ */
+export const decidingOwner = (owner: Actor | undefined): Actor | undefined =>
+  owner !== undefined && ActorSchema.options.some((actor) => !(AUTHORITY[actor] as readonly Actor[]).includes(owner)) ? owner : undefined;
+
 export const lifecycle = defineWorkflow({
   noun: 'ticket',
   statuses: TICKET_STATUSES,
-  // Actor is a record, never a permission (ADR-0012): each holds the other's
-  // authority, so the owner the Piece asks of every row decides nothing here.
-  actors: { human: ['human', 'agent'], agent: ['agent', 'human'] } as const satisfies Record<Actor, readonly Actor[]>,
+  actors: AUTHORITY,
+  // `owner: 'human'` on every row is a placeholder. `@goblin/workflow` asks
+  // each row for one owner so that another Assembly can say "only a human
+  // approves"; Goblin Foundry says nobody's move is theirs alone, and with
+  // AUTHORITY giving each Actor both, whatever is written here decides nothing.
   transitions: {
     pick: { from: ['backlog', 'planning'], to: 'todo', owner: 'human' },
     plan: { from: ['backlog', 'todo'], to: 'planning', owner: 'human' },

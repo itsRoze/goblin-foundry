@@ -58,12 +58,12 @@ describe('POST /api/tickets/:key/:name', () => {
     expect((await res.json()).detail).toBe('no transition named promote');
   });
 
-  test('a name in the table with no edge from this status is a 409 naming the owner and the status pair', async () => {
+  test('a name in the table with no edge from this status is a 409 naming the status pair', async () => {
     const t = await at('review');
     const res = await post(`/api/tickets/${t.key}/start`);
     expect(res.status).toBe(409);
     expect(res.headers.get('content-type')).toContain('application/problem+json');
-    expect(await res.json()).toMatchObject({ owner: 'human', hint: 'a ticket in review does not go back to building' });
+    expect(await res.json()).toMatchObject({ hint: 'a ticket in review does not go back to building' });
   });
 
   test('a move to the status the ticket is already in is refused too', async () => {
@@ -204,7 +204,7 @@ describe('POST /api/tickets/:key/:name', () => {
       h.failWrites('ticket', t.id, 'vanish');
       const res = await post(`/api/tickets/${t.id}/pick`);
       expect(res.status).toBe(409);
-      expect(await res.json()).toMatchObject({ owner: 'human', hint: `nothing changed — ticket ${t.key} changed while pick was being applied; try again` });
+      expect(await res.json()).toMatchObject({ hint: `nothing changed — ticket ${t.key} changed while pick was being applied; try again` });
       h.healWrites();
       expect((await read(t.key)).status).toBe('backlog');
       expect(await events(t.key)).toEqual(before);

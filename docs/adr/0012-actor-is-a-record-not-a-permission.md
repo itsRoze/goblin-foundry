@@ -18,6 +18,6 @@ The approve guard keeps its App requirement and accepts a description in place o
 
 ## Consequences
 
-- `AGENT_CEILING` and the agent-only refusals go; every edge in `transitions.ts` is owned by both Actors. The workflow engine keeps owners for other Assemblies.
+- `AGENT_CEILING` and the agent-only refusals go; every edge in `transitions.ts` is owned by both Actors. The workflow engine keeps owners for other Assemblies, so each row still names one; here that name is a placeholder every Actor's authority covers, the pinned edges read `either`, and a `409` carries ADR-0004's `owner` only when an owner decides something — in Goblin Foundry, never.
 - GLOSSARY.md's Actor, Attention, Approve Guard, Simple and Transition entries change with this. PRODUCT.md's agent rule and `docs/agents/issue-tracker.md` follow.
 - The tracker doc now names three workflows and how each moves Tickets: to-tickets creates in `ready`; implement-spec and poteto mode start, link, submit, and `ship` after a merge they have verified; wayfinder maps onto a Project (its Design the map) and decision Tickets claimed by `start` and resolved by `close`.
