@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_BOARD_STATUSES,
   TICKET_STATUSES,
@@ -155,10 +155,32 @@ function ChipButton({
   );
 }
 
-/** The popover itself: anchored beneath its chip, closed by `esc` or by a press outside its slot. */
+/**
+ * The popover itself: anchored beneath its chip, closed by `esc` or by a press
+ * outside its slot. It starts at the chip's left edge and slides left only as
+ * far as it must to stay inside the bar. Where a chip sits depends on how the
+ * bar wrapped, so that is measured, never assumed — and measured again as the
+ * rows arrive, since the label names come from a read.
+ */
 function Popover({ children, testId }: { children: React.ReactNode; testId: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const pop = ref.current;
+    const slot = pop?.parentElement;
+    const bar = pop?.closest('.gf-filters');
+    if (!pop || !slot || !bar) return;
+    const place = () => {
+      const [at, within] = [slot.getBoundingClientRect(), bar.getBoundingClientRect()];
+      setShift(Math.max(within.left, Math.min(at.left, within.right - pop.offsetWidth)) - at.left);
+    };
+    place();
+    const watch = new ResizeObserver(place);
+    watch.observe(pop);
+    return () => watch.disconnect();
+  }, []);
   return (
-    <div className="gf-pop" data-testid={testId}>
+    <div ref={ref} className="gf-pop" style={{ left: shift }} data-testid={testId}>
       {children}
     </div>
   );
