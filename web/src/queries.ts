@@ -137,6 +137,8 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
  * card it is on, so the key travels with the body rather than with the hook.
  */
 export const usePatchTicket = () => useWrite(({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body));
+/** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
+export const useSetLabels = () => useWrite(({ key, labels }: { key: string; labels: string[] }) => api.post(`/api/tickets/${key}/labels`, { labels }));
 /** A ticket is never archived (GLOSSARY.md): trash and restore are all it has. */
 export const useTicketIntent = () =>
   useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>

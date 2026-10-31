@@ -40,6 +40,7 @@ export type PaletteAction =
   | { kind: 'blocked-by' }
   | { kind: 'copy-branch' }
   | { kind: 'add-implementation-link' }
+  | { kind: 'add-label' }
   /** One step of a nested pick: the palette re-opens listing the live apps or projects. */
   | { kind: 'nest'; into: 'app' | 'project' }
   | { kind: 'place'; field: 'app_id' | 'project_id'; id: number | null }

@@ -341,6 +341,14 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-dep-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: var(--gf-t-meta); line-height: 1; padding: 2px 5px; }
 .gf-dep-drop:hover { color: var(--gf-ink); }
 
+/* a Label is a plain chip — a name, never a colour (ADR-0013) — whose `×` sits inside its border */
+.gf-labels { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gf-s2); }
+.gf-label { display: inline-flex; align-items: center; gap: 2px; padding-right: 0; text-transform: none; letter-spacing: 0; color: var(--gf-ink); }
+.gf-label-drop { background: none; border: none; color: var(--gf-mute); cursor: pointer; font: inherit; line-height: 1; padding: 0 5px; }
+.gf-label-drop:hover { color: var(--gf-ink); }
+.gf-label-input { font: var(--gf-t-label); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-system); border-radius: var(--gf-radius); padding: 2px 6px; width: 20ch; }
+.gf-labels .gf-refusal { flex-basis: 100%; margin: 0; }
+
 /* the picker: an open input over candidate rows, the highlighted one wearing
    the selected-row treatment from DESIGN.md Components — that inset is what says these
    are choices rather than a list of things. */
@@ -650,7 +658,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-toggle input { accent-color: var(--gf-system); }
 /* placeholder text is text: the UA's grey fails the text-safe rule at 3.1:1 on `--gf-page` */
 .gf-filter-text::placeholder, .gf-new-row input::placeholder, .gf-new-ticket input::placeholder,
-.gf-field input::placeholder, .gf-field textarea::placeholder, .gf-picker input::placeholder { color: var(--gf-mute); }
+.gf-field input::placeholder, .gf-field textarea::placeholder, .gf-picker input::placeholder, .gf-label-input::placeholder { color: var(--gf-mute); }
 
 /* the third chip's popover would hang off the tile at phone width, so it hangs from its right edge instead */
 @media (max-width: 899px) {
@@ -668,7 +676,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
   /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
   .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
-  .gf-dep-drop { min-width: 32px; min-height: 32px; }
+  .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }
   button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
   span.gf-hint, .gf-tile-move, .gf-tile-keys > .gf-kbd { display: none; }
   /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */

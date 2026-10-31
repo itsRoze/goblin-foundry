@@ -266,6 +266,38 @@ describe('goblin', () => {
     expect((await json(['dependency', 'remove', '--blocker', 'GF-1', '--blocked', 'GF-2'])).blocked_by).toEqual([]);
   });
 
+  describe('labels (ADR-0013)', () => {
+    test('--labels on create, then add, remove and set; each answers with the ticket', async () => {
+      expect((await json(['ticket', 'create', '--title', 'triage me', '--labels', 'Needs-Info,wayfinder:research', '--actor', 'agent'])).labels).toEqual(['needs-info', 'wayfinder:research']);
+      // several names, spaced or comma-separated; one already carried is no change
+      expect((await json(['ticket', 'label', 'add', 'GF-1', 'ready-for-human,needs-info', 'wayfinder:task'])).labels).toEqual(['needs-info', 'wayfinder:research', 'ready-for-human', 'wayfinder:task']);
+      // removal matches the name as the Piece writes it, and a name the ticket lacks is not a refusal
+      expect((await json(['ticket', 'label', 'remove', 'GF-1', 'NEEDS-INFO', 'absent'])).labels).toEqual(['wayfinder:research', 'ready-for-human', 'wayfinder:task']);
+      expect((await json(['ticket', 'label', 'set', 'GF-1', 'wayfinder:prototype'])).labels).toEqual(['wayfinder:prototype']);
+      // the empty set is written as an empty argument
+      expect((await json(['ticket', 'label', 'set', 'GF-1', ''])).labels).toEqual([]);
+    });
+
+    test("a malformed name is the API's refusal, in the Piece's sentence, and nothing changes", async () => {
+      await json(['ticket', 'create', '--title', 'x', '--labels', 'keep']);
+      const refused = await run(['ticket', 'label', 'add', 'GF-1', 'a,,b']);
+      expect(refused.code).toBe(1);
+      expect(refused.out).toBe('');
+      expect(JSON.parse(refused.err).issues).toEqual([{ path: ['labels'], message: 'a label cannot be blank' }]);
+      // a name only ever subtracted never reaches the API's judge, so the CLI asks the Piece itself: a usage refusal
+      const removing = await run(['ticket', 'label', 'remove', 'GF-1', 'keep it']);
+      expect(removing.code).toBe(2);
+      expect(removing.err).toContain('keep it is not one word: a label has no spaces or commas');
+      expect((await json(['ticket', 'show', 'GF-1'])).labels).toEqual(['keep']);
+    });
+
+    test('the noun documents itself from the command table', async () => {
+      const help = (await run(['ticket', 'label', 'add', '--help'])).out;
+      expect(help).toContain('usage: goblin ticket label add <ticket> <label>...');
+      expect((await run(['ticket', '--help'])).out).toMatch(/label set\s+replace/);
+    });
+  });
+
   describe('refusals', () => {
     const badRun = async (argv: string[], over: Partial<GoblinDeps> = {}) => {
       const result = await runGoblin(argv, { fetch: (path, init) => Promise.resolve(h.app.request(path, init)), env: {}, ...over });

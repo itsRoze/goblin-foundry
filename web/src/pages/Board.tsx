@@ -439,6 +439,7 @@ export function BoardPage() {
           ...menuFor(under),
           copyBranch: () => void branchCopy.copy(),
           addImplementationLink: () => navigate(ticketPath(under), { state: { implementation: 'add-link' } }),
+          addLabel: () => navigate(ticketPath(under), { state: { labels: 'add' } }),
           simple: (simple) => inSlot(under, () => patch.mutateAsync({ key: under.key, body: { simple } })),
           place: (field, id) =>
             inSlot(under, () => patch.mutateAsync({ key: under.key, body: field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id } })),

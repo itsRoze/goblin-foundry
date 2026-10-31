@@ -24,6 +24,7 @@ import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
+import { LabelsField } from '../labels';
 import { useBranchCopy } from '../branch-copy';
 
 export function TicketView() {
@@ -66,6 +67,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const focusTile = useFocusTile();
   const branchCopy = useBranchCopy(ticket);
   const implementationInput = useRef<HTMLInputElement>(null);
+  /** The label input is opened from here too (`⌘K` `add label…`), so whether it is open lives up here. */
+  const [addingLabel, setAddingLabel] = useState(false);
+  const openLabels = useCallback(() => {
+    focusTile('about');
+    setAddingLabel(true);
+  }, [focusTile]);
   const openImplementationLink = useCallback(() => {
     focusTile('implementation');
     requestAnimationFrame(() => implementationInput.current?.focus());
@@ -123,15 +130,17 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
 
   // arriving from the board's `d`: go where the button is, and press it (issue 10)
   const { pathname, search, state: navState } = useLocation();
-  const request = navState as { picking?: Direction; implementation?: 'add-link' } | null;
+  const request = navState as { picking?: Direction; implementation?: 'add-link'; labels?: 'add' } | null;
   const asked = request?.picking;
   const implementationAsked = request?.implementation;
+  const labelsAsked = request?.labels;
   useEffect(() => {
-    if (asked === undefined && implementationAsked === undefined) return;
+    if (asked === undefined && implementationAsked === undefined && labelsAsked === undefined) return;
     if (implementationAsked === 'add-link') openImplementationLink();
+    else if (labelsAsked === 'add') openLabels();
     else { focusTile('dependencies'); setPicking(asked!); }
     nav(pathname + search, { replace: true, state: null });
-  }, [asked, implementationAsked, openImplementationLink, focusTile, nav, pathname, search]);
+  }, [asked, implementationAsked, labelsAsked, openImplementationLink, openLabels, focusTile, nav, pathname, search]);
 
   /** A write from the about tile's non-prose controls, reported in the tile's one line and rethrown so the caller knows it did not land. */
   const save = async (body: PatchTicketBody) => {
@@ -154,6 +163,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     blockedBy: openBlockedBy,
     copyBranch: () => { focusTile('implementation'); void branchCopy.copy(); },
     addImplementationLink: openImplementationLink,
+    addLabel: openLabels,
     // ADR-0007 as the about tile's selects apply it — and a refused move lands in *their* line, not the state tile's
     place: (field, id) => trySave(field === 'app_id' ? { app_id: id, project_id: null } : { project_id: id }),
   });
@@ -253,6 +263,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
                   ))}
               </select>,
             ],
+            ['labels', <LabelsField ticket={ticket} adding={addingLabel} setAdding={setAddingLabel} />],
             ['created', <Since iso={ticket.created_at} at={at} />],
             ['updated', <Since iso={ticket.updated_at} at={at} />],
           ]}
