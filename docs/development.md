@@ -20,7 +20,7 @@ repositories — so it is a macOS LaunchAgent rather than a terminal you have to
 leave open.
 
 ```sh
-bun install
+bun install                # also points git at .githooks/, whose hooks reinstall when a merge, rebase or checkout changes bun.lock
 (cd cli && bun link)       # `goblin`, the CLI — see below
 goblin service install     # builds the GUI, writes the agent, loads it
 ```

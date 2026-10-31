@@ -1,4 +1,4 @@
-import { TRANSITION_PAST, asksBeforeBlocked, hasIntent, lifecycle, type BulkAction, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
+import { TRANSITION_PAST, asksBeforeBlocked, hasIntent, lifecycle, type BulkAction, type BulkRefusal, type Ticket, type TicketSummary, type TransitionName } from '@goblin/shared';
 import { rankedMoves } from './palette';
 
 /**
@@ -8,8 +8,8 @@ import { rankedMoves } from './palette';
  * and the one question each action may have to ask first.
  */
 
-/** What the board knows about a member: enough to judge a move, ask about blockers and name it. */
-export type Member = Pick<Ticket, 'id' | 'key' | 'status' | 'app_id' | 'simple' | 'design' | 'description' | 'blocked_by'>;
+/** What the board knows about a member, from its list row: enough to judge a move, ask about blockers and name it. */
+export type Member = Pick<TicketSummary, 'id' | 'key' | 'status' | 'app_id' | 'simple' | 'intent_written' | 'blocked_by'>;
 
 const PRESENT: Record<TransitionName, string> = {
   pick: 'Picking',

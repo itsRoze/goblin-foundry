@@ -20,7 +20,8 @@
     "lint:dead-css": "bun scripts/unused-css.ts",
     "test": "bun test",
     "test:e2e": "playwright test",
-    "db:push": "bun run --filter '@goblin/api' db:push"
+    "db:push": "bun run --filter '@goblin/api' db:push",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

@@ -243,10 +243,10 @@ async function seed(base: string): Promise<Record<string, string>> {
 
   const inMvp = { project_id: mvp.id };
   const scaffold = await ticket('Repo scaffold and CI', { ...inMvp, status: 'ready', simple: true });
-  const article = await ticket('Article view with e-ink pagination', { ...inMvp, status: 'planning' });
-  const sync = await ticket('Background sync every fifteen minutes', inMvp);
-  const feedList = await ticket('Feed list screen', { ...inMvp, status: 'todo', simple: true, description: FEED_LIST_DESCRIPTION });
-  const cache = await ticket('Offline cache of article bodies', { ...inMvp, status: 'ready', simple: true });
+  const article = await ticket('Article view with e-ink pagination', { ...inMvp, status: 'planning', labels: ['ui', 'e-ink'] });
+  const sync = await ticket('Background sync every fifteen minutes', { ...inMvp, labels: ['needs-info'] });
+  const feedList = await ticket('Feed list screen', { ...inMvp, status: 'todo', simple: true, description: FEED_LIST_DESCRIPTION, labels: ['ui'] });
+  const cache = await ticket('Offline cache of article bodies', { ...inMvp, status: 'ready', simple: true, labels: ['offline', 'ready-for-human'] });
   const settings = await ticket('Settings screen', { ...inMvp, status: 'ready', simple: true });
   await ticket('OPML import', inMvp);
   const darkMode = await ticket('Dark mode toggle', inMvp);

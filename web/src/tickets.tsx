@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { CREATABLE_STATUSES, isBlocked, isCreatable, lifecycle, type CreateTicketBody, type Ticket, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { CREATABLE_STATUSES, isBlocked, isCreatable, lifecycle, type CreateTicketBody, type TicketSummary, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { useOpensCreate } from './creating';
 import { useCursor } from './desk';
 import { formKeys, useKey } from './keys';
@@ -77,7 +77,7 @@ export interface CardSelect {
 }
 
 /** ◇ before a blocked title, on a card and a row alike, with its blockers in the title and a hidden word for a screen reader (DESIGN.md Row). */
-function BlockedMark({ ticket, testId }: { ticket: Pick<Ticket, 'blocked_by'>; testId?: string }) {
+function BlockedMark({ ticket, testId }: { ticket: Pick<TicketSummary, 'blocked_by'>; testId?: string }) {
   return (
     <span className="gf-blocked-mark" title={`blocked by ${ticket.blocked_by.join(', ')}`} data-testid={testId}>
       ◇<span className="gf-sr"> blocked </span>
@@ -104,7 +104,7 @@ export function TicketCard({
   canDrag,
   children,
 }: {
-  ticket: Ticket;
+  ticket: TicketSummary;
   /** The Cursor is on this card: the selected-row mark, never the full border, which is the drag's. */
   cursor: boolean;
   meta: string | null;
@@ -209,7 +209,7 @@ export function TicketCard({
  * Forward moves first, as the palette ranks them; `cancel` and `trash` apart,
  * as the state tile sets them.
  */
-function CardMenu({ ticket, actions, disabled }: { ticket: Ticket; actions: CardActions; disabled: boolean }) {
+function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; actions: CardActions; disabled: boolean }) {
   const [open, setOpen] = useState(false);
   const slot = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -514,7 +514,7 @@ export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: st
  * the Cursor down the rows and `⏎` opens one; there is nothing else here for a
  * key to do, because there is no other button on the row (issue 10).
  */
-export function TicketRows({ tickets, tile = 'tickets' }: { tickets: Ticket[] | undefined; tile?: string }) {
+export function TicketRows({ tickets, tile = 'tickets' }: { tickets: TicketSummary[] | undefined; tile?: string }) {
   const cursor = useCursor({ tile, columns: [(tickets ?? []).map((t) => t.key)], pathOf: (key) => ticketPath({ key }) });
   if (!tickets) return <Empty>loading…</Empty>;
   if (tickets.length === 0) return <Empty>no tickets — press c</Empty>;

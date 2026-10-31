@@ -54,7 +54,24 @@ Each one moves tickets differently. Find the one you are in.
   `todo`, add it, then `approve`.
 - **implement-spec** works the ready frontier: for each ticket, `start` it
   (`ready → building`), build it, open the PR, then follow "When you open a PR
-  for a ticket".
+  for a ticket". Its implementers each work in a worktree; see below.
+
+#### An implementer in a worktree
+
+Hand each implementer a pointer to this section. In its worktree it:
+
+1. Runs `bun install` once it is on the integration branch. A fresh worktree
+   has no `node_modules`, and the Agent tool's worktree can start on `main`.
+2. Leaves the live tracker alone except for reads. Tests get their own database
+   from the API harness, and no test data goes into `127.0.0.1:4747`.
+3. Runs Playwright with its own `GF_E2E_PORT`, since the suites of other
+   worktrees may be running at the same time.
+4. Edits every doc the spec names, `AGENTS.md` included. The spec is the
+   operator's authorisation.
+
+The integration branch is checked out in the main checkout, which
+the service runs from, so a merge there changes nothing live until
+`goblin service restart`.
 
 ### No spec: poteto mode
 
@@ -140,15 +157,15 @@ moves all of them or none.
 ## When a skill says "fetch the relevant ticket"
 
 `goblin ticket show <key>` — a bare number works, so `12` means `GF-12`. It
-returns the ticket with the edges on both sides of it. `goblin ticket list`
-filters with `--app`, `--project`, `--status a,b`, `--label a,b` (any of them)
-and `--q <text>`. `goblin label` lists the label names already in use, so a
+returns the ticket, its description and design, and the edges on both sides
+of it. `goblin ticket list` returns summary rows without
+the bodies, so read a body with `show`; `--help` lists its filters. `goblin label` lists the label names already in use, so a
 new ticket reuses one rather than inventing a near-twin.
 
 ## When a skill asks what to work on next
 
-`goblin frontier` — the ready tickets with nothing in their way, stalest first.
-That is the queue, and it is the only queue.
+`goblin frontier` — the ready tickets with nothing in their way, stalest first,
+as the same summary rows. That is the queue, and it is the only queue.
 
 ## Specs and designs
 

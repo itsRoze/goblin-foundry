@@ -1,0 +1,4 @@
+#!/bin/sh
+# A merge, rebase or branch switch that changes bun.lock (a new workspace, a new dependency)
+# leaves node_modules stale, and the next `bun test` fails on imports it cannot resolve.
+git diff --quiet "$1" "$2" -- bun.lock || bun install
