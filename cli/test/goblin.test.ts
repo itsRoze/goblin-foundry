@@ -422,6 +422,17 @@ describe('goblin', () => {
       expect(await titles(['ticket', 'list', '--app', 'null'])).toEqual(['orphan']);
     });
 
+    test('`ticket list` and `frontier` print the queue without the bodies; `ticket show` prints them', async () => {
+      await seed();
+      await json(['ticket', 'design', 'set', 'GF-2', '# fetch, parse, store']);
+      const listed = (await run(['ticket', 'list', '--project', '1'])).out;
+      expect(listed).not.toContain('rss and atom');
+      expect(listed).not.toContain('fetch, parse, store');
+      expect(JSON.parse(listed)).toMatchObject([{ key: 'GF-2', title: 'parse a feed', intent_written: true }]);
+      expect((await run(['frontier'])).out).not.toContain('"description"');
+      expect(await json(['ticket', 'show', 'GF-2'])).toMatchObject({ description: 'rss and atom', design: '# fetch, parse, store' });
+    });
+
     test('`frontier` takes the same flags, minus the one it has already answered', async () => {
       await seed();
       await json(['ticket', 'create', '--title', 'also ready', '--project', '1', '--simple', '--status', 'ready']);

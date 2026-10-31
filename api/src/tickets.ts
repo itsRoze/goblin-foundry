@@ -5,6 +5,7 @@ import {
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
   guardHold,
+  intentWritten,
   lifecycle,
   parseTicketKey,
   ticketKey,
@@ -12,6 +13,7 @@ import {
   type Ticket,
   type TicketDetail,
   type TicketStatus,
+  type TicketSummary,
 } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
@@ -43,6 +45,12 @@ export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, 
   labels,
   blocked_by,
 });
+
+/** A list read's row: the wire ticket less its bodies, with the guard's reading of them in their place. */
+export const toSummary = (row: TicketRow, prefix: string, labels: string[], blocked_by: string[] = []): TicketSummary => {
+  const { description, design, ...summary } = toTicket(row, prefix, labels, blocked_by);
+  return { ...summary, intent_written: intentWritten({ description, design }) };
+};
 
 /**
  * Why this ticket may not be created at this status (ADR-0003), or `null` when
@@ -99,7 +107,7 @@ export function ticketsRoutes(db: Db) {
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);
     const labels = await labelsByTicket(db);
-    return c.json(rows.map((row) => toTicket(row, p, labels(row.id), blockers.get(row.id) ?? [])));
+    return c.json(rows.map((row) => toSummary(row, p, labels(row.id), blockers.get(row.id) ?? [])));
   });
 
   r.post('/', async (c) => {

@@ -15,6 +15,7 @@ import {
   type DependencyRef,
   type TicketDependencies,
   type TicketStatus,
+  type TicketSummary,
 } from '@goblin/shared';
 import type { Context, Hono as HonoType } from 'hono';
 import type { ActorEnv } from './actor';
@@ -216,7 +217,7 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
  * It narrows by app, project and text through the board's own parser (issue
  * 06), so every endpoint stays reachable from `goblin`.
  */
-export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, labels: string[]) => unknown) {
+export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, labels: string[]) => TicketSummary) {
   const r = new Hono<ActorEnv>();
   r.get('/', async (c) => {
     const filter = readFilter(c);

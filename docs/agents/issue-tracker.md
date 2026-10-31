@@ -160,15 +160,17 @@ moves all of them or none.
 ## When a skill says "fetch the relevant ticket"
 
 `goblin ticket show <key>` — a bare number works, so `12` means `GF-12`. It
-returns the ticket with the edges on both sides of it. `goblin ticket list`
-filters with `--app`, `--project`, `--status a,b`, `--label a,b` (any of them)
+returns the ticket, its description and design, and the edges on both sides
+of it. `goblin ticket list` returns summary rows — everything but the
+description and design, with `intent_written` saying whether either is there —
+so read a body with `show`. It filters with `--app`, `--project`, `--status a,b`, `--label a,b` (any of them)
 and `--q <text>`. `goblin label` lists the label names already in use, so a
 new ticket reuses one rather than inventing a near-twin.
 
 ## When a skill asks what to work on next
 
-`goblin frontier` — the ready tickets with nothing in their way, stalest first.
-That is the queue, and it is the only queue.
+`goblin frontier` — the ready tickets with nothing in their way, stalest first,
+as the same summary rows. That is the queue, and it is the only queue.
 
 ## Specs and designs
 

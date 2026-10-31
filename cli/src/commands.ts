@@ -305,7 +305,7 @@ export const NOUNS: Noun[] = [
     commands: [
       {
         verb: 'list',
-        summary: 'every live ticket',
+        summary: 'every live ticket, without its description or design (`ticket show` has them)',
         flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, TEXT_FILTER],
         run: ({ args, api }) => api.get(`/api/tickets${filterQuery(args)}`),
       },
@@ -351,7 +351,7 @@ export const NOUNS: Noun[] = [
     summary: 'the ready tickets with nothing in their way, stalest first',
     fallback: 'show',
     // no `--status`: the frontier is `ready` by definition, and the endpoint says so
-    commands: [{ verb: 'show', summary: 'the ready frontier', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
+    commands: [{ verb: 'show', summary: 'the ready frontier, as `ticket list` rows', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
   },
   {
     name: 'trash',

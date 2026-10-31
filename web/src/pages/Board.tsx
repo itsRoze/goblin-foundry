@@ -9,7 +9,7 @@ import {
   lifecycle,
   parseTicketFilter,
   serialiseTicketFilter,
-  type Ticket,
+  type TicketSummary,
   type TicketFilter,
   type TicketStatus,
   type Found,
@@ -178,7 +178,7 @@ interface Notice {
  * They differ only in which slot the sentence lands in — the column you
  * dropped on, or the card the key or the menu was about.
  */
-function useBoardMoves(lookup: (key: string) => Ticket | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
+function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
   const move = useTransition();
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
@@ -377,7 +377,7 @@ export function BoardPage() {
     () => rangeOrder(drawn.map((column) => ({ status: column.status, ids: column.tickets.map((t) => t.id) })), (status) => !vertical || isExpanded(expansion, status)),
     [drawn, vertical, expansion],
   );
-  const select = (t: Ticket, range: boolean) => change((current) => (range ? rangeTo(current, order, t.id) : toggleSelected(current, t.id)));
+  const select = (t: TicketSummary, range: boolean) => change((current) => (range ? rangeTo(current, order, t.id) : toggleSelected(current, t.id)));
   const selectEverything = () => change((current) => selectAll(current, (cards ?? []).map((t) => t.id)));
   const clearSelection = () => change(() => EMPTY_SELECTION);
   /** `⇧↓ ⇧↑`: the range's far end takes one step along that same order, and the Cursor goes with it so you can see where it is. */
@@ -410,7 +410,7 @@ export function BoardPage() {
           explainDependencies: () => report({ kind: 'said', text: 'dependencies are declared from one ticket — clear the selection first' }),
         },
   );
-  const selectFor = (t: Ticket): CardSelect => ({
+  const selectFor = (t: TicketSummary): CardSelect => ({
     selected: isSelected(selection, t.id),
     onSelect: (range) => select(t, range),
     frozen: sending !== null,
@@ -420,12 +420,12 @@ export function BoardPage() {
   const patch = usePatchTicket();
   const intent = useTicketIntent();
   /** Every keyed or menu write reports its refusal under the card it was about, which is the slot the same act's button would use. */
-  const inSlot = (t: Ticket, write: () => Promise<unknown>) => void write().catch((e) => refuse({ status: t.status, key: t.key, text: refusalLine(e) }));
+  const inSlot = (t: TicketSummary, write: () => Promise<unknown>) => void write().catch((e) => refuse({ status: t.status, key: t.key, text: refusalLine(e) }));
   /** `d` goes where the button is and presses it: the picker is open when the Ticket view arrives. */
-  const blockedBy = (t: Ticket) => navigate(ticketPath(t), { state: { picking: 'depends_on' } });
+  const blockedBy = (t: TicketSummary) => navigate(ticketPath(t), { state: { picking: 'depends_on' } });
 
   /** A card's `⋯`: the same verbs, addressed to that card and no other, and the Cursor left where it was (issue 11). */
-  const menuFor = (t: Ticket): CardActions => ({
+  const menuFor = (t: TicketSummary): CardActions => ({
     move: (name) => press(t, name),
     trash: () => inSlot(t, () => intent.mutateAsync({ key: t.key, intent: 'trash' })),
     blockedBy: () => blockedBy(t),
@@ -525,10 +525,10 @@ export function BoardPage() {
     },
   });
 
-  const meta = (t: Ticket) => homeLine(t.app_id === null ? null : names.app(t.app_id), t.project_id === null ? null : names.project(t.project_id));
+  const meta = (t: TicketSummary) => homeLine(t.app_id === null ? null : names.app(t.app_id), t.project_id === null ? null : names.project(t.project_id));
   const problem = tickets.error === null ? null : tickets.error instanceof ProblemError ? tickets.error.sentence : `could not reach the API: ${tickets.error.message}`;
 
-  const cardsIn = (column: { status: TicketStatus; tickets: Ticket[] }) => ({
+  const cardsIn = (column: { status: TicketStatus; tickets: TicketSummary[] }) => ({
     status: column.status,
     tickets: column.tickets,
     count: tickets.data === undefined ? null : column.tickets.length,
@@ -723,17 +723,17 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
 /** Everything one status's cards need, whichever way the board is drawn. */
 interface CardsProps {
   status: TicketStatus;
-  tickets: Ticket[];
+  tickets: TicketSummary[];
   /** How many the Filter put here, or `null` until the board has been read: a `0` before then is a number that lies (Voice). */
   count: number | null;
   /** The key the Cursor is on, wherever on the board it is; at most one column has it. */
   cursor: string | null;
-  meta: ((t: Ticket) => string) | undefined;
+  meta: ((t: TicketSummary) => string) | undefined;
   showLabels: boolean;
   updated: boolean;
   at: number;
-  menuFor: (t: Ticket) => CardActions;
-  selectFor: (t: Ticket) => CardSelect;
+  menuFor: (t: TicketSummary) => CardActions;
+  selectFor: (t: TicketSummary) => CardSelect;
   canDrag: boolean;
   /** The sentence filed under this status, if any: under its card when it names one that is here, else at the foot. */
   refusal: Refusal | null;

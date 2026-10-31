@@ -9,6 +9,7 @@ import {
   SettingsSchema,
   TicketDetailSchema,
   TicketSchema,
+  TicketSummarySchema,
   serialiseTicketFilter,
   type CreateAppBody,
   type CreateProjectBody,
@@ -21,6 +22,7 @@ import {
   type Ticket,
   type TicketFilter,
   type TicketStatus,
+  type TicketSummary,
   type TransitionName,
 } from '@goblin/shared';
 import * as api from './api';
@@ -28,8 +30,8 @@ import * as api from './api';
 const Apps = z.array(AppSchema);
 const Projects = z.array(ProjectSchema);
 const Events = z.array(EventSchema);
-const Tickets = z.array(TicketSchema);
-const Trash = z.object({ apps: Apps, projects: Projects, tickets: Tickets });
+const Tickets = z.array(TicketSummarySchema);
+const Trash = z.object({ apps: Apps, projects: Projects, tickets: z.array(TicketSchema) });
 const LabelNames = z.array(z.string());
 
 /** Everything recoverable; `kind` is what the restore intent addresses. */
@@ -170,8 +172,8 @@ export function useTransition() {
       // a poll landing mid-flight would otherwise overwrite the optimistic status with the stale one
       await qc.cancelQueries({ queryKey: ['tickets'] });
       await qc.cancelQueries({ queryKey: ['ticket'] });
-      const snapshot = [...qc.getQueriesData<Ticket[]>({ queryKey: ['tickets'] }), ...qc.getQueriesData<Ticket>({ queryKey: ['ticket'] })];
-      qc.setQueriesData<Ticket[]>({ queryKey: ['tickets'] }, (list) => list?.map((t) => (t.key === key ? { ...t, status: to } : t)));
+      const snapshot = [...qc.getQueriesData<TicketSummary[]>({ queryKey: ['tickets'] }), ...qc.getQueriesData<Ticket>({ queryKey: ['ticket'] })];
+      qc.setQueriesData<TicketSummary[]>({ queryKey: ['tickets'] }, (list) => list?.map((t) => (t.key === key ? { ...t, status: to } : t)));
       qc.setQueriesData<Ticket>({ queryKey: ['ticket'] }, (t) => (t && t.key === key ? { ...t, status: to } : t));
       return { snapshot };
     },

@@ -32,6 +32,16 @@ export const TicketSchema = z.object({
 export type Ticket = z.infer<typeof TicketSchema>;
 
 /**
+ * A row of a list read (`/api/tickets`, `/api/frontier`): the ticket without
+ * its two bodies, which a queue has no use for and `GET /api/tickets/:key`
+ * still carries. `intent_written` is what the approve guard needs of them — a
+ * non-blank description or a Ticket Design — so a list can be judged without
+ * them.
+ */
+export const TicketSummarySchema = TicketSchema.omit({ description: true, design: true }).extend({ intent_written: z.boolean() });
+export type TicketSummary = z.infer<typeof TicketSummarySchema>;
+
+/**
  * Enough of the other end of an edge to render a chip without a second read.
  * `trashed` is there because a trashed blocker and a `done` one are both out
  * of `blocked_by` yet mean opposite things: one is finished, the other is

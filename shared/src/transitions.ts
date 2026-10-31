@@ -1,9 +1,11 @@
 import { defineWorkflow, type EdgeOf, type NameOf } from '@goblin/workflow';
 import { ActorSchema, type Actor } from './actor';
 import { hasDesign } from './design';
-import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus } from './tickets';
+import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus, type TicketSummary } from './tickets';
 
-export type GuardFields = Pick<Ticket, 'app_id' | 'simple' | 'design' | 'description'>;
+/** Where the intent is read from: the two bodies themselves, or a list row's word on them. */
+type IntentFields = Pick<Ticket, 'simple' | 'design' | 'description'> | Pick<TicketSummary, 'simple' | 'intent_written'>;
+export type GuardFields = Pick<Ticket, 'app_id'> & IntentFields;
 
 /** `intent` is written down somewhere — a description or a Ticket Design — unless the title alone carries it (`simple`). */
 export type ApproveRequirement = 'app' | 'intent';
@@ -11,7 +13,9 @@ export type ApproveRequirement = 'app' | 'intent';
 const REQUIREMENT_LABEL: Record<ApproveRequirement, string> = { app: 'an app', intent: 'a description or a ticket design' };
 
 /** A description is present on the same terms as a design: non-whitespace (ADR-0012). */
-export const hasIntent = (ticket: Pick<Ticket, 'simple' | 'design' | 'description'>): boolean => ticket.simple || hasDesign(ticket.design) || ticket.description.trim() !== '';
+export const intentWritten = (ticket: Pick<Ticket, 'design' | 'description'>): boolean => hasDesign(ticket.design) || ticket.description.trim() !== '';
+
+export const hasIntent = (ticket: IntentFields): boolean => ticket.simple || ('intent_written' in ticket ? ticket.intent_written : intentWritten(ticket));
 
 export function approveGuard(ticket: GuardFields): ApproveRequirement[] {
   const missing: ApproveRequirement[] = [];
