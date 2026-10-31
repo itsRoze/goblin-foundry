@@ -126,7 +126,7 @@ async function report(outcome: Outcome): Promise<GoblinResult> {
   return { code: EXIT.problem, out: '', err: shaped ? body : problem(outcome.status, outcome.statusText || 'Error', body.trim().slice(0, 500)) };
 }
 
-/** Every request carries the actor (CONTEXT.md "Actor"); a failure to reach the API at all is a different exit code, so it is caught here. */
+/** Every request carries the actor (GLOSSARY.md "Actor"); a failure to reach the API at all is a different exit code, so it is caught here. */
 function client(fetch: GoblinFetch, actor: Actor): Api {
   const send = async (method: string, path: string, body?: unknown): Promise<Response> => {
     try {

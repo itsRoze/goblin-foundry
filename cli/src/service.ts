@@ -128,7 +128,7 @@ const serviceTarget = (host: Host) => `gui/${host.uid}/${LABEL}`;
 /**
  * What launchd holds: whether the job is in the domain at all, and the pid of
  * the process if one is up this instant. Named for launchd rather than for the
- * plist, because in this repository an `agent` is an AI (CONTEXT.md *Actor*).
+ * plist, because in this repository an `agent` is an AI (GLOSSARY.md *Actor*).
  */
 async function launchdJob(host: Host): Promise<{ loaded: boolean; pid: number | null }> {
   const listed = await launchctl(host, 'list', LABEL);

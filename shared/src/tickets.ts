@@ -23,7 +23,7 @@ export const TicketSchema = z.object({
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
-  /** The keys of the blockers that are still *open* — a derived condition, never a status (CONTEXT.md "Blocked"). */
+  /** The keys of the blockers that are still *open* — a derived condition, never a status (GLOSSARY.md "Blocked"). */
   blocked_by: z.array(z.string()),
 });
 export type Ticket = z.infer<typeof TicketSchema>;
@@ -63,7 +63,7 @@ export const isTerminal = (status: TicketStatus): boolean => (TERMINAL_STATUSES 
 
 /**
  * "A blocker is open unless it is `done`, `cancelled`, or Trashed"
- * (CONTEXT.md "Blocked"). Only the status half is answerable here: whether a
+ * (GLOSSARY.md "Blocked"). Only the status half is answerable here: whether a
  * ticket is in the trash is a fact about the row, and every read that asks
  * this question has already dropped the trashed ones.
  */
@@ -72,7 +72,7 @@ export const isOpenBlocker = (status: TicketStatus): boolean => !isTerminal(stat
 /**
  * Blockedness is a property of a *non-terminal* ticket: a `done` or `cancelled`
  * ticket is never blocked however many open blockers it still names
- * (CONTEXT.md "Blocked").
+ * (GLOSSARY.md "Blocked").
  */
 export const isBlocked = (t: Pick<Ticket, 'status' | 'blocked_by'>): boolean => t.blocked_by.length > 0 && !isTerminal(t.status);
 

@@ -26,7 +26,7 @@ const ROUTE: Record<TicketStatus, TransitionName[]> = {
  * The project graph read. What is drawn is what is answered, so every test
  * here is about what is present and what is missing — a trashed thing is
  * hidden everywhere, and a cancelled one blocks nothing and is waited on by
- * nothing (CONTEXT.md).
+ * nothing (GLOSSARY.md).
  */
 describe('GET /api/projects/:id/graph', () => {
   let h: Harness;

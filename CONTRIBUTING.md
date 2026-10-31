@@ -10,7 +10,7 @@ For larger changes, discuss the approach before building it. Maintainer planning
 
 ## Work locally
 
-Follow the [development guide](docs/development.md). Use `GF_DB_PATH` for a separate database. Read [CONTEXT.md](CONTEXT.md) for domain terms and [architecture decisions](docs/adr) for the reasons behind the boundaries.
+Follow the [development guide](docs/development.md). Use `GF_DB_PATH` for a separate database. Read [GLOSSARY.md](GLOSSARY.md) for domain terms and [architecture decisions](docs/adr) for the reasons behind the boundaries.
 
 Before opening a pull request, run:
 

@@ -8,7 +8,7 @@ import { Hint, Kbd, useCloseOnOutside } from './ui';
 /**
  * The board's Filter bar (issue 06): the strip between the tile header and the
  * columns. Three chips, the text input, and `×`. Every change writes the
- * address — which is where the filter lives (CONTEXT.md "Filter") — so this
+ * address — which is where the filter lives (GLOSSARY.md "Filter") — so this
  * component holds no state of its own but the popover that is open and the
  * text that has not settled yet.
  */

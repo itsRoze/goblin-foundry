@@ -35,7 +35,7 @@ import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } f
 /**
  * Per-device display preferences, and nothing else: a View option decides how
  * the board shows what the Filter chose, never *which* tickets are on it, so
- * it never hides a status (CONTEXT.md "View option"). `show cancelled` used to
+ * it never hides a status (GLOSSARY.md "View option"). `show cancelled` used to
  * live here; it is the status Filter now (issue 06 reverses issue 03).
  */
 interface View {
@@ -168,7 +168,7 @@ interface Notice {
 
 /**
  * Every way the board moves a card, in one place, because they must agree:
- * dragging a card between columns *is* a transition (CONTEXT.md), and so is
+ * dragging a card between columns *is* a transition (GLOSSARY.md), and so is
  * pressing the key for one, or choosing it from the card's menu. The move is
  * looked up in the table, applied optimistically, and put back with the API's
  * `hint` if it is refused; a move the table has no arrow for is refused here,
@@ -273,7 +273,7 @@ function rawFilterSearch(params: URLSearchParams): string {
 }
 
 /**
- * The kanban is home (CONTEXT.md), and the Filter in the address says what is
+ * The kanban is home (GLOSSARY.md), and the Filter in the address says what is
  * on it: one column per status in the filter's set — the seven live ones by
  * default — in lifecycle order. The address is always *replaced*, never
  * pushed, so back never steps through filters.

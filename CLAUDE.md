@@ -1,6 +1,6 @@
 # Goblin Foundry
 
-Domain language in `CONTEXT.md`; decisions in `docs/adr/`; the S1 spec in `docs/specs/S1-tracker-core.md`; the S1 plan of record one file each under `docs/tickets/s1/` (history — new work lives in Goblin, see below); house style in `design/DESIGN.md` (the root `DESIGN.md` is a symlink to it) with tokens in `design/tokens.css`; lessons in `docs/LESSONS.md`. `bun run lint` holds the mechanical half of the house style.
+Domain language in `GLOSSARY.md`; decisions in `docs/adr/`; the S1 spec in `docs/specs/S1-tracker-core.md`; the S1 plan of record one file each under `docs/tickets/s1/` (history — new work lives in Goblin, see below); house style in `design/DESIGN.md` (the root `DESIGN.md` is a symlink to it) with tokens in `design/tokens.css`; lessons in `docs/LESSONS.md`. `bun run lint` holds the mechanical half of the house style.
 
 ## Agent skills
 
@@ -18,4 +18,4 @@ Goblin has no labels: triage state is the ticket's status, and two of the five c
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the root. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` and `docs/adr/` at the root. See `docs/agents/domain.md`.

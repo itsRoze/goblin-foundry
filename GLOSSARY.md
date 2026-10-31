@@ -1,4 +1,4 @@
-# Goblin Foundry — domain context (S1)
+# Goblin Foundry — glossary
 
 Glossary of the tracker's language. No implementation details here; decisions live in `docs/adr/`.
 
@@ -29,7 +29,11 @@ A named grouping of Tickets inside a Project. Not in S1 (wanted later).
 A markdown document describing intent, stored in the tracker as part of the thing it describes: a **Project Design** (the shape of a project) or a **Ticket Design** (the plan for one Ticket). A living document — edited in place, always live (there is no draft and no save step); not versioned.
 
 ## Ticket
-A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). A Ticket in a Project always shares that Project's App; a Ticket's App is chosen directly only when it has no Project. Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs no Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
+A unit of work — or, early in its life, just an idea. May belong to an App and a Project, or to neither (an orphan Ticket is an idea and can never become `ready`). A Ticket in a Project always shares that Project's App; a Ticket's App is chosen directly only when it has no Project. Has a Status, a description, and optionally a Ticket Design. A Ticket flagged **simple** needs neither a description nor a Ticket Design to become `ready`. Identified by a global sequence number shown with a configurable prefix (`GF-12`); the number is never reused.
+
+## Label
+A free-form name on a Ticket that says what kind of thing it is or what it waits on (`wayfinder:research`, `needs-info`). A Ticket may carry several; a Label is identified by its name, and `:` is only part of it. Never a Status and never a colour. Which names are allowed is the Assembly's rule: Goblin Foundry's vocabulary is open, created on first use. (ADR-0013.)
+_Avoid_: tag, category
 
 ## Ticket Key
 The display form of a Ticket's number: `<prefix>-<number>`, prefix configurable once per installation (default `GF`). Apps and Projects do not have keys.
@@ -58,21 +62,19 @@ Workflow state only (never CI or PR review state). S1 statuses, in order:
 - `done` — finished, however it got there: shipped out of `review`, or closed because it turned out to be done as a side effect of other work
 - `cancelled` — not doing; blocks nothing
 
-Transitions are a code-owned table; every Transition names its owner. In S1 all are human-owned except `submit`, which is the agent's (and so also the human's).
+Transitions are a code-owned table. Either Actor may trigger any of them (ADR-0012).
 
 ## Ready Frontier
 The set of Tickets ready to build: `ready` ∧ no incomplete blocker. Computed, never stored.
 
 ## Attention
-Everything waiting on the human. Today that is approvals (Tickets in `planning`); there is no Home screen — the Kanban is home.
+Tickets parked in `planning`, waiting for someone to accept their plan. A workflow that wants the human's sign-off stops a Ticket here; nothing else forces one to. There is no Home screen — the Kanban is home.
 
 ## Simple
-A flag on a Ticket meaning "straightforward enough to build without a Ticket Design". A simple Ticket may go `todo → ready` directly, and may be *created* in `ready`. Simple means no plan is needed, not that no context is needed: a simple Ticket still needs an App, because an orphan can never be `ready`.
+A flag on a Ticket meaning "its title says it all": it needs neither a description nor a Ticket Design. A simple Ticket may go `todo → ready` directly, and may be *created* in `ready`. Simple means no plan is needed, not that no context is needed: a simple Ticket still needs an App, because an orphan can never be `ready`.
 
 ## Actor
-Who performed a mutation — the hands, never the authority: `human` or `agent` (an AI creating or editing on the human's behalf, e.g. the planner). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp.
-
-In S1 an agent creates Tickets only into `planning` (any other Status is refused, never silently corrected), and the one Transition it owns is `submit`: the agent that built a Ticket and opened its PR moves it `building → review`. Approving what an agent planned is always a human act, so the Ready Frontier is only ever reached by a human's hand. A human holds every authority an agent does.
+Who performed a mutation, for the record: `human` (the operator) or `agent` (an AI creating or editing on the human's behalf). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp. It is never a permission: either Actor may make any change (ADR-0012).
 
 ## Edit session
 A stretch of continuous editing of one thing by one Actor, recorded as a single entry in that
@@ -100,9 +102,9 @@ The one card or row on screen that keys act on: move it, open it, act on the Tic
 A set of Tickets belonging to the current filtered board, gathered for one all-or-none bulk action; success clears the set, while refusal preserves it (issue 03b). A Cursor is where you are and a Selection is what you have gathered; the two coexist and never mean each other.
 
 ## Transition
-One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name** and an **owner** — who is allowed to trigger it. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board only offers arrows the dragger owns.
+One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name**. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board offers every arrow out of the card's Status.
 
 The S1 verbs: `pick`, `plan`, `shelve` (moving freely among `backlog`/`todo`/`planning`), `approve` and `unapprove`, `start` and `stop`, `submit`, `ship`, `close`, `cancel`, `reopen`. Two of them share a destination: **ship** is a PR merged out of `review`; **close** records a Ticket that turned out to be done without ever being planned. **Reopen** takes a cancelled Ticket back to `backlog` — distinct from *restoring* one, which is un-Trashing it.
 
 ## Approve Guard
-What a Ticket must have before it may be `ready` or beyond: an **App**, and a **Ticket Design** unless it is Simple. It is the single gate into the Ready Frontier — the same check whether the Ticket walks there, is created there, or is edited while there. A description is not part of it: intent lives in the title of a Simple Ticket and in the Design of any other.
+What a Ticket must have before it may be `ready` or beyond: an **App**, and a description or a **Ticket Design** unless it is Simple. It is the single gate into the Ready Frontier — the same check whether the Ticket walks there, is created there, or is edited while there. It asks that the intent is written somewhere, not who wrote it.

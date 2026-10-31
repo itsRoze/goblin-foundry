@@ -1,5 +1,5 @@
 /**
- * The board's Filter (CONTEXT.md), as one parser and one serialiser: which
+ * The board's Filter (GLOSSARY.md), as one parser and one serialiser: which
  * Tickets are on the board, written in the address so a bookmarked URL is a
  * saved view. `GET /api/tickets`, `GET /api/frontier`, the web and `goblin`
  * all read and write it here, so a parameter cannot mean one thing in the
@@ -33,7 +33,7 @@ export type FilterParam = (typeof FILTER_PARAMS)[number];
 /**
  * What the board shows when the address names no status set: everything but
  * `cancelled`, which is on the board only when the Filter asks for it
- * (CONTEXT.md "Filter"). The API's own default is every status — a `goblin
+ * (GLOSSARY.md "Filter"). The API's own default is every status — a `goblin
  * ticket list` is not a board.
  */
 export const DEFAULT_BOARD_STATUSES: readonly TicketStatus[] = TICKET_STATUSES.filter((s) => s !== 'cancelled');

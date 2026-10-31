@@ -210,7 +210,7 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
 }
 
 /**
- * The ready frontier: what is ready to build (CONTEXT.md). `ready`, no open
+ * The ready frontier: what is ready to build (GLOSSARY.md). `ready`, no open
  * blocker, stalest first.
  * It narrows by app, project and text through the board's own parser (issue
  * 06), so every endpoint stays reachable from `goblin`.

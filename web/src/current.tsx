@@ -3,7 +3,7 @@ import type { BulkAction, TransitionName } from '@goblin/shared';
 import type { Member } from './bulk';
 
 /**
- * The current Ticket, and what this screen can do to it (CONTEXT.md
+ * The current Ticket, and what this screen can do to it (GLOSSARY.md
  * "Cursor"): the open Ticket on a Ticket view, otherwise the Ticket under the
  * Cursor. Two screens supply one — the board and the Ticket view — and they
  * supply the *same* verbs, wired to the same mutations their own buttons use.

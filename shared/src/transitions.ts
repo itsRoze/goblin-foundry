@@ -65,7 +65,7 @@ export const CREATABLE_STATUSES: readonly TicketStatus[] = TICKET_STATUSES.filte
 export const isCreatable = (status: TicketStatus): boolean => CREATABLE_STATUSES.includes(status);
 
 /**
- * An agent is the hands, never the authority (CONTEXT.md "Actor"): in S1 it
+ * An agent is the hands, never the authority (GLOSSARY.md "Actor"): in S1 it
  * creates tickets only in `planning`, and the one edge it owns is `submit`,
  * so approving what an agent planned is always a human act and the ready
  * frontier is only ever reached by a human's hand. Both halves refuse rather

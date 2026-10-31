@@ -137,7 +137,7 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
  * card it is on, so the key travels with the body rather than with the hook.
  */
 export const usePatchTicket = () => useWrite(({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body));
-/** A ticket is never archived (CONTEXT.md): trash and restore are all it has. */
+/** A ticket is never archived (GLOSSARY.md): trash and restore are all it has. */
 export const useTicketIntent = () =>
   useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>
     intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`),

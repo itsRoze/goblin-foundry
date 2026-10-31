@@ -48,7 +48,7 @@ export function useCloseOnOutside(slot: React.RefObject<HTMLElement | null>, ope
 /**
  * A tile, and its place in the keyboard: it registers itself with the desk,
  * which numbers the tiles in reading order and says which one has the focus
- * (CONTEXT.md "Focused tile"). The label is the address — unique on a page,
+ * (GLOSSARY.md "Focused tile"). The label is the address — unique on a page,
  * and what `useCursor` and `d` name a tile by — so it is also what the header
  * shows. Focus follows a click, as it does in a tiling window manager.
  */

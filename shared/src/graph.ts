@@ -4,7 +4,7 @@ import { TicketStatusSchema } from './tickets';
 /**
  * Where a ticket at the far end of an edge lives, when that is not this
  * project. Both halves are nullable because a ticket may be an orphan or sit
- * in an app with no project (CONTEXT.md); the popover reads `—` for a missing
+ * in an app with no project (GLOSSARY.md); the popover reads `—` for a missing
  * half, as the kanban card does (DESIGN.md Interaction).
  */
 export const GraphExternalSchema = z.object({

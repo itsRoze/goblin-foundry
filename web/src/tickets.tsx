@@ -321,7 +321,7 @@ export const projectFitsApp = (project: { app_id: number | null } | undefined, a
 
 /**
  * `c` on the board (issue 06): one row under the filter bar, prefilled from
- * the Filter — the Scope on screen (CONTEXT.md "Scope"). Every field is
+ * the Filter — the Scope on screen (GLOSSARY.md "Scope"). Every field is
  * editable before saving, so the ticket lands where you sent it, on this board
  * or off it.
  */
@@ -445,7 +445,7 @@ const FormButtons = ({ onSave, onCancel }: { onSave: () => void; onCancel: () =>
 
 /**
  * A ticket from a title alone. One line, because at this point the ticket is
- * only an idea (CONTEXT.md).
+ * only an idea (GLOSSARY.md).
  */
 export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: string) => Promise<unknown>; onCancel: () => void; testId?: string }) {
   const [title, setTitle] = useState('');

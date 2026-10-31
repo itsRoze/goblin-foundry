@@ -1,5 +1,5 @@
 /**
- * What you have gathered (CONTEXT.md "Selection"): a set of Tickets on the
+ * What you have gathered (GLOSSARY.md "Selection"): a set of Tickets on the
  * current filtered board, for one all-or-none bulk action. It is not the
  * Cursor — that is where you are — and nothing here knows about keys, cards or
  * the screen: members are Ticket *ids*, which outlive a prefix change, a poll

@@ -11,7 +11,7 @@ const json = (method: string, body?: unknown, actor?: string) => ({
 });
 
 /**
- * CONTEXT.md "Actor": the hands, never the authority. An agent creates only in
+ * GLOSSARY.md "Actor": the hands, never the authority. An agent creates only in
  * `planning`, and the one transition it owns is `submit`, so the ready
  * frontier is only ever reached by a human's hand. Both halves refuse; neither
  * corrects.

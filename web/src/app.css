@@ -638,7 +638,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page);
   border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 3px 8px;
 }
-/* the title is the only thing a ticket must have, so it takes the room (CONTEXT.md) */
+/* the title is the only thing a ticket must have, so it takes the room (GLOSSARY.md) */
 .gf-new-row input.gf-new-row-title { border-color: var(--gf-system); flex: 0 1 420px; min-width: 160px; }
 .gf-new-row-refusal { flex-basis: 100%; }
 

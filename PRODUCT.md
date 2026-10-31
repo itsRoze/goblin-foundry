@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-A digest for design work, which is what impeccable reads. The sources of truth stay where they are: the domain language in `CONTEXT.md`, decisions in `docs/adr/`, the S1 spec in `docs/specs/S1-tracker-core.md`, the house style in `design/DESIGN.md`, and the direction beyond S1 in ADR-0011. The research record under `research/` holds the retired factory blueprint, `research/BLUEPRINT-v1.md`. When this file and one of them disagree, the source wins and this file is corrected.
+A digest for design work, which is what impeccable reads. The sources of truth stay where they are: the domain language in `GLOSSARY.md`, decisions in `docs/adr/`, the S1 spec in `docs/specs/S1-tracker-core.md`, the house style in `design/DESIGN.md`, and the direction beyond S1 in ADR-0011. The research record under `research/` holds the retired factory blueprint, `research/BLUEPRINT-v1.md`. When this file and one of them disagree, the source wins and this file is corrected.
 
 ## Platform
 
@@ -36,12 +36,12 @@ One line each; the spec carries the user stories.
 
 - Statuses `backlog · todo · planning · ready · building · review · done · cancelled`, moved only by named transitions (`approve`, `start`, `ship`…). Blocked is a derived condition, never a status.
 - Every transition names its owner. In S1 every edge is human-owned but `submit`, which the agent that opened the PR takes (and a human building by hand still can); the owner is in the table, so changing who owns an edge changes no UI code (ADR-0003, story 30).
-- An agent creates a ticket only into `planning` (the default when it names none; any other status is refused, never corrected) and owns only `submit`, so approving what an agent planned is always the human's act (CONTEXT.md Actor; decided in ticket 09, `submit` added 2026-10-15).
+- An agent creates a ticket only into `planning` (the default when it names none; any other status is refused, never corrected) and owns only `submit`, so approving what an agent planned is always the human's act (GLOSSARY.md Actor; decided in ticket 09, `submit` added 2026-10-15).
 - Dependencies are advisory facts between any two tickets; only cycles are refused (ADR-0009). The Ready Frontier is where they bite.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
 - Designs are markdown columns in the tracker, edited in place, always live; there is no draft and no save step (ADR-0005). Editing text never changes status.
 - Not in S1 (ADR-0006): runs, evidence, leases, costs, `needs_human`, labels, milestones, priority, claim order, light mode, deployment, an in-tracker planning feature.
-- Terminology is fixed by `CONTEXT.md`: App, Project, Ticket, Ticket Key, Design, Transition, Ready Frontier, Approve Guard, Edit session, View option, Filter. Use those words.
+- Terminology is fixed by `GLOSSARY.md`: App, Project, Ticket, Ticket Key, Design, Transition, Ready Frontier, Approve Guard, Edit session, View option, Filter. Use those words.
 
 ## Brand Commitments
 

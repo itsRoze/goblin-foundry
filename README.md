@@ -99,7 +99,7 @@ Replace the example keys with the returned keys. An agent plans and submits: it 
 | [`cli/`](cli) | JSON client, database backups, and macOS service management |
 | [`e2e/`](e2e) | Browser coverage, including touch and responsive layouts |
 
-The database driver has one entry point. Bulk mutations commit together or roll back together. The visual system is documented and checked by lint rules. These choices have [architecture decision records](docs/adr), and the product vocabulary has a [domain glossary](CONTEXT.md).
+The database driver has one entry point. Bulk mutations commit together or roll back together. The visual system is documented and checked by lint rules. These choices have [architecture decision records](docs/adr), and the product vocabulary has a [domain glossary](GLOSSARY.md).
 
 ## Develop
 
