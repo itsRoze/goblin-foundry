@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 /** Taps in both engines; Chromium also supplies real touch input for the pan. */
 test('a graph fits a phone, zooms by tapping, and a dragged link stays on the graph', async ({ page, browserName }) => {
-  test.fixme(!!process.env.CI, 'fails on Linux CI (GF-73)');
+  test.fixme(!!process.env.CI && browserName === 'chromium', 'fails on Linux CI (GF-73)');
   const response = await page.request.post('/api/projects', { data: { name: 'Touch graph' } });
   const project = await response.json() as { id: number };
   const tickets: { key: string }[] = [];
