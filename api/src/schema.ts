@@ -94,6 +94,24 @@ export const implementationLink = sqliteTable('implementation_link', {
   created_at: text('created_at').notNull(),
 }, (t) => [uniqueIndex('implementation_link_ticket_url').on(t.ticket_id, t.url)]);
 
+/**
+ * A Ticket's Labels (ADR-0013). The normalised name is the identity, so there
+ * is no Label entity: an open vocabulary has nothing to declare. `position`
+ * keeps the order they were set in. Rows survive a trip through the trash,
+ * which is why nothing here cascades.
+ */
+export const ticketLabel = sqliteTable(
+  'ticket_label',
+  {
+    ticket_id: integer('ticket_id')
+      .notNull()
+      .references(() => ticket.id),
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.ticket_id, t.name] })],
+);
+
 /** One row per write; `prior`/`new` are JSON of only the changed fields. */
 export const event = sqliteTable('event', {
   id: integer('id').primaryKey({ autoIncrement: true }),

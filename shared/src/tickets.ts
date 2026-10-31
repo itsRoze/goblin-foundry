@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { designBody, designField } from './design';
+import { labelsBody } from './labels';
 
 /**
  * Workflow state only, in lifecycle order (ADR-0003); the order here is the
@@ -20,6 +21,8 @@ export const TicketSchema = z.object({
   design: designField,
   app_id: z.number().int().nullable(),
   project_id: z.number().int().nullable(),
+  /** Normalised, in the order they were set (ADR-0013). */
+  labels: z.array(z.string()),
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -99,6 +102,7 @@ export const CreateTicketBodySchema = z.strictObject({
   simple: ticketFields.simple.optional(),
   app_id: ticketFields.app_id.optional(),
   project_id: ticketFields.project_id.optional(),
+  labels: labelsBody.optional(),
 });
 export type CreateTicketBody = z.infer<typeof CreateTicketBodySchema>;
 
