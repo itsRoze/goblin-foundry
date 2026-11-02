@@ -49,6 +49,8 @@ a:hover { text-decoration: underline; }
 .gf-tile-keys { margin-left: auto; color: var(--gf-mute); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--gf-s2); align-items: center; text-transform: none; letter-spacing: 0; }
 /* the focused tile's move keys are one hint, not three, so they sit closer to each other than to the rest */
 .gf-tile-move { display: inline-flex; gap: 2px; }
+/* the hint keeps its seat while its tile is not the focused one, so a press that moves the focus moves no button (LESSONS 2026-08-30) */
+.gf-tile:not(.is-focus) .gf-tile-move { visibility: hidden; }
 .gf-tile-body { container: tile / inline-size; padding: var(--gf-pad-y) var(--gf-pad-x); display: flex; flex-direction: column; gap: var(--gf-s3); flex: 1; min-height: 0; }
 .gf-kbd { font: var(--gf-t-kbd); color: var(--gf-mute); border: 1px solid var(--gf-rule-2); padding: 0 5px; letter-spacing: .05em; }
 .gf-empty { margin: 0; color: var(--gf-mute); font: var(--gf-t-meta); }

@@ -86,14 +86,15 @@ export function Tile({
         <span>{label}</span>
         {subtitle && <span className="gf-tile-sub">{subtitle}</span>}
         <span className="gf-tile-keys">
-          {keys}
-          {navigable && tile.focused && (
+          {/* first, so its seat while hidden is the header's free space rather than a blank between the controls */}
+          {navigable && (
             <span className="gf-tile-move">
               <Kbd>j</Kbd>
               <Kbd>k</Kbd>
               <Kbd>⏎</Kbd>
             </span>
           )}
+          {keys}
           {tile.n !== null && <Kbd>⌘{tile.n}</Kbd>}
         </span>
       </div>

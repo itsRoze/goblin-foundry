@@ -29,7 +29,6 @@ test('an app and a project through the GUI: create, rename, archive, trash, rest
   await editApp.getByLabel('repository').fill('git@github.com:itsRoze/subway-reader.git');
   await editApp.getByLabel('repository').press('ControlOrMeta+Enter');
   await expect(page.getByTestId('about-tile')).toContainText('git@github.com:itsRoze/subway-reader.git');
-  await page.reload(); // it was stored as typed, and a fresh page puts the focused tile back where the rest of this spec expects it
   const remote = page.getByTestId('about-tile').getByRole('link', { name: 'git@github.com:itsRoze/subway-reader.git' });
   await expect(remote).toHaveAttribute('href', 'https://github.com/itsRoze/subway-reader');
 
