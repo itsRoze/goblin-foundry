@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { moveCursor, stillThere, type Columns, type Move } from './cursor';
-import { useKeyMap } from './keys';
+import { answersEnter, useKeyMap } from './keys';
 
 /**
  * Where keys land on a screen: which tile has the focus, and where the Cursor
@@ -193,7 +193,12 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
     },
     [scope],
   );
-  const go = (move: Move) => set(moveCursor(columns, at, move));
+  const takeKeysTo = (next: string | null) => {
+    const held = document.activeElement;
+    if (next !== at && answersEnter(held)) held.blur();
+    set(next);
+  };
+  const go = (move: Move) => takeKeysTo(moveCursor(columns, at, move));
 
   /**
    * A cursor you cannot see is an armed control with no readout — `a`, `s`,
@@ -224,5 +229,5 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
   );
 
   // the Cursor sits in the Focused tile (GLOSSARY.md), so the mark leaves with the focus and comes back with it
-  return { at, set, isAt: (id: string) => focused && id === at };
+  return { at, set, takeKeysTo, isAt: (id: string) => focused && id === at };
 }

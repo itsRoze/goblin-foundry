@@ -389,7 +389,7 @@ export function BoardPage() {
     if (target === null) return;
     change((current) => rangeTo(plant === null ? current : rangeTo(current, order, plant), order, target));
     const landed = cards?.find((t) => t.id === target);
-    if (landed) cursor.set(landed.key);
+    if (landed) cursor.takeKeysTo(landed.key);
   };
   useKey('x', under === undefined ? undefined : () => select(under, false));
   useKeyMap({ ArrowDown: () => extend(1), ArrowUp: () => extend(-1) }, { shift: true });

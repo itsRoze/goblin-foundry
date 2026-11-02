@@ -226,3 +226,35 @@ test('⏎ answers to the focused link or button until the Cursor moves (GF-39)',
   await expect(page.getByTestId(`card-menu-${oneKey}`)).toBeVisible();
   await expect(page.getByTestId('board')).toBeVisible();
 });
+
+test('⇧↓ is a Cursor move too, so it takes ⏎ back from the focused card (GF-39)', async ({ page }) => {
+  await create(page, 'Rangeroute one');
+  await create(page, 'Rangeroute two');
+  await board(page, 'Rangeroute');
+  const one = card(page, 'Rangeroute one');
+  const two = card(page, 'Rangeroute two');
+  await expect(two).toBeVisible();
+
+  await page.keyboard.press('j');
+  await expect(one).toHaveClass(/is-cursor/);
+  await one.focus();
+  await page.keyboard.press('Shift+ArrowDown');
+  await expect(two).toHaveClass(/is-cursor/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('page-title')).toContainText('Rangeroute two');
+});
+
+test('a Cursor key that moves nothing leaves ⏎ with the focused control (GF-39)', async ({ page }) => {
+  await create(page, 'Nowherego');
+  await board(page, 'Nowherego');
+  const only = card(page, 'Nowherego');
+  await expect(only).toBeVisible();
+  await page.keyboard.press('j');
+  await expect(only).toHaveClass(/is-cursor/);
+
+  const key = await keyOf(page, 'Nowherego');
+  await page.getByTestId(`menu-${key}`).focus();
+  await page.keyboard.press('j');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId(`card-menu-${key}`)).toBeVisible();
+});
