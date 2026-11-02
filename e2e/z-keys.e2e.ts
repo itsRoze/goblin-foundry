@@ -350,7 +350,6 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(only).toBeVisible();
   const pop = page.getByTestId('pop-status');
 
-  // `j` behind the popover: the Cursor stays put, and `esc` closes the popover rather than reaching the Cursor
   await page.getByTestId('chip-status').click();
   await expect(pop).toBeVisible();
   await expect(page.getByRole('group', { name: 'filter by status' })).toBeFocused();
@@ -360,24 +359,26 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(pop).toHaveCount(0);
   await expect(only).not.toHaveClass(/is-cursor/);
 
-  // with a Cursor already down, `x` behind the popover selects nothing, and `esc` keeps the Cursor
   await page.keyboard.press('j');
   await expect(only).toHaveClass(/is-cursor/);
-  await page.getByTestId('chip-status').click();
-  await expect(pop).toBeVisible();
+  await page.getByTestId('chip-label').click();
+  await expect(page.getByTestId('pop-label')).toBeVisible();
+  await expect(page.getByRole('group', { name: 'filter by label' })).toBeFocused();
   await page.keyboard.press('x');
+  await page.keyboard.press('k');
   await expect(page.getByTestId(`select-${key}`)).not.toBeChecked();
   await expect(page.getByTestId('selection-bar')).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await expect(pop).toHaveCount(0);
+  await expect(page.getByTestId('pop-label')).toHaveCount(0);
   await expect(only).toHaveClass(/is-cursor/);
 
-  // `v`, `c` and `f` are the board's too, and stay behind the popover; `⌘K` is not, and still opens the palette over it
   await page.getByTestId('chip-status').click();
   await expect(pop).toBeVisible();
+  await page.keyboard.press('s');
   await page.keyboard.press('v');
   await page.keyboard.press('c');
   await page.keyboard.press('f');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
   await expect(page.getByTestId('view-menu')).toHaveCount(0);
   await expect(page.getByTestId('board-create')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'filter by status' })).toBeFocused();
@@ -385,16 +386,15 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(page.getByTestId('palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('palette')).toHaveCount(0);
-  // the palette took the focus with it, and a popover that has lost focus answers no esc: the chip closes it
+  // the palette took the focus with it, and today a popover without the focus hears no `esc` (a gap, not the rule), so the chip closes it
   await page.getByTestId('chip-status').click();
   await expect(pop).toHaveCount(0);
 
-  // a held `⏎` on the chip opens the popover and leaves its first row alone
   await page.getByTestId('chip-status').focus();
   await page.keyboard.down('Enter');
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
   await expect(pop).toBeVisible();
   await expect(page.getByTestId('check-backlog')).toBeChecked();
-  await expect(page.getByTestId('chip-status')).not.toContainText('6');
+  await expect(page.getByTestId('chip-status')).toHaveText('status');
 });

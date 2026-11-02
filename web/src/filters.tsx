@@ -433,14 +433,19 @@ function CheckRows<T extends string>({
   // the rows can change under the cursor (a poll brings a new label), so it is clamped rather than trusted
   const at = Math.min(cursor, Math.max(options.length - 1, 0));
 
+  // the group holds every bare key a map could bind while it has the focus, answered or not: a prevented key is a
+  // claimed one (useKeyMap, keys.tsx), which is what keeps `j k x a s` off the board behind it (GF-92). A modified
+  // key stays global (`⌘K`, `⌘1–6`) and an unbound named key (Tab, F5) stays the browser's. A held `⏎` that opened
+  // the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it.
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') return e.preventDefault(), onClose();
+    const named = e.key === 'Escape' || e.key === 'Enter' || e.key.startsWith('Arrow');
+    if (e.metaKey || e.ctrlKey || e.altKey || !(named || e.key.length === 1)) return;
+    e.preventDefault();
+    if (e.key === 'Escape') return onClose();
     const option = options[at];
     if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (option !== undefined) onToggle(option);
+      if (option !== undefined && !e.repeat) onToggle(option);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
       if (option !== undefined) setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
     }
   };
