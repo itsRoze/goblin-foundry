@@ -68,6 +68,12 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(canonical('block', '')).toBe('');
   });
 
+  test('nothing written yet is one empty paragraph, so a heading or a fence has a block to act on', () => {
+    expect(toDoc('block', '').content).toEqual([{ type: 'paragraph' }]);
+    expect(toDoc('inline', '\n').content).toEqual([{ type: 'paragraph' }]);
+    expect(canonical('inline', '')).toBe('');
+  });
+
   test('a document round-trips through the editor document it is parsed into', () => {
     const doc = toDoc('block', GOLDEN);
     expect(doc.type).toBe('doc');

@@ -27,8 +27,14 @@ export type EditorShape = 'block' | 'inline';
  */
 const LINK = { openOnClick: true, defaultProtocol: 'https' } as const;
 
-/** No tables (spec), and no slash menu: input rules are the whole authoring surface. */
-const blockKit = () => StarterKit.configure({ link: LINK });
+/**
+ * No tables (spec), and no slash menu: input rules are the whole authoring surface.
+ * No trailing node either: it appends an empty paragraph after a closing list, heading,
+ * fence or quote on the first transaction, which a click or a focus is, and the field
+ * then saves a document nobody typed in (GF-43). The keys still reach below such a
+ * block: a return on an empty item, three returns or an arrow down in a fence.
+ */
+const blockKit = () => StarterKit.configure({ link: LINK, trailingNode: false });
 
 /** Everything that would make a second kind of block is off, so an inline field stays one. */
 const inlineKit = () =>
@@ -197,9 +203,16 @@ export const flattenBlocks = (markdown: string): string =>
     .map((line) => line.replace(BLOCK_MARKER, ''))
     .join('\n');
 
-/** Markdown in, editor document out. The inline shape flattens first (see `flattenBlocks`). */
-export const toDoc = (shape: EditorShape, markdown: string): JSONContent =>
-  managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown);
+/**
+ * Markdown in, editor document out. The inline shape flattens first (see
+ * `flattenBlocks`). A document holds at least one block, so nothing written
+ * yet is one empty paragraph rather than no blocks at all, which the mode
+ * line's controls would have nothing to act on.
+ */
+export const toDoc = (shape: EditorShape, markdown: string): JSONContent => {
+  const doc = managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown);
+  return doc.content?.length ? doc : { type: 'doc', content: [{ type: 'paragraph' }] };
+};
 
 /** Editor document in, markdown out. */
 export const toMarkdown = (shape: EditorShape, doc: JSONContent): string => managerFor(shape).serialize(doc);
