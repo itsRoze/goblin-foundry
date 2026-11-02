@@ -448,3 +448,126 @@ test('a url pasted over a selection links it, and a link opens when clicked', as
   await field.locator('a').click();
   expect((await opened).url()).toBe('https://goblin.dev/planner');
 });
+
+/** One case per ending: what wrote (GF-43) was a paragraph appended after a closing block that is not one, so a list fails where plain text does not. */
+const ENDINGS = {
+  'a list': 'Read me.\n\n- one\n- two\n',
+  'a heading': 'Read me.\n\n## The end\n',
+  'a code block': 'Read me.\n\n```ts\nconst x = 1;\n```\n',
+  'a blockquote': 'Read me.\n\n> the end\n',
+  'a trailing newline': 'Read me.\n',
+  'nothing': '',
+} as const;
+
+const json = async <T>(response: Promise<{ json(): Promise<unknown> }>) => (await (await response).json()) as T;
+
+async function caretThrough(page: Page, field: Locator) {
+  await field.click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  // longer than the editor's idle beat (750ms), once with the caret in and once after a blur
+  await page.waitForTimeout(1000);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('mode-line')).toHaveCount(0);
+  await page.waitForTimeout(1000);
+}
+
+/** `read` the entity at `path` in the browser; afterwards the server holds exactly what it held, and no PATCH went out. */
+function watchWrites(page: Page): string[] {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH') writes.push(`PATCH ${new URL(request.url()).pathname} ${request.postData() ?? ''}`);
+  });
+  return writes;
+}
+
+async function readsOnly(page: Page, path: string, read: () => Promise<void>) {
+  const before = await json<unknown>(page.request.get(path));
+  const events = await json<unknown[]>(page.request.get(`${path}/events`));
+  const writes = watchWrites(page);
+  await read();
+  expect(writes).toEqual([]);
+  await expect(page.getByTestId('saving')).toHaveCount(0);
+  expect(await json<unknown>(page.request.get(path))).toEqual(before);
+  expect(await json<unknown[]>(page.request.get(`${path}/events`))).toEqual(events);
+}
+
+for (const [ending, markdown] of Object.entries(ENDINGS)) {
+  test(`reading a ticket whose description and design end in ${ending} writes nothing`, async ({ page }) => {
+    const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: `Only read, ending in ${ending}`, description: markdown } }));
+    await page.request.patch(`/api/tickets/${ticket.key}`, { data: { design: markdown } });
+    await readsOnly(page, `/api/tickets/${ticket.key}`, async () => {
+      await page.goto(`/tickets/${ticket.key}`);
+      await caretThrough(page, page.getByTestId('description').locator('.gf-doc'));
+      await caretThrough(page, design(page));
+    });
+  });
+}
+
+test("reading a project's design and description writes nothing", async ({ page }) => {
+  const project = await json<{ id: number }>(
+    page.request.post('/api/projects', { data: { name: 'Only read', description: 'Read me, **briefly**.', design: ENDINGS['a list'] } }),
+  );
+  await readsOnly(page, `/api/projects/${project.id}`, async () => {
+    await page.goto(`/projects/only-read-${project.id}`);
+    await caretThrough(page, design(page));
+    await caretThrough(page, page.getByTestId('project-description').locator('.gf-doc'));
+  });
+});
+
+test("reading an app's description writes nothing", async ({ page }) => {
+  const app = await json<{ id: number }>(page.request.post('/api/apps', { data: { name: 'Only read', description: 'Read me, `briefly`.' } }));
+  await readsOnly(page, `/api/apps/${app.id}`, async () => {
+    await page.goto(`/apps/only-read-${app.id}`);
+    await caretThrough(page, page.getByTestId('app-description').locator('.gf-doc'));
+  });
+});
+
+test('an edit after the caret has sat in the field still saves, in one write', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Read, then written', description: ENDINGS['a list'] } }));
+  await page.goto(`/tickets/${ticket.key}`);
+  const writes = watchWrites(page);
+  const field = page.getByTestId('description').locator('.gf-doc');
+  await field.click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.waitForTimeout(1000);
+
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Rewritten.');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('saving')).toHaveText('saved');
+  expect(writes).toEqual([`PATCH /api/tickets/${ticket.key} {"description":"Rewritten."}`]);
+});
+
+test('a list that ends the field can still be written below, from the keyboard', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Listed to the end', description: ENDINGS['a list'] } }));
+  await page.goto(`/tickets/${ticket.key}`);
+  const field = page.getByTestId('description').locator('.gf-doc');
+
+  await caretInto(field.locator('li').last(), 'li', 'two'.length);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Below the list.');
+  await expect(field.locator('li')).toHaveText(['one', 'two']);
+  await expect(field.locator('p').last()).toHaveText('Below the list.');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('saving')).toHaveText('saved');
+
+  const after = await json<{ description: string }>(page.request.get(`/api/tickets/${ticket.key}`));
+  expect(after.description).toBe('Read me.\n\n- one\n- two\n\nBelow the list.');
+});
+
+test('a code block that ends the field can still be written below, from the keyboard', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Fenced to the end', description: ENDINGS['a code block'] } }));
+  await page.goto(`/tickets/${ticket.key}`);
+  const field = page.getByTestId('description').locator('.gf-doc');
+
+  await caretInto(field.locator('pre'), 'pre', 'const x = 1;'.length);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.type('After the fence.');
+  await expect(field.locator('p').last()).toHaveText('After the fence.');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('saving')).toHaveText('saved');
+
+  const after = await json<{ description: string }>(page.request.get(`/api/tickets/${ticket.key}`));
+  expect(after.description).toBe('Read me.\n\n```ts\nconst x = 1;\n```\n\nAfter the fence.');
+});
