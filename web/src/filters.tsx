@@ -435,11 +435,11 @@ function CheckRows<T extends string>({
 
   // the group holds every bare key a map could bind while it has the focus, answered or not: a prevented key is a
   // claimed one (useKeyMap, keys.tsx), which is what keeps `j k x a s` off the board behind it (GF-92). A modified
-  // key stays global (`⌘K`, `⌘1–6`) and an unbound named key (Tab, F5) stays the browser's. A held `⏎` that opened
+  // character stays global (`⌘K`, `⌘1–6`) and an unbound named key (Tab, F5) stays the browser's. A held `⏎` that opened
   // the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it.
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const named = e.key === 'Escape' || e.key === 'Enter' || e.key.startsWith('Arrow');
-    if (e.metaKey || e.ctrlKey || e.altKey || !(named || e.key.length === 1)) return;
+    const named = e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow');
+    if (!named && (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1)) return;
     e.preventDefault();
     if (e.key === 'Escape') return onClose();
     const option = options[at];
