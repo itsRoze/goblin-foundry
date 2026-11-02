@@ -181,4 +181,49 @@ describe('/api/projects', () => {
     expect(restored).toMatchObject({ trashed_at: null, app_id: null });
     expect((await req(`/api/projects/${p.id}/restore`, json('POST'))).status).toBe(409);
   });
+
+  describe('create and edit write the row, its tickets and the history together, against the rows that were read (ADR-0010)', () => {
+    const snapshot = async (path: string) => [await req(path).then((r) => r.json()), await req(`${path}/events`).then((r) => r.json())];
+
+    test('a history write that fails leaves no project, and the same create goes through once the fault is gone', async () => {
+      const app = await create('/api/apps', { name: 'A' });
+      h.failWrites('project event', 1);
+      const res = await req('/api/projects', json('POST', { name: 'MVP', app_id: app.id }));
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe('nothing changed — the project was not created (created event: injected fault)');
+      expect(await req('/api/projects').then((r) => r.json())).toEqual([]);
+      h.healWrites();
+      const created = await req('/api/projects', json('POST', { name: 'MVP', app_id: app.id }));
+      expect([created.status, (await created.json()).id]).toEqual([201, 1]);
+    });
+
+    test('a history write that fails for one of the tickets a move carries leaves the project, its fields and every ticket as they were', async () => {
+      const a = await create('/api/apps', { name: 'A' });
+      const b = await create('/api/apps', { name: 'B' });
+      const p = await create('/api/projects', { name: 'P', app_id: a.id });
+      const first = await create('/api/tickets', { title: 'first', project_id: p.id });
+      const last = await create('/api/tickets', { title: 'last', project_id: p.id });
+      const before = [await snapshot(`/api/projects/${p.id}`), await snapshot(`/api/tickets/${first.key}`), await snapshot(`/api/tickets/${last.key}`)];
+      // the project's row and event, and the first ticket's, have all run by the time the last ticket's history fails
+      h.failWrites('ticket event', last.id);
+      const res = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P2', app_id: b.id }));
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe(`nothing changed — the edit was rolled back (updated event for ticket ${last.id}: injected fault)`);
+      expect([await snapshot(`/api/projects/${p.id}`), await snapshot(`/api/tickets/${first.key}`), await snapshot(`/api/tickets/${last.key}`)]).toEqual(before);
+      h.healWrites();
+      const moved = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P2', app_id: b.id })).then((r) => r.json());
+      expect(moved).toMatchObject({ name: 'P2', app_id: b.id });
+      expect((await ticketHomes()).map((t) => t.app_id)).toEqual([b.id, b.id]);
+    });
+
+    test('a project that changed between the read and the edit is a 409 naming it, and nothing is written', async () => {
+      const p = await create('/api/projects', { name: 'P' });
+      const before = await snapshot(`/api/projects/${p.id}`);
+      h.failWrites('project', p.id, 'vanish');
+      const res = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P2' }));
+      expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — project ${p.id} changed while the edit was being applied; try again`]);
+      h.healWrites();
+      expect(await snapshot(`/api/projects/${p.id}`)).toEqual(before);
+    });
+  });
 });
