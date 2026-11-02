@@ -28,14 +28,18 @@ async function pasteMarkdown(field: Locator, markdown: string, html?: string) {
 }
 
 /**
- * Click somewhere and wait until the caret is really there. `selectionchange` is asynchronous, so a
- * key pressed straight after a click acts on where the caret *was* — and the mode line is no help,
- * because "inside a code span" is true of every position in it. The browser's own selection is the
- * precise signal, and `waitForFunction` polls it.
+ * Click into the field's one marked run and wait until the editor has the caret there. The browser
+ * moves its selection at the click, but ProseMirror reads it on `selectionchange`, which Chrome
+ * delivers once per frame, so a key sent as soon as the DOM selection has moved acts on where the
+ * caret *was* (GF-75). The DOM selection gives the exact offset; the run's two revealed markers are
+ * drawn from ProseMirror's own selection, so they are the proof it has caught up. That proof needs
+ * the caret to start off the run, which the first expectation holds the caller to.
  */
-async function caretInto(target: Locator, selector: string, offset: number, position?: { x: number; y: number }) {
-  await target.click(position ? { position } : undefined);
-  await target.page().waitForFunction(
+async function caretInto(field: Locator, selector: string, offset: number, position: { x: number; y: number }) {
+  const markers = field.locator('.gf-syntax');
+  await expect(markers).toHaveCount(0);
+  await field.locator(selector).click({ position });
+  await field.page().waitForFunction(
     ({ selector, offset }) => {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return false;
@@ -45,6 +49,7 @@ async function caretInto(target: Locator, selector: string, offset: number, posi
     },
     { selector, offset },
   );
+  await expect(markers).toHaveCount(2);
 }
 
 async function newTicket(page: Page, title: string) {
@@ -330,7 +335,7 @@ test('backspace against a revealed marker deletes the marker, then the character
   // the run opens the line, so at its opening edge the caret is inside it and the marker is drawn behind
   await page.keyboard.type('`parse` now');
   await expect(field.locator('code')).toHaveText('parse');
-  await caretInto(field.locator('code'), 'code', 0, { x: 0, y: 6 });
+  await caretInto(field, 'code', 0, { x: 0, y: 6 });
 
   // the first press deletes the marker, which is to say it takes the mark off the run; no text goes
   await page.keyboard.press('Backspace');
@@ -378,7 +383,7 @@ test('backspace inside a run deletes a character, not the whole run', async ({ p
   // the caret sits after the last character of the run, where the closing marker is drawn on its far side:
   // there is no marker against it, so backspace is an ordinary backspace
   const run = (await field.locator('code').boundingBox())!;
-  await caretInto(field.locator('code'), 'code', 'parse'.length, { x: run.width - 1, y: run.height / 2 });
+  await caretInto(field, 'code', 'parse'.length, { x: run.width - 1, y: run.height / 2 });
 
   await page.keyboard.press('Backspace');
   await expect(field.locator('code')).toContainText('pars');
@@ -399,7 +404,7 @@ test('a run that opens the line can be arrowed out of, and typing there is plain
   // the whole line is one code span, so there is no position to its left to arrow into
   await page.keyboard.type('`test` ');
   await expect(field.locator('code')).toHaveText('test');
-  await caretInto(field.locator('code'), 'code', 0, { x: 0, y: 6 });
+  await caretInto(field, 'code', 0, { x: 0, y: 6 });
 
   // the arrow does not move the caret, it steps it outside the mark: what comes next is no longer code
   await page.keyboard.press('ArrowLeft');
