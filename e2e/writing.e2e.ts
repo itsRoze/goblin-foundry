@@ -515,22 +515,33 @@ for (const [ending, markdown] of Object.entries(ENDINGS)) {
   });
 }
 
+/**
+ * The project the cases here share, its fields rewritten per case: the one the
+ * GUI made above, or one made here when this spec runs alone. The palette's
+ * nested project pick shows eight rows, and a later spec picks its own project
+ * from that list by name, so this spec adds no project of its own to a full run.
+ */
+async function sharedProject(page: Page, fields: { design: string; description?: string }) {
+  const projects = await json<{ id: number }[]>(page.request.get('/api/projects'));
+  const id = projects[0]?.id ?? (await json<{ id: number }>(page.request.post('/api/projects', { data: { name: 'Only read' } }))).id;
+  await json(page.request.patch(`/api/projects/${id}`, { data: fields }));
+  return { path: `/api/projects/${id}`, url: `/projects/${id}` };
+}
+
 for (const ending of ['a heading', 'a code block', 'a blockquote'] as const) {
   test(`reading a project's design ending in ${ending} writes nothing`, async ({ page }) => {
-    const project = await json<{ id: number }>(page.request.post('/api/projects', { data: { name: 'Only read', design: ENDINGS[ending] } }));
-    await readsOnly(page, `/api/projects/${project.id}`, async () => {
-      await page.goto(`/projects/only-read-${project.id}`);
+    const project = await sharedProject(page, { design: ENDINGS[ending] });
+    await readsOnly(page, project.path, async () => {
+      await page.goto(project.url);
       await caretThrough(page, design(page));
     });
   });
 }
 
 test("reading a project's design and description writes nothing", async ({ page }) => {
-  const project = await json<{ id: number }>(
-    page.request.post('/api/projects', { data: { name: 'Only read', description: 'Read me, **briefly**.', design: ENDINGS['a list'] } }),
-  );
-  await readsOnly(page, `/api/projects/${project.id}`, async () => {
-    await page.goto(`/projects/only-read-${project.id}`);
+  const project = await sharedProject(page, { description: 'Read me, **briefly**.', design: ENDINGS['a list'] });
+  await readsOnly(page, project.path, async () => {
+    await page.goto(project.url);
     await caretThrough(page, design(page));
     await caretThrough(page, page.getByTestId('project-description').locator('.gf-doc'));
   });
@@ -664,10 +675,7 @@ const SURFACES: Record<string, (page: Page, markdown: string) => Promise<Surface
     await page.request.patch(`/api/tickets/${ticket.key}`, { data: { design: markdown } });
     return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: design(page), column: 'design' };
   },
-  "a project's design": async (page, markdown) => {
-    const project = await json<{ id: number }>(page.request.post('/api/projects', { data: { name: 'Written below', design: markdown } }));
-    return { path: `/api/projects/${project.id}`, url: `/projects/written-below-${project.id}`, field: design(page), column: 'design' };
-  },
+  "a project's design": async (page, markdown) => ({ ...(await sharedProject(page, { design: markdown })), field: design(page), column: 'design' }),
 };
 
 const stored = async (page: Page, surface: Surface) => (await json<Record<string, string>>(page.request.get(surface.path)))[surface.column];
