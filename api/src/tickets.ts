@@ -130,7 +130,6 @@ export function ticketsRoutes(db: Db) {
     if (refused) return unprocessable(c, [refused]);
     const labels = judgeLabels(body.data.labels ?? []);
     if (!labels.ok) return unprocessable(c, [labels.issue]);
-    // the ticket, its labels and the history that records them land together or not at all
     const born = newestId(ticketTable);
     const written = await commit(
       c,

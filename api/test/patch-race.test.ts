@@ -83,4 +83,26 @@ describe('PATCH /api/tickets/:key with the body held open', () => {
     const after = await call('GET', `/api/tickets/${t.key}`).then((r) => r.json());
     expect([after.status, after.design, after.simple]).toEqual(['ready', 'the plan', false]);
   });
+
+  /**
+   * An App or Project edit reads its row after the body has arrived, as a
+   * Ticket edit does, so the body's transfer time is outside the pin's window:
+   * an edit that lands meanwhile is not a reason to refuse this one, and both
+   * stick.
+   */
+  test.each([
+    ['apps', (id: number) => ({ path: `/api/apps/${id}`, make: { name: 'Reader' } })],
+    ['projects', (id: number) => ({ path: `/api/projects/${id}`, make: { name: 'P' } })],
+  ] as const)('an edit of an %s row that lands while another edit\'s body is in flight leaves both edits standing', async (noun, of) => {
+    const row = await call('POST', `/api/${noun}`, of(0).make).then((r) => r.json());
+    const { path } = of(row.id);
+    const edit = await held('PATCH', path, { name: 'renamed while held' });
+    await Bun.sleep(HEADERS_ARRIVED_MS);
+    const meanwhile = await call('PATCH', path, { description: 'landed first' });
+    expect(meanwhile.status).toBe(200);
+
+    const answer = await edit.finish();
+    expect(answer.split('\r\n')[0]).toBe('HTTP/1.1 200 OK');
+    expect(await call('GET', path).then((r) => r.json())).toMatchObject({ name: 'renamed while held', description: 'landed first' });
+  });
 });

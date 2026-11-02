@@ -109,7 +109,6 @@ export async function commit(c: Context, db: Db, writes: readonly AtomicWrite[],
   }
 }
 
-/** The 409 for a stale pin, naming the statement's `what` (`ticket GF-7`, `app 3`) and what was being done. */
 export const changedWhile = (c: Context, what: string, doing: string) => conflict(c, `nothing changed — ${what} changed while ${doing} was being applied; try again`);
 
 export async function changedUnderneath(c: Context, db: Db, id: number, doing: string): Promise<Response> {

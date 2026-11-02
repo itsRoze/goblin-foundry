@@ -168,7 +168,6 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
     ];
   }
 
-  /** An end of the edge was judged out of the trash, and must still be when the edge commits (ADR-0010). */
   const stillLive = (row: TicketRow, p: string) => livePin(db, ticketTable, row.id, `ticket ${ticketKey(p, row.id)}`);
 
   r.post('/:key/dependencies', async (c) => {
@@ -222,7 +221,6 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
       db,
       [
         stillLive(blocked, p),
-        // an edge that is not there to delete is the 404 it always was; the batch finds that out and leaves nothing behind
         { what: 'dependency', statement: db.delete(dependency).where(and(eq(dependency.blocker_id, blockerId), eq(dependency.blocked_id, blocked.id))).returning({ blocker_id: dependency.blocker_id }) },
         ...(await edgeHistory(c, 'dependency_removed', blockerId, blocked.id, now(), p)),
       ],

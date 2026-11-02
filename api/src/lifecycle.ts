@@ -60,7 +60,6 @@ export function lifecycleRoutes<Row extends LifecycleRow, Wire>(r: Hono<ActorEnv
   const pin = (row: Row, set: Partial<LifecycleRow>, at: string) => pinnedRowWrite(db, table, row, set, at, label(row));
   const history = (c: Context<ActorEnv>, row: Row, at: string) => ({ entity_kind: kind, entity_id: row.id, actor: c.get('actor'), at });
 
-  /** The move, committed: the row the batch wrote on the wire, or why nothing changed. */
   async function moved(c: Context, writes: AtomicWrite[], doing: string, notDone: string) {
     const written = await commit(c, db, writes, { rolledBack: `the ${kind} was not ${notDone}`, stale: (what) => changedWhile(c, what, doing) });
     return written instanceof Response ? written : c.json(toWire(written[0] as Row));

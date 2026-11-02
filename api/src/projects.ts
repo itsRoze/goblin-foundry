@@ -25,7 +25,6 @@ export function projectsRoutes(db: Db) {
     const row = rows[0];
     return row && !row.trashed_at ? null : { path: ['app_id'], message: `app ${appId} not found` };
   }
-  /** The App that `appIssue` judged live must still be when the project's write commits (ADR-0010). */
   const appStillLive = (appId: number | null) => (appId === null ? [] : [livePin(db, appTable, appId, `app ${appId}`)]);
 
   const { findLive, missing } = lifecycleRoutes<ProjectRow, Project>(r, {
@@ -36,7 +35,6 @@ export function projectsRoutes(db: Db) {
     hooks: {
       onTrash: (ctx, row, cascade) => releaseTicketsOfProject(ctx, row.id, cascade),
       async onRestore(ctx, row) {
-        // its app may still be in the trash: the project comes back app-less rather than pointing into the trash, and its tickets follow (ADR-0007)
         const appGone = row.app_id !== null && (await appIssue(row.app_id)) !== null;
         const appId = appGone ? null : row.app_id;
         return { rehomed: { app_id: appId }, children: [...appStillLive(appId), ...(await reviveChildren(ctx, { kind: 'project', id: row.id, appId }))] };
@@ -94,7 +92,6 @@ export function projectsRoutes(db: Db) {
   });
 
   r.patch('/:id', async (c) => {
-    // the row is read after the body has arrived, so the pin covers only the handler's own read and write
     const body = await parseBody(c, PatchProjectBodySchema);
     const row = await findLive(c);
     if (!row) return missing(c);
@@ -107,7 +104,6 @@ export function projectsRoutes(db: Db) {
       if (issue) return unprocessable(c, [issue]);
     }
     const ctx = await ctxOf(db, c, now());
-    // re-homing a project (attach, move, or detach) carries its tickets (ADR-0007), in the same batch
     const written = await commit(
       c,
       db,

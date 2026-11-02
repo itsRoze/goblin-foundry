@@ -74,7 +74,6 @@ export function appsRoutes(db: Db) {
   });
 
   r.patch('/:id', async (c) => {
-    // the row is read after the body has arrived, so the pin covers only the handler's own read and write
     const body = await parseBody(c, PatchAppBodySchema);
     const row = await findLive(c);
     if (!row) return missing(c);
