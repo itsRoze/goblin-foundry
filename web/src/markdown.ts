@@ -216,7 +216,7 @@ export const toMarkdown = (shape: EditorShape, doc: JSONContent): string => {
   let end = blocks.length;
   while (start < end && isBlankParagraph(blocks[start]!)) start += 1;
   while (end > start && isBlankParagraph(blocks[end - 1]!)) end -= 1;
-  return managerFor(shape).serialize(start === 0 && end === blocks.length ? doc : { ...doc, content: blocks.slice(start, end) });
+  return managerFor(shape).serialize({ ...doc, content: blocks.slice(start, end) });
 };
 
 /**

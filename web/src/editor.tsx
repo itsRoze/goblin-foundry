@@ -159,12 +159,11 @@ export function MarkdownField({
   testId?: string;
 }) {
   const server = value ?? '';
-  /** What the server holds, in the editor's own dialect: the one form a write is compared against, so a document that reads the same writes nothing. */
-  const known = useMemo(() => canonical(shape, server), [shape, server]);
+  const fetched = useMemo(() => canonical(shape, server), [shape, server]);
   /** The markdown the server is known to hold — what a write is compared against. Advances only when a write lands. */
-  const agreed = useRef(known);
+  const agreed = useRef(fetched);
   /** The markdown in the editor right now, kept as a string so unmount can flush without touching a destroyed editor. */
-  const live = useRef(known);
+  const live = useRef(fetched);
   /** The markdown a write is currently carrying, so an idle beat and a blur do not send the same body twice. */
   const sending = useRef<string | null>(null);
   /** Which write is the latest, so an earlier one resolving late cannot report an older body as what the server holds. */
@@ -279,7 +278,6 @@ export function MarkdownField({
       onUpdate({ editor }) {
         const markdown = toMarkdown(shape, editor.getJSON());
         setEmpty(editor.isEmpty);
-        // the editor's own paragraph below a closing block, or a caret arrowed out of a fence, changes the document and not the text: nothing typed, nothing to write
         if (markdown === live.current) return;
         touched.current = true;
         live.current = markdown;
@@ -315,14 +313,14 @@ export function MarkdownField({
 
   // a focused editor owns its field: the poll, a window refocus and an agent's write all wait for the caret to leave
   useEffect(() => {
-    if (known === agreed.current) {
+    if (fetched === agreed.current) {
       // the field caught up on its own — a refetch held from before it did would put the old body back
       held.current = null;
       return;
     }
-    if (engagedRef.current) held.current = known;
-    else apply(known);
-  }, [known, apply]);
+    if (engagedRef.current) held.current = fetched;
+    else apply(fetched);
+  }, [fetched, apply]);
 
   // navigating away is the last chance to save; the markdown is a plain string by now, so the editor may already be gone
   useEffect(() => () => write(), [write]);

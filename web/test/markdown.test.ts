@@ -73,7 +73,6 @@ describe('the block editor is markdown in and markdown out', () => {
     const blocks = doc.content ?? [];
     expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
     expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
-    // only the closing ones: a paragraph with text below the block is what was typed there
     expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph', content: [{ type: 'text', text: 'Below.' }] }] })).toBe('Read me.\n\n- one\n- two\n\nBelow.');
     expect(toMarkdown('block', { ...doc, content: [{ type: 'paragraph' }, ...blocks] })).toBe('Read me.\n\n- one\n- two');
     expect(toMarkdown('block', { type: 'doc', content: [{ type: 'paragraph' }] })).toBe('');
