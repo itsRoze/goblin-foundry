@@ -234,6 +234,17 @@ describe('/api/tickets', () => {
         expect(await snapshot(t.key)).toEqual(before);
       });
 
+      test('a trashed ticket that changed between the read and the restore is a 409, and stays in the trash', async () => {
+        const t = await newTicket({ title: 'mistake' });
+        await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
+        const before = await snapshot(t.key);
+        h.failWrites('ticket', t.id, 'vanish');
+        const res = await post(`/api/tickets/${t.key}/restore`);
+        expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — ticket ${t.key} changed while restore was being applied; try again`]);
+        h.healWrites();
+        expect(await snapshot(t.key)).toEqual(before);
+      });
+
       test('a restore whose history write fails leaves the ticket in the trash, with its trashed parent still on it', async () => {
         const app = await newApp('A');
         const t = await newTicket({ title: 'orphaned by its app', app_id: app.id });

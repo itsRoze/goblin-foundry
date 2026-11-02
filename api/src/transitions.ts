@@ -4,7 +4,7 @@
  * destination from the table, so a client cannot invent a move.
  */
 import type { Context, Hono } from 'hono';
-import { lifecycle, ticketKey } from '@goblin/shared';
+import { lifecycle } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
 import type { Db } from './db';
@@ -18,7 +18,6 @@ export interface TransitionDeps {
   /** The live ticket the `:key` param addresses, or `undefined`. */
   find: (c: Context) => Promise<TicketRow | undefined>;
   missing: (c: Context) => Response;
-  prefix: () => Promise<string>;
   toWire: (row: TicketRow) => Promise<unknown>;
 }
 
@@ -26,7 +25,7 @@ export interface TransitionDeps {
  * Registered after `/:key/restore` so the un-trash route is never shadowed by
  * `:name` — `restore` is not a transition, it is the opposite of the trash.
  */
-export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, prefix, toWire }: TransitionDeps) {
+export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, toWire }: TransitionDeps) {
   r.post('/:key/:name', async (c) => {
     const name = c.req.param('name');
     if (!lifecycle.isName(name)) return notFound(c, `no transition named ${name}`);
@@ -50,7 +49,7 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, prefix, 
     });
     const written = await commit(c, db, [pinnedTicketWrite(db, row, { status: edge.to }, at), historyWrite], {
       rolledBack: 'the transition was rolled back',
-      stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), name),
+      stale: () => changedUnderneath(c, db, row.id, name),
     });
     if (written instanceof Response) return written;
     return c.json(await toWire(written[0] as TicketRow));

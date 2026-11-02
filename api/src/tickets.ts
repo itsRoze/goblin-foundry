@@ -27,7 +27,7 @@ import { diff, eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
-import { conflict, failed, notFound, unprocessable, type Issue } from './problems';
+import { conflict, notFound, unprocessable, type Issue } from './problems';
 import { app as appTable, event, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 import { transitionRoute } from './transitions';
@@ -133,7 +133,6 @@ export function ticketsRoutes(db: Db) {
     // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
     // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
     const born = sql<number>`(SELECT max(id) FROM ticket)`;
-    const notCreated = () => failed(c, 'nothing changed — the ticket was not created');
     const written = await commit(
       c,
       db,
@@ -145,8 +144,7 @@ export function ticketsRoutes(db: Db) {
           statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
         },
       ],
-      // an insert returns its row or faults; a stale insert has no meaning, so both ways out are the one answer
-      { rolledBack: 'the ticket was not created', stale: notCreated },
+      { rolledBack: 'the ticket was not created' },
     );
     if (written instanceof Response) return written;
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
@@ -189,13 +187,11 @@ export function ticketsRoutes(db: Db) {
     const change = diff(row, { title, description, design, simple, ...placement });
     if (!change.changed) return c.json(await one(row));
     const at = now();
-    // the guard was judged against `row`, and the body may have been in flight while a transition landed: the write
-    // holds only if the ticket is still the one judged, or the edit is a 409 rather than a change to a status it never saw
     const written = await commit(
       c,
       db,
       [pinnedTicketWrite(db, row, change.new, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
-      { rolledBack: 'the edit was rolled back', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'the edit') },
+      { rolledBack: 'the edit was rolled back', stale: () => changedUnderneath(c, db, row.id, 'the edit') },
     );
     if (written instanceof Response) return written;
     return c.json(await one(written[0] as TicketRow));
@@ -213,7 +209,7 @@ export function ticketsRoutes(db: Db) {
       c,
       db,
       [pinnedTicketWrite(db, row, { trashed_at: at, trashed_via: null }, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at })],
-      { rolledBack: 'the ticket was not trashed', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'trash') },
+      { rolledBack: 'the ticket was not trashed', stale: () => changedUnderneath(c, db, row.id, 'trash') },
     );
     if (written instanceof Response) return written;
     return c.json(toTicket(written[0] as TicketRow, await prefix(), await labelsOf(db, row.id)));
@@ -242,7 +238,7 @@ export function ticketsRoutes(db: Db) {
         await eventWrite(db, { ...history, kind: 'restored', prior: { trashed_at: row.trashed_at }, new: { trashed_at: null } }),
         ...(change.changed ? [await eventWrite(db, { ...history, kind: 'updated', prior: change.prior, new: change.new })] : []),
       ],
-      { rolledBack: 'the ticket was not restored', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'restore') },
+      { rolledBack: 'the ticket was not restored', stale: () => changedUnderneath(c, db, row.id, 'restore') },
     );
     if (written instanceof Response) return written;
     return c.json(await one(written[0] as TicketRow));
@@ -250,12 +246,12 @@ export function ticketsRoutes(db: Db) {
 
   implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
 
-  labelRoutes(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
+  labelRoutes(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
 
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 
   // last: `:name` would otherwise swallow `/:key/restore` and `/:key/dependencies` (ADR-0004)
-  transitionRoute(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
+  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;

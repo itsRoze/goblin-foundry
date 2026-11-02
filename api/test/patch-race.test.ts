@@ -9,6 +9,9 @@ import { join } from 'node:path';
  * own throwaway database, is the only surface where a PATCH can be held open
  * while another connection moves the ticket underneath it (GF-37).
  */
+/** TCP acknowledges nothing above bytes, so this is how long the headers get to reach the handler before the other connection moves the ticket. */
+const HEADERS_ARRIVED_MS = 100;
+
 describe('PATCH /api/tickets/:key with the body held open', () => {
   const dir = mkdtempSync(join(tmpdir(), 'gf-race-'));
   let server: Bun.Subprocess<'ignore', 'pipe', 'inherit'>;
@@ -34,7 +37,7 @@ describe('PATCH /api/tickets/:key with the body held open', () => {
   const call = (method: string, path: string, body?: unknown) =>
     fetch(`${base}${path}`, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
 
-  /** A request whose body is sent only when `finish` is called; `done` is the status line and body that came back. */
+  /** A request whose body is sent only when `finish` is called. */
   async function held(method: string, path: string, body: unknown) {
     const payload = JSON.stringify(body);
     const chunks: Uint8Array[] = [];
@@ -69,8 +72,7 @@ describe('PATCH /api/tickets/:key with the body held open', () => {
     expect((await call('PATCH', `/api/tickets/${t.key}`, { design: 'the plan' })).status).toBe(200);
 
     const edit = await held('PATCH', `/api/tickets/${t.key}`, { design: null });
-    // give the server the headers before the other connection moves the ticket
-    await Bun.sleep(100);
+    await Bun.sleep(HEADERS_ARRIVED_MS);
     const approve = await call('POST', `/api/tickets/${t.key}/approve`);
     expect([approve.status, (await approve.json()).status]).toEqual([200, 'ready']);
 
