@@ -201,6 +201,58 @@ export function TicketCard({
   );
 }
 
+/** A box's full height, past any `max-height` it has been given. */
+const fullHeight = (el: HTMLElement) => el.scrollHeight + el.offsetHeight - el.clientHeight;
+
+/** What the card menu's panel sets inline: hung below the `⋯` by `top`, or above it by `bottom`, capped when the screen is short. */
+type Place = { up: boolean; y: number; right: number; maxHeight?: number };
+
+/**
+ * Where a `position: fixed` panel goes to hang from its anchor: below it, above it when the screen below is
+ * too short, and on the roomier side with its rows scrolling when neither side has the room. Fixed rather
+ * than absolute because the kanban is a scroll box and a panel inside one is cut off at its edge (LESSONS
+ * 2026-11-02), which also means the panel does not travel with its anchor on its own: it is placed again on
+ * every render while open (the board's poll moves cards), and on every scroll and resize, and it closes when
+ * the anchor leaves view, past the kanban's edge or off the screen.
+ */
+function usePlaceOnScreen(anchor: React.RefObject<HTMLElement | null>, panel: React.RefObject<HTMLElement | null>, open: boolean, close: () => void): Place {
+  const [place, setPlace] = useState<Place>({ up: false, y: 0, right: 0 });
+  const measure = useCallback(() => {
+    if (!anchor.current || !panel.current) return;
+    const box = panel.current;
+    const at = anchor.current.getBoundingClientRect();
+    // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
+    const seen = window.visualViewport?.height ?? window.innerHeight;
+    const height = fullHeight(box);
+    const below = seen - at.bottom;
+    const up = height > below && at.top > below;
+    const room = up ? at.top : below;
+    const root = document.documentElement;
+    const atEdge = root.clientWidth - at.right;
+    const onScreen = root.clientWidth - box.offsetWidth;
+    const next = { up, y: up ? root.clientHeight - at.top : at.bottom, right: Math.min(atEdge, onScreen), ...(height > room ? { maxHeight: room } : {}) };
+    setPlace((prev) => (prev.up === next.up && prev.y === next.y && prev.right === next.right && prev.maxHeight === next.maxHeight ? prev : next));
+  }, [anchor, panel]);
+  useLayoutEffect(() => {
+    if (open) measure();
+  });
+  useEffect(() => {
+    if (!open || !anchor.current) return;
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    const watch = new IntersectionObserver(([entry]) => {
+      if (entry && !entry.isIntersecting) close();
+    });
+    watch.observe(anchor.current);
+    return () => {
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+      watch.disconnect();
+    };
+  }, [open, anchor, measure, close]);
+  return place;
+}
+
 /**
  * `⋯` on a card (issue 11): the state tile's arrows and the ways of stopping,
  * for this Ticket alone. It never moves the Cursor — a menu that changed what
@@ -215,52 +267,11 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
   const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useCloseOnOutside(slot, open, close);
-  /**
-   * The panel is fixed to the screen rather than hung in the column, because the kanban is a scroll box and
-   * a panel inside one is cut off at its edge (LESSONS 2026-11-02). So it is placed from the `⋯`'s rect: on
-   * every render while open, since a card the board's poll moved takes its menu with it, and on every scroll
-   * or resize, since a fixed panel does not travel with its card on its own.
-   */
-  const [place, setPlace] = useState<{ up: boolean; y: number; right: number; maxHeight?: number }>({ up: false, y: 0, right: 0 });
-  const measure = useCallback(() => {
-    if (!slot.current || !panel.current) return;
-    const box = panel.current;
-    const at = slot.current.getBoundingClientRect();
-    // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
-    const seen = window.visualViewport?.height ?? window.innerHeight;
-    // the rows' full height, past any cap a previous placement set
-    const height = box.scrollHeight + box.offsetHeight - box.clientHeight;
-    const below = seen - at.bottom;
-    const up = height > below && at.top > below;
-    const room = up ? at.top : below;
-    const root = document.documentElement;
-    // a card scrolled partly out of the kanban still shows its `⋯`: the panel stops at the screen's left edge
-    const right = Math.min(root.clientWidth - at.right, root.clientWidth - box.offsetWidth);
-    const next = { up, y: up ? root.clientHeight - at.top : at.bottom, right, ...(height > room ? { maxHeight: room } : {}) };
-    setPlace((prev) => (prev.up === next.up && prev.y === next.y && prev.right === next.right && prev.maxHeight === next.maxHeight ? prev : next));
-  }, []);
-  useLayoutEffect(() => {
-    if (open) measure();
-  });
+  const place = usePlaceOnScreen(slot, panel, open, close);
   useLayoutEffect(() => {
     // the keys land on the first row; the page must not move for a menu that opened under a tap
     if (open) panel.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }, [open]);
-  useEffect(() => {
-    if (!open || !slot.current) return;
-    window.addEventListener('scroll', measure, true);
-    window.addEventListener('resize', measure);
-    // a `⋯` scrolled out of view, past the kanban's edge or off the screen, takes its menu with it
-    const watch = new IntersectionObserver(([entry]) => {
-      if (entry && !entry.isIntersecting) close();
-    });
-    watch.observe(slot.current);
-    return () => {
-      window.removeEventListener('scroll', measure, true);
-      window.removeEventListener('resize', measure);
-      watch.disconnect();
-    };
-  }, [open, measure, close]);
 
   const run = (act: () => void) => {
     setOpen(false);
@@ -295,8 +306,9 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
           aria-label={`actions for ${ticket.key}`}
           data-testid={`card-menu-${ticket.key}`}
           // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` and `Tab` close it, and none of
-          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor. A held
-          // `⏎` opened this menu with its first press; the repeats that follow land on the first row (GF-82).
+          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor. The browser
+          // delivers a held `⏎`'s repeats to whatever has focus now: the first row, after the press that opened the
+          // menu moved focus there (GF-82).
           onKeyDown={(e) => {
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation();
@@ -313,7 +325,6 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
               const at = rows.indexOf(document.activeElement as HTMLElement);
               const row = rows[(at + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length];
               row?.focus({ preventScroll: true });
-              // only a panel capped to a short screen has anything to scroll
               row?.scrollIntoView({ block: 'nearest' });
             }
           }}

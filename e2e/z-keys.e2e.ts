@@ -275,7 +275,6 @@ test('a new page lets go of the link that led there, so ⏎ means the Cursor aga
   await expect(page.getByTestId('page-title')).toContainText('Shellroute card');
 });
 
-/** A ticket straight from the API, so the board under test is the one thing the test is about. */
 async function seed(page: Page, title: string): Promise<string> {
   const response = await page.request.post('/api/tickets', { data: { title } });
   expect(response.ok(), await response.text()).toBe(true);
@@ -307,7 +306,7 @@ test('a menu at the foot of a column or on a short screen keeps every row on scr
   await page.getByTestId(`menu-${key}`).click();
   await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
   const rows = await page.getByTestId(`card-menu-${key}`).getByRole('menuitem').count();
-  expect(rows).toBeGreaterThan(3);
+  expect(rows).toBe(6);
   for (let i = 1; i <= rows; i++) {
     await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId(`card-menu-${key}`).getByRole('menuitem').nth(i % rows)).toBeFocused();
@@ -319,10 +318,10 @@ test('a menu at the foot of a column or on a short screen keeps every row on scr
     const dots = await page.getByTestId(`menu-${key}`).boundingBox();
     return Math.round(menu!.x + menu!.width - (dots!.x + dots!.width));
   };
-  expect(await edge()).toBe(0);
+  await expect.poll(edge).toBe(0);
   await page.getByTestId('board').evaluate((el) => el.scrollBy(40, 0));
   await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
-  expect(await edge()).toBe(0);
+  await expect.poll(edge).toBe(0);
   await page.getByTestId('board').evaluate((el) => el.scrollBy(600, 0));
   await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
 });
