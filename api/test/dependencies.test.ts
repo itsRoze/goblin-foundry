@@ -239,7 +239,7 @@ describe('dependencies', () => {
       expect(await snapshot(a.key, b.key)).toEqual(before);
     });
 
-    test('a waiter that went into the trash between the judging and the removal is a 409, and the edge stands', async () => {
+    test('a blocked ticket that went into the trash between the judging and the removal is a 409, and the edge stands', async () => {
       const a = await ticket('a');
       const b = await ticket('b');
       await block(a, b);

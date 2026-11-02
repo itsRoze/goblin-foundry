@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { CreateProjectBodySchema, PatchProjectBodySchema, type Project } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { ctxOf, moveTicketsOfProject, releaseTicketsOfProject, reviveChildren } from './children';
-import { changedWhile, commit, newestId, pinnedRowWrite } from './commit';
+import { changedWhile, commit, livePin, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { projectGraph } from './graph';
@@ -25,6 +25,8 @@ export function projectsRoutes(db: Db) {
     const row = rows[0];
     return row && !row.trashed_at ? null : { path: ['app_id'], message: `app ${appId} not found` };
   }
+  /** The App that `appIssue` judged live must still be when the project's write commits (ADR-0010). */
+  const appStillLive = (appId: number | null) => (appId === null ? [] : [livePin(db, appTable, appId, `app ${appId}`)]);
 
   const { findLive, missing } = lifecycleRoutes<ProjectRow, Project>(r, {
     db,
@@ -37,7 +39,7 @@ export function projectsRoutes(db: Db) {
         // its app may still be in the trash: the project comes back app-less rather than pointing into the trash, and its tickets follow (ADR-0007)
         const appGone = row.app_id !== null && (await appIssue(row.app_id)) !== null;
         const appId = appGone ? null : row.app_id;
-        return { rehomed: { app_id: appId }, children: await reviveChildren(ctx, 'project', row.id, appId) };
+        return { rehomed: { app_id: appId }, children: [...appStillLive(appId), ...(await reviveChildren(ctx, { kind: 'project', id: row.id, appId }))] };
       },
     },
   });
@@ -72,8 +74,9 @@ export function projectsRoutes(db: Db) {
           what: 'created event',
           statement: db.insert(event).values({ entity_kind: 'project', entity_id: newestId(projectTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }).returning({ id: event.id }),
         },
+        ...appStillLive(fields.app_id),
       ],
-      { rolledBack: 'the project was not created' },
+      { rolledBack: 'the project was not created', stale: (what) => changedWhile(c, what, 'create') },
     );
     if (written instanceof Response) return written;
     return c.json(toProject(written[0] as ProjectRow), 201);
@@ -111,9 +114,9 @@ export function projectsRoutes(db: Db) {
       [
         pinnedRowWrite(db, projectTable, row, change.new, ctx.at, `project ${row.id}`),
         await eventWrite(db, { entity_kind: 'project', entity_id: row.id, actor: ctx.actor, kind: 'updated', prior: change.prior, new: change.new, at: ctx.at }),
-        ...(appId === undefined ? [] : await moveTicketsOfProject(ctx, row.id, appId)),
+        ...(appId === undefined ? [] : [...(await moveTicketsOfProject(ctx, row.id, appId)), ...appStillLive(appId)]),
       ],
-      { rolledBack: 'the edit was rolled back', stale: (what) => changedWhile(c, what, 'the edit') },
+      { rolledBack: 'the edit was rolled back', stale: (what) => changedWhile(c, what.startsWith('app ') ? what : `project ${row.id}`, 'the edit') },
     );
     if (written instanceof Response) return written;
     return c.json(toProject(written[0] as ProjectRow));

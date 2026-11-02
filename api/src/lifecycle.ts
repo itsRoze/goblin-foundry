@@ -10,27 +10,21 @@ import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import type { ActorEnv } from './actor';
 import { ctxOf, type Ctx } from './children';
-import { changedWhile, commit, pinnedRowWrite } from './commit';
+import { changedWhile, commit, pinnedRowWrite, type LifecycleFields, type LifecycleTable } from './commit';
 import type { AtomicWrite, Db } from './db';
 import { diff, eventWrite, listEvents, now } from './events';
 import { idParam } from './http';
 import { conflict, notFound } from './problems';
-import { app as appTable, project as projectTable } from './schema';
 
-type LifecycleTable = typeof appTable | typeof projectTable;
-export interface LifecycleRow {
+export interface LifecycleRow extends LifecycleFields {
   id: number;
-  archived_at: string | null;
-  trashed_at: string | null;
-  trashed_via: string | null;
-  updated_at: string;
 }
 
 export interface LifecycleHooks<Row extends LifecycleRow> {
   /** Detach children (default) or trash them too, marked as taken by this parent (`cascade`). */
   onTrash(ctx: Ctx, row: Row, cascade: boolean): Promise<AtomicWrite[]>;
   /** Revive children the cascade took; never re-attach detached ones. `rehomed` is what else the row comes back with, as a Project does when its App is still in the trash. */
-  onRestore(ctx: Ctx, row: Row): Promise<{ rehomed: Partial<Row>; children: AtomicWrite[] }>;
+  onRestore(ctx: Ctx, row: Row): Promise<{ rehomed?: Partial<Row>; children: AtomicWrite[] }>;
 }
 
 export interface LifecycleOptions<Row extends LifecycleRow, Wire> {
@@ -115,7 +109,7 @@ export function lifecycleRoutes<Row extends LifecycleRow, Wire>(r: Hono<ActorEnv
     }
     const at = now();
     const { rehomed, children } = await hooks.onRestore(await ctxOf(db, c, at), row);
-    const change = diff(row, rehomed);
+    const change = diff(row, rehomed ?? {});
     const writes = [
       pin(row, { trashed_at: null, trashed_via: null, ...change.new }, at),
       ...(change.changed ? [await eventWrite(db, { ...history(c, row, at), kind: 'updated', prior: change.prior, new: change.new })] : []),

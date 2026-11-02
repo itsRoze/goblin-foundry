@@ -19,7 +19,7 @@ import {
 } from '@goblin/shared';
 import type { Context, Hono as HonoType } from 'hono';
 import type { ActorEnv } from './actor';
-import { changedWhile, commit } from './commit';
+import { changedWhile, commit, livePin } from './commit';
 import type { AtomicWrite, Db } from './db';
 import { eventWrite, now } from './events';
 import { readFilter, ticketWhere } from './filters';
@@ -168,21 +168,8 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
     ];
   }
 
-  /**
-   * An end of the edge was judged live, and must still be when the edge
-   * commits (ADR-0010): a write that sets nothing and matches only a ticket
-   * out of the trash, so one that went in since fails the batch as `stale`.
-   * Nothing else about the ticket is pinned; an edit of its title is no
-   * reason to refuse an edge.
-   */
-  const stillLive = (row: TicketRow, p: string): AtomicWrite => ({
-    what: `ticket ${ticketKey(p, row.id)}`,
-    statement: db
-      .update(ticketTable)
-      .set({ title: ticketTable.title })
-      .where(and(eq(ticketTable.id, row.id), isNull(ticketTable.trashed_at)))
-      .returning({ id: ticketTable.id }),
-  });
+  /** An end of the edge was judged out of the trash, and must still be when the edge commits (ADR-0010). */
+  const stillLive = (row: TicketRow, p: string) => livePin(db, ticketTable, row.id, `ticket ${ticketKey(p, row.id)}`);
 
   r.post('/:key/dependencies', async (c) => {
     const blocked = await find(c);

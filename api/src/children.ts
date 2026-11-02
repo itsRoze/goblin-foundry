@@ -31,12 +31,14 @@ type ProjectRow = typeof projectTable.$inferSelect;
 /** A row a cascade touches, with the kind its pin and its history go under. */
 type Child = { kind: 'ticket'; row: TicketRow } | { kind: 'project'; row: ProjectRow };
 /** What a cascade may set on a child: where it lives, and whether it is in the trash. */
-type Home = Partial<Pick<TicketRow, 'app_id' | 'project_id' | 'trashed_at' | 'trashed_via'>>;
+type ChildChange = Partial<Pick<TicketRow, 'app_id' | 'project_id' | 'trashed_at' | 'trashed_via'>>;
+/** Whose cascade is being undone, and for a Project the App its tickets come back in: none when that App is still in the trash. */
+export type Revived = { kind: 'app'; id: number } | { kind: 'project'; id: number; appId: number | null };
 
 /** `app:3` / `project:5` — the parent whose cascade took a row, so that parent's restore revives exactly those. */
 export const via = (kind: 'app' | 'project', id: number) => `${kind}:${id}`;
 
-function pin({ db, at, prefix }: Ctx, child: Child, set: Home): AtomicWrite {
+function pin({ db, at, prefix }: Ctx, child: Child, set: ChildChange): AtomicWrite {
   switch (child.kind) {
     case 'ticket':
       return pinnedTicketWrite(db, child.row, set, at, `ticket ${ticketKey(prefix, child.row.id)}`);
@@ -49,7 +51,7 @@ const history = ({ db, actor, at }: Ctx, child: Child, kind: 'updated' | 'trashe
   eventWrite(db, { entity_kind: child.kind, entity_id: child.row.id, actor, kind, prior, new: next, at });
 
 /** A child re-homed (`app_id` or `project_id`); nothing when it already lives there. */
-async function rehome(ctx: Ctx, child: Child, home: Home): Promise<AtomicWrite[]> {
+async function rehome(ctx: Ctx, child: Child, home: ChildChange): Promise<AtomicWrite[]> {
   const change = diff(child.row, home);
   if (!change.changed) return [];
   return [pin(ctx, child, change.new), await history(ctx, child, 'updated', change.prior, change.new)];
@@ -60,7 +62,7 @@ async function trashRow(ctx: Ctx, child: Child, mark: string): Promise<AtomicWri
 }
 
 /** Back out of the trash, and re-homed on the way when its parent comes back somewhere else (ADR-0007). */
-async function reviveRow(ctx: Ctx, child: Child, home: Home = {}): Promise<AtomicWrite[]> {
+async function reviveRow(ctx: Ctx, child: Child, home: ChildChange = {}): Promise<AtomicWrite[]> {
   const change = diff(child.row, home);
   return [
     pin(ctx, child, { trashed_at: null, trashed_via: null, ...change.new }),
@@ -109,17 +111,17 @@ export async function releaseChildrenOfApp(ctx: Ctx, appId: number, cascade: boo
 
 /**
  * Restore revives exactly what the parent's cascade took (`trashed_via`),
- * recursively; nothing else. A Project's tickets follow it to `appId`, the
- * App it comes back in — or none, when that App is still in the trash.
+ * recursively; nothing else. A Project's tickets follow it to the App it
+ * comes back in (ADR-0007).
  */
-export async function reviveChildren(ctx: Ctx, parent: 'app' | 'project', parentId: number, appId?: number | null): Promise<AtomicWrite[]> {
-  const mark = via(parent, parentId);
+export async function reviveChildren(ctx: Ctx, parent: Revived): Promise<AtomicWrite[]> {
+  const mark = via(parent.kind, parent.id);
   const writes: AtomicWrite[] = [];
-  if (parent === 'app') {
+  if (parent.kind === 'app') {
     for (const p of await ctx.db.select().from(projectTable).where(eq(projectTable.trashed_via, mark)))
-      writes.push(...(await reviveRow(ctx, project(p))), ...(await reviveChildren(ctx, 'project', p.id, p.app_id)));
+      writes.push(...(await reviveRow(ctx, project(p))), ...(await reviveChildren(ctx, { kind: 'project', id: p.id, appId: p.app_id })));
   }
   for (const t of await ctx.db.select().from(ticketTable).where(eq(ticketTable.trashed_via, mark)))
-    writes.push(...(await reviveRow(ctx, ticket(t), appId === undefined ? {} : { app_id: appId })));
+    writes.push(...(await reviveRow(ctx, ticket(t), parent.kind === 'project' ? { app_id: parent.appId } : {})));
   return writes;
 }

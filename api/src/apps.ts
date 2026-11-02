@@ -31,7 +31,7 @@ export function appsRoutes(db: Db) {
     toWire: toApp,
     hooks: {
       onTrash: (ctx, row, cascade) => releaseChildrenOfApp(ctx, row.id, cascade),
-      onRestore: async (ctx, row) => ({ rehomed: {}, children: await reviveChildren(ctx, 'app', row.id) }),
+      onRestore: async (ctx, row) => ({ children: await reviveChildren(ctx, { kind: 'app', id: row.id }) }),
     },
   });
 
@@ -87,7 +87,7 @@ export function appsRoutes(db: Db) {
       c,
       db,
       [pinnedRowWrite(db, appTable, row, change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
-      { rolledBack: 'the edit was rolled back', stale: (what) => changedWhile(c, what, 'the edit') },
+      { rolledBack: 'the edit was rolled back', stale: () => changedWhile(c, `app ${row.id}`, 'the edit') },
     );
     if (written instanceof Response) return written;
     return c.json(toApp(written[0] as AppRow));

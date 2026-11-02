@@ -35,7 +35,7 @@ export function pinnedTicketWrite(db: Db, row: TicketRow, set: Partial<TicketRow
   };
 }
 
-type LifecycleTable = typeof appTable | typeof projectTable;
+export type LifecycleTable = typeof appTable | typeof projectTable;
 /** What an App or Project row is pinned by, and what a lifecycle move may set on it. */
 export interface LifecycleFields {
   archived_at: string | null;
@@ -64,6 +64,23 @@ export function pinnedRowWrite(
       .set({ ...set, updated_at: at })
       .where(and(eq(table.id, row.id), eq(table.updated_at, row.updated_at), row.trashed_at === null ? isNull(table.trashed_at) : eq(table.trashed_at, row.trashed_at)))
       .returning(),
+  };
+}
+
+/**
+ * A row judged live, and held to that: a write that sets nothing and matches
+ * only a row out of the trash, so one that went in since fails the batch as
+ * `stale`. Nothing else about the row is pinned; an edit of its name is no
+ * reason to refuse what merely points at it.
+ */
+export function livePin(db: Db, table: LifecycleTable | typeof ticketTable, id: number, what: string): AtomicWrite {
+  return {
+    what,
+    statement: db
+      .update(table)
+      .set({ updated_at: table.updated_at })
+      .where(and(eq(table.id, id), isNull(table.trashed_at)))
+      .returning({ id: table.id }),
   };
 }
 

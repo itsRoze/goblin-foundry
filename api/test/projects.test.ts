@@ -216,6 +216,28 @@ describe('/api/projects', () => {
       expect((await ticketHomes()).map((t) => t.app_id)).toEqual([b.id, b.id]);
     });
 
+    test('an app that went into the trash between the judging and the write is a 409 naming it, on create, on a move and on restore', async () => {
+      const a = await create('/api/apps', { name: 'A' });
+      const p = await create('/api/projects', { name: 'P' });
+      const before = await snapshot(`/api/projects/${p.id}`);
+      h.failWrites('app', a.id, 'vanish');
+      const created = await req('/api/projects', json('POST', { name: 'Q', app_id: a.id }));
+      expect([created.status, (await created.json()).hint]).toEqual([409, `nothing changed — app ${a.id} changed while create was being applied; try again`]);
+      const moved = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P2', app_id: a.id }));
+      expect([moved.status, (await moved.json()).hint]).toEqual([409, `nothing changed — app ${a.id} changed while the edit was being applied; try again`]);
+      h.healWrites();
+      expect(await req('/api/projects').then((r) => r.json())).toHaveLength(1);
+      expect(await snapshot(`/api/projects/${p.id}`)).toEqual(before);
+
+      expect((await req(`/api/projects/${p.id}`, json('PATCH', { app_id: a.id }))).status).toBe(200);
+      await req(`/api/projects/${p.id}`, { method: 'DELETE' });
+      h.failWrites('app', a.id, 'vanish');
+      const restored = await req(`/api/projects/${p.id}/restore`, json('POST'));
+      expect([restored.status, (await restored.json()).hint]).toEqual([409, `nothing changed — app ${a.id} changed while restore was being applied; try again`]);
+      h.healWrites();
+      expect((await req('/api/trash').then((r) => r.json())).projects.map((x: { id: number }) => x.id)).toEqual([p.id]);
+    });
+
     test('a project that changed between the read and the edit is a 409 naming it, and nothing is written', async () => {
       const p = await create('/api/projects', { name: 'P' });
       const before = await snapshot(`/api/projects/${p.id}`);

@@ -128,6 +128,39 @@ describe('the App and Project lifecycle commits the row with its history or not 
       expect((await req(`/api/projects/${p.id}`).then((r) => r.json())).app_id).toBe(app.id);
     });
 
+    test('a trash cascade over many projects and tickets whose last history write fails leaves all of them live', async () => {
+      const app = await create('/api/apps', { name: 'Wide' });
+      let last = { id: 0 };
+      for (let i = 0; i < 5; i++) {
+        const p = await create('/api/projects', { name: `P${i}`, app_id: app.id });
+        for (let j = 0; j < 8; j++) last = await create('/api/tickets', { title: `t${i}.${j}`, project_id: p.id });
+      }
+      for (let i = 0; i < 5; i++) last = await create('/api/tickets', { title: `loose ${i}`, app_id: app.id });
+      const live = () => req('/api/tickets').then((r) => r.json()).then((rows: { trashed_at: null }[]) => rows.length);
+      expect(await live()).toBe(45);
+      h.failWrites('ticket event', last.id);
+      const res = await req(`/api/apps/${app.id}?cascade=1`, { method: 'DELETE' });
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe(`nothing changed — the app was not trashed (trashed event for ticket ${last.id}: injected fault)`);
+      expect(await trash()).toEqual({ apps: [], projects: [], tickets: [] });
+      expect(await live()).toBe(45);
+      expect((await req('/api/projects').then((r) => r.json())).map((p: { app_id: number }) => p.app_id)).toEqual([app.id, app.id, app.id, app.id, app.id]);
+      h.healWrites();
+      expect((await req(`/api/apps/${app.id}?cascade=1`, { method: 'DELETE' })).status).toBe(200);
+      const after = await trash();
+      expect([after.apps.length, after.projects.length, after.tickets.length, await live()]).toEqual([1, 5, 45, 0]);
+    });
+
+    test('a detaching project trash whose history write fails leaves the project live and its tickets in it', async () => {
+      const { p, inP, everything } = await household();
+      const before = await everything();
+      h.failWrites('ticket event', inP.id);
+      const res = await req(`/api/projects/${p.id}`, { method: 'DELETE' });
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe(`nothing changed — the project was not trashed (updated event for ticket ${inP.id}: injected fault)`);
+      expect(await everything()).toEqual(before);
+    });
+
     test('a project cascade whose history write fails leaves the project and its tickets live', async () => {
       const { p, inP, everything } = await household();
       const before = await everything();

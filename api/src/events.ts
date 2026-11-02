@@ -19,28 +19,17 @@ export interface EventInput {
 export const EDIT_SESSION_MS = 5 * 60_000;
 
 /**
- * An `updated` event is an edit session, not a write (ADR-0008). A field on a
- * view is always live, so a two-minute sitting at a design would otherwise
- * leave dozens of rows each holding a whole document. A further edit of the
- * same entity by the same actor within `EDIT_SESSION_MS` amends the open row
- * instead: `prior` stays what the sitting started from — that is what makes it
- * the unit of recovery — while `new` and `at` advance. Every other kind
- * appends. Coalescing lives here so `goblin` and agents inherit it.
- */
-export async function recordEvent(db: Db, input: EventInput): Promise<void> {
-  const at = input.at ?? now();
-  const write = await eventWrite(db, { ...input, at });
-  const rows = (await write.statement) as unknown[];
-  // an amend is pinned to the session it read; if that session moved on in between, the write is still history —
-  // it starts a row of its own rather than vanishing
-  if (rows.length === 0) await db.insert(event).values({ ...input, at });
-}
-
-/**
- * The same event as a statement not yet run, for a batch that must commit it
- * together with the write it records (ADR-0010). The edit-session read happens
- * now; the amend pins the row it read, so a session that moved on in between
- * fails the batch instead of being overwritten.
+ * An event as a statement not yet run, for the batch that commits it together
+ * with the write it records (ADR-0010). An `updated` event is an edit session,
+ * not a write (ADR-0008): a field on a view is always live, so a two-minute
+ * sitting at a design would otherwise leave dozens of rows each holding a
+ * whole document. A further edit of the same entity by the same actor within
+ * `EDIT_SESSION_MS` amends the open row instead: `prior` stays what the
+ * sitting started from — that is what makes it the unit of recovery — while
+ * `new` and `at` advance. Every other kind appends. The edit-session read
+ * happens now; the amend pins the row it read, so a session that moved on in
+ * between fails the batch instead of being overwritten. Coalescing lives here
+ * so `goblin` and agents inherit it.
  */
 export async function eventWrite(db: Db, input: EventInput): Promise<AtomicWrite & { statement: PromiseLike<unknown[]> }> {
   const at = input.at ?? now();
