@@ -23,7 +23,7 @@ import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
-import { diff, eventWrite, listEvents, now, recordEvent } from './events';
+import { diff, eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
@@ -209,10 +209,14 @@ export function ticketsRoutes(db: Db) {
     }
     const at = now();
     // edges are left alone: a trashed blocker simply stops blocking, and restoring it re-blocks (ADR-0009)
-    const [updated] = await db.update(ticketTable).set({ trashed_at: at, trashed_via: null, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at });
-    return c.json(toTicket(updated, await prefix(), await labelsOf(db, row.id)));
+    const written = await commit(
+      c,
+      db,
+      [pinnedTicketWrite(db, row, { trashed_at: at, trashed_via: null }, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at })],
+      { rolledBack: 'the ticket was not trashed', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'trash') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(toTicket(written[0] as TicketRow, await prefix(), await labelsOf(db, row.id)));
   });
 
   r.post('/:key/restore', async (c) => {
@@ -223,19 +227,25 @@ export function ticketsRoutes(db: Db) {
     }
     const actor = c.get('actor');
     const at = now();
-    let restored = await set(row.id, { trashed_at: null, trashed_via: null }, at);
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'restored', prior: { trashed_at: row.trashed_at }, new: { trashed_at: null }, at });
     // a live ticket never points into the trash: a parent still in there is dropped on the way back (ADR-0007)
-    const appGone = await inTrash(appTable, restored.app_id);
-    const change = diff(restored, {
-      app_id: appGone ? null : restored.app_id,
-      project_id: appGone || (await inTrash(projectTable, restored.project_id)) ? null : restored.project_id,
+    const appGone = await inTrash(appTable, row.app_id);
+    const change = diff(row, {
+      app_id: appGone ? null : row.app_id,
+      project_id: appGone || (await inTrash(projectTable, row.project_id)) ? null : row.project_id,
     });
-    if (change.changed) {
-      restored = await set(row.id, change.new, at);
-      await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'updated', prior: change.prior, new: change.new, at });
-    }
-    return c.json(await one(restored));
+    const history = { entity_kind: 'ticket' as const, entity_id: row.id, actor, at };
+    const written = await commit(
+      c,
+      db,
+      [
+        pinnedTicketWrite(db, row, { trashed_at: null, trashed_via: null, ...change.new }, at),
+        await eventWrite(db, { ...history, kind: 'restored', prior: { trashed_at: row.trashed_at }, new: { trashed_at: null } }),
+        ...(change.changed ? [await eventWrite(db, { ...history, kind: 'updated', prior: change.prior, new: change.new })] : []),
+      ],
+      { rolledBack: 'the ticket was not restored', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'restore') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await one(written[0] as TicketRow));
   });
 
   implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
@@ -253,11 +263,6 @@ export function ticketsRoutes(db: Db) {
     return rows[0]?.trashed_at != null;
   }
 
-  async function set(id: number, patch: Partial<TicketRow>, at: string): Promise<TicketRow> {
-    const [updated] = await db.update(ticketTable).set({ ...patch, updated_at: at }).where(eq(ticketTable.id, id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    return updated;
-  }
 
   return r;
 }
