@@ -274,3 +274,71 @@ test('a new page lets go of the link that led there, so ⏎ means the Cursor aga
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('page-title')).toContainText('Shellroute card');
 });
+
+async function seed(page: Page, title: string): Promise<string> {
+  const response = await page.request.post('/api/tickets', { data: { title } });
+  expect(response.ok(), await response.text()).toBe(true);
+  return ((await response.json()) as { key: string }).key;
+}
+
+test('a menu at the foot of a column or on a short screen keeps every row on screen and reachable by key, and it follows a scroll until its card leaves (GF-78)', async ({ page }) => {
+  for (const n of ['one', 'two', 'three', 'four']) await seed(page, `Footmenu ${n}`);
+  await board(page, 'Footmenu');
+  const last = page.getByTestId('col-backlog').locator('.gf-card').last();
+  await expect(last).toBeVisible();
+  const key = (await last.getAttribute('data-key'))!;
+
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeInViewport();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeFocused();
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeInViewport();
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  const rows = await page.getByTestId(`card-menu-${key}`).getByRole('menuitem').count();
+  expect(rows).toBe(6);
+  for (let i = 1; i <= rows; i++) {
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByTestId(`card-menu-${key}`).getByRole('menuitem').nth(i % rows)).toBeFocused();
+    await expect(page.getByTestId(`card-menu-${key}`).getByRole('menuitem').nth(i % rows)).toBeInViewport();
+  }
+
+  const edge = async () => {
+    const menu = await page.getByTestId(`card-menu-${key}`).boundingBox();
+    const dots = await page.getByTestId(`menu-${key}`).boundingBox();
+    return Math.round(menu!.x + menu!.width - (dots!.x + dots!.width));
+  };
+  await expect.poll(edge).toBe(0);
+  await page.getByTestId('board').evaluate((el) => el.scrollBy(40, 0));
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await expect.poll(edge).toBe(0);
+  await page.getByTestId('board').evaluate((el) => el.scrollBy(600, 0));
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+});
+
+test('holding ⏎ on a focused ⋯ opens the menu and runs nothing (GF-82)', async ({ page }) => {
+  const key = await seed(page, 'Heldenter');
+  await board(page, 'Heldenter');
+  const only = card(page, 'Heldenter');
+  await expect(only).toHaveAttribute('data-status', 'backlog');
+
+  await page.getByTestId(`menu-${key}`).focus();
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await expect(page.getByTestId(`card-menu-${key}`)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+  await expect(only).toHaveAttribute('data-status', 'backlog');
+});

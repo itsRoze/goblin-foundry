@@ -201,6 +201,58 @@ export function TicketCard({
   );
 }
 
+/** A box's full height, past any `max-height` it has been given. */
+const fullHeight = (el: HTMLElement) => el.scrollHeight + el.offsetHeight - el.clientHeight;
+
+/** What the card menu's panel sets inline: hung below the `⋯` by `top`, or above it by `bottom`, capped when the screen is short. */
+type Place = { up: boolean; y: number; right: number; maxHeight?: number };
+
+/**
+ * Where a `position: fixed` panel goes to hang from its anchor: below it, above it when the screen below is
+ * too short, and on the roomier side with its rows scrolling when neither side has the room. Fixed rather
+ * than absolute because the kanban is a scroll box and a panel inside one is cut off at its edge (LESSONS
+ * 2026-11-02), which also means the panel does not travel with its anchor on its own: it is placed again on
+ * every render while open (the board's poll moves cards), and on every scroll and resize, and it closes when
+ * the anchor leaves view, past the kanban's edge or off the screen.
+ */
+function usePlaceOnScreen(anchor: React.RefObject<HTMLElement | null>, panel: React.RefObject<HTMLElement | null>, open: boolean, close: () => void): Place {
+  const [place, setPlace] = useState<Place>({ up: false, y: 0, right: 0 });
+  const measure = useCallback(() => {
+    if (!anchor.current || !panel.current) return;
+    const box = panel.current;
+    const at = anchor.current.getBoundingClientRect();
+    // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
+    const seen = window.visualViewport?.height ?? window.innerHeight;
+    const height = fullHeight(box);
+    const below = seen - at.bottom;
+    const up = height > below && at.top > below;
+    const room = up ? at.top : below;
+    const root = document.documentElement;
+    const atEdge = root.clientWidth - at.right;
+    const onScreen = root.clientWidth - box.offsetWidth;
+    const next = { up, y: up ? root.clientHeight - at.top : at.bottom, right: Math.min(atEdge, onScreen), ...(height > room ? { maxHeight: room } : {}) };
+    setPlace((prev) => (prev.up === next.up && prev.y === next.y && prev.right === next.right && prev.maxHeight === next.maxHeight ? prev : next));
+  }, [anchor, panel]);
+  useLayoutEffect(() => {
+    if (open) measure();
+  });
+  useEffect(() => {
+    if (!open || !anchor.current) return;
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    const watch = new IntersectionObserver(([entry]) => {
+      if (entry && !entry.isIntersecting) close();
+    });
+    watch.observe(anchor.current);
+    return () => {
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+      watch.disconnect();
+    };
+  }, [open, anchor, measure, close]);
+  return place;
+}
+
 /**
  * `⋯` on a card (issue 11): the state tile's arrows and the ways of stopping,
  * for this Ticket alone. It never moves the Cursor — a menu that changed what
@@ -215,19 +267,10 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
   const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useCloseOnOutside(slot, open, close);
-  /** Whether the panel hangs above the button instead of below it: it must fit the screen it is on. */
-  const [up, setUp] = useState(false);
+  const place = usePlaceOnScreen(slot, panel, open, close);
   useLayoutEffect(() => {
-    if (!open || !panel.current) return;
-    const box = panel.current.getBoundingClientRect();
-    // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
-    const seen = window.visualViewport?.height ?? window.innerHeight;
-    setUp(box.bottom > seen && box.height < box.top);
     // the keys land on the first row; the page must not move for a menu that opened under a tap
-    panel.current.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
-  }, [open]);
-  useEffect(() => {
-    if (!open) setUp(false);
+    if (open) panel.current?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }, [open]);
 
   const run = (act: () => void) => {
@@ -257,23 +300,32 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
       {open && (
         <div
           ref={panel}
-          className={`gf-pop gf-card-menu${up ? ' is-up' : ''}`}
+          className={`gf-pop gf-card-menu${place.up ? ' is-up' : ''}`}
+          style={{ ...(place.up ? { bottom: place.y } : { top: place.y }), right: place.right, maxHeight: place.maxHeight }}
           role="menu"
           aria-label={`actions for ${ticket.key}`}
           data-testid={`card-menu-${ticket.key}`}
-          // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` closes it, and none of
-          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor
+          // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` and `Tab` close it, and none of
+          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor. The browser
+          // delivers a held `⏎`'s repeats to whatever has focus now: the first row, after the press that opened the
+          // menu moved focus there (GF-82).
           onKeyDown={(e) => {
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation();
-            if (e.key === 'Escape') {
+            if (e.key === 'Enter' && e.repeat) {
               e.preventDefault();
-              setOpen(false);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              close();
+            } else if (e.key === 'Tab') {
+              close();
             } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
               e.preventDefault();
               const rows = [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
               const at = rows.indexOf(document.activeElement as HTMLElement);
-              rows[(at + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]?.focus({ preventScroll: true });
+              const row = rows[(at + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length];
+              row?.focus({ preventScroll: true });
+              row?.scrollIntoView({ block: 'nearest' });
             }
           }}
         >
