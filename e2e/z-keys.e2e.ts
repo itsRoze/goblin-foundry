@@ -274,3 +274,50 @@ test('a new page lets go of the link that led there, so ⏎ means the Cursor aga
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('page-title')).toContainText('Shellroute card');
 });
+
+/** A ticket straight from the API: four cards in one column is what pushes a menu past the kanban's foot. */
+async function seed(page: Page, title: string): Promise<string> {
+  const response = await page.request.post('/api/tickets', { data: { title } });
+  expect(response.ok(), await response.text()).toBe(true);
+  return ((await response.json()) as { key: string }).key;
+}
+
+test('a menu at the foot of a column stays on screen, every row is reached by key, and Tab or esc closes it (GF-78)', async ({ page }) => {
+  for (const n of ['one', 'two', 'three', 'four']) await seed(page, `Footmenu ${n}`);
+  await board(page, 'Footmenu');
+  const last = page.getByTestId('col-backlog').locator('.gf-card').last();
+  await expect(last).toBeVisible();
+  const key = (await last.getAttribute('data-key'))!;
+
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeInViewport();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeFocused();
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeInViewport();
+
+  // Tab leaves the menu, so the menu goes with it; esc inside the menu still closes it
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+});
+
+test('holding ⏎ on a focused ⋯ opens the menu and runs nothing (GF-82)', async ({ page }) => {
+  const key = await seed(page, 'Heldenter');
+  await board(page, 'Heldenter');
+  const only = card(page, 'Heldenter');
+  await expect(only).toHaveAttribute('data-status', 'backlog');
+
+  await page.getByTestId(`menu-${key}`).focus();
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await expect(page.getByTestId(`card-menu-${key}`)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+  await expect(only).toHaveAttribute('data-status', 'backlog');
+});
