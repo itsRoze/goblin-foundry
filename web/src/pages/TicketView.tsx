@@ -219,6 +219,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
       >
         <InlineTitle value={ticket.title} onSave={(title) => about.run(() => save({ title }))} />
         <MarkdownField
+          id={`ticket/${ticket.id}/description`}
           shape="block"
           label="description"
           placeholder="no description — press e"
@@ -282,6 +283,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         testId="design-tile"
       >
         <MarkdownField
+          id={`ticket/${ticket.id}/design`}
           shape="block"
           label="ticket design"
           placeholder="no ticket design — the plan for this slice goes here"

@@ -130,17 +130,20 @@ export function AboutTile<Body>({
  */
 export function DescriptionField({
   kind,
+  entityId,
   value,
   saving,
   patch,
 }: {
   kind: 'app' | 'project';
+  entityId: number;
   value: string;
   saving: Saver;
   patch: (body: { description: string }) => Promise<unknown>;
 }) {
   return (
     <MarkdownField
+      id={`${kind}/${entityId}/description`}
       shape="inline"
       label="description"
       placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}

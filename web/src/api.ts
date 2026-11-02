@@ -35,11 +35,16 @@ export const fieldLabel = (name: string): string => FIELD_LABELS[name] ?? name;
 /** A zod issue's path, in the screen's words. */
 export const issuePath = (path: (string | number)[]): string => path.map((p) => fieldLabel(String(p))).join('.');
 
+/** The sentence for a call that got no answer at all: whether the request landed is unknown, so it claims nothing about what changed. */
+const UNREACHED = 'could not reach the API; try again';
+
 async function call(method: string, path: string, body?: unknown): Promise<unknown> {
   const res = await fetch(path, {
     method,
     headers: body === undefined ? {} : { 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch(() => {
+    throw new ProblemError(0, { detail: UNREACHED });
   });
   const text = await res.text();
   const data: unknown = text ? JSON.parse(text) : null;

@@ -103,7 +103,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
               ['name', app.name],
               ['repository', <Repository remote={app.repository_url} />],
               ['branch', app.default_branch ?? '—'],
-              ['description', <DescriptionField kind="app" value={app.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
+              ['description', <DescriptionField kind="app" entityId={app.id} value={app.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
             ]}
           />
         }

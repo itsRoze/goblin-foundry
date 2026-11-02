@@ -405,7 +405,7 @@ What `web/src/app.css` actually does, for the primitives the mockups take for gr
 
 ### Named Rules
 
-**The inline refusal rule.** A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast.
+**The inline refusal rule.** A refusal is one mono sentence in `--gf-mute`, placed where the action was refused, clearing on the next click or drag or after 4s. Never a modal, never a toast. A field's refused save is different (GF-79): the words the server did not take are still in the field, so the sentence under it stays until a write lands, and both outlive leaving the view and coming back.
 
 **The whole card rule.** The whole card is the drag target: no grip, no handle, no affordance drawn on it.
 

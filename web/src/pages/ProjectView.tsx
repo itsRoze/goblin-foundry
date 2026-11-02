@@ -69,6 +69,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
       </Tile>
       <Tile label="design" keys={<Saving state={design.state} />} testId="design-tile">
         <MarkdownField
+          id={`project/${project.id}/design`}
           shape="block"
           label="project design"
           placeholder="no project design — the shape of this project goes here"
@@ -94,7 +95,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
             rows={[
               ['name', project.name],
               ['app', app ? <Link to={slugPath('apps', app)}>{app.name}</Link> : 'no app yet'],
-              ['description', <DescriptionField kind="project" value={project.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
+              ['description', <DescriptionField kind="project" entityId={project.id} value={project.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
             ]}
           />
         }

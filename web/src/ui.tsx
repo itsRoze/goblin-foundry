@@ -335,7 +335,7 @@ export const Since = ({ iso, at }: { iso: string; at: number }) => (
 
 const REFUSAL_MS = 4_000;
 
-/** What a refused write says: a `409`'s hint, a `422`'s issues, or whatever else went wrong. */
+/** What a refused write says: a `409`'s hint, a `422`'s issues, the sentence for no answer at all, or whatever else went wrong. */
 export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.sentence : String(e));
 
 /**

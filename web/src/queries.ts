@@ -19,6 +19,8 @@ import {
   type PatchProjectBody,
   type PatchSettingsBody,
   type PatchTicketBody,
+  type Project,
+  type App,
   type Ticket,
   type TicketFilter,
   type TicketStatus,
@@ -129,9 +131,21 @@ export const useTrash = () => useQuery({ queryKey: ['trash'], queryFn: () => api
 export const useLabelNames = () => useQuery({ queryKey: ['labels'], queryFn: () => api.get('/api/labels', LabelNames) });
 
 /** Every write invalidates everything; the data set is tiny and the API is local (ADR-0004: plain fetch + a query cache). */
-function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>) {
+function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>, onSuccess?: (vars: Vars) => void) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries() });
+  return useMutation({ mutationFn: fn, onSuccess: (_result, vars) => onSuccess?.(vars), onSettled: () => qc.invalidateQueries() });
+}
+
+/**
+ * A landed edit is written into the cached entity at once. The invalidation
+ * refetches only the queries on screen, so a view left and returned to would
+ * otherwise mount on the body from before the edit until its refetch answers,
+ * and a field typed into in that window would carry the old body (GF-83).
+ */
+function useCachedEdit() {
+  const qc = useQueryClient();
+  return <T extends object>(queryKey: readonly unknown[], body: Partial<T>, matches: (cached: T) => boolean) =>
+    qc.setQueriesData<T>({ queryKey }, (cached) => (cached && matches(cached) ? { ...cached, ...body } : cached));
 }
 
 export const usePatchSettings = () => useWrite((body: PatchSettingsBody) => api.patch('/api/settings', body).then((r) => SettingsSchema.parse(r)));
@@ -142,7 +156,13 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
  * patches the ticket it is showing, and the board's Cursor patches whichever
  * card it is on, so the key travels with the body rather than with the hook.
  */
-export const usePatchTicket = () => useWrite(({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body));
+export const usePatchTicket = () => {
+  const edit = useCachedEdit();
+  return useWrite(
+    ({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body),
+    ({ key, body }) => edit<Ticket>(['ticket'], body, (t) => t.key === key),
+  );
+};
 /** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
 export const useSetLabels = () => useWrite(({ key, labels }: { key: string; labels: string[] }) => api.post(`/api/tickets/${key}/labels`, { labels }));
 /** A ticket is never archived (GLOSSARY.md): trash and restore are all it has. */
@@ -185,9 +205,21 @@ export function useTransition() {
 }
 
 export const useCreateApp = () => useWrite((body: CreateAppBody) => api.post('/api/apps', body).then((r) => AppSchema.parse(r)));
-export const usePatchApp = (id: number) => useWrite((body: PatchAppBody) => api.patch(`/api/apps/${id}`, body));
+export const usePatchApp = (id: number) => {
+  const edit = useCachedEdit();
+  return useWrite(
+    (body: PatchAppBody) => api.patch(`/api/apps/${id}`, body),
+    (body) => edit<App>(['app', id], body, () => true),
+  );
+};
 export const useCreateProject = () => useWrite((body: CreateProjectBody) => api.post('/api/projects', body).then((r) => ProjectSchema.parse(r)));
-export const usePatchProject = (id: number) => useWrite((body: PatchProjectBody) => api.patch(`/api/projects/${id}`, body));
+export const usePatchProject = (id: number) => {
+  const edit = useCachedEdit();
+  return useWrite(
+    (body: PatchProjectBody) => api.patch(`/api/projects/${id}`, body),
+    (body) => edit<Project>(['project', id], body, () => true),
+  );
+};
 
 /** archive · unarchive · trash · restore on an app or project. */
 export const useIntent = (kind: 'app' | 'project', id: number) =>
