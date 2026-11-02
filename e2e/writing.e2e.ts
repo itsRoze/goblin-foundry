@@ -59,6 +59,13 @@ async function caretInto(field: Locator, selector: string, offset: number, posit
   await expect(markers).toHaveCount(2);
 }
 
+/**
+ * The click that focuses a field arms prosemirror-view's 20 ms focus timer, and a burst of keys can hold
+ * it back until it fires among caret keys, where it writes the editor's stale caret over the browser's.
+ * The idle save is a later, longer timer, so `saved` means it has already fired (LESSONS 2026-11-02, GF-94).
+ */
+const untilFocusTimerHasRun = (tile: Locator) => expect(tile.getByTestId('saving')).toHaveText('saved');
+
 async function newTicket(page: Page, title: string) {
   await page.goto('/');
   await expect(page.getByTestId('board')).toBeVisible();
@@ -218,6 +225,7 @@ test('a mark can be taken off from inside it, with nothing selected', async ({ p
   // the backticks are not in the document, so the caret is the only way to point at the span
   await page.keyboard.type('call `parse` now');
   await expect(field.locator('code')).toHaveText('parse');
+  await untilFocusTimerHasRun(tile);
   for (let i = 0; i < 4; i += 1) await page.keyboard.press('ArrowLeft');
   await expect(tile.getByTestId('fmt-code')).toHaveAttribute('aria-pressed', 'true');
 
