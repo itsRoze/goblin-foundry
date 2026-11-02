@@ -283,7 +283,7 @@ describe('POST /api/tickets/bulk', () => {
       const keys = [first.key, second.key, third.key];
       const before = await snapshot(keys);
       // the first ticket's update and event, and the second ticket's update, have all run by the time this fires
-      h.failWrites('event', second.id);
+      h.failWrites('ticket event', second.id);
       const res = await bulk(keys, { kind: 'transition', name: 'approve' });
       expect(res.status).toBe(500);
       expect(res.headers.get('content-type')).toContain('application/problem+json');
@@ -336,7 +336,7 @@ describe('POST /api/tickets/bulk', () => {
       const a = await at('todo');
       const b = await at('todo');
       const bystander = await at('backlog');
-      h.failWrites('event', b.id);
+      h.failWrites('ticket event', b.id);
       const [batch, single] = await Promise.all([bulk([a.key, b.key], { kind: 'transition', name: 'approve' }), post(`/api/tickets/${bystander.key}/pick`)]);
       expect(batch.status).toBe(500);
       expect(single.status).toBe(200);

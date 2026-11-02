@@ -101,7 +101,7 @@ describe('/api/tickets', () => {
     test('a history write that fails leaves the ticket as it was, and the same edit goes through once the fault is gone', async () => {
       const t = await newTicket({ title: 'draft title' });
       const before = await snapshot(t.key);
-      h.failWrites('event', t.id);
+      h.failWrites('ticket event', t.id);
       const res = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }));
       expect(res.status).toBe(500);
       expect(res.headers.get('content-type')).toContain('application/problem+json');
@@ -214,7 +214,7 @@ describe('/api/tickets', () => {
       test('a history write that fails leaves the ticket out of the trash, and the trash goes through once the fault is gone', async () => {
         const t = await newTicket({ title: 'mistake' });
         const before = await snapshot(t.key);
-        h.failWrites('event', t.id);
+        h.failWrites('ticket event', t.id);
         const res = await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
         expect(res.status).toBe(500);
         expect((await res.json()).detail).toBe("nothing changed — the ticket was not trashed (trashed event for ticket 1: injected fault)");
@@ -251,7 +251,7 @@ describe('/api/tickets', () => {
         await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
         await req(`/api/apps/${app.id}`, { method: 'DELETE' });
         const before = await snapshot(t.key);
-        h.failWrites('event', t.id);
+        h.failWrites('ticket event', t.id);
         const res = await post(`/api/tickets/${t.key}/restore`);
         expect(res.status).toBe(500);
         expect((await res.json()).detail).toBe("nothing changed — the ticket was not restored (restored event for ticket 1: injected fault)");

@@ -80,7 +80,7 @@ describe('Labels on a Ticket (ADR-0013)', () => {
 
   test('a create whose history cannot be written leaves no ticket behind', async () => {
     await newTicket({ title: 'first' });
-    h.failWrites('event', 2);
+    h.failWrites('ticket event', 2);
     const res = await post('/api/tickets', { title: 'second', labels: ['a'] });
     expect(res.status).toBe(500);
     h.healWrites();
@@ -135,7 +135,7 @@ describe('Labels on a Ticket (ADR-0013)', () => {
 
   test('a set whose history cannot be written is rolled back whole', async () => {
     await newTicket({ title: 'x', labels: ['a'] });
-    h.failWrites('event', 1);
+    h.failWrites('ticket event', 1);
     const res = await setLabels('GF-1', ['b']);
     expect(res.status).toBe(500);
     h.healWrites();

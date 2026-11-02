@@ -61,12 +61,12 @@ describe('implementation links', () => {
   test('a history failure rolls back adding or removing a link', async () => {
     await create();
     const url = 'https://github.com/example/reader/pull/14';
-    h.failWrites('event', 1);
+    h.failWrites('ticket event', 1);
     expect((await post(path, { url })).status).toBe(500);
     expect(await list()).toEqual([]);
     h.healWrites();
     const link = await (await post(path, { url })).json();
-    h.failWrites('event', 1);
+    h.failWrites('ticket event', 1);
     expect((await h.app.request(`${path}/${link.id}`, { method: 'DELETE' })).status).toBe(500);
     expect(await list()).toHaveLength(1);
   });
