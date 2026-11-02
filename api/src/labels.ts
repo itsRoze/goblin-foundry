@@ -8,12 +8,13 @@
  */
 import { and, asc, eq, isNull, type SQL } from 'drizzle-orm';
 import { Hono, type Context } from 'hono';
-import { SetLabelsBodySchema, ticketKey, ticketLabels } from '@goblin/shared';
+import { SetLabelsBodySchema, ticketLabels } from '@goblin/shared';
 import type { ActorEnv } from './actor';
-import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
+import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
+import type { AtomicWrite, Db } from './db';
 import { eventWrite, now } from './events';
 import { parseBody } from './http';
-import { conflict, failed, unprocessable, type Issue } from './problems';
+import { unprocessable, type Issue } from './problems';
 import { ticket as ticketTable, ticketLabel, type TicketRow } from './schema';
 
 /** One ticket's labels, in the order they were set. */
@@ -70,9 +71,9 @@ const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.l
 
 export function labelRoutes(
   r: Hono<ActorEnv>,
-  deps: { db: Db; find: (c: Context) => Promise<TicketRow | undefined>; missing: (c: Context) => Response; prefix: () => Promise<string>; toWire: (row: TicketRow) => Promise<unknown> },
+  deps: { db: Db; find: (c: Context) => Promise<TicketRow | undefined>; missing: (c: Context) => Response; toWire: (row: TicketRow) => Promise<unknown> },
 ) {
-  const { db, find, missing, prefix, toWire } = deps;
+  const { db, find, missing, toWire } = deps;
 
   r.post('/:key/labels', async (c) => {
     const row = await find(c);
@@ -86,17 +87,12 @@ export function labelRoutes(
     if (sameSet(prior, judged.labels)) return c.json(await toWire(row));
 
     const at = now();
-    try {
-      await atomically(db, [
-        {
-          what: `ticket ${row.id}`,
-          // the ticket as read: live and not written since, so two clients' sets never interleave
-          statement: db
-            .update(ticketTable)
-            .set({ updated_at: at })
-            .where(and(eq(ticketTable.id, row.id), eq(ticketTable.updated_at, row.updated_at), isNull(ticketTable.trashed_at)))
-            .returning({ id: ticketTable.id }),
-        },
+    const written = await commit(
+      c,
+      db,
+      [
+        // the ticket as read, so two clients' sets never interleave
+        pinnedTicketWrite(db, row, {}, at),
         ...prior.map((name) => ({
           what: `label ${name}`,
           statement: db
@@ -106,15 +102,10 @@ export function labelRoutes(
         })),
         ...labelInserts(db, row.id, judged.labels),
         await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'labelled', prior: { labels: prior }, new: { labels: judged.labels }, at }),
-      ]);
-    } catch (error) {
-      if (!(error instanceof AtomicWriteError)) throw error;
-      if (error.kind === 'fault') return failed(c, `nothing changed — the labels were rolled back (${error.message})`);
-      return conflict(c, `nothing changed — ticket ${ticketKey(await prefix(), row.id)} changed while its labels were being set; try again`);
-    }
-
-    const [updated] = await db.select().from(ticketTable).where(eq(ticketTable.id, row.id));
-    if (!updated) throw new Error('labels committed but the ticket is gone');
-    return c.json(await toWire(updated));
+      ],
+      { rolledBack: 'the labels were rolled back', stale: () => changedUnderneath(c, db, row.id, 'the label edit') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await toWire(written[0] as TicketRow));
   });
 }

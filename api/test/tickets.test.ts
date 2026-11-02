@@ -94,6 +94,36 @@ describe('/api/tickets', () => {
     });
   });
 
+  describe('an edit writes its row and its event together, against the row it judged (ADR-0010)', () => {
+    const read = (key: string) => req(`/api/tickets/${key}`).then((r) => r.json());
+    const snapshot = async (key: string) => [await read(key), await events(key)];
+
+    test('a history write that fails leaves the ticket as it was, and the same edit goes through once the fault is gone', async () => {
+      const t = await newTicket({ title: 'draft title' });
+      const before = await snapshot(t.key);
+      h.failWrites('event', t.id);
+      const res = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }));
+      expect(res.status).toBe(500);
+      expect(res.headers.get('content-type')).toContain('application/problem+json');
+      expect((await res.json()).detail).toContain('nothing changed');
+      expect(await snapshot(t.key)).toEqual(before);
+      h.healWrites();
+      expect((await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }))).status).toBe(200);
+      expect((await read(t.key)).title).toBe('better title');
+    });
+
+    test('a ticket that changed between the judging and the write is a 409 naming its key, and nothing is written', async () => {
+      const t = await newTicket({ title: 'draft title' });
+      const before = await snapshot(t.key);
+      h.failWrites('ticket', t.id, 'vanish');
+      const res = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ hint: `nothing changed — ticket ${t.key} changed while the edit was being applied; try again` });
+      h.healWrites();
+      expect(await snapshot(t.key)).toEqual(before);
+    });
+  });
+
   test('status is not an editable field', async () => {
     const t = await newTicket({ title: 'x' });
     const res = await req(`/api/tickets/${t.key}`, json('PATCH', { status: 'ready' }));
@@ -175,6 +205,63 @@ describe('/api/tickets', () => {
 
       const again = await post(`/api/tickets/${t.key}/restore`);
       expect(again.status).toBe(409);
+    });
+
+    describe('trash and restore write the row and its history together, against the row they read (ADR-0010)', () => {
+      const trashed = () => req('/api/trash').then((r) => r.json());
+      const snapshot = async (key: string) => [await req(`/api/tickets/${key}`).then((r) => r.json()), await trashed(), await events(key)];
+
+      test('a history write that fails leaves the ticket out of the trash, and the trash goes through once the fault is gone', async () => {
+        const t = await newTicket({ title: 'mistake' });
+        const before = await snapshot(t.key);
+        h.failWrites('event', t.id);
+        const res = await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
+        expect(res.status).toBe(500);
+        expect((await res.json()).detail).toBe("nothing changed — the ticket was not trashed (trashed event for ticket 1: injected fault)");
+        expect(await snapshot(t.key)).toEqual(before);
+        h.healWrites();
+        expect((await req(`/api/tickets/${t.key}`, { method: 'DELETE' })).status).toBe(200);
+        expect((await trashed()).tickets.map((row: { key: string }) => row.key)).toEqual([t.key]);
+      });
+
+      test('a ticket that changed between the read and the trash is a 409 naming its key, and nothing is written', async () => {
+        const t = await newTicket({ title: 'mistake' });
+        const before = await snapshot(t.key);
+        h.failWrites('ticket', t.id, 'vanish');
+        const res = await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
+        expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — ticket ${t.key} changed while trash was being applied; try again`]);
+        h.healWrites();
+        expect(await snapshot(t.key)).toEqual(before);
+      });
+
+      test('a trashed ticket that changed between the read and the restore is a 409, and stays in the trash', async () => {
+        const t = await newTicket({ title: 'mistake' });
+        await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
+        const before = await snapshot(t.key);
+        h.failWrites('ticket', t.id, 'vanish');
+        const res = await post(`/api/tickets/${t.key}/restore`);
+        expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — ticket ${t.key} changed while restore was being applied; try again`]);
+        h.healWrites();
+        expect(await snapshot(t.key)).toEqual(before);
+      });
+
+      test('a restore whose history write fails leaves the ticket in the trash, with its trashed parent still on it', async () => {
+        const app = await newApp('A');
+        const t = await newTicket({ title: 'orphaned by its app', app_id: app.id });
+        await req(`/api/tickets/${t.key}`, { method: 'DELETE' });
+        await req(`/api/apps/${app.id}`, { method: 'DELETE' });
+        const before = await snapshot(t.key);
+        h.failWrites('event', t.id);
+        const res = await post(`/api/tickets/${t.key}/restore`);
+        expect(res.status).toBe(500);
+        expect((await res.json()).detail).toBe("nothing changed — the ticket was not restored (restored event for ticket 1: injected fault)");
+        expect(await snapshot(t.key)).toEqual(before);
+        expect((await trashed()).tickets).toEqual([expect.objectContaining({ key: t.key, app_id: app.id })]);
+        h.healWrites();
+        const restored = await post(`/api/tickets/${t.key}/restore`).then((r) => r.json());
+        expect(restored).toMatchObject({ key: t.key, trashed_at: null, app_id: null });
+        expect((await events(t.key)).map((e: { kind: string }) => e.kind)).toEqual(['updated', 'restored', 'trashed', 'created']);
+      });
     });
   });
 

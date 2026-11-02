@@ -10,11 +10,12 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { BulkTicketsBodySchema, lifecycle, parseTicketKey, ticketKey, type Actor, type BulkMoveTarget, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
 import type { ActorEnv } from './actor';
-import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
+import { commit, pinnedTicketWrite } from './commit';
+import type { AtomicWrite, Db } from './db';
 import { diff, eventWrite, now, type EventInput } from './events';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard, type Placement } from './placement';
-import { conflict, failed, refusedBatch, unprocessable, type Issue } from './problems';
+import { conflict, refusedBatch, unprocessable, type Issue } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 
 
@@ -148,31 +149,23 @@ export function bulkRoute(r: Hono<ActorEnv>, { db, prefix, toWire }: BulkDeps) {
         continue;
       }
       if (verdict.kind === 'unchanged') continue;
-      const ticketWrite: AtomicWrite = {
-        what: `ticket ${key}`,
-        // the row as it was judged: live, in that status, and not written since (a batch never overwrites what it did not read)
-        statement: db
-          .update(ticketTable)
-          .set({ ...verdict.set, updated_at: at })
-          .where(and(eq(ticketTable.id, id), eq(ticketTable.updated_at, row.updated_at), eq(ticketTable.status, row.status), isNull(ticketTable.trashed_at)))
-          .returning({ id: ticketTable.id }),
-      };
+      const ticketWrite = pinnedTicketWrite(db, row, verdict.set, at, `ticket ${key}`);
       const historyWrite = await eventWrite(db, { entity_kind: 'ticket', entity_id: id, actor, at, ...verdict.event });
       for (const write of [ticketWrite, historyWrite]) memberOf.set(write.what, key);
       writes.push(ticketWrite, historyWrite);
     }
     if (refusals.length > 0) return refusedBatch(c, refusals, owner);
 
-    try {
-      await atomically(db, writes);
-    } catch (error) {
-      if (!(error instanceof AtomicWriteError)) throw error;
-      if (error.kind === 'fault') return failed(c, `nothing changed — the batch was rolled back (${error.message})`);
+    const written = await commit(c, db, writes, {
+      rolledBack: 'the batch was rolled back',
       // something moved between the judging and the commit; say which, in the shape every other refusal has
-      const key = memberOf.get(error.what);
-      if (key !== undefined) return refusedBatch(c, [{ key, reason: `ticket ${key} changed while the batch was being applied — try again` }]);
-      return conflict(c, `nothing changed — ${error.what} changed while the batch was being applied; try again`);
-    }
+      stale: (what) => {
+        const key = memberOf.get(what);
+        if (key !== undefined) return refusedBatch(c, [{ key, reason: `ticket ${key} changed while the batch was being applied — try again` }]);
+        return conflict(c, `nothing changed — ${what} changed while the batch was being applied; try again`);
+      },
+    });
+    if (written instanceof Response) return written;
 
     const after = await load(ids);
     return c.json({ tickets: await toWire(ids.flatMap((id) => after.get(id) ?? [])) });

@@ -57,7 +57,7 @@ The rest of the toolchain, none of which needs the service stopped:
 
 ```sh
 bun run build      # one-off GUI build
-bun test           # in-process API + CLI tests (fresh temp database per test)
+bun test           # in-process API + CLI tests (fresh temp database per test); `patch-race.test.ts` alone spawns the server over a socket
 bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium webkit` once)
                    # set GF_E2E_PORT when another worktree is running its own suite
 bun run typecheck

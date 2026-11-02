@@ -20,13 +20,14 @@ import type { ActorEnv } from './actor';
 import { bulkRoute } from './bulk';
 import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
-import { AtomicWriteError, atomically, type Db } from './db';
+import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { diff, listEvents, now, recordEvent } from './events';
+import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
+import { diff, eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
-import { conflict, failed, notFound, unprocessable, type Issue } from './problems';
+import { conflict, notFound, unprocessable, type Issue } from './problems';
 import { app as appTable, event, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 import { transitionRoute } from './transitions';
@@ -132,20 +133,20 @@ export function ticketsRoutes(db: Db) {
     // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
     // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
     const born = sql<number>`(SELECT max(id) FROM ticket)`;
-    let written: unknown[];
-    try {
-      written = await atomically(db, [
+    const written = await commit(
+      c,
+      db,
+      [
         { what: 'ticket', statement: db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
         ...labelInserts(db, born, labels.labels),
         {
           what: 'created event',
           statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
         },
-      ]);
-    } catch (error) {
-      if (!(error instanceof AtomicWriteError)) throw error;
-      return failed(c, `nothing changed — the ticket was not created (${error.message})`);
-    }
+      ],
+      { rolledBack: 'the ticket was not created' },
+    );
+    if (written instanceof Response) return written;
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
     return c.json(toTicket(written[0] as TicketRow, await prefix(), labels.labels), 201);
   });
@@ -173,9 +174,11 @@ export function ticketsRoutes(db: Db) {
   });
 
   r.patch('/:key', async (c) => {
+    // the row is read after the body has arrived, so the guard judges the status the ticket is in now, not the one it
+    // was in when the headers came; the address still answers before the body does
+    const body = await parseBody(c, PatchTicketBodySchema);
     const row = await find(c, false);
     if (!row) return missing(c);
-    const body = await parseBody(c, PatchTicketBodySchema);
     if (!body.ok) return body.response;
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);
@@ -186,10 +189,14 @@ export function ticketsRoutes(db: Db) {
     const change = diff(row, { title, description, design, simple, ...placement });
     if (!change.changed) return c.json(await one(row));
     const at = now();
-    const [updated] = await db.update(ticketTable).set({ ...change.new, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at });
-    return c.json(await one(updated));
+    const written = await commit(
+      c,
+      db,
+      [pinnedTicketWrite(db, row, change.new, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      { rolledBack: 'the edit was rolled back', stale: () => changedUnderneath(c, db, row.id, 'the edit') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await one(written[0] as TicketRow));
   });
 
   r.delete('/:key', async (c) => {
@@ -200,10 +207,14 @@ export function ticketsRoutes(db: Db) {
     }
     const at = now();
     // edges are left alone: a trashed blocker simply stops blocking, and restoring it re-blocks (ADR-0009)
-    const [updated] = await db.update(ticketTable).set({ trashed_at: at, trashed_via: null, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at });
-    return c.json(toTicket(updated, await prefix(), await labelsOf(db, row.id)));
+    const written = await commit(
+      c,
+      db,
+      [pinnedTicketWrite(db, row, { trashed_at: at, trashed_via: null }, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'trashed', prior: { trashed_at: null }, new: { trashed_at: at }, at })],
+      { rolledBack: 'the ticket was not trashed', stale: () => changedUnderneath(c, db, row.id, 'trash') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(toTicket(written[0] as TicketRow, await prefix(), await labelsOf(db, row.id)));
   });
 
   r.post('/:key/restore', async (c) => {
@@ -214,29 +225,35 @@ export function ticketsRoutes(db: Db) {
     }
     const actor = c.get('actor');
     const at = now();
-    let restored = await set(row.id, { trashed_at: null, trashed_via: null }, at);
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'restored', prior: { trashed_at: row.trashed_at }, new: { trashed_at: null }, at });
     // a live ticket never points into the trash: a parent still in there is dropped on the way back (ADR-0007)
-    const appGone = await inTrash(appTable, restored.app_id);
-    const change = diff(restored, {
-      app_id: appGone ? null : restored.app_id,
-      project_id: appGone || (await inTrash(projectTable, restored.project_id)) ? null : restored.project_id,
+    const appGone = await inTrash(appTable, row.app_id);
+    const change = diff(row, {
+      app_id: appGone ? null : row.app_id,
+      project_id: appGone || (await inTrash(projectTable, row.project_id)) ? null : row.project_id,
     });
-    if (change.changed) {
-      restored = await set(row.id, change.new, at);
-      await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor, kind: 'updated', prior: change.prior, new: change.new, at });
-    }
-    return c.json(await one(restored));
+    const history = { entity_kind: 'ticket' as const, entity_id: row.id, actor, at };
+    const written = await commit(
+      c,
+      db,
+      [
+        pinnedTicketWrite(db, row, { trashed_at: null, trashed_via: null, ...change.new }, at),
+        await eventWrite(db, { ...history, kind: 'restored', prior: { trashed_at: row.trashed_at }, new: { trashed_at: null } }),
+        ...(change.changed ? [await eventWrite(db, { ...history, kind: 'updated', prior: change.prior, new: change.new })] : []),
+      ],
+      { rolledBack: 'the ticket was not restored', stale: () => changedUnderneath(c, db, row.id, 'restore') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await one(written[0] as TicketRow));
   });
 
   implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
 
-  labelRoutes(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
+  labelRoutes(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
 
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 
   // last: `:name` would otherwise swallow `/:key/restore` and `/:key/dependencies` (ADR-0004)
-  transitionRoute(r, { db, find: (c) => find(c, false), missing, prefix, toWire: (row) => one(row) });
+  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;
@@ -244,11 +261,6 @@ export function ticketsRoutes(db: Db) {
     return rows[0]?.trashed_at != null;
   }
 
-  async function set(id: number, patch: Partial<TicketRow>, at: string): Promise<TicketRow> {
-    const [updated] = await db.update(ticketTable).set({ ...patch, updated_at: at }).where(eq(ticketTable.id, id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    return updated;
-  }
 
   return r;
 }
