@@ -11,6 +11,14 @@ const isTyping = (t: EventTarget | null) =>
   !('passesKeys' in t.dataset) &&
   (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
+const answersEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
+  (t instanceof HTMLElement || t instanceof SVGElement) && t.matches('a[href], button');
+
+export function letGoOfEnter() {
+  const held = document.activeElement;
+  if (answersEnter(held)) held.blur();
+}
+
 /**
  * Several keys at once, one handler each (DESIGN.md Interaction: keyboard
  * first). Bare by default, with `⌘`/`ctrl` when `meta` is asked for; a typing
@@ -47,6 +55,7 @@ export function useKeyMap(
       if ((e.metaKey || e.ctrlKey) !== meta || e.altKey) return;
       if (e.key.length > 1 && e.shiftKey !== shift) return;
       if (isTyping(e.target) && !whileTyping) return;
+      if (e.key === 'Enter' && answersEnter(e.target)) return;
       const handler = latest.current[e.key];
       if (!handler) return;
       e.preventDefault();

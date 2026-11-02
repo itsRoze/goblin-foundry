@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { moveCursor, stillThere, type Columns, type Move } from './cursor';
-import { useKeyMap } from './keys';
+import { letGoOfEnter, useKeyMap } from './keys';
 
 /**
  * Where keys land on a screen: which tile has the focus, and where the Cursor
@@ -67,8 +67,11 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     [resort],
   );
 
-  // a new page is a new set of tiles, and the focus starts at the top of it
-  useEffect(() => setChosen(null), [pathname]);
+  // a new page is a new set of tiles, and the focus starts at the top of it; the shell link that led here must not keep `⏎`
+  useEffect(() => {
+    setChosen(null);
+    letGoOfEnter();
+  }, [pathname]);
 
   const focused = chosen !== null && order.includes(chosen) ? chosen : (order[0] ?? '');
 
@@ -193,7 +196,11 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
     },
     [scope],
   );
-  const go = (move: Move) => set(moveCursor(columns, at, move));
+  const takeKeysTo = (next: string | null) => {
+    if (next !== at) letGoOfEnter();
+    set(next);
+  };
+  const go = (move: Move) => takeKeysTo(moveCursor(columns, at, move));
 
   /**
    * A cursor you cannot see is an armed control with no readout — `a`, `s`,
@@ -224,5 +231,5 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
   );
 
   // the Cursor sits in the Focused tile (GLOSSARY.md), so the mark leaves with the focus and comes back with it
-  return { at, set, isAt: (id: string) => focused && id === at };
+  return { at, set, takeKeysTo, isAt: (id: string) => focused && id === at };
 }

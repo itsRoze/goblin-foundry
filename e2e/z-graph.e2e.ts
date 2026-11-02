@@ -289,3 +289,21 @@ test('hover and keyboard focus trace entire chains without highlighting sibling 
   await read.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/tickets/${keys[2]}`));
 });
+
+test('a Cursor move takes ⏎ back from a focused node (GF-39)', async ({ page }) => {
+  const projects = await page.request.get('/api/projects').then((r) => r.json() as Promise<{ id: number; name: string }[]>);
+  const traced = projects.find((p) => p.name === 'Trace paths')!;
+  await page.goto(`/projects/trace-paths-${traced.id}`);
+  await expect(nodes(page)).toHaveCount(6);
+  const marked = page.getByTestId('ticket-rows').locator('.is-cursor');
+
+  await page.keyboard.press('j');
+  const first = await marked.getAttribute('href');
+  await page.locator(`.gf-graph-node[href="${first}"]`).focus();
+  await page.keyboard.press('j');
+  await expect(marked).not.toHaveAttribute('href', first!);
+  const second = await marked.getAttribute('href');
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${second}$`));
+});
