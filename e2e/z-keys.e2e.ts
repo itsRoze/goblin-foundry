@@ -258,3 +258,19 @@ test('a Cursor key that moves nothing leaves ⏎ with the focused control (GF-39
   await page.keyboard.press('Enter');
   await expect(page.getByTestId(`card-menu-${key}`)).toBeVisible();
 });
+
+test('a new page lets go of the link that led there, so ⏎ means the Cursor again (GF-39)', async ({ page }) => {
+  await create(page, 'Shellroute card');
+  await board(page, 'Shellroute');
+  const only = card(page, 'Shellroute card');
+  await expect(only).toBeVisible();
+  await page.keyboard.press('j');
+  await expect(only).toHaveClass(/is-cursor/);
+
+  await page.getByRole('link', { name: 'settings' }).click();
+  await expect(page.getByRole('region', { name: 'settings' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(only).toHaveClass(/is-cursor/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('page-title')).toContainText('Shellroute card');
+});
