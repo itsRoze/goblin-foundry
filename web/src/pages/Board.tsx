@@ -466,6 +466,10 @@ export function BoardPage() {
       bulk.cancel();
       return true;
     }
+    if (pending !== null) {
+      cancel();
+      return true;
+    }
     if (selecting.outcome?.kind === 'refused' || selecting.outcome?.kind === 'unknown') {
       report(null);
       return true;

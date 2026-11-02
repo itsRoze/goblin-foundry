@@ -436,13 +436,12 @@ function CheckRows<T extends string>({
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') return e.preventDefault(), onClose();
     const option = options[at];
-    if (option === undefined) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onToggle(option);
+      if (option !== undefined) onToggle(option);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
+      if (option !== undefined) setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length);
     }
   };
 

@@ -173,6 +173,58 @@ test('esc closes what is open, then lets the Selection go, then the Cursor', asy
   await expect(card(page, 'Escape ladder')).not.toHaveClass(/is-cursor/);
 });
 
+test('↓ and ⏎ in the status popover leave the Cursor alone, and esc closes the popover and keeps it (GF-41)', async ({ page }) => {
+  await seed(page, 'Escape popover one', { status: 'todo' });
+  await seed(page, 'Escape popover two', { status: 'todo' });
+  await board(page, 'Escape popover');
+  await page.keyboard.press('j');
+  const marked = page.locator('[data-testid^="card-"].is-cursor');
+  await expect(marked).toHaveCount(1);
+  const key = await marked.getAttribute('data-key');
+
+  await page.getByTestId('chip-status').click();
+  await expect(page.getByTestId('pop-status')).toBeVisible();
+  await expect(page.getByTestId('check-backlog')).toBeChecked();
+  await page.keyboard.press('ArrowDown');
+  await expect(marked).toHaveAttribute('data-key', key!);
+  await page.keyboard.press('ArrowUp');
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('check-backlog')).not.toBeChecked();
+  await expect(page.getByTestId('pop-status')).toBeVisible();
+  await expect(marked).toHaveAttribute('data-key', key!);
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await expect(marked).toHaveAttribute('data-key', key!);
+
+  await page.keyboard.press('Escape');
+  await expect(marked).toHaveCount(0);
+});
+
+test('esc answers the blocked-start question before it clears the Cursor (GF-77)', async ({ page }) => {
+  const blocker = await seed(page, 'Escape blocker');
+  const held = await seed(page, 'Escape held', { status: 'ready' });
+  await page.request.post(`/api/tickets/${held.key}/dependencies`, { data: { blocker: blocker.key } });
+  await board(page, 'Escape held');
+  await page.keyboard.press('j');
+  await expect(card(page, 'Escape held')).toHaveClass(/is-cursor/);
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('palette').getByLabel('command palette')).toBeFocused();
+  // the rows arrive with the Ticket's detail; `⏎` on an empty list is nothing
+  await expect(page.getByTestId('run-move-start')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-ready')).toContainText(blocker.key);
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
+  await expect(card(page, 'Escape held')).toHaveClass(/is-cursor/);
+  expect((await read(page, held.key)).status).toBe('ready');
+
+  await page.keyboard.press('Escape');
+  await expect(card(page, 'Escape held')).not.toHaveClass(/is-cursor/);
+});
+
 test('a Selection survives a poll and a trip into a ticket, follows the Filter, and does not survive a reload', async ({ page }) => {
   const stays = await seed(page, 'Selcycle stays');
   const leaves = await seed(page, 'Selcycle leaves');
