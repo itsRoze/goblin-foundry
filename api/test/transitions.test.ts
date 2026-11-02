@@ -156,13 +156,17 @@ describe('POST /api/tickets/:key/:name', () => {
   test('the whole matrix: every (status, name) pair off the table is a 409', async () => {
     const refused: string[] = [];
     for (const from of TICKET_STATUSES) {
+      // a refusal changes nothing, so one ticket per status serves every refused name; the snapshot below proves it
+      const t = await at(from);
+      const snapshot = async () => [await req(`/api/tickets/${t.key}`).then((r) => r.json()), await events(t.key)];
+      const before = await snapshot();
       for (const name of lifecycle.names) {
         if (lifecycle.named(from, name).ok) continue;
-        const t = await at(from); // a fresh ticket per pair, so a refusal is never a side effect of an earlier one
         const res = await post(`/api/tickets/${t.key}/${name}`);
         expect([`${from}/${name}`, res.status]).toEqual([`${from}/${name}`, 409]);
         refused.push(`${from}/${name}`);
       }
+      expect(await snapshot()).toEqual(before);
     }
     expect(refused).toHaveLength(TICKET_STATUSES.length * lifecycle.names.length - lifecycle.edges.length);
   });
