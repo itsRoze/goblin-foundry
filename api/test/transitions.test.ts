@@ -190,7 +190,7 @@ describe('POST /api/tickets/:key/:name', () => {
     test('a history write that fails leaves the status where it was, and the same move goes through once the fault is gone', async () => {
       const t = await at('backlog');
       const before = await events(t.key);
-      h.failWrites('event', t.id);
+      h.failWrites('ticket event', t.id);
       const res = await post(`/api/tickets/${t.key}/pick`);
       expect(res.status).toBe(500);
       expect(res.headers.get('content-type')).toContain('application/problem+json');

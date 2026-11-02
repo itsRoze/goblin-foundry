@@ -19,8 +19,9 @@ import {
 } from '@goblin/shared';
 import type { Context, Hono as HonoType } from 'hono';
 import type { ActorEnv } from './actor';
-import type { Db } from './db';
-import { now, recordEvent } from './events';
+import { changedWhile, commit, livePin } from './commit';
+import type { AtomicWrite, Db } from './db';
+import { eventWrite, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { labelsByTicket } from './labels';
 import { parseBody } from './http';
@@ -159,11 +160,15 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
   }
 
   /** An edge is news to both its ends, so each ticket's history names the other. */
-  async function recordEdge(c: Context<ActorEnv>, kind: 'dependency_added' | 'dependency_removed', blocker: number, blocked: number, at: string, p: string) {
+  async function edgeHistory(c: Context<ActorEnv>, kind: 'dependency_added' | 'dependency_removed', blocker: number, blocked: number, at: string, p: string): Promise<AtomicWrite[]> {
     const actor = c.get('actor');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: blocked, actor, kind, prior: null, new: { blocker: ticketKey(p, blocker) }, at });
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: blocker, actor, kind, prior: null, new: { blocked: ticketKey(p, blocked) }, at });
+    return [
+      await eventWrite(db, { entity_kind: 'ticket', entity_id: blocked, actor, kind, prior: null, new: { blocker: ticketKey(p, blocker) }, at }),
+      await eventWrite(db, { entity_kind: 'ticket', entity_id: blocker, actor, kind, prior: null, new: { blocked: ticketKey(p, blocked) }, at }),
+    ];
   }
+
+  const stillLive = (row: TicketRow, p: string) => livePin(db, ticketTable, row.id, `ticket ${ticketKey(p, row.id)}`);
 
   r.post('/:key/dependencies', async (c) => {
     const blocked = await find(c);
@@ -188,8 +193,18 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
     if (await alreadyBlocks(db, blocked.id, blocker.id)) return conflict(c, `${keys.blocker} already waits on ${keys.blocked} — that would be a cycle`);
 
     const at = now();
-    await db.insert(dependency).values({ blocker_id: blocker.id, blocked_id: blocked.id, created_at: at });
-    await recordEdge(c, 'dependency_added', blocker.id, blocked.id, at, p);
+    const written = await commit(
+      c,
+      db,
+      [
+        stillLive(blocked, p),
+        stillLive(blocker, p),
+        { what: 'dependency', statement: db.insert(dependency).values({ blocker_id: blocker.id, blocked_id: blocked.id, created_at: at }).returning({ blocker_id: dependency.blocker_id }) },
+        ...(await edgeHistory(c, 'dependency_added', blocker.id, blocked.id, at, p)),
+      ],
+      { rolledBack: 'the dependency was not added', stale: (what) => changedWhile(c, what, 'the dependency') },
+    );
+    if (written instanceof Response) return written;
     return c.json(await toDetail(blocked));
   });
 
@@ -201,12 +216,17 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
     const p = await prefix();
     const gone = () => notFound(c, `${raw} does not block ${ticketKey(p, blocked.id)}`);
     if (blockerId === null) return gone();
-    const removed = await db
-      .delete(dependency)
-      .where(and(eq(dependency.blocker_id, blockerId), eq(dependency.blocked_id, blocked.id)))
-      .returning();
-    if (removed.length === 0) return gone();
-    await recordEdge(c, 'dependency_removed', blockerId, blocked.id, now(), p);
+    const written = await commit(
+      c,
+      db,
+      [
+        stillLive(blocked, p),
+        { what: 'dependency', statement: db.delete(dependency).where(and(eq(dependency.blocker_id, blockerId), eq(dependency.blocked_id, blocked.id))).returning({ blocker_id: dependency.blocker_id }) },
+        ...(await edgeHistory(c, 'dependency_removed', blockerId, blocked.id, now(), p)),
+      ],
+      { rolledBack: 'the dependency was not removed', stale: (what) => (what === 'dependency' ? gone() : changedWhile(c, what, 'the removal')) },
+    );
+    if (written instanceof Response) return written;
     return c.json(await toDetail(blocked));
   });
 }

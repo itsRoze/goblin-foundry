@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { pinnedTicketWrite } from '../src/commit';
+import { pinnedRowWrite, pinnedTicketWrite } from '../src/commit';
 import { AtomicWriteError, atomically } from '../src/db';
-import { ticket as ticketTable } from '../src/schema';
+import { app as appTable, ticket as ticketTable } from '../src/schema';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -44,5 +44,34 @@ describe('pinnedTicketWrite', () => {
     const [written] = await atomically(h.db, [pinnedTicketWrite(h.db, trashed, { trashed_at: null }, '2026-11-02T00:00:00.000Z')]);
     expect(written).toMatchObject({ id: row.id, trashed_at: null });
     await expect(atomically(h.db, [pinnedTicketWrite(h.db, trashed, { title: 'again' }, '2026-11-02T00:00:00.000Z')])).rejects.toMatchObject({ kind: 'stale' });
+  });
+});
+
+/** The same pin for an App or Project row, column by column. */
+describe('pinnedRowWrite', () => {
+  let h: Harness;
+  beforeEach(async () => (h = await makeTestApp()));
+  afterEach(() => h.close());
+
+  const stored = async (id: number) => (await h.db.select().from(appTable).where(eq(appTable.id, id)))[0]!;
+  const create = async () => {
+    const res = await h.app.request('/api/apps', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'pinned' }) });
+    return stored((await res.json()).id);
+  };
+
+  test('the row as read goes through, and the written row comes back', async () => {
+    const row = await create();
+    const [written] = await atomically(h.db, [pinnedRowWrite(h.db, appTable, row, { archived_at: '2026-11-02T00:00:00.000Z' }, '2026-11-02T00:00:00.000Z', 'app')]);
+    expect(written).toMatchObject({ id: row.id, archived_at: '2026-11-02T00:00:00.000Z', updated_at: '2026-11-02T00:00:00.000Z' });
+  });
+
+  test.each([
+    ['updated_at', { updated_at: '2000-01-01T00:00:00.000Z' }],
+    ['trashed_at', { trashed_at: '2000-01-01T00:00:00.000Z' }],
+  ])('a row whose %s is not what was read is stale, and nothing is written', async (_column, moved) => {
+    const row = await create();
+    const attempt = atomically(h.db, [pinnedRowWrite(h.db, appTable, { ...row, ...moved }, { name: 'moved' }, '2026-11-02T00:00:00.000Z', `app ${row.id}`)]);
+    await expect(attempt).rejects.toMatchObject({ kind: 'stale', what: `app ${row.id}` });
+    expect(await stored(row.id)).toEqual(row);
   });
 });

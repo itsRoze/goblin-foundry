@@ -173,4 +173,45 @@ describe('/api/apps', () => {
     const kinds = (await req(`/api/apps/${a.id}/events`).then((r) => r.json())).map((e: { kind: string }) => e.kind);
     expect(kinds).toEqual(['restored', 'trashed', 'created']);
   });
+
+  describe('create and edit write the row and its history together, against the row that was read (ADR-0010)', () => {
+    const snapshot = async (id: number) => [await req(`/api/apps/${id}`).then((r) => r.json()), await req(`/api/apps/${id}/events`).then((r) => r.json())];
+
+    test('a history write that fails leaves no app, and the same create goes through once the fault is gone', async () => {
+      h.failWrites('app event', 1);
+      const res = await req('/api/apps', json('POST', { name: 'Reader' }));
+      expect(res.status).toBe(500);
+      expect(res.headers.get('content-type')).toContain('application/problem+json');
+      expect((await res.json()).detail).toBe('nothing changed — the app was not created (created event: injected fault)');
+      expect(await req('/api/apps').then((r) => r.json())).toEqual([]);
+      expect((await req('/api/apps/1')).status).toBe(404);
+      h.healWrites();
+      const created = await req('/api/apps', json('POST', { name: 'Reader' }));
+      expect([created.status, (await created.json()).id]).toEqual([201, 1]);
+      expect((await req('/api/apps/1/events').then((r) => r.json())).map((e: { kind: string }) => e.kind)).toEqual(['created']);
+    });
+
+    test('a history write that fails leaves the app as it was, and the same edit goes through once the fault is gone', async () => {
+      const created = await req('/api/apps', json('POST', { name: 'Reeder', description: 'd' })).then((r) => r.json());
+      const before = await snapshot(created.id);
+      h.failWrites('app event', created.id);
+      const res = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }));
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe(`nothing changed — the edit was rolled back (updated event for app ${created.id}: injected fault)`);
+      expect(await snapshot(created.id)).toEqual(before);
+      h.healWrites();
+      const edited = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }));
+      expect([edited.status, (await edited.json()).name]).toEqual([200, 'Reader']);
+    });
+
+    test('an app that changed between the read and the edit is a 409 naming it, and nothing is written', async () => {
+      const created = await req('/api/apps', json('POST', { name: 'Reeder' })).then((r) => r.json());
+      const before = await snapshot(created.id);
+      h.failWrites('app', created.id, 'vanish');
+      const res = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }));
+      expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — app ${created.id} changed while the edit was being applied; try again`]);
+      h.healWrites();
+      expect(await snapshot(created.id)).toEqual(before);
+    });
+  });
 });
