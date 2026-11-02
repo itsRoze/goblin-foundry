@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
-import { INLINE_MARKS, canonical, extensionsFor, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
+import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { refusalLine } from './ui';
 
 /**
@@ -256,7 +256,7 @@ export function MarkdownField({
           // a URL dropped on a selection is a link, not a replacement — that is the link extension's job, not ours
           if (!view.state.selection.empty && isBareUrl(text)) return false;
           event.preventDefault();
-          editorRef.current?.commands.insertContent(toDoc(shape, text).content ?? []);
+          editorRef.current?.commands.insertContent(toBlocks(shape, text));
           return true;
         },
         handleKeyDown(view, event) {

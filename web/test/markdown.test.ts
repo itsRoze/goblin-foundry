@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { canonical, toDoc, toMarkdown } from '../src/markdown';
+import { canonical, toBlocks, toDoc, toMarkdown } from '../src/markdown';
 
 /**
  * The golden fixture: one document holding every construct the block schema
@@ -81,6 +81,11 @@ describe('the block editor is markdown in and markdown out', () => {
   test('empty markdown opens as one empty paragraph, so the caret has somewhere to land', () => {
     expect(toDoc('block', '')).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
     expect(toDoc('inline', '')).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
+  });
+
+  test('pasting nothing but whitespace inserts no block', () => {
+    expect(toBlocks('block', '  \n  ')).toEqual([]);
+    expect(toBlocks('inline', '  \n  ')).toEqual([]);
   });
 
   test('a document round-trips through the editor document it is parsed into', () => {

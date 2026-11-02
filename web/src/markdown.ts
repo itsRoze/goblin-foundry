@@ -197,9 +197,19 @@ export const flattenBlocks = (markdown: string): string =>
     .map((line) => line.replace(BLOCK_MARKER, ''))
     .join('\n');
 
-/** Markdown in, editor document out. The inline shape flattens first (see `flattenBlocks`). */
-export const toDoc = (shape: EditorShape, markdown: string): JSONContent =>
-  managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown);
+/** Markdown in, the blocks it holds out. The inline shape flattens first (see `flattenBlocks`). */
+export const toBlocks = (shape: EditorShape, markdown: string): JSONContent[] =>
+  managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown).content ?? [];
+
+/**
+ * Markdown in, editor document out. Empty markdown parses to a document with no block, which
+ * the schema forbids and ProseMirror opens with no text position, so the caret has nowhere to
+ * land (GF-73).
+ */
+export const toDoc = (shape: EditorShape, markdown: string): JSONContent => {
+  const blocks = toBlocks(shape, markdown);
+  return { type: 'doc', content: blocks.length ? blocks : [{ type: 'paragraph' }] };
+};
 
 const isBlankParagraph = (node: JSONContent): boolean => node.type === 'paragraph' && !node.content?.length;
 
