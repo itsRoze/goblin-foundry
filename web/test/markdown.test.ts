@@ -68,10 +68,15 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(canonical('block', '')).toBe('');
   });
 
-  test('nothing written yet is one empty paragraph, so a heading or a fence has a block to act on', () => {
-    expect(toDoc('block', '').content).toEqual([{ type: 'paragraph' }]);
-    expect(toDoc('inline', '\n').content).toEqual([{ type: 'paragraph' }]);
-    expect(canonical('inline', '')).toBe('');
+  test('empty paragraphs closing the document are not content, so the one the editor appends below a closing block writes nothing (GF-43)', () => {
+    const doc = toDoc('block', 'Read me.\n\n- one\n- two\n');
+    const blocks = doc.content ?? [];
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
+    // only the closing ones: a paragraph with text below the block is what was typed there
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph', content: [{ type: 'text', text: 'Below.' }] }] })).toBe('Read me.\n\n- one\n- two\n\nBelow.');
+    expect(toMarkdown('block', { ...doc, content: [{ type: 'paragraph' }, ...blocks] })).toBe('Read me.\n\n- one\n- two');
+    expect(toMarkdown('block', { type: 'doc', content: [{ type: 'paragraph' }] })).toBe('');
   });
 
   test('a document round-trips through the editor document it is parsed into', () => {
