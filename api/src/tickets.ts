@@ -174,9 +174,11 @@ export function ticketsRoutes(db: Db) {
   });
 
   r.patch('/:key', async (c) => {
+    // the row is read after the body has arrived, so the guard judges the status the ticket is in now, not the one it
+    // was in when the headers came; the address still answers before the body does
+    const body = await parseBody(c, PatchTicketBodySchema);
     const row = await find(c, false);
     if (!row) return missing(c);
-    const body = await parseBody(c, PatchTicketBodySchema);
     if (!body.ok) return body.response;
     const placement = await resolvePlacement(db, row, body.data);
     if (Array.isArray(placement)) return unprocessable(c, placement);

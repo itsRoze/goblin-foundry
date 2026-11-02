@@ -66,7 +66,7 @@ describe('PATCH /api/tickets/:key with the body held open', () => {
     };
   }
 
-  test('a transition that lands while the body is in flight is a 409 for the edit, and the ticket keeps the design the guard needs', async () => {
+  test('a transition that lands while the body is in flight is judged against the status it landed in, and the ticket keeps the design the guard needs', async () => {
     const app = await call('POST', '/api/apps', { name: 'Reader' }).then((r) => r.json());
     const t = await call('POST', '/api/tickets', { title: 'racing', status: 'todo', app_id: app.id, simple: false }).then((r) => r.json());
     expect((await call('PATCH', `/api/tickets/${t.key}`, { design: 'the plan' })).status).toBe(200);
@@ -77,8 +77,8 @@ describe('PATCH /api/tickets/:key with the body held open', () => {
     expect([approve.status, (await approve.json()).status]).toEqual([200, 'ready']);
 
     const answer = await edit.finish();
-    expect(answer.split('\r\n')[0]).toBe('HTTP/1.1 409 Conflict');
-    expect(answer).toContain(`ticket ${t.key} changed while the edit was being applied`);
+    expect(answer.split('\r\n')[0]).toBe('HTTP/1.1 422 Unprocessable Entity');
+    expect(JSON.parse(answer.slice(answer.indexOf('\r\n\r\n') + 4)).issues).toEqual([{ path: ['design'], message: 'a ticket in ready needs a description or a ticket design — unapprove it first' }]);
 
     const after = await call('GET', `/api/tickets/${t.key}`).then((r) => r.json());
     expect([after.status, after.design, after.simple]).toEqual(['ready', 'the plan', false]);
