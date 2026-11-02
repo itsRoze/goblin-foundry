@@ -194,3 +194,35 @@ test('rows are a cursor too: j and ⏎ open a ticket from an App view', async ({
   await expect(page.getByTestId('about-tile')).toBeVisible();
   await expect(page.getByTestId('page-title')).toContainText('Approved by key');
 });
+
+test('⏎ answers to the focused link or button until the Cursor moves (GF-39)', async ({ page }) => {
+  await create(page, 'Entroute one');
+  await create(page, 'Entroute two');
+  await board(page, 'Entroute');
+  const one = card(page, 'Entroute one');
+  const two = card(page, 'Entroute two');
+  await expect(two).toBeVisible();
+
+  await page.keyboard.press('j');
+  await expect(one).toHaveClass(/is-cursor/);
+
+  await two.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('page-title')).toContainText('Entroute two');
+  await page.keyboard.press('Escape');
+  await expect(one).toHaveClass(/is-cursor/);
+
+  await one.focus();
+  await page.keyboard.press('j');
+  await expect(two).toHaveClass(/is-cursor/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('page-title')).toContainText('Entroute two');
+  await page.keyboard.press('Escape');
+  await expect(two).toHaveClass(/is-cursor/);
+
+  const oneKey = await keyOf(page, 'Entroute one');
+  await page.getByTestId(`menu-${oneKey}`).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId(`card-menu-${oneKey}`)).toBeVisible();
+  await expect(page.getByTestId('board')).toBeVisible();
+});
