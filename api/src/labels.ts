@@ -103,7 +103,7 @@ export function labelRoutes(
         ...labelInserts(db, row.id, judged.labels),
         await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'labelled', prior: { labels: prior }, new: { labels: judged.labels }, at }),
       ],
-      { rolledBack: 'the labels were rolled back', stale: () => changedUnderneath(c, db, row.id, 'its labels') },
+      { rolledBack: 'the labels were rolled back', stale: () => changedUnderneath(c, db, row.id, 'the label edit') },
     );
     if (written instanceof Response) return written;
     return c.json(await toWire(written[0] as TicketRow));
