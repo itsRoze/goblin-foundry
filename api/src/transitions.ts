@@ -3,14 +3,14 @@
  * the transition table. No body — the actor comes from the header and the
  * destination from the table, so a client cannot invent a move.
  */
-import { and, eq, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { lifecycle, ticketKey } from '@goblin/shared';
 import type { ActorEnv } from './actor';
-import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
+import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
+import type { Db } from './db';
 import { eventWrite, now } from './events';
-import { conflict, failed, notFound } from './problems';
-import { ticket as ticketTable, type TicketRow } from './schema';
+import { conflict, notFound } from './problems';
+import type { TicketRow } from './schema';
 
 
 export interface TransitionDeps {
@@ -39,14 +39,6 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, prefix, 
     const { edge } = judged;
 
     const at = now();
-    const ticketWrite: AtomicWrite = {
-      what: `ticket ${row.id}`,
-      statement: db
-        .update(ticketTable)
-        .set({ status: edge.to, updated_at: at })
-        .where(and(eq(ticketTable.id, row.id), eq(ticketTable.status, row.status), eq(ticketTable.updated_at, row.updated_at), isNull(ticketTable.trashed_at)))
-        .returning({ id: ticketTable.id }),
-    };
     const historyWrite = await eventWrite(db, {
       entity_kind: 'ticket',
       entity_id: row.id,
@@ -56,16 +48,11 @@ export function transitionRoute(r: Hono<ActorEnv>, { db, find, missing, prefix, 
       new: { status: edge.to, transition: edge.name },
       at,
     });
-    try {
-      await atomically(db, [ticketWrite, historyWrite]);
-    } catch (error) {
-      if (!(error instanceof AtomicWriteError)) throw error;
-      if (error.kind === 'fault') return failed(c, `nothing changed — the transition was rolled back (${error.message})`);
-      return conflict(c, `nothing changed — ticket ${ticketKey(await prefix(), row.id)} changed while ${name} was being applied; try again`);
-    }
-
-    const [updated] = await db.select().from(ticketTable).where(eq(ticketTable.id, row.id));
-    if (!updated) throw new Error('transition committed but the ticket is gone');
-    return c.json(await toWire(updated));
+    const written = await commit(c, db, [pinnedTicketWrite(db, row, { status: edge.to }, at), historyWrite], {
+      rolledBack: 'the transition was rolled back',
+      stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), name),
+    });
+    if (written instanceof Response) return written;
+    return c.json(await toWire(written[0] as TicketRow));
   });
 }

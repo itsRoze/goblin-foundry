@@ -20,7 +20,7 @@ import type { ActorEnv } from './actor';
 import { bulkRoute } from './bulk';
 import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
-import { AtomicWriteError, atomically, type Db } from './db';
+import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
 import { diff, eventWrite, listEvents, now, recordEvent } from './events';
@@ -133,20 +133,22 @@ export function ticketsRoutes(db: Db) {
     // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
     // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
     const born = sql<number>`(SELECT max(id) FROM ticket)`;
-    let written: unknown[];
-    try {
-      written = await atomically(db, [
+    const notCreated = () => failed(c, 'nothing changed — the ticket was not created');
+    const written = await commit(
+      c,
+      db,
+      [
         { what: 'ticket', statement: db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
         ...labelInserts(db, born, labels.labels),
         {
           what: 'created event',
           statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
         },
-      ]);
-    } catch (error) {
-      if (!(error instanceof AtomicWriteError)) throw error;
-      return failed(c, `nothing changed — the ticket was not created (${error.message})`);
-    }
+      ],
+      // an insert returns its row or faults; a stale insert has no meaning, so both ways out are the one answer
+      { rolledBack: 'the ticket was not created', stale: notCreated },
+    );
+    if (written instanceof Response) return written;
     // a ticket one statement old has no edges; `blocked_by` is empty by construction
     return c.json(toTicket(written[0] as TicketRow, await prefix(), labels.labels), 201);
   });
