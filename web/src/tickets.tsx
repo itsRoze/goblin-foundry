@@ -215,20 +215,31 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
   const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useCloseOnOutside(slot, open, close);
-  /** Whether the panel hangs above the button instead of below it: it must fit the screen it is on. */
-  const [up, setUp] = useState(false);
+  /**
+   * Where the panel sits on the screen: hung from the `⋯`, above it when the screen below is too short.
+   * It is fixed to the screen rather than to the column, because the kanban is a scroll box and a panel
+   * inside one is cut off at its edge (GF-78); the cost is that a scroll anywhere closes the menu, since
+   * a fixed panel cannot travel with its card.
+   */
+  const [place, setPlace] = useState<{ up: boolean; y: number; right: number }>({ up: false, y: 0, right: 0 });
   useLayoutEffect(() => {
-    if (!open || !panel.current) return;
-    const box = panel.current.getBoundingClientRect();
+    if (!open || !slot.current || !panel.current) return;
+    const at = slot.current.getBoundingClientRect();
     // the visual viewport: on a phone the layout viewport can be taller than what is actually on screen
     const seen = window.visualViewport?.height ?? window.innerHeight;
-    setUp(box.bottom > seen && box.height < box.top);
+    const up = at.bottom + panel.current.offsetHeight > seen && panel.current.offsetHeight < at.top;
+    const screen = document.documentElement;
+    // a card scrolled mostly out of the kanban still shows its `⋯`: the panel stops at the screen's left edge
+    const right = Math.min(screen.clientWidth - at.right, screen.clientWidth - panel.current.offsetWidth);
+    setPlace({ up, y: up ? screen.clientHeight - at.top : at.bottom, right });
     // the keys land on the first row; the page must not move for a menu that opened under a tap
     panel.current.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
   }, [open]);
   useEffect(() => {
-    if (!open) setUp(false);
-  }, [open]);
+    if (!open) return;
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [open, close]);
 
   const run = (act: () => void) => {
     setOpen(false);
@@ -257,17 +268,24 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
       {open && (
         <div
           ref={panel}
-          className={`gf-pop gf-card-menu${up ? ' is-up' : ''}`}
+          className={`gf-pop gf-card-menu${place.up ? ' is-up' : ''}`}
+          style={place.up ? { bottom: place.y, right: place.right } : { top: place.y, right: place.right }}
           role="menu"
           aria-label={`actions for ${ticket.key}`}
           data-testid={`card-menu-${ticket.key}`}
-          // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` closes it, and none of
-          // them reach the board's own map — `⏎` on a row must not also open the card under the Cursor
+          // the keys belong to the menu while it is open: `↑↓` walk its rows, `esc` closes it, `Tab` leaves it
+          // and takes it down, and none of them reach the board's own map — `⏎` on a row must not also open
+          // the card under the Cursor. A held `⏎` opened this menu with its first press; the repeats that
+          // follow land on the first row and must not run it (GF-82).
           onKeyDown={(e) => {
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation();
-            if (e.key === 'Escape') {
+            if (e.key === 'Enter' && e.repeat) {
               e.preventDefault();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setOpen(false);
+            } else if (e.key === 'Tab') {
               setOpen(false);
             } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
               e.preventDefault();
