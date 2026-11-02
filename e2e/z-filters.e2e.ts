@@ -135,6 +135,16 @@ test('text typed the instant the filter appears is kept and reaches the address'
   await expect(page).toHaveURL(/\/\?q=entirely$/);
 });
 
+test('the text box follows the address when something else changes it', async ({ page }) => {
+  await page.goto('/');
+  const box = page.getByLabel('filter by text');
+  await box.fill('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+
+  await page.getByLabel('clear filters').click();
+  await expect(box).toHaveValue('');
+});
+
 test('a value the API refuses is shown, not corrected', async ({ page }) => {
   await page.goto('/?app_id=null&status=shipped');
   await expect(page.getByTestId('filter-refusal')).toContainText('shipped is not a status');
