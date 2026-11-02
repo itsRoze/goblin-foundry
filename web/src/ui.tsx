@@ -368,7 +368,8 @@ export function Confirm({ text, verb, onConfirm, onCancel, testId }: { text: str
   return (
     <p className="gf-confirm" role="alert" data-testid={testId}>
       <span>{text}</span>
-      <button type="button" className="gf-btn" data-testid={`${testId ?? 'confirm'}-yes`} onClick={onConfirm}>
+      {/* the question takes the focus as it opens: that brings it on screen and puts `⏎` on the answer (GF-44) */}
+      <button type="button" className="gf-btn" data-testid={`${testId ?? 'confirm'}-yes`} autoFocus onClick={onConfirm}>
         {verb} anyway
       </button>
       <button type="button" className="gf-btn" onClick={onCancel}>

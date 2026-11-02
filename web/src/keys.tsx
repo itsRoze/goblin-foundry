@@ -1,3 +1,4 @@
+import type { RefObject } from 'react';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -18,6 +19,18 @@ export const holdsEnter = (t: EventTarget | null): t is HTMLElement | SVGElement
 export function letGoOfEnter() {
   const held = document.activeElement;
   if (holdsEnter(held)) held.blur();
+}
+
+/**
+ * What a control opened has closed: the focus comes back to that control. Left alone it falls to
+ * `body` with the thing that held it, where `⏎` is the Cursor's (GF-39, GF-44).
+ */
+export function useFocusOnClose(open: boolean, control: RefObject<HTMLElement | null>) {
+  const was = useRef(open);
+  useEffect(() => {
+    if (was.current && !open) control.current?.focus();
+    was.current = open;
+  }, [open, control]);
 }
 
 /**

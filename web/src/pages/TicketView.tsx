@@ -16,7 +16,7 @@ import {
 import { useOffersTicket } from '../current';
 import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
-import { formKeys, useKey } from '../keys';
+import { formKeys, useFocusOnClose, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
@@ -83,6 +83,14 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
    */
   const { guard } = useBulkLock(ticket);
   const edit = useCallback((body: PatchTicketBody, judged?: string) => guard(() => patch.mutateAsync({ key: ticket.key, body, judged })), [guard, patch, ticket.key]);
+  /** The state tile's one line, for a refusal or the question: the tile is where the keys are addressing now. */
+  const sayInState = useCallback(
+    (text: string) => {
+      focusTile('state');
+      setStateRefusal(text);
+    },
+    [focusTile, setStateRefusal],
+  );
   /** Every write the state tile makes reports its refusal in the tile's one line. */
   const inState = useCallback(
     async (write: () => Promise<unknown>) => {
@@ -90,10 +98,10 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
       try {
         await write();
       } catch (e) {
-        setStateRefusal(refusalLine(e));
+        sayInState(refusalLine(e));
       }
     },
-    [setStateRefusal],
+    [sayInState, setStateRefusal],
   );
   // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md Interaction)
   useKey('e', focusEditor);
@@ -116,11 +124,14 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const press = useCallback(
     (name: TransitionName) => {
       const asked = lifecycle.named(ticket.status, name);
-      if (!asked.ok) return setStateRefusal(asked.refusal);
-      if (asksBeforeBlocked(name, ticket)) return setConfirming(true);
+      if (!asked.ok) return sayInState(asked.refusal);
+      if (asksBeforeBlocked(name, ticket)) {
+        focusTile('state');
+        return setConfirming(true);
+      }
       runEdge(asked.edge);
     },
-    [ticket, runEdge, setStateRefusal],
+    [ticket, runEdge, sayInState, focusTile],
   );
   /** `d` here is the dependencies tile's `+ add` on the `blocked by` side, pressed for you. */
   const openBlockedBy = useCallback(() => {
@@ -435,12 +446,14 @@ function DependencySection({
   onRemove: (key: string) => void;
 }) {
   const label = DIRECTION_LABEL[direction];
+  const add = useRef<HTMLButtonElement>(null);
+  useFocusOnClose(picking, add);
   return (
     <section className="gf-dep-section" data-testid={`deps-${direction}`}>
       {/* the control sits beside its label, never across the tile from it: this tile is full-width on a wide desk */}
       <h3 className="gf-dep-head">
         <span>{label}</span>
-        <button type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onClick={onOpen}>
+        <button ref={add} type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onClick={onOpen}>
           {picking ? 'close' : '+ add'}
         </button>
         <span className="gf-dep-rule" />
@@ -641,6 +654,13 @@ function StateTile({
   refusal: string | null;
 }) {
   const edges = lifecycle.from(ticket.status);
+  const start = useRef<HTMLButtonElement>(null);
+  useFocusOnClose(confirming, start);
+  // the line sits below the fold on a phone, and a sentence nobody sees is no answer
+  const line = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (refusal !== null) line.current?.scrollIntoView({ block: 'nearest' });
+  }, [refusal]);
   const rows: [string, React.ReactNode][] = [['status', <StatusChip status={ticket.status} />]];
   // the condition `start` asks about, said beside the verbs and not only in the dependencies tile further down
   if (isBlocked(ticket))
@@ -678,7 +698,7 @@ function StateTile({
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
-            <button key={e.name} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => onPress(e.name)}>
+            <button key={e.name} ref={e.name === 'start' ? start : undefined} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => onPress(e.name)}>
               {e.name}
             </button>
           ))}
@@ -701,7 +721,7 @@ function StateTile({
         </button>
       </div>
       {refusal && (
-        <p className="gf-refusal" role="alert" data-testid="state-refusal">
+        <p ref={line} className="gf-refusal" role="alert" data-testid="state-refusal">
           {refusal}
         </p>
       )}

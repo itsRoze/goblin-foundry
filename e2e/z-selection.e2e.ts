@@ -215,6 +215,8 @@ test('esc answers the blocked-start question before it clears the Cursor (GF-77)
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-ready')).toContainText(blocker.key);
+  // the question holds the focus (GF-44), and `esc` from there still reaches the board
+  await expect(page.getByTestId('confirm-ready-yes')).toBeFocused();
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
