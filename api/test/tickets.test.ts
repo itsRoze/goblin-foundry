@@ -94,6 +94,36 @@ describe('/api/tickets', () => {
     });
   });
 
+  describe('an edit writes its row and its event together, against the row it judged (ADR-0010)', () => {
+    const read = (key: string) => req(`/api/tickets/${key}`).then((r) => r.json());
+    const snapshot = async (key: string) => [await read(key), await events(key)];
+
+    test('a history write that fails leaves the ticket as it was, and the same edit goes through once the fault is gone', async () => {
+      const t = await newTicket({ title: 'draft title' });
+      const before = await snapshot(t.key);
+      h.failWrites('event', t.id);
+      const res = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }));
+      expect(res.status).toBe(500);
+      expect(res.headers.get('content-type')).toContain('application/problem+json');
+      expect((await res.json()).detail).toContain('nothing changed');
+      expect(await snapshot(t.key)).toEqual(before);
+      h.healWrites();
+      expect((await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }))).status).toBe(200);
+      expect((await read(t.key)).title).toBe('better title');
+    });
+
+    test('a ticket that changed between the judging and the write is a 409 naming its key, and nothing is written', async () => {
+      const t = await newTicket({ title: 'draft title' });
+      const before = await snapshot(t.key);
+      h.failWrites('ticket', t.id, 'vanish');
+      const res = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'better title' }));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ hint: `nothing changed — ticket ${t.key} changed while the edit was being applied; try again` });
+      h.healWrites();
+      expect(await snapshot(t.key)).toEqual(before);
+    });
+  });
+
   test('status is not an editable field', async () => {
     const t = await newTicket({ title: 'x' });
     const res = await req(`/api/tickets/${t.key}`, json('PATCH', { status: 'ready' }));

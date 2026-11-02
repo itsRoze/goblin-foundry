@@ -22,7 +22,8 @@ import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
 import { AtomicWriteError, atomically, type Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { diff, listEvents, now, recordEvent } from './events';
+import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
+import { diff, eventWrite, listEvents, now, recordEvent } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
@@ -186,10 +187,16 @@ export function ticketsRoutes(db: Db) {
     const change = diff(row, { title, description, design, simple, ...placement });
     if (!change.changed) return c.json(await one(row));
     const at = now();
-    const [updated] = await db.update(ticketTable).set({ ...change.new, updated_at: at }).where(eq(ticketTable.id, row.id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    await recordEvent(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at });
-    return c.json(await one(updated));
+    // the guard was judged against `row`, and the body may have been in flight while a transition landed: the write
+    // holds only if the ticket is still the one judged, or the edit is a 409 rather than a change to a status it never saw
+    const written = await commit(
+      c,
+      db,
+      [pinnedTicketWrite(db, row, change.new, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      { rolledBack: 'the edit was rolled back', stale: async () => changedUnderneath(c, ticketKey(await prefix(), row.id), 'the edit') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await one(written[0] as TicketRow));
   });
 
   r.delete('/:key', async (c) => {
