@@ -78,6 +78,11 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(toMarkdown('block', { type: 'doc', content: [{ type: 'paragraph' }] })).toBe('');
   });
 
+  test('empty markdown opens as one empty paragraph, so the caret has somewhere to land', () => {
+    expect(toDoc('block', '')).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
+    expect(toDoc('inline', '')).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
+  });
+
   test('a document round-trips through the editor document it is parsed into', () => {
     const doc = toDoc('block', GOLDEN);
     expect(doc.type).toBe('doc');
