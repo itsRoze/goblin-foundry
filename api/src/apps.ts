@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, isNull } from 'drizzle-orm';
 import {
   CreateAppBodySchema,
   DEFAULT_BRANCH_NEEDS_REPOSITORY,
@@ -9,12 +9,13 @@ import {
 } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
+import { changedWhile, commit, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
-import { diff, now, recordEvent } from './events';
+import { diff, eventWrite, now } from './events';
 import { parseBody } from './http';
 import { lifecycleRoutes, wantsArchived } from './lifecycle';
 import { unprocessable } from './problems';
-import { app as appTable } from './schema';
+import { app as appTable, event } from './schema';
 
 type AppRow = typeof appTable.$inferSelect;
 export const toApp = ({ trashed_via: _, ...row }: AppRow): App => row;
@@ -30,7 +31,7 @@ export function appsRoutes(db: Db) {
     toWire: toApp,
     hooks: {
       onTrash: (ctx, row, cascade) => releaseChildrenOfApp(ctx, row.id, cascade),
-      onRestore: (ctx, row) => reviveChildren(ctx, 'app', row.id),
+      onRestore: async (ctx, row) => ({ rehomed: {}, children: await reviveChildren(ctx, 'app', row.id) }),
     },
   });
 
@@ -51,10 +52,20 @@ export function appsRoutes(db: Db) {
       default_branch: body.data.default_branch ?? null,
       description: body.data.description ?? '',
     };
-    const [row] = await db.insert(appTable).values({ ...fields, created_at: at, updated_at: at }).returning();
-    if (!row) throw new Error('insert returned no row');
-    await recordEvent(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'created', prior: null, new: fields, at });
-    return c.json(toApp(row), 201);
+    const written = await commit(
+      c,
+      db,
+      [
+        { what: 'app', statement: db.insert(appTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
+        {
+          what: 'created event',
+          statement: db.insert(event).values({ entity_kind: 'app', entity_id: newestId(appTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }).returning({ id: event.id }),
+        },
+      ],
+      { rolledBack: 'the app was not created' },
+    );
+    if (written instanceof Response) return written;
+    return c.json(toApp(written[0] as AppRow), 201);
   });
 
   r.get('/:id', async (c) => {
@@ -63,18 +74,23 @@ export function appsRoutes(db: Db) {
   });
 
   r.patch('/:id', async (c) => {
+    // the row is read after the body has arrived, so the pin covers only the handler's own read and write
+    const body = await parseBody(c, PatchAppBodySchema);
     const row = await findLive(c);
     if (!row) return missing(c);
-    const body = await parseBody(c, PatchAppBodySchema);
     if (!body.ok) return body.response;
     const change = diff(row, body.data);
     if (!change.changed) return c.json(toApp(row));
     if (branchWithoutRepository({ ...row, ...change.new })) return unprocessable(c, [branchIssue]);
     const at = now();
-    const [updated] = await db.update(appTable).set({ ...change.new, updated_at: at }).where(eq(appTable.id, row.id)).returning();
-    if (!updated) throw new Error('update returned no row');
-    await recordEvent(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at });
-    return c.json(toApp(updated));
+    const written = await commit(
+      c,
+      db,
+      [pinnedRowWrite(db, appTable, row, change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      { rolledBack: 'the edit was rolled back', stale: (what) => changedWhile(c, what, 'the edit') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(toApp(written[0] as AppRow));
   });
 
   return r;

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, asc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
 import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
@@ -22,7 +22,7 @@ import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { changedUnderneath, commit, pinnedTicketWrite } from './commit';
+import { changedUnderneath, commit, newestId, pinnedTicketWrite } from './commit';
 import { diff, eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
@@ -130,9 +130,8 @@ export function ticketsRoutes(db: Db) {
     if (refused) return unprocessable(c, [refused]);
     const labels = judgeLabels(body.data.labels ?? []);
     if (!labels.ok) return unprocessable(c, [labels.issue]);
-    // the ticket, its labels and the history that records them land together or not at all. Its id is not known until
-    // its row is written, so the rows hanging off it name it as the newest ticket, which inside the batch's one transaction it is
-    const born = sql<number>`(SELECT max(id) FROM ticket)`;
+    // the ticket, its labels and the history that records them land together or not at all
+    const born = newestId(ticketTable);
     const written = await commit(
       c,
       db,

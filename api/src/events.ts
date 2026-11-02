@@ -89,7 +89,7 @@ export async function listEvents(db: Db, kind: EntityKind, id: number): Promise<
 }
 
 /** The subset of `next` whose values differ from `current`, as `{prior, new}`; empty when nothing changed. */
-export function diff<T extends Record<string, unknown>>(current: T, next: Partial<T>) {
+export function diff<T extends object>(current: T, next: Partial<T>) {
   const prior: Record<string, unknown> = {};
   const changed: Record<string, unknown> = {};
   for (const key of Object.keys(next) as (keyof T & string)[]) {

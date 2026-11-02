@@ -19,7 +19,7 @@ import {
 } from '@goblin/shared';
 import type { Context, Hono as HonoType } from 'hono';
 import type { ActorEnv } from './actor';
-import { commit } from './commit';
+import { changedWhile, commit } from './commit';
 import type { AtomicWrite, Db } from './db';
 import { eventWrite, now } from './events';
 import { readFilter, ticketWhere } from './filters';
@@ -183,7 +183,6 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
       .where(and(eq(ticketTable.id, row.id), isNull(ticketTable.trashed_at)))
       .returning({ id: ticketTable.id }),
   });
-  const wentIntoTrash = (c: Context, what: string, doing: string) => conflict(c, `nothing changed — ${what} changed while ${doing} was being applied; try again`);
 
   r.post('/:key/dependencies', async (c) => {
     const blocked = await find(c);
@@ -217,7 +216,7 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
         { what: 'dependency', statement: db.insert(dependency).values({ blocker_id: blocker.id, blocked_id: blocked.id, created_at: at }).returning({ blocker_id: dependency.blocker_id }) },
         ...(await edgeHistory(c, 'dependency_added', blocker.id, blocked.id, at, p)),
       ],
-      { rolledBack: 'the dependency was not added', stale: (what) => wentIntoTrash(c, what, 'the dependency') },
+      { rolledBack: 'the dependency was not added', stale: (what) => changedWhile(c, what, 'the dependency') },
     );
     if (written instanceof Response) return written;
     return c.json(await toDetail(blocked));
@@ -240,7 +239,7 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
         { what: 'dependency', statement: db.delete(dependency).where(and(eq(dependency.blocker_id, blockerId), eq(dependency.blocked_id, blocked.id))).returning({ blocker_id: dependency.blocker_id }) },
         ...(await edgeHistory(c, 'dependency_removed', blockerId, blocked.id, now(), p)),
       ],
-      { rolledBack: 'the dependency was not removed', stale: (what) => (what === 'dependency' ? gone() : wentIntoTrash(c, what, 'the removal')) },
+      { rolledBack: 'the dependency was not removed', stale: (what) => (what === 'dependency' ? gone() : changedWhile(c, what, 'the removal')) },
     );
     if (written instanceof Response) return written;
     return c.json(await toDetail(blocked));

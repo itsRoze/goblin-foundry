@@ -30,11 +30,11 @@ describe('the App and Project lifecycle commits the row with its history or not 
     const make = () => create(`/api/${noun}`, { name: 'Thing' });
 
     test.each([
-      ['archive', 'archived', (row: { id: number }) => req(`/api/${noun}/${row.id}/archive`, json('POST'))],
-      ['unarchive', 'unarchived', (row: { id: number }) => req(`/api/${noun}/${row.id}/unarchive`, json('POST'))],
-      ['trash', 'trashed', (row: { id: number }) => req(`/api/${noun}/${row.id}`, { method: 'DELETE' })],
-      ['restore', 'restored', (row: { id: number }) => req(`/api/${noun}/${row.id}/restore`, json('POST'))],
-    ])('%s: a history write that fails leaves the row as it was, and the same move goes through once the fault is gone', async (doing, kindOfEvent, move) => {
+      ['archive', 'archived', (row: { id: number }) => req(`/api/${noun}/${row.id}/archive`, json('POST')), { archived_at: expect.any(String) }],
+      ['unarchive', 'unarchived', (row: { id: number }) => req(`/api/${noun}/${row.id}/unarchive`, json('POST')), { archived_at: null }],
+      ['trash', 'trashed', (row: { id: number }) => req(`/api/${noun}/${row.id}`, { method: 'DELETE' }), { trashed_at: expect.any(String) }],
+      ['restore', 'restored', (row: { id: number }) => req(`/api/${noun}/${row.id}/restore`, json('POST')), { trashed_at: null }],
+    ])('%s: a history write that fails leaves the row as it was, and the same move goes through once the fault is gone', async (doing, kindOfEvent, move, lands) => {
       const row = await make();
       if (doing === 'unarchive') await req(`/api/${noun}/${row.id}/archive`, json('POST'));
       if (doing === 'restore') await req(`/api/${noun}/${row.id}`, { method: 'DELETE' });
@@ -46,8 +46,9 @@ describe('the App and Project lifecycle commits the row with its history or not 
       expect((await res.json()).detail).toBe(`nothing changed — the ${kind} was not ${kindOfEvent} (${kindOfEvent} event for ${kind} ${row.id}: injected fault)`);
       expect(await snapshot(`/api/${noun}/${row.id}`)).toEqual(before);
       h.healWrites();
-      expect((await move(row)).status).toBe(200);
-      expect((await events(`/api/${noun}/${row.id}`))[0].kind).toBe(kindOfEvent);
+      const done = await move(row);
+      expect(done.status).toBe(200);
+      expect(await done.json()).toMatchObject({ id: row.id, ...lands });
     });
 
     test.each([
@@ -154,7 +155,8 @@ describe('the App and Project lifecycle commits the row with its history or not 
       h.failWrites('project event', p.id);
       const res = await req(`/api/projects/${p.id}/restore`, json('POST'));
       expect(res.status).toBe(500);
-      expect((await res.json()).detail).toBe(`nothing changed — the project was not restored (restored event for project ${p.id}: injected fault)`);
+      // the re-homing is recorded before the restore, as the sequential code did it, so it is the first of the project's writes to fail
+      expect((await res.json()).detail).toBe(`nothing changed — the project was not restored (updated event for project ${p.id}: injected fault)`);
       expect(await everything()).toEqual(before);
       h.healWrites();
       const restored = await req(`/api/projects/${p.id}/restore`, json('POST')).then((r) => r.json());
