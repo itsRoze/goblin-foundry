@@ -201,8 +201,23 @@ export const flattenBlocks = (markdown: string): string =>
 export const toDoc = (shape: EditorShape, markdown: string): JSONContent =>
   managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown);
 
-/** Editor document in, markdown out. */
-export const toMarkdown = (shape: EditorShape, doc: JSONContent): string => managerFor(shape).serialize(doc);
+const isBlankParagraph = (node: JSONContent): boolean => node.type === 'paragraph' && !node.content?.length;
+
+/**
+ * Editor document in, markdown out. Empty paragraphs at either end of the
+ * document are not content: the editor puts one below a closing list, heading,
+ * fence or quote so a click has somewhere to land, and arrowing out of a fence
+ * makes one above or below. Markdown has no form for them, so they are dropped
+ * here rather than serialised as blank lines a field would then save (GF-43).
+ */
+export const toMarkdown = (shape: EditorShape, doc: JSONContent): string => {
+  const blocks = doc.content ?? [];
+  let start = 0;
+  let end = blocks.length;
+  while (start < end && isBlankParagraph(blocks[start]!)) start += 1;
+  while (end > start && isBlankParagraph(blocks[end - 1]!)) end -= 1;
+  return managerFor(shape).serialize({ ...doc, content: blocks.slice(start, end) });
+};
 
 /**
  * What this field would store for the given markdown. Fidelity is an

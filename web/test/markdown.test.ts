@@ -68,6 +68,16 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(canonical('block', '')).toBe('');
   });
 
+  test('empty paragraphs closing the document are not content, so the one the editor appends below a closing block writes nothing (GF-43)', () => {
+    const doc = toDoc('block', 'Read me.\n\n- one\n- two\n');
+    const blocks = doc.content ?? [];
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph' }, { type: 'paragraph' }] })).toBe('Read me.\n\n- one\n- two');
+    expect(toMarkdown('block', { ...doc, content: [...blocks, { type: 'paragraph', content: [{ type: 'text', text: 'Below.' }] }] })).toBe('Read me.\n\n- one\n- two\n\nBelow.');
+    expect(toMarkdown('block', { ...doc, content: [{ type: 'paragraph' }, ...blocks] })).toBe('Read me.\n\n- one\n- two');
+    expect(toMarkdown('block', { type: 'doc', content: [{ type: 'paragraph' }] })).toBe('');
+  });
+
   test('a document round-trips through the editor document it is parsed into', () => {
     const doc = toDoc('block', GOLDEN);
     expect(doc.type).toBe('doc');
