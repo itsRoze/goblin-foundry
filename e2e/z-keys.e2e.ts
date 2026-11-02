@@ -303,6 +303,15 @@ test('a menu at the foot of a column stays on screen, every row is reached by ke
   await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId(`card-menu-${key}`)).toHaveCount(0);
+  await expect(page.getByTestId(`menu-${key}`)).toBeFocused();
+
+  // a screen too short for the rows on either side: the panel scrolls its rows, and `↑` still reaches trash
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.getByTestId(`menu-${key}`).click();
+  await expect(page.getByTestId(`menu-${key}-pick`)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeFocused();
+  await expect(page.getByTestId(`menu-${key}-trash`)).toBeInViewport();
 });
 
 test('holding ⏎ on a focused ⋯ opens the menu and runs nothing (GF-82)', async ({ page }) => {

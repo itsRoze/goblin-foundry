@@ -232,8 +232,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* the menu is the picker popover's clothes (Components), hung from the card's right edge so it never runs off a phone
    (`.gf-pop` anchors left and is declared later, so this has to outrank it). It is fixed to the screen, not to the
    column: the kanban scrolls sideways inside its tile, and a scroll box cuts off anything hung past its foot (GF-78).
-   The component sets `top` (or `bottom`) and `right` from where the `⋯` is; the overlap with it is the margin. */
-.gf-pop.gf-card-menu { position: fixed; left: auto; margin-top: calc(-1 * var(--gf-s1)); min-width: 160px; padding: var(--gf-s1) 0; display: flex; flex-direction: column; }
+   The component sets `top` (or `bottom`) and `right` from where the `⋯` is; the overlap with it is the margin. On a
+   screen too short for the rows on either side it also caps the height, and the rows scroll inside the panel. */
+.gf-pop.gf-card-menu { position: fixed; left: auto; margin-top: calc(-1 * var(--gf-s1)); min-width: 160px; padding: var(--gf-s1) 0; box-sizing: border-box; overflow-y: auto; display: flex; flex-direction: column; }
 /* when there is no room below on the screen it hangs above instead: a menu has to fit the screen it is on */
 .gf-pop.gf-card-menu.is-up { top: auto; margin-top: 0; margin-bottom: calc(-1 * var(--gf-s1)); }
 .gf-menu-group { display: flex; flex-direction: column; }
