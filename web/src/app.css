@@ -246,8 +246,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
   background: none; border: none; border-left: 2px solid transparent; cursor: pointer; text-align: left;
   font: var(--gf-t-h); color: var(--gf-ink);
 }
-/* the browser's own focus outline is let be (Shapes); the row mark is for the pointer and the arrow keys alike */
-.gf-menu-item:hover, .gf-menu-item:focus-visible { border-left-color: var(--gf-system); background: var(--gf-rule-2); }
+/* the browser's own focus outline is let be (Shapes); the row mark is for the pointer and the arrow keys alike,
+   and it is the inset alone: `--gf-human` and `--gf-mute` do not clear a `--gf-rule-2` fill (DESIGN.md, the text-safe rule) */
+.gf-menu-item:hover, .gf-menu-item:focus-visible { border-left-color: var(--gf-system); }
 .gf-menu-item.is-danger { color: var(--gf-human); }
 .gf-menu-note { font: var(--gf-t-meta); color: var(--gf-mute); }
 
@@ -307,6 +308,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-col { padding: 0 var(--gf-s1); border: 1px solid transparent; transition: background var(--gf-fast) var(--gf-ease), border-color var(--gf-fast) var(--gf-ease); }
 .gf-col.is-legal { border-color: var(--gf-system); background: var(--gf-raised); }
 .gf-col.is-legal.is-over { border-color: var(--gf-system); background: var(--gf-rule); }
+/* `--gf-mute` is 4.14:1 on that fill */
+.gf-col.is-legal.is-over .gf-col-head b { color: var(--gf-ink); }
 .gf-col.is-illegal .gf-col-head { color: var(--gf-mute); }
 .gf-card.is-lifted { border-color: var(--gf-system); }
 .gf-col-refusal { animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
