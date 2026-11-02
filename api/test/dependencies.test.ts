@@ -190,6 +190,68 @@ describe('dependencies', () => {
     expect((await gone.json()).detail).toBe(`GF-99 does not block ${b.key}`);
   });
 
+  describe('an edge and the history at both its ends land together, against the live tickets that were read (ADR-0010)', () => {
+    const snapshot = async (...keys: string[]) => {
+      const out = [];
+      for (const key of keys) out.push(await read(key), await events(key));
+      return out;
+    };
+
+    test('a history write that fails leaves no edge, and the same edge goes through once the fault is gone', async () => {
+      const a = await ticket('a');
+      const b = await ticket('b');
+      const before = await snapshot(a.key, b.key);
+      // the edge and the waiter's event have both run by the time the blocker's event fails
+      h.failWrites('ticket event', a.id);
+      const res = await block(a, b);
+      expect(res.status).toBe(500);
+      expect(res.headers.get('content-type')).toContain('application/problem+json');
+      expect((await res.json()).detail).toBe(`nothing changed — the dependency was not added (dependency_added event for ticket ${a.id}: injected fault)`);
+      expect(await snapshot(a.key, b.key)).toEqual(before);
+      h.healWrites();
+      expect((await block(a, b)).status).toBe(200);
+      expect((await read(b.key)).blocked_by).toEqual([a.key]);
+    });
+
+    test('a history write that fails on removal leaves the edge standing', async () => {
+      const a = await ticket('a');
+      const b = await ticket('b');
+      await block(a, b);
+      const before = await snapshot(a.key, b.key);
+      h.failWrites('ticket event', a.id);
+      const res = await del(`/api/tickets/${b.key}/dependencies/${a.key}`);
+      expect(res.status).toBe(500);
+      expect((await res.json()).detail).toBe(`nothing changed — the dependency was not removed (dependency_removed event for ticket ${a.id}: injected fault)`);
+      expect(await snapshot(a.key, b.key)).toEqual(before);
+      h.healWrites();
+      expect((await del(`/api/tickets/${b.key}/dependencies/${a.key}`)).status).toBe(200);
+      expect((await read(b.key)).blocked_by).toEqual([]);
+    });
+
+    test('a blocker that went into the trash between the judging and the write is a 409 naming it, and no edge is written', async () => {
+      const a = await ticket('a');
+      const b = await ticket('b');
+      const before = await snapshot(a.key, b.key);
+      h.failWrites('ticket', a.id, 'vanish');
+      const res = await block(a, b);
+      expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — ticket ${a.key} changed while the dependency was being applied; try again`]);
+      h.healWrites();
+      expect(await snapshot(a.key, b.key)).toEqual(before);
+    });
+
+    test('a waiter that went into the trash between the judging and the removal is a 409, and the edge stands', async () => {
+      const a = await ticket('a');
+      const b = await ticket('b');
+      await block(a, b);
+      const before = await snapshot(a.key, b.key);
+      h.failWrites('ticket', b.id, 'vanish');
+      const res = await del(`/api/tickets/${b.key}/dependencies/${a.key}`);
+      expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — ticket ${b.key} changed while the removal was being applied; try again`]);
+      h.healWrites();
+      expect(await snapshot(a.key, b.key)).toEqual(before);
+    });
+  });
+
   test('list reads carry blocked_by; the trash does not', async () => {
     const a = await ticket('a');
     const b = await ticket('b');
