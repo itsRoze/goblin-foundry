@@ -11,8 +11,13 @@ const isTyping = (t: EventTarget | null) =>
   !('passesKeys' in t.dataset) &&
   (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
-export const answersEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
+const answersEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
   (t instanceof HTMLElement || t instanceof SVGElement) && t.matches('a[href], button');
+
+export function letGoOfEnter() {
+  const held = document.activeElement;
+  if (answersEnter(held)) held.blur();
+}
 
 /**
  * Several keys at once, one handler each (DESIGN.md Interaction: keyboard
