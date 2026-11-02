@@ -23,7 +23,11 @@ export function letGoOfEnter() {
  * Several keys at once, one handler each (DESIGN.md Interaction: keyboard
  * first). Bare by default, with `⌘`/`ctrl` when `meta` is asked for; a typing
  * target silences all of them, which is what leaves `⌘K` to the editor's link
- * command and `esc` to whichever input holds the caret.
+ * command and `esc` to whichever input holds the caret. So does a key that
+ * is already `defaultPrevented`: a control that answered it has claimed it,
+ * and a check popover is a focused `div`, which no tag test catches (GF-41).
+ * The map's own `preventDefault` claims a key the same way, so two maps on
+ * one key would hear only the first registered; no screen binds one twice.
  *
  * The map is read through a ref, so a handler that closes over this render's
  * state does not re-register the listener on every render — and `active` is
@@ -52,6 +56,7 @@ export function useKeyMap(
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if ((e.metaKey || e.ctrlKey) !== meta || e.altKey) return;
       if (e.key.length > 1 && e.shiftKey !== shift) return;
       if (isTyping(e.target) && !whileTyping) return;
