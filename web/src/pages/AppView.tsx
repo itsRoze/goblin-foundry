@@ -17,7 +17,7 @@ export function AppView() {
   const app = useApp(id);
   if (app.isError || id === null) return <NotFound what="app" />;
   if (!app.data) return <Empty>loading…</Empty>;
-  return <AppLoaded app={app.data} />;
+  return <AppLoaded key={app.data.id} app={app.data} />;
 }
 
 function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']> }) {

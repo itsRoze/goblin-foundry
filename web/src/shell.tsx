@@ -99,6 +99,8 @@ function ShellBody() {
   // a bulk action outlives the board it was sent from; off the board, the shell is where it reports
   const selecting = useSelecting();
   const { pathname } = useLocation();
+  // a history move leaves it open otherwise, and its next action would land on the new page's Ticket (GF-76)
+  useEffect(closePalette, [pathname, closePalette]);
   const reporting = pathname !== '/' && (selecting.pending !== null || selecting.outcome !== null);
 
   return (

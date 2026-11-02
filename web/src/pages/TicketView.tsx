@@ -32,7 +32,7 @@ export function TicketView() {
   const ticket = useTicket(key);
   if (ticket.isError) return <NotFound what="ticket" />;
   if (!ticket.data) return <Empty>loading…</Empty>;
-  return <TicketLoaded ticket={ticket.data} />;
+  return <TicketLoaded key={ticket.data.id} ticket={ticket.data} />;
 }
 
 /**
@@ -311,7 +311,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         refusal={state.refusal}
       />
 
-      <ImplementationTile key={ticket.key} ticket={ticket} branchCopy={branchCopy} input={implementationInput} />
+      <ImplementationTile ticket={ticket} branchCopy={branchCopy} input={implementationInput} />
 
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
         <History events={events.data} describe={(e) => describeTicketEvent(e, names)} quietActor />

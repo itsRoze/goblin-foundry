@@ -13,7 +13,7 @@ export function ProjectView() {
   const project = useProject(id);
   if (project.isError || id === null) return <NotFound what="project" />;
   if (!project.data) return <Empty>loading…</Empty>;
-  return <ProjectLoaded project={project.data} />;
+  return <ProjectLoaded key={project.data.id} project={project.data} />;
 }
 
 function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof useProject>['data']> }) {

@@ -418,3 +418,11 @@ way to put a shelled-out failure into a message — quotes noise, and there is n
 that is the reason. `goblin service restart` therefore says the build failed and names
 `bun run build`, rather than relaying an output that would also have to be prose on a stderr
 that carries only problem+json.
+
+## 2026-11-02 — a cached route keeps its component, and what it was holding
+
+`TicketView` rendered `<Empty>` while a Ticket loaded, which unmounted `TicketLoaded`, so moving to an unvisited Ticket always started clean. A Ticket already in the query cache skips that render, and React kept the one instance. An open picker, a title editor and an idle write all carried on against the next Ticket's closures (GF-76). The rule: a view whose route parameter names an entity is keyed on that entity's id at its loaded component. A test of this visits both entities first, or it takes the loading path and passes for the wrong reason.
+
+## 2026-11-02 — TipTap's `Markdown` extension grows `marked` per editor
+
+The extension builds a `MarkdownManager` per editor, and each one adds its tokenizers to `marked`'s global list for good, so every parse slows with every editor ever mounted. Keying the entity views (GF-76) put each cached move on the mount path, and a round trip between two 30 KB Tickets took 2862 ms after 40 trips, against 272 ms on the first. The app parses through `managerFor`, so the extension did nothing for it and is gone: 130 ms, and 139 ms on the first. Those are medians of five runs per side. The rule: count what a per-instance extension registers globally before mounting it per field.
