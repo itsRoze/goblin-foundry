@@ -28,18 +28,13 @@ async function pasteMarkdown(field: Locator, markdown: string, html?: string) {
 }
 
 /**
- * Click into the field's one marked run and wait until the editor has the caret there. The browser
- * moves its selection at the click, but ProseMirror reads it on `selectionchange`, which Chrome
- * delivers once per frame, so a key sent as soon as the DOM selection has moved acts on where the
- * caret *was* (GF-75). The DOM selection gives the exact offset; the run's two revealed markers are
- * drawn from ProseMirror's own selection, so they are the proof it has caught up. That proof needs
- * the caret to start off the run, which the first expectation holds the caller to.
+ * Click and wait until the caret is really there. The browser moves its selection at the click, but
+ * ProseMirror reads it on `selectionchange`, which Chrome delivers once per frame, so a key sent as
+ * soon as the DOM selection has moved acts on where the caret *was* (GF-75). Two frames lets it out.
  */
-async function caretInto(field: Locator, selector: string, offset: number, position: { x: number; y: number }) {
-  const markers = field.locator('.gf-syntax');
-  await expect(markers).toHaveCount(0);
-  await field.locator(selector).click({ position });
-  await field.page().waitForFunction(
+async function caretAt(target: Locator, selector: string, offset: number, position?: { x: number; y: number }) {
+  await target.click(position ? { position } : undefined);
+  await target.page().waitForFunction(
     ({ selector, offset }) => {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return false;
@@ -49,6 +44,18 @@ async function caretInto(field: Locator, selector: string, offset: number, posit
     },
     { selector, offset },
   );
+  await target.page().evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+}
+
+/**
+ * Click into the field's one marked run. Its two revealed markers are drawn from ProseMirror's own
+ * selection, so they are the proof it has caught up, which needs the caret to start off the run: the
+ * first expectation holds the caller to that.
+ */
+async function caretInto(field: Locator, selector: string, offset: number, position: { x: number; y: number }) {
+  const markers = field.locator('.gf-syntax');
+  await expect(markers).toHaveCount(0);
+  await caretAt(field.locator(selector), selector, offset, position);
   await expect(markers).toHaveCount(2);
 }
 
@@ -576,7 +583,7 @@ test('a list that ends the field can still be written below, from the keyboard',
   await page.goto(`/tickets/${ticket.key}`);
   const field = description(page);
 
-  await caretInto(field.locator('li').last(), 'li', 'two'.length);
+  await caretAt(field.locator('li').last(), 'li', 'two'.length);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.type('Below the list.');
@@ -594,7 +601,7 @@ test('a code block that ends the field can still be written below, from the keyb
   await page.goto(`/tickets/${ticket.key}`);
   const field = description(page);
 
-  await caretInto(field.locator('pre'), 'pre', 'const x = 1;'.length);
+  await caretAt(field.locator('pre'), 'pre', 'const x = 1;'.length);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.type('After the fence.');
   await expect(field.locator('p').last()).toHaveText('After the fence.');
@@ -610,10 +617,10 @@ test('arrowing out of a fence at either end of the field, then leaving, writes n
   await readsOnly(page, `/api/tickets/${ticket.key}`, async () => {
     await page.goto(`/tickets/${ticket.key}`);
     const field = description(page);
-    await caretInto(field.locator('pre'), 'pre', 0, { x: 2, y: 6 });
+    await caretAt(field.locator('pre'), 'pre', 0, { x: 2, y: 6 });
     await page.keyboard.press('ArrowUp');
     await expect(field.locator('> :first-child')).toHaveText('');
-    await caretInto(field.locator('pre'), 'pre', 'const x = 1;'.length);
+    await caretAt(field.locator('pre'), 'pre', 'const x = 1;'.length);
     await page.keyboard.press('ArrowDown');
     await expect(field.locator('> :last-child')).toHaveText('');
     await page.waitForTimeout(BEAT_MS);
@@ -684,7 +691,7 @@ const stored = async (page: Page, surface: Surface) => (await json<Record<string
 async function caretBelow(field: Locator) {
   const box = (await field.boundingBox())!;
   await field.click({ position: { x: 24, y: box.height - 2 } });
-  await caretInto(field.locator('> p').last(), 'p', 0);
+  await caretAt(field.locator('> p').last(), 'p', 0);
   await expect(field.locator('> :last-child')).toHaveText('');
 }
 
