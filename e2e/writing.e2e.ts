@@ -503,6 +503,16 @@ for (const [ending, markdown] of Object.entries(ENDINGS)) {
   });
 }
 
+for (const ending of ['a heading', 'a code block', 'a blockquote'] as const) {
+  test(`reading a project's design ending in ${ending} writes nothing`, async ({ page }) => {
+    const project = await json<{ id: number }>(page.request.post('/api/projects', { data: { name: 'Only read', design: ENDINGS[ending] } }));
+    await readsOnly(page, `/api/projects/${project.id}`, async () => {
+      await page.goto(`/projects/only-read-${project.id}`);
+      await caretThrough(page, design(page));
+    });
+  });
+}
+
 test("reading a project's design and description writes nothing", async ({ page }) => {
   const project = await json<{ id: number }>(
     page.request.post('/api/projects', { data: { name: 'Only read', description: 'Read me, **briefly**.', design: ENDINGS['a list'] } }),
@@ -548,7 +558,7 @@ test('a list that ends the field can still be written below, from the keyboard',
   await page.keyboard.press('Enter');
   await page.keyboard.type('Below the list.');
   await expect(field.locator('li')).toHaveText(['one', 'two']);
-  await expect(field.locator('p').last()).toHaveText('Below the list.');
+  await expect(field.locator('ul + p')).toHaveText('Below the list.');
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(page.getByTestId('saving')).toHaveText('saved');
 
@@ -571,3 +581,138 @@ test('a code block that ends the field can still be written below, from the keyb
   const after = await json<{ description: string }>(page.request.get(`/api/tickets/${ticket.key}`));
   expect(after.description).toBe('Read me.\n\n```ts\nconst x = 1;\n```\n\nAfter the fence.');
 });
+
+test('arrowing out of a fence at either end of the field, then leaving, writes nothing', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Fenced both ends', description: '```ts\nconst x = 1;\n```\n' } }));
+  await readsOnly(page, `/api/tickets/${ticket.key}`, async () => {
+    await page.goto(`/tickets/${ticket.key}`);
+    const field = page.getByTestId('description').locator('.gf-doc');
+    await caretInto(field.locator('pre'), 'pre', 0, { x: 2, y: 6 });
+    await page.keyboard.press('ArrowUp');
+    await expect(field.locator('> :first-child')).toHaveText('');
+    await caretInto(field.locator('pre'), 'pre', 'const x = 1;'.length);
+    await page.keyboard.press('ArrowDown');
+    await expect(field.locator('> :last-child')).toHaveText('');
+    await page.waitForTimeout(1000);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1000);
+  });
+});
+
+test('whitespace pasted into a field writes nothing', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Pasted nothing', description: ENDINGS['a list'] } }));
+  await readsOnly(page, `/api/tickets/${ticket.key}`, async () => {
+    await page.goto(`/tickets/${ticket.key}`);
+    const field = page.getByTestId('description').locator('.gf-doc');
+    await field.click();
+    await pasteMarkdown(field, '   \n  \n');
+    await expect(field.locator('li')).toHaveText(['one', 'two']);
+    await page.waitForTimeout(1000);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1000);
+  });
+});
+
+test('a refetch reaches a field the caret sits in with nothing typed, once the caret leaves', async ({ page }) => {
+  const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Rewritten underneath', description: ENDINGS['a list'] } }));
+  await page.goto(`/tickets/${ticket.key}`);
+  const writes = watchWrites(page);
+  const field = page.getByTestId('description').locator('.gf-doc');
+  await field.click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.waitForTimeout(1000);
+
+  await page.request.patch(`/api/tickets/${ticket.key}`, { data: { description: 'An agent rewrote this.' } });
+  // what a window refocus does: the query client refetches on it
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(1000);
+  // never under the caret
+  await expect(field.locator('li')).toHaveText(['one', 'two']);
+  await page.keyboard.press('Escape');
+  await expect(field).toHaveText('An agent rewrote this.');
+  await page.waitForTimeout(1000);
+  expect(writes).toEqual([]);
+  expect((await json<{ description: string }>(page.request.get(`/api/tickets/${ticket.key}`))).description).toBe('An agent rewrote this.');
+});
+
+/** Where a block field lives: seeded over the API, read back from `path`, found on its page. */
+interface Surface {
+  path: string;
+  url: string;
+  field: Locator;
+  column: 'description' | 'design';
+}
+
+const SURFACES: Record<string, (page: Page, markdown: string) => Promise<Surface>> = {
+  "a ticket's description": async (page, markdown) => {
+    const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Written below', description: markdown } }));
+    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: page.getByTestId('description').locator('.gf-doc'), column: 'description' };
+  },
+  "a ticket's design": async (page, markdown) => {
+    const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Written below' } }));
+    await page.request.patch(`/api/tickets/${ticket.key}`, { data: { design: markdown } });
+    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: design(page), column: 'design' };
+  },
+  "a project's design": async (page, markdown) => {
+    const project = await json<{ id: number }>(page.request.post('/api/projects', { data: { name: 'Written below', design: markdown } }));
+    return { path: `/api/projects/${project.id}`, url: `/projects/written-below-${project.id}`, field: design(page), column: 'design' };
+  },
+};
+
+const stored = async (page: Page, surface: Surface) => (await json<Record<string, string>>(page.request.get(surface.path)))[surface.column];
+
+/** Click under the closing block. The first click shows the line the editor keeps below it; the second puts the caret in it. */
+async function caretBelow(field: Locator) {
+  const box = (await field.boundingBox())!;
+  await field.click({ position: { x: 24, y: box.height - 2 } });
+  await caretInto(field.locator('> p').last(), 'p', 0);
+  await expect(field.locator('> :last-child')).toHaveText('');
+}
+
+const LISTED = 'Read me.\n\n- one\n- two';
+
+for (const [name, seed] of Object.entries(SURFACES)) {
+  test(`a click below the list closing ${name} reaches a new line: left empty it writes nothing, typed in it saves`, async ({ page }) => {
+    const surface = await seed(page, ENDINGS['a list']);
+    await page.goto(surface.url);
+    const writes = watchWrites(page);
+
+    await caretBelow(surface.field);
+    await page.waitForTimeout(1000);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1000);
+    expect(writes).toEqual([]);
+    expect(await stored(page, surface)).toBe(ENDINGS['a list']);
+
+    await caretBelow(surface.field);
+    await page.keyboard.type('Below the list.');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await expect.poll(() => stored(page, surface)).toBe(`${LISTED}\n\nBelow the list.`);
+    expect(writes).toEqual([`PATCH ${surface.path} {"${surface.column}":"${LISTED.replace(/\n/g, '\\n')}\\n\\nBelow the list."}`]);
+  });
+
+  test(`text typed below the list closing ${name} and deleted again leaves the stored form, and undo never writes the empty line`, async ({ page }) => {
+    const surface = await seed(page, ENDINGS['a list']);
+    await page.goto(surface.url);
+    const writes = watchWrites(page);
+    const below = `${LISTED}\n\nBelow.`;
+
+    await caretBelow(surface.field);
+    await page.keyboard.type('Below.');
+    await expect.poll(() => stored(page, surface)).toBe(below);
+    for (let i = 0; i < 'Below.'.length; i += 1) await page.keyboard.press('Backspace');
+    await expect.poll(() => stored(page, surface)).toBe(LISTED);
+
+    await page.keyboard.press('ControlOrMeta+Z');
+    await expect.poll(() => stored(page, surface)).toBe(below);
+    await page.keyboard.press('ControlOrMeta+Z');
+    await expect.poll(() => stored(page, surface)).toBe(LISTED);
+    // the last undo takes back the line itself, which is not content
+    await page.keyboard.press('ControlOrMeta+Z');
+    await page.waitForTimeout(1000);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1000);
+    expect(writes.map((w) => w.slice(w.indexOf('{')))).toEqual([below, LISTED, below, LISTED].map((d) => JSON.stringify({ [surface.column]: d })));
+    await expect(surface.field.locator('li')).toHaveText(['one', 'two']);
+  });
+}
