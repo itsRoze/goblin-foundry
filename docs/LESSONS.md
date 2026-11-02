@@ -107,6 +107,12 @@ ProseMirror's selection, so every mode-line button applied its mark to nothing. 
 serves both a click and a key needs two paths**: the pointer path may only change state, and
 anything that moves the page or the caret belongs to the keyed one.
 
+*(Amended 2026-11-02, GF-9.)* A fourth case: the focused tile's `j k ⏎` hint was rendered only on
+focus, in a right-aligned header, so taking the focus on mousedown slid the `+` beside it 68px and
+the first click on an unfocused tile's button did nothing. Reserving the space in flow serves the
+rule as well as absolute positioning does: the hint is always in the header, `visibility: hidden`
+until its tile is focused.
+
 ## 2026-08-30 — a live field is owned by the field, not by its document
 
 Clicking from the editor into the mode line's own URL or language input blurs the *document*. The
