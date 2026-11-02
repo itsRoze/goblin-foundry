@@ -34,6 +34,8 @@ const measure = (page: Page) =>
   });
 
 test('no page scrolls sideways, and a tile never stretches past reading width', async ({ page }) => {
+  // 91 page loads: ~6s solo, 18-41s on a loaded machine. A failed assertion throws at the first bad route, so a long budget only costs time on a hang.
+  test.setTimeout(60_000);
   // a ticket of this suite's own, so the ticket view has something to render whatever ran before
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
