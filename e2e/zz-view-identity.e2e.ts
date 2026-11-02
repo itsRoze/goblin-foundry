@@ -111,3 +111,15 @@ for (const [kind, testId, Entity] of [
     expect(await descriptionOf(page, `/api/${kind}/${second.id}`)).toBe('second words');
   });
 }
+
+test('an open palette does not follow history to the next Ticket (GF-76)', async ({ page }) => {
+  const app = await post<Named>(page, '/api/apps', { name: 'Palroam app' });
+  const { to } = await onBlockedTicketWithBothCached(page, 'Palroam');
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.getByTestId('palette').getByLabel('command palette').fill('move to app');
+  await page.keyboard.press('Enter');
+  await page.getByTestId('palette').getByLabel('command palette').fill(app.name);
+  await page.goForward();
+  await expectTitle(page, to.title);
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+});
