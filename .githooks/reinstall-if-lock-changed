@@ -1,4 +1,14 @@
 #!/bin/sh
 # A merge, rebase or branch switch that changes bun.lock (a new workspace, a new dependency)
 # leaves node_modules stale, and the next `bun test` fails on imports it cannot resolve.
-git diff --quiet "$1" "$2" -- bun.lock || bun install
+# A fresh worktree's previous HEAD is the all-zero object, which `git diff` cannot read.
+# It has no node_modules at all, so it installs without asking.
+case "$1" in
+  *[!0]*) git diff --quiet "$1" "$2" -- bun.lock && exit 0 ;;
+esac
+
+# git passes a hook's failure on as a failed checkout, though the checkout is already done.
+if command -v bun >/dev/null 2>&1 && bun install; then
+  exit 0
+fi
+echo "node_modules may be stale: run \`bun install\` here" >&2
