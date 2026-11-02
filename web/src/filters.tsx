@@ -92,7 +92,12 @@ export function FilterBar({
 function TextFilter({ q, onChange, inputRef }: { q: string | undefined; onChange: (q: string) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
   const settled = q ?? '';
   const [typed, setTyped] = useState(settled);
-  useEffect(() => setTyped(settled), [settled]);
+  const [lastSettled, setLastSettled] = useState(settled);
+  // in the render, not an effect: a mount effect runs after a keystroke that beat it and writes the old `q` over it (GF-95)
+  if (lastSettled !== settled) {
+    setLastSettled(settled);
+    setTyped(settled);
+  }
   useEffect(() => {
     if (typed === settled) return;
     const timer = setTimeout(() => onChange(typed), SETTLE_MS);
