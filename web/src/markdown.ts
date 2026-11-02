@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
-import { Markdown, MarkdownManager } from '@tiptap/markdown';
+import { MarkdownManager } from '@tiptap/markdown';
 import { RevealSyntax, markPending, markerAt, markerBehindCaret } from './reveal';
 import type { AnyExtension, Editor, JSONContent } from '@tiptap/core';
 
@@ -164,8 +164,9 @@ const OpenFence = Extension.create({
   },
 });
 
+/** Leaves out TipTap's `Markdown` extension: it builds a `MarkdownManager` per editor, and each adds its tokenizers to marked's global list for good. `managerFor` does the parsing. */
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
-  shape === 'block' ? [blockKit(), TaskList, TaskItem, Markdown, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), Markdown, WholeMarks, RevealSyntax];
+  shape === 'block' ? [blockKit(), TaskList, TaskItem, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), WholeMarks, RevealSyntax];
 
 const managers = new Map<EditorShape, MarkdownManager>();
 
