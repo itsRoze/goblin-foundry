@@ -11,12 +11,13 @@ const isTyping = (t: EventTarget | null) =>
   !('passesKeys' in t.dataset) &&
   (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
-const answersEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
-  (t instanceof HTMLElement || t instanceof SVGElement) && t.matches('a[href], button');
+/** A link or button answers `⏎` itself (GF-39); the graph canvas, focusable for its pan and zoom keys, holds it and answers with nothing (GF-80). */
+const holdsEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
+  (t instanceof HTMLElement || t instanceof SVGElement) && t.matches('a[href], button, svg[tabindex]');
 
 export function letGoOfEnter() {
   const held = document.activeElement;
-  if (answersEnter(held)) held.blur();
+  if (holdsEnter(held)) held.blur();
 }
 
 /**
@@ -60,7 +61,7 @@ export function useKeyMap(
       if ((e.metaKey || e.ctrlKey) !== meta || e.altKey) return;
       if (e.key.length > 1 && e.shiftKey !== shift) return;
       if (isTyping(e.target) && !whileTyping) return;
-      if (e.key === 'Enter' && answersEnter(e.target)) return;
+      if (e.key === 'Enter' && holdsEnter(e.target)) return;
       const handler = latest.current[e.key];
       if (!handler) return;
       e.preventDefault();

@@ -290,20 +290,80 @@ test('hover and keyboard focus trace entire chains without highlighting sibling 
   await expect(page).toHaveURL(new RegExp(`/tickets/${keys[2]}`));
 });
 
-test('a Cursor move takes ⏎ back from a focused node (GF-39)', async ({ page }) => {
+async function openTracedWithCursor(page: Page) {
   const projects = await page.request.get('/api/projects').then((r) => r.json() as Promise<{ id: number; name: string }[]>);
   const traced = projects.find((p) => p.name === 'Trace paths')!;
-  await page.goto(`/projects/trace-paths-${traced.id}`);
+  const url = `/projects/trace-paths-${traced.id}`;
+  await page.goto(url);
   await expect(nodes(page)).toHaveCount(6);
-  const marked = page.getByTestId('ticket-rows').locator('.is-cursor');
-
   await page.keyboard.press('j');
-  const first = await marked.getAttribute('href');
+  const marked = page.getByTestId('ticket-rows').locator('.is-cursor');
+  return { url, marked, first: (await marked.getAttribute('href'))! };
+}
+
+test('a Cursor move takes ⏎ back from a focused node (GF-39)', async ({ page }) => {
+  const { marked, first } = await openTracedWithCursor(page);
   await page.locator(`.gf-graph-node[href="${first}"]`).focus();
   await page.keyboard.press('j');
-  await expect(marked).not.toHaveAttribute('href', first!);
+  await expect(marked).not.toHaveAttribute('href', first);
   const second = await marked.getAttribute('href');
 
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`${second}$`));
+});
+
+test('⏎ on the focused graph canvas opens nothing, and the next Cursor move takes ⏎ back (GF-80)', async ({ page }) => {
+  const { url, marked, first } = await openTracedWithCursor(page);
+  const svg = page.getByTestId('graph').locator('svg');
+  await svg.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${url}$`));
+  await expect(marked).toHaveAttribute('href', first);
+
+  await page.keyboard.press('j');
+  await expect(svg).not.toBeFocused();
+  const second = await marked.getAttribute('href');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${second}$`));
+});
+
+test('+ keeps the focus when the graph reaches 200%, so a further ⏎ zooms nothing and opens nothing (GF-80)', async ({ page }) => {
+  const { url } = await openTracedWithCursor(page);
+  const tile = graph(page);
+  // by key, not click: a click would move the focused tile to the graph and switch the tickets Cursor off
+  await tile.getByRole('button', { name: 'reset graph to 100%', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(tile.locator('.gf-graph-scale')).toHaveText('100%');
+  const plus = tile.getByRole('button', { name: 'zoom in', exact: true });
+  await plus.focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Enter');
+  await expect(tile.locator('.gf-graph-scale')).toHaveText('200%');
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${url}$`));
+  await expect(tile.locator('.gf-graph-scale')).toHaveText('200%');
+  await expect(plus).toBeFocused();
+  await expect(plus).toHaveAttribute('aria-disabled', 'true');
+});
+
+test('Tab off the last graph node lands in the design field, not on body where ⏎ is the Cursor\'s (GF-80)', async ({ page }) => {
+  await openTracedWithCursor(page);
+  await nodes(page).last().focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('project design')).toBeFocused();
+});
+
+test('Tab off a node whose popover overflows the detail region lands in the design field too (GF-80)', async ({ page }) => {
+  // on the traced project, not one of its own: the palette shows eight projects at most, and a later spec picks one by sight
+  const projects = await page.request.get('/api/projects').then((r) => r.json() as Promise<{ id: number; name: string }[]>);
+  const traced = projects.find((p) => p.name === 'Trace paths')!;
+  const line = 'A first line long enough that the detail region below the drawing overflows its height and scrolls. ';
+  const tall = await page.request.post('/api/tickets', { data: { project_id: traced.id, title: 'Tallpop', description: line.repeat(8) } }).then((r) => r.json() as Promise<{ key: string }>);
+  await page.goto(`/projects/trace-paths-${traced.id}`);
+  await expect(nodes(page)).toHaveCount(7);
+  await page.keyboard.press('j');
+  await page.getByTestId(`node-${tall.key}`).focus();
+  await expect(page.getByTestId('graph-popover')).toContainText('A first line long enough');
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('project design')).toBeFocused();
 });
