@@ -108,12 +108,15 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
   const highlighted = (tone: string) => tone === 'upstream' || tone === 'downstream';
   connections.sort((a, b) => Number(highlighted(a.tone)) - Number(highlighted(b.tone)));
 
+  const atMin = viewport.view.scale <= viewport.minScale;
+  const atMax = viewport.view.scale >= 2;
   const content = (
     <div ref={workspace} className="gf-graph-workspace">
       <div className="gf-graph-tools" role="group" aria-label="graph view">
-        <button type="button" className="gf-btn" aria-label="zoom out" disabled={viewport.view.scale <= viewport.minScale} onClick={() => viewport.zoom(viewport.view.scale / 1.25)}>−</button>
+        {/* `aria-disabled`, not `disabled`: a disabled button drops the focus to `body`, whose `⏎` is the Cursor's (GF-80) */}
+        <button type="button" className="gf-btn" aria-label="zoom out" aria-disabled={atMin || undefined} onClick={atMin ? undefined : () => viewport.zoom(viewport.view.scale / 1.25)}>−</button>
         <button type="button" className="gf-btn gf-graph-scale" aria-label="reset graph to 100%" title="Reset to 100%" onClick={viewport.reset}>{Math.round(viewport.view.scale * 100)}%</button>
-        <button type="button" className="gf-btn" aria-label="zoom in" disabled={viewport.view.scale >= 2} onClick={() => viewport.zoom(viewport.view.scale * 1.25)}>+</button>
+        <button type="button" className="gf-btn" aria-label="zoom in" aria-disabled={atMax || undefined} onClick={atMax ? undefined : () => viewport.zoom(viewport.view.scale * 1.25)}>+</button>
         <button type="button" className="gf-btn" onClick={viewport.fit}>fit</button>
         <button ref={expanded ? undefined : expandButton} type="button" className="gf-btn gf-graph-expand" onClick={(event) => { if (expanded) close(); else { restingHeight.current = event.currentTarget.closest('.gf-graph-workspace')!.getBoundingClientRect().height; setActive(null); setExpanded(true); } }}>{expanded ? 'close' : 'expand'}</button>
       </div>
@@ -133,7 +136,8 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
         ))}
       </svg>
       </div>
-      <div className="gf-graph-inspect">
+      {/* not a Tab stop: a tall popover makes this a scroller Chromium would Tab into, and the node's blur then empties it under the focus (GF-80) */}
+      <div className="gf-graph-inspect" tabIndex={-1}>
         {shown ? <Popover node={shown} upstream={trace.upstream.nodes.size} downstream={trace.downstream.nodes.size} /> : <p className="gf-graph-help">Hover a ticket to trace its paths. Tab explores; click opens the ticket.</p>}
       </div>
       <div className="gf-graph-trace-key"><span className="is-upstream">prerequisites</span><span className="is-downstream">downstream</span></div>
@@ -191,7 +195,7 @@ function Popover({ node, upstream, downstream }: { node: LaidNode; upstream: num
         <span className="gf-key">{node.key}</span>
         <StatusChip status={node.status} />
       </span>
-      <Link className="gf-graph-pop-title" to={ticketPath(node)}>{node.title}</Link>
+      <span className="gf-graph-pop-title">{node.title}</span>
       <span className="gf-graph-pop-line">{plural(upstream, 'prerequisite')} · {plural(downstream, 'downstream ticket')}</span>
       {isBlocked(node) && <span className="gf-graph-pop-line">blocked by {node.blocked_by.join(', ')}</span>}
       {node.description_line !== '' && <span className="gf-graph-pop-line">{node.description_line}</span>}
