@@ -106,3 +106,16 @@ for (const width of WIDTHS)
         expect(await armed.wrote(), `gap ${gap}`).toBe(false);
       }
     });
+
+// the touch projects are the suite's only WebKit, whose Tab skips a button unless it carries a `tabindex` or full keyboard access is on
+test('a tap on start opens the question on cancel, and ⇧Tab reaches the answer in this engine too', async ({ page }) => {
+  const key = await blocked(page, mine('Tabbed start'));
+  await page.goto(`/tickets/${key}`);
+  await page.getByTestId('move-start').tap();
+  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  expect((await read(page, key)).status).toBe('ready');
+});
