@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 
 /** Taps in both engines; Chromium also supplies real touch input for the pan. */
 test('a graph fits a phone, zooms by tapping, and a dragged link stays on the graph', async ({ page, browserName }) => {
-  test.fixme(!!process.env.CI && browserName === 'chromium', 'fails on Linux CI (GF-73)');
   const response = await page.request.post('/api/projects', { data: { name: 'Touch graph' } });
   const project = await response.json() as { id: number };
   const tickets: { key: string }[] = [];
@@ -32,7 +31,10 @@ test('a graph fits a phone, zooms by tapping, and a dragged link stays on the gr
     const cdp = await page.context().newCDPSession(page);
     const url = page.url();
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    // Paced like a finger. Sent back to back, the moves end a pan Chromium on Linux treats as
+    // still in flight, and the `fit` tap 60ms later gets pointer events but no click (GF-73).
     for (let i = 1; i <= 8; i++) {
+      await page.waitForTimeout(60);
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x, y: start.y - i * 10 }] });
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });

@@ -448,3 +448,18 @@ Chromium blurs a button the moment it becomes `disabled`, and a link that unmoun
 ## 2026-11-02 — an effect that syncs a prop into state also runs on mount, after whatever got there first
 
 The board's text filter kept what was typed in state and copied the address's `q` over it in `useEffect(() => setTyped(settled), [settled])`. React defers a mount's effects to a later task when the commit that drew the screen used up its time slice, so on a slow machine a keystroke could land between the two; the effect then ran for the first time after it and put the empty `q` back, and the address stayed `/` with no error (GF-95, one CI run in ten, never on a laptop). State that follows a prop is adjusted in the render that sees the prop change, React's documented pattern, which never runs on mount. A forced reproduction of a race like this bumps `performance.now` the instant the element is in the DOM, so React yields, and types from a `MutationObserver` callback, the microtask after the commit.
+
+## 2026-11-02 — an empty editor document has to hold one empty paragraph
+
+`toDoc(shape, '')` returned a `doc` with no block in it. The schema says `block+`, but ProseMirror
+builds the state anyway, and with no text position to put the caret in it falls back to an
+AllSelection over nothing. Clicking into the field then depended on the browser: macOS Chromium
+collapsed the caret into the paragraph the focus handler had meanwhile created, Linux Chromium kept
+the whole-document range, so `h1` wrapped the document and the first keystroke replaced it (GF-73).
+A document the editor opens now always has one empty paragraph; paste still gets the bare blocks
+(`toBlocks`), so pasting whitespace inserts nothing.
+
+The other half of GF-73 was a test assumption. A CDP touch pan dispatched back to back is faster
+than any finger, and on Linux Chromium the tap 60ms after it got its pointer events but no click.
+A 400ms pause or moves paced at 60ms both brought the click back. Touch moves in a spec are paced
+like a finger, or the tap that follows never clicks.
