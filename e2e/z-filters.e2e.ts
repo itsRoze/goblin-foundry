@@ -107,6 +107,44 @@ test('the filter is the address: chips, reload, back, and a create in the filter
   await expect(page.getByTestId('board')).toContainText('Paginate the article list');
 });
 
+/**
+ * React runs a component's effects in a later task when the commit that drew it used up its
+ * time slice, so on a slow machine a keystroke can land between the two. The init script makes
+ * that order certain: it spends React's slice the instant the box is in the DOM, so React
+ * yields, and types in the microtask that follows the commit.
+ */
+test('text typed the instant the filter appears is kept and reaches the address', async ({ page }) => {
+  await page.addInitScript(() => {
+    const box = () => document.querySelector<HTMLInputElement>('input[aria-label="filter by text"]');
+    const now = performance.now.bind(performance);
+    let drawn = false;
+    performance.now = () => {
+      drawn ||= box() !== null;
+      return now() + (drawn ? 50 : 0);
+    };
+    new MutationObserver((_, observer) => {
+      const input = box();
+      if (!input) return;
+      observer.disconnect();
+      input.focus();
+      document.execCommand('insertText', false, 'entirely');
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto('/');
+  await expect(page.getByLabel('filter by text')).toHaveValue('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+});
+
+test('the text box follows the address when something else changes it', async ({ page }) => {
+  await page.goto('/');
+  const box = page.getByLabel('filter by text');
+  await box.fill('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+
+  await page.getByLabel('clear filters').click();
+  await expect(box).toHaveValue('');
+});
+
 test('a value the API refuses is shown, not corrected', async ({ page }) => {
   await page.goto('/?app_id=null&status=shipped');
   await expect(page.getByTestId('filter-refusal')).toContainText('shipped is not a status');
