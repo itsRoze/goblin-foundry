@@ -268,6 +268,67 @@ test('a mark can be taken off from inside it, with nothing selected', async ({ p
   await expect(field.locator('strong')).toHaveText('call parse now');
 });
 
+/** One long task queued to run next: the keys pressed meanwhile all land on thaw, at once. */
+const freeze = (page: Page, ms: number) =>
+  page.evaluate((ms) => {
+    setTimeout(() => {
+      const until = performance.now() + ms;
+      while (performance.now() < until) {}
+    }, 0);
+  }, ms);
+
+/** Longer than the 300 ms prosemirror-view counts a click as recent for, so the next focus is judged on its own. */
+const HAND_MS = 350;
+
+async function leaveField(page: Page, field: Locator) {
+  // the editor reads a moved caret on the next selectionchange, and blur unhooks that (GF-75): two frames let it in first
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await page.getByTestId('page-title').click();
+  await expect(field.locator('.gf-syntax')).toHaveCount(0);
+  await page.waitForTimeout(HAND_MS);
+}
+
+/** A click at the line's far end, so the caret `e` restores is the end and not the document start. */
+async function parkCaretAtLineEnd(page: Page, field: Locator) {
+  const line = field.locator('p').first();
+  const box = (await line.boundingBox())!;
+  await line.click({ position: { x: box.width - 1, y: 6 } });
+  await leaveField(page, field);
+}
+
+/** Rounds per spec: a race caught in most rounds, not every one, is caught in at least one. */
+const ROUNDS = 3;
+const byKey = (page: Page) => page.keyboard.press('e');
+const byClickAtLineStart = (page: Page, field: Locator) => field.locator('p').first().click({ position: { x: 1, y: 6 } });
+
+for (const [way, focus, keys, expected] of [
+  ['`e`', byKey, ['ArrowLeft', 'ArrowLeft'], 'call parse nXow'],
+  ['`e`, then Home', byKey, ['Home'], 'Xcall parse now'],
+  ['a click at the line start', byClickAtLineStart, ['ArrowRight', 'ArrowRight'], 'caXll parse now'],
+] as const)
+  test(`caret keys pressed while the page is frozen right after ${way} puts the caret in the field still move it`, async ({ page }) => {
+    const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: `Frozen after ${way}` } }));
+    await json(page.request.patch(`/api/tickets/${ticket.key}`, { data: { design: 'call `parse` now' } }));
+    await page.goto(`/tickets/${ticket.key}`);
+    const field = design(page);
+    await expect(field.locator('code')).toHaveText('parse');
+    const writes = watchWrites(page);
+    await parkCaretAtLineEnd(page, field);
+
+    for (let round = 0; round < ROUNDS; round += 1) {
+      await focus(page, field);
+      await freeze(page, 150);
+      for (const key of keys) await page.keyboard.press(key);
+      await page.keyboard.type('X');
+      await expect(field.locator('p').first()).toHaveText(expected);
+
+      await page.keyboard.press('Backspace');
+      await expect(field.locator('p').first()).toHaveText('call parse now');
+      await parkCaretAtLineEnd(page, field);
+    }
+    expect(writes).toEqual([]);
+  });
+
 test('the markdown around a span shows itself when the caret is on it', async ({ page }) => {
   await newTicket(page, 'Show me the backticks');
   const field = design(page);
