@@ -224,11 +224,10 @@ test('a save that never answers, left and come back to, is given up on in its fi
   await expect(refusal(page, first.testId)).toHaveCount(0);
 });
 
-test('a save given up on cannot land over a later one: the API refuses it on the version it was judged on (GF-79)', async ({ page }) => {
+test('a save given up on cannot land over a later one: the API refuses it on what the field held when it was judged (GF-79)', async ({ page }) => {
   test.setTimeout(BOUND_MS + 30_000);
   const surface = await SURFACES['a ticket description'](page, 'Late');
   const key = surface.path.split('/').at(-1);
-  const judgedAt = (await read<{ updated_at: string }>(page, surface.path)).updated_at;
   await page.goto(surface.url);
   await hangFirstPatch(page, surface.path);
 
@@ -241,11 +240,128 @@ test('a save given up on cannot land over a later one: the API refuses it on the
   await leave(page);
   await expect.poll(() => stored(page, surface)).toBe('Late origin words one two');
 
-  const headers = await request.allHeaders();
-  expect(headers['x-goblin-updated-at']).toBe(judgedAt);
-  const late = await page.request.patch(surface.path, { data: request.postData() ?? '', headers: { 'content-type': 'application/json', 'x-goblin-updated-at': judgedAt } });
+  const judged = (await request.allHeaders())['x-goblin-judged'];
+  expect(judged).toMatch(/^description=[0-9a-f]{16}$/);
+  const late = await page.request.patch(surface.path, { data: request.postData() ?? '', headers: { 'content-type': 'application/json', 'x-goblin-judged': judged } });
   expect([late.status(), (await late.json()).hint]).toEqual([409, `nothing changed — ticket ${key} changed while the edit was being applied; try again`]);
   expect(await stored(page, surface)).toBe('Late origin words one two');
+});
+
+test('a save given up on that lands after all is the person’s own words, not a move: the next write goes out on it with no sentence (GF-79)', async ({ page }) => {
+  test.setTimeout(BOUND_MS + 30_000);
+  const surface = await SURFACES['a ticket description'](page, 'Lateown');
+  await page.goto(surface.url);
+  const sent = patchesSent(page);
+  await hangFirstPatch(page, surface.path);
+
+  const held = page.waitForRequest((request) => request.method() === 'PATCH');
+  await typeAtEnd(page, surface.testId, ' one');
+  await leave(page);
+  const request = await held;
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED, { timeout: BOUND_MS + 5_000 });
+  await page.request.patch(surface.path, { data: request.postData() ?? '', headers: { 'content-type': 'application/json' } });
+  expect(await stored(page, surface)).toBe('Lateown origin words one');
+
+  await typeAtEnd(page, surface.testId, ' two');
+  await leave(page);
+  await expect.poll(() => stored(page, surface)).toBe('Lateown origin words one two');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await expect(doc(page, surface.testId)).toHaveText('Lateown origin words one two');
+  const refusedOnceThenSentAgain = ['{"description":"Lateown origin words one"}', '{"description":"Lateown origin words one two"}', '{"description":"Lateown origin words one two"}'];
+  expect(sent).toEqual(refusedOnceThenSentAgain);
+});
+
+/** A link on which a save takes `ms` to arrive, so another write to the row can land inside its round trip. */
+async function slowPatches(page: Page, path: string, ms: number) {
+  await page.route(path, async (route) => {
+    if (isPatch(route)) await new Promise((done) => setTimeout(done, ms));
+    await route.continue();
+  });
+}
+
+const LINK_MS = 400;
+
+for (const [name, make] of Object.entries(SURFACES).filter(([n]) => n !== 'an app description')) {
+  test(`two fields of ${name.split(' ')[1]} saved over each other on a slow link both land, with no refusal (GF-79)`, async ({ page }) => {
+    const kind = name.split(' ')[1];
+    const first = await make(page, `Twofields ${kind}`);
+    const other = first.column === 'design' ? { ...first, column: 'description', testId: 'project-description' } : { ...first, column: 'design', testId: 'design' };
+    await page.goto(first.url);
+    await slowPatches(page, first.path, LINK_MS);
+
+    await typeAtEnd(page, first.testId, ' one');
+    await typeAtEnd(page, other.testId, 'two');
+    await leave(page);
+    await expect.poll(() => stored(page, first)).toBe(`Twofields ${kind} origin words one`);
+    await expect.poll(() => stored(page, other)).toBe('two');
+    await expect(refusal(page, first.testId)).toHaveCount(0);
+    await expect(refusal(page, other.testId)).toHaveCount(0);
+  });
+}
+
+test('a label, a move, a title and another writer’s title landing inside a body save on a slow link refuse nothing (GF-79)', async ({ page }) => {
+  const surface = await SURFACES['a ticket description'](page, 'Rowmoves');
+  await page.goto(surface.url);
+  await slowPatches(page, surface.path, LINK_MS);
+
+  await typeAtEnd(page, surface.testId, ' one');
+  await page.getByTestId('add-label').click();
+  await page.getByLabel('add labels, comma-separated').fill('x');
+  await page.getByLabel('add labels, comma-separated').press('Enter');
+  await expect.poll(() => stored(page, surface)).toBe('Rowmoves origin words one');
+  await expect(page.getByTestId('labels-refusal')).toHaveCount(0);
+
+  await typeAtEnd(page, surface.testId, ' two');
+  await page.getByTestId('move-pick').click();
+  await expect.poll(() => stored(page, surface)).toBe('Rowmoves origin words one two');
+  await expect(page.getByTestId('state-refusal')).toHaveCount(0);
+
+  await typeAtEnd(page, surface.testId, ' three');
+  await page.getByTestId('ticket-title').click();
+  await page.getByRole('textbox', { name: 'title' }).fill('Rowmoves ticket renamed');
+  await page.getByRole('textbox', { name: 'title' }).press('ControlOrMeta+Enter');
+  await expect.poll(() => stored(page, surface)).toBe('Rowmoves origin words one two three');
+
+  await page.request.patch(surface.path, { data: { title: 'Rowmoves ticket by agent' }, headers: { 'x-goblin-actor': 'agent' } });
+  await typeAtEnd(page, surface.testId, ' four');
+  await leave(page);
+  await expect.poll(() => stored(page, surface)).toBe('Rowmoves origin words one two three four');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  expect((await read<{ title: string; status: string; labels: string[] }>(page, surface.path))).toMatchObject({ title: 'Rowmoves ticket by agent', status: 'todo', labels: ['x'] });
+});
+
+test('words typed and left before a slow refetch after a move answers still land (GF-79)', async ({ page }) => {
+  const surface = await SURFACES['a ticket description'](page, 'Slowread');
+  await page.goto(surface.url);
+  let slowReads = 2;
+  await page.route(surface.path, async (route) => {
+    if (route.request().method() === 'GET' && slowReads > 0) {
+      slowReads -= 1;
+      await new Promise((done) => setTimeout(done, 1500));
+    }
+    await route.continue();
+  });
+
+  await page.getByTestId('move-pick').click();
+  await typeAtEnd(page, surface.testId, ' one');
+  await leave(page);
+  await expect.poll(() => stored(page, surface), { timeout: 10_000 }).toBe('Slowread origin words one');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
+test('a save judged on words another writer has since replaced is still refused, and the field then says it moved (GF-79)', async ({ page }) => {
+  const surface = await SURFACES['a ticket description'](page, 'Overtakenfield');
+  await page.goto(surface.url);
+  await expect(doc(page, surface.testId)).toHaveText('Overtakenfield origin words');
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+
+  const answered = page.waitForResponse((r) => r.request().method() === 'PATCH');
+  await typeAtEnd(page, surface.testId, ' mine');
+  await leave(page);
+  expect((await answered).status()).toBe(409);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(doc(page, surface.testId)).toHaveText('Overtakenfield origin words mine');
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
 });
 
 async function keptThenMoved(page: Page, name: string) {

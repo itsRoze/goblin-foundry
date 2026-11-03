@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { judgement } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -123,16 +124,19 @@ describe('/api/tickets', () => {
       expect(await snapshot(t.key)).toEqual(before);
     });
 
-    test('an edit judged on an older version of the ticket is the same 409, and one judged on the current version goes through', async () => {
-      const t = await newTicket({ title: 'draft title' });
-      await Bun.sleep(2);
+    test('an edit judged on what its field held goes through, one judged on an older body of that field is the 409, and a write to another field between refuses nothing', async () => {
+      const t = await newTicket({ title: 'draft title', description: 'first words' });
+      const onFirst = { 'x-goblin-judged': judgement('description', 'first words') };
       expect((await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'moved title' }))).status).toBe(200);
+      const current = await req(`/api/tickets/${t.key}`, json('PATCH', { description: 'first words more' }, onFirst));
+      expect([current.status, (await current.json()).description]).toEqual([200, 'first words more']);
       const before = await snapshot(t.key);
-      const late = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'late title' }, { 'x-goblin-updated-at': t.updated_at }));
+      const late = await req(`/api/tickets/${t.key}`, json('PATCH', { description: 'first words late' }, onFirst));
       expect([late.status, (await late.json()).hint]).toEqual([409, `nothing changed — ticket ${t.key} changed while the edit was being applied; try again`]);
       expect(await snapshot(t.key)).toEqual(before);
-      const current = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'late title' }, { 'x-goblin-updated-at': (await read(t.key)).updated_at }));
-      expect([current.status, (await current.json()).title]).toEqual([200, 'late title']);
+      const wrongField = await req(`/api/tickets/${t.key}`, json('PATCH', { description: 'x' }, { 'x-goblin-judged': judgement('title', 'draft title') }));
+      const noShape = await req(`/api/tickets/${t.key}`, json('PATCH', { description: 'x' }, { 'x-goblin-judged': 'yesterday' }));
+      expect([wrongField.status, noShape.status, (await noShape.json()).issues[0].path]).toEqual([422, 422, ['X-Goblin-Judged']]);
     });
   });
 

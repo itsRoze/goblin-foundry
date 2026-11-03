@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { and, asc, eq } from 'drizzle-orm';
+import { judgement } from '@goblin/shared';
 import { makeTestApp } from './harness';
 import { event, ticket } from '../src/schema';
 
@@ -248,17 +249,16 @@ describe('/api/projects', () => {
       expect(await snapshot(`/api/projects/${p.id}`)).toEqual(before);
     });
 
-    test('an edit judged on an older version of the project is the same 409, and one judged on the current version goes through', async () => {
-      const p = await create('/api/projects', { name: 'P' });
-      await Bun.sleep(2);
+    test('an edit judged on what its field held goes through, one judged on an older body of that field is the 409, and a write to another field between refuses nothing', async () => {
+      const p = await create('/api/projects', { name: 'P', design: 'first plan' });
+      const onFirst = { 'x-goblin-judged': judgement('design', 'first plan') };
       expect((await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P moved' }))).status).toBe(200);
+      const current = await req(`/api/projects/${p.id}`, json('PATCH', { design: 'first plan more' }, onFirst));
+      expect([current.status, (await current.json()).design]).toEqual([200, 'first plan more']);
       const before = await snapshot(`/api/projects/${p.id}`);
-      const late = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P late' }, { 'x-goblin-updated-at': p.updated_at }));
+      const late = await req(`/api/projects/${p.id}`, json('PATCH', { design: 'first plan late' }, onFirst));
       expect([late.status, (await late.json()).hint]).toEqual([409, `nothing changed — project ${p.id} changed while the edit was being applied; try again`]);
       expect(await snapshot(`/api/projects/${p.id}`)).toEqual(before);
-      const { updated_at } = await req(`/api/projects/${p.id}`).then((r) => r.json());
-      const current = await req(`/api/projects/${p.id}`, json('PATCH', { name: 'P late' }, { 'x-goblin-updated-at': updated_at }));
-      expect([current.status, (await current.json()).name]).toEqual([200, 'P late']);
     });
   });
 });
