@@ -147,6 +147,7 @@ export function DescriptionField({
       placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}
       value={entity.description}
       onSave={(description, judged) => saving.run(() => patch({ description }, judged))}
+      onSaveState={saving.setFieldState}
       status={saving.state}
       testId={`${kind}-description`}
     />

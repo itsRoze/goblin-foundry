@@ -75,6 +75,7 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
           placeholder="no project design — the shape of this project goes here"
           value={project.design}
           onSave={(body, judged) => design.run(() => patch.mutateAsync({ body: { design: body }, judged }))}
+          onSaveState={design.setFieldState}
           fill
           testId="design"
         />
