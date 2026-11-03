@@ -230,7 +230,7 @@ function ownBody(record: FieldRecord, read: Version): string | null {
   return bodies.find((body) => judgement(record.field, body) === read.judged) ?? bodies.find((body) => body === read.body) ?? null;
 }
 
-/** The read held under the caret, once the caret has left: handed back to apply when nothing is unsaved, otherwise it is the body that moved. */
+/** The read held under the caret, let go: handed back to apply when nothing is unsaved, otherwise it is the body that moved. */
 function unhold(record: FieldRecord): Version | null {
   const held = record.held;
   if (held === null) return null;
@@ -240,6 +240,9 @@ function unhold(record: FieldRecord): Version | null {
   notify(record);
   return null;
 }
+
+/** A read held under unsaved words stops every write, so it is told as the body that moved. */
+const sentenceOf = (record: FieldRecord) => (record.moved !== null || (record.held !== null && unsaved(record)) ? MOVED : record.refusal);
 
 function recordFor(id: FieldId, fetched: Version, save: FieldRecord['save']): FieldRecord {
   const kept = records.get(id);
@@ -284,6 +287,12 @@ function keep(record: FieldRecord) {
   record.refusal = null;
   notify(record);
 }
+
+/** `⌘⏎` and `done` answer the sentence with the caret still in the field, where a keystroke does not: it would write over a body nobody has read. */
+const keepYours = (record: FieldRecord) => {
+  if (unsaved(record)) unhold(record);
+  keep(record);
+};
 
 /** A mount's subscription to its record, which is also what keeps the record on the map while the mount lasts. */
 function watch(id: FieldId, record: FieldRecord, tell: () => void) {
@@ -371,7 +380,7 @@ export function MarkdownField({
   const editorRef = useRef<Editor | null>(null);
   const [empty, setEmpty] = useState(record.live.trim() === '');
   const subscribe = useCallback((tell: () => void) => watch(id, record, tell), [id, record]);
-  const refusal = useSyncExternalStore(subscribe, () => (record.moved === null ? record.refusal : MOVED));
+  const refusal = useSyncExternalStore(subscribe, () => sentenceOf(record));
   const saveState = useSyncExternalStore(subscribe, () => saveStateOf(record));
   useEffect(() => onSaveState(saveState), [onSaveState, saveState]);
   useEffect(
@@ -419,6 +428,7 @@ export function MarkdownField({
   }, [apply, fetched, record]);
 
   const take = useCallback((swap?: Swap) => {
+    if (unsaved(record)) unhold(record);
     if (record.moved === null) return;
     apply(record.moved, swap);
     record.moved = null;
@@ -482,7 +492,7 @@ export function MarkdownField({
           }
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
-            keep(record);
+            keepYours(record);
             (view.dom as HTMLElement).blur();
             return true;
           }
@@ -596,7 +606,7 @@ export function MarkdownField({
     >
       <EditorContent editor={editor} className="gf-md-content" />
       {editor && engaged && (
-        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} done={() => keep(record)} />
+        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} done={() => keepYours(record)} />
       )}
       {refusal && (
         <p className="gf-refusal" role="alert">
