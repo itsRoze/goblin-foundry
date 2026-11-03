@@ -1064,6 +1064,58 @@ test('letters typed under a real rewrite, held until the caret leaves, are never
   await expect(aboutSaving(page)).toHaveText('saved');
 });
 
+async function typedUnderARewrite(page: Page, name: string) {
+  const surface = await helloWorld(page, name);
+  await typeAtEnd(page, surface.testId, ' one');
+  await expect(aboutSaving(page)).toHaveText('saved');
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+  await refetchUnderTheCaret(page, surface);
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await page.keyboard.type(' two');
+  return surface;
+}
+
+test('letters typed under a rewrite are told so with the caret still in the field, and ⌘⏎ saves them (GF-105)', async ({ page }) => {
+  const surface = await typedUnderARewrite(page, 'Told keep');
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await page.waitForTimeout(BEAT_MS);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect.poll(() => stored(page, surface)).toBe('hello world one two');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await expect(aboutSaving(page)).toHaveText('saved');
+});
+
+test('letters typed under a rewrite are told so, and esc takes the rewrite (GF-105)', async ({ page }) => {
+  const surface = await typedUnderARewrite(page, 'Told take');
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+
+  await page.keyboard.press('Escape');
+  await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await page.waitForTimeout(BEAT_MS);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+
+  await doc(page, surface.testId).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('hello world one two');
+  await expect.poll(() => stored(page, surface)).toBe('hello world one two');
+});
+
+test('letters typed under a rewrite and undone say nothing, and letting go takes the rewrite (GF-105)', async ({ page }) => {
+  const surface = await typedUnderARewrite(page, 'Told undone');
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('hello world one');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await clickAway(page);
+  await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+  await page.waitForTimeout(BEAT_MS);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+});
+
 test('letters held back by a rewrite go out once the rewrite is put back, with no second act (GF-104)', async ({ page }) => {
   const surface = await helloWorld(page, 'Put back');
   await typeAtEnd(page, surface.testId, ' one');
