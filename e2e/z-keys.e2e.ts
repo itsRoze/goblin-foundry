@@ -478,9 +478,17 @@ test('a held ⏎ on the app chip opens its popover and picks nothing, not the `a
   await expect(page).toHaveURL(/project_id=null/);
 });
 
-async function seedApp(page: Page, name: string) {
+async function seedApp(page: Page, name: string): Promise<number> {
   const response = await page.request.post('/api/apps', { data: { name } });
   expect(response.ok(), await response.text()).toBe(true);
+  return ((await response.json()) as { id: number }).id;
+}
+
+async function paletteEsc(page: Page) {
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
 }
 
 test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps the filter, and it starts on `any` only when nothing is (GF-103)', async ({ page }) => {
@@ -547,10 +555,9 @@ test('⏎ ⏎ on a project chip whose address names no app writes nothing (GF-10
   await expect(page).toHaveURL(new RegExp(`/\\?project_id=${id}$`));
 });
 
-test('`any` lifts a value the API refused, by `⏎ ⏎` or a click, since `×` has nothing to clear there (GF-103)', async ({ page }) => {
+test('`any` lifts a value the API refused, by `⏎ ⏎` or a click (GF-103)', async ({ page }) => {
   await seed(page, 'Popbad');
-  const app = await page.request.post('/api/apps', { data: { name: 'Popbad home' } });
-  const id = ((await app.json()) as { id: number }).id;
+  const id = await seedApp(page, 'Popbad home');
   const cards = page.locator('[data-testid^="card-"]');
   for (const [address, which, after] of [
     ['/?project_id=abc', 'project', '/'],
@@ -567,8 +574,8 @@ test('`any` lifts a value the API refused, by `⏎ ⏎` or a click, since `×` h
       await expect(page.getByTestId(`pop-${which}`).getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'true');
       if (how === 'keys') await page.keyboard.press('Enter');
       else await page.getByTestId(`pick-${which}-any`).click();
+      await expect(page).toHaveURL(after);
       await expect(page.getByTestId(`pop-${which}`)).toHaveCount(0);
-      expect(page.url().replace(/^https?:\/\/[^/]+/, '')).toBe(after);
       await expect(page.getByTestId('filter-refusal')).toHaveCount(0);
       await expect(chip).not.toHaveClass(/is-bad/);
     }
@@ -579,16 +586,13 @@ test('`any` lifts a value the API refused, by `⏎ ⏎` or a click, since `×` h
   await expect(cards.first()).toBeVisible();
 });
 
-test('`any` clears `none` and an id nothing has any more, and ⏎ ⏎ keeps them, since the API took both; a toggle lifts a refused `status` or `label` (GF-103)', async ({ page }) => {
-  await page.request.post('/api/tickets', { data: { title: 'Popbad labelled', labels: ['popbad'] } });
-  for (const [address, row] of [
-    ['/?project_id=null', 'none'],
-    ['/?app_id=null', 'none'],
-    ['/?project_id=999999', '#999999'],
-    ['/?app_id=999999', '#999999'],
+test('`any` clears `none` and an id nothing has any more, and ⏎ ⏎ keeps them, since the API took both (GF-103)', async ({ page }) => {
+  for (const [address, which, row] of [
+    ['/?project_id=null', 'project', 'none'],
+    ['/?app_id=null', 'app', 'none'],
+    ['/?project_id=999999', 'project', '#999999'],
+    ['/?app_id=999999', 'app', '#999999'],
   ] as const) {
-    const which = address.includes('project') ? 'project' : 'app';
-    const path = address.slice(1);
     const chip = page.getByTestId(`chip-${which}`);
     await page.goto(address);
     await chip.focus();
@@ -596,27 +600,30 @@ test('`any` clears `none` and an id nothing has any more, and ⏎ ⏎ keeps them
     await expect(page.getByTestId(`pop-${which}`).getByRole('option', { name: row })).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('Enter');
     await expect(page.getByTestId(`pop-${which}`)).toHaveCount(0);
-    expect(page.url().replace(/^https?:\/\/[^/]+/, '')).toBe(`/${path}`);
+    await expect(page).toHaveURL(address);
 
     await chip.click();
     await page.getByTestId(`pick-${which}-any`).click();
     await expect(chip).toHaveText(which);
-    expect(page.url().replace(/^https?:\/\/[^/]+/, '')).toBe('/');
+    await expect(page).toHaveURL('/');
   }
+});
 
+test('a toggle lifts a refused `status` or `label` (GF-103)', async ({ page }) => {
+  await page.request.post('/api/tickets', { data: { title: 'Popbad labelled', labels: ['popbad'] } });
   await page.goto('/?status=nope');
   await expect(page.getByTestId('filter-refusal')).toContainText('status: nope is not a status');
   await page.getByTestId('chip-status').click();
   await page.getByTestId('check-backlog').click();
   await expect(page.getByTestId('filter-refusal')).toHaveCount(0);
-  await expect(page).toHaveURL(/\/\?status=todo,planning,ready,building,review,done$/);
+  await expect(page).toHaveURL('/?status=todo,planning,ready,building,review,done');
 
   await page.goto('/?label=needs%20info');
   await expect(page.getByTestId('filter-refusal')).toContainText('needs info is not one word');
   await page.getByTestId('chip-label').click();
   await page.getByTestId('check-label-popbad').click();
   await expect(page.getByTestId('filter-refusal')).toHaveCount(0);
-  await expect(page).toHaveURL(/\/\?label=popbad$/);
+  await expect(page).toHaveURL('/?label=popbad');
 });
 
 test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page }) => {
@@ -926,10 +933,7 @@ test('palette esc hands the focus back to what held it, and leaves it on `body` 
   await page.setViewportSize({ width: 390, height: 300 });
   await page.getByTestId('chip-status').click();
   await expect(group).toBeFocused();
-  await page.keyboard.press('ControlOrMeta+k');
-  await expect(page.getByTestId('palette')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await paletteEsc(page);
   await expect(group).toBeFocused();
 });
 
@@ -958,20 +962,14 @@ test('palette esc leaves the page where it was, and the focus on `body` when wha
   });
   expect(cut).toBeGreaterThan(0);
   await expect(opener).toBeInViewport();
-  await page.keyboard.press('ControlOrMeta+k');
-  await expect(page.getByTestId('palette')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await paletteEsc(page);
   await expect(page.locator('body')).toBeFocused();
   expect(await page.evaluate(() => window.scrollY)).toBe(cut);
 
   await opener.focus();
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(opener).toBeInViewport({ ratio: 1 });
-  await page.keyboard.press('ControlOrMeta+k');
-  await expect(page.getByTestId('palette')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await paletteEsc(page);
   await expect(opener).toBeFocused();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
@@ -980,14 +978,14 @@ test('palette esc gives a card back only when the kanban has not clipped it side
   const first = await seed(page, 'Popside first');
   const near = await page.request.post('/api/tickets', { data: { title: 'Popside near', status: 'todo' } });
   expect(near.ok(), await near.text()).toBe(true);
-  const home = await page.request.post('/api/apps', { data: { name: 'Popside home' } });
-  const far = await page.request.post('/api/tickets', { data: { title: 'Popside far', status: 'building', simple: true, app_id: ((await home.json()) as { id: number }).id } });
+  const app_id = await seedApp(page, 'Popside home');
+  const far = await page.request.post('/api/tickets', { data: { title: 'Popside far', status: 'building', simple: true, app_id } });
   expect(far.ok(), await far.text()).toBe(true);
   const farKey = ((await far.json()) as { key: string }).key;
   await page.setViewportSize({ width: 1000, height: 700 });
 
-  /** The Cursor on the first card, the focus on `title`, and the scroller at what `by` reads off the two boxes at rest. */
-  const arrange = async (title: string, by: (at: { x: number; width: number }, in_: { x: number; width: number }) => number) => {
+  type Box = { x: number; width: number };
+  const arrange = async (title: string, scrollLeft: (atRest: Box, cols: Box) => number) => {
     await board(page, 'Popside');
     await expect(card(page, title)).toBeVisible();
     await page.keyboard.press('j');
@@ -995,34 +993,33 @@ test('palette esc gives a card back only when the kanban has not clipped it side
     await card(page, title).focus();
     const cols = page.locator('.gf-cols');
     await cols.evaluate((el) => (el.scrollLeft = 0));
-    await cols.evaluate((el, x) => (el.scrollLeft = x), by((await card(page, title).boundingBox())!, (await cols.boundingBox())!));
-    return (await card(page, title).boundingBox())!;
+    const box = (await cols.boundingBox())!;
+    await cols.evaluate((el, x) => (el.scrollLeft = x), scrollLeft((await card(page, title).boundingBox())!, box));
+    return { at: (await card(page, title).boundingBox())!, colsRight: box.x + box.width };
   };
-  const paletteEsc = async () => {
-    await page.keyboard.press('ControlOrMeta+k');
-    await expect(page.getByTestId('palette')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('palette')).toHaveCount(0);
+  const opensTheCursorsCard = async () => {
+    await paletteEsc(page);
+    await expect(page.locator('body')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/tickets/${first}$`));
   };
 
-  const mostlyOut = await arrange('Popside near', (at) => at.x + at.width - 4);
-  expect(mostlyOut.x + mostlyOut.width).toBe(4);
-  await paletteEsc();
-  await expect(page.locator('body')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/tickets/${first}$`));
+  const hidden = await arrange('Popside near', (at) => at.x + at.width - 4);
+  expect(Math.round(hidden.at.x + hidden.at.width)).toBe(4);
+  await opensTheCursorsCard();
+
+  const sliver = await arrange('Popside near', (at, cols) => at.x + at.width - (cols.x + 40));
+  expect(Math.round(sliver.at.x + sliver.at.width)).toBe(71);
+  await opensTheCursorsCard();
 
   const atTheEdge = await arrange('Popside far', (at, cols) => at.x + at.width - (cols.x + cols.width) - 2);
-  expect(atTheEdge.x).toBeGreaterThan(0);
-  expect(atTheEdge.x + atTheEdge.width).toBeLessThan(1000);
-  expect(atTheEdge.x + atTheEdge.width).toBeCloseTo(969 + 2, 0);
-  await paletteEsc();
-  await expect(page.locator('body')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/tickets/${first}$`));
+  expect(atTheEdge.at.x).toBeGreaterThan(0);
+  expect(atTheEdge.at.x + atTheEdge.at.width).toBeLessThan(1000);
+  expect(Math.round(atTheEdge.at.x + atTheEdge.at.width - atTheEdge.colsRight)).toBe(2);
+  await opensTheCursorsCard();
 
   await arrange('Popside far', (at, cols) => at.x + at.width - (cols.x + cols.width) + 40);
-  await paletteEsc();
+  await paletteEsc(page);
   await expect(card(page, 'Popside far')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/tickets/${farKey}$`));

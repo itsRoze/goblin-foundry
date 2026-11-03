@@ -33,14 +33,11 @@ const PAGES: { label: string; to: string }[] = [
   { label: 'settings', to: '/settings' },
 ];
 
-/**
- * Whether the window, or an ancestor that scrolls or clips, cuts any of it off: the kanban scrolls sideways, and a focus that
- * cannot be seen takes `⏎` from the Cursor. A pixel is rounding: the browser's own scroll to a focused popover stops 0.25px short.
- */
 function isClipped(el: HTMLElement): boolean {
   const at = el.getBoundingClientRect();
-  const cuts = (box: { top: number; left: number; bottom: number; right: number }) =>
-    at.top < box.top - 1 || at.left < box.left - 1 || at.bottom > box.bottom + 1 || at.right > box.right + 1;
+  // a pixel is rounding: the browser's own scroll to a focused popover stops a fraction of one short
+  const cuts = (edges: { top: number; left: number; bottom: number; right: number }) =>
+    at.top < edges.top - 1 || at.left < edges.left - 1 || at.bottom > edges.bottom + 1 || at.right > edges.right + 1;
   if (cuts({ top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth })) return true;
   for (let box = el.parentElement; box && box !== document.body; box = box.parentElement)
     if (getComputedStyle(box).overflow !== 'visible' && cuts(box.getBoundingClientRect())) return true;
