@@ -79,13 +79,13 @@ export function FilterBar({
   }, [escapeRef, open, close]);
   // an open popover is the topmost open thing whatever holds the focus (GF-98), so the bare keys are not the board's while it
   // is open; a prevented key is a claimed one (useKeyMap, keys.tsx), and this runs ahead of every map. A modified character
-  // stays global (`⌘K`, `⌘1–6`), an unbound named key (Tab, F5) stays the browser's, a field keeps typing, and a focused
-  // button or link answers `⏎` and `space` itself (GF-92, GF-103)
+  // stays global (`⌘K`, `⌘1–6`), an unbound named key (Tab, F5) stays the browser's, a field keeps typing, no map binds
+  // `space` so a focused control keeps it, and a focused button or link answers `⏎` itself (GF-92, GF-103)
   useEffect(() => {
     if (open === null) return;
     const hold = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
-      if ((e.key === 'Enter' || e.key === ' ') && holdsEnter(e.target)) return;
+      if (e.key === ' ' || (e.key === 'Enter' && holdsEnter(e.target))) return;
       if (e.key.length === 1 || e.key === 'Enter' || e.key.startsWith('Arrow')) e.preventDefault();
     };
     window.addEventListener('keydown', hold, true);
@@ -339,13 +339,18 @@ function SearchRows({
   const needle = query.trim().toLowerCase();
   const hits = rows.filter((r) => needle === '' || r.label.toLowerCase().includes(needle));
   const at = Math.min(cursor ?? Math.max(hits.findIndex((r) => r.value === chosen), 0), Math.max(hits.length - 1, 0));
-  // the list scrolls inside itself, and a highlight below its fold is an armed row nobody can read
+  const armed = hits[at] && optionId(hits[at]);
+  // the list scrolls inside itself, and a highlight below its fold is an armed row nobody can read; the pointer is already on the row it highlights
+  const byPointer = useRef(false);
   useLayoutEffect(() => {
-    if (hits[at]) document.getElementById(optionId(hits[at]))?.scrollIntoView({ block: 'nearest' });
-  }, []);
+    if (armed && !byPointer.current) document.getElementById(armed)?.scrollIntoView({ block: 'nearest' });
+    byPointer.current = false;
+  }, [armed, needle]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') return e.preventDefault(), onClose(true);
+    // as the card menu's does: the keys and their strip go with the focus, and the browser's `Tab` moves on from the chip
+    if (e.key === 'Tab') return onClose(true);
     if (e.key === 'Enter') {
       e.preventDefault();
       // a repeat is the held `⏎` that opened the popover from its chip (GF-82)
@@ -389,7 +394,10 @@ function SearchRows({
               aria-selected={i === at}
               className={`gf-row gf-picker-hit${i === at ? ' is-on' : ''}`}
               data-testid={`pick-${label}-${CHOICE_KEY(r)}`}
-              onMouseMove={() => setCursor(i)}
+              onMouseMove={() => {
+                byPointer.current = i !== at;
+                setCursor(i);
+              }}
               onClick={() => onPick(r.value, false)}
             >
               <span className="gf-pick-title">{r.label}</span>
@@ -489,6 +497,7 @@ function CheckRows<T extends string>({
 
   // a held `⏎` that opened the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab') return onClose(true);
     if (e.key !== 'Escape' && e.key !== 'Enter' && e.key !== ' ' && !e.key.startsWith('Arrow')) return;
     e.preventDefault();
     if (e.key === 'Escape') return onClose(true);
