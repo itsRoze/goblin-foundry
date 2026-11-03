@@ -427,7 +427,6 @@ test('esc closes a filter popover that lost the focus and hands the focus back t
   await expect(pop).toBeVisible();
   await expect(page).toHaveURL(/\?q=Popesc$/);
 
-  // the palette takes the focus and hands it back when it closes; the popover is still open, so `esc` is its
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByTestId('palette')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -479,7 +478,6 @@ test('a held ⏎ on the app chip opens its popover and picks nothing, not the `a
   await expect(page).toHaveURL(/project_id=null/);
 });
 
-/** An app the pickers can list, through the API so a spec on its own still has one. */
 async function seedApp(page: Page, name: string) {
   const response = await page.request.post('/api/apps', { data: { name } });
   expect(response.ok(), await response.text()).toBe(true);
@@ -510,7 +508,6 @@ test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps t
   await expect(chip).toContainText('Reopzel');
   expect(page.url()).toBe(address);
 
-  // `↓` starts from the highlight, and a query still starts from the top of what it found
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
   await expect(pop.getByRole('option', { name: 'Reopzel' })).toHaveAttribute('aria-selected', 'false');
@@ -520,7 +517,6 @@ test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps t
   await expect(chip).toHaveText('app');
   await expect(page).toHaveURL(/\?q=Popreopen$/);
 
-  // `none` is a value too
   await page.getByTestId('chip-project').focus();
   await page.keyboard.press('Enter');
   await page.getByTestId('pop-project').getByRole('combobox').fill('none');
@@ -563,7 +559,6 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   await expect(set).toHaveAttribute('aria-selected', 'true');
   await expect(set).toBeInViewport({ ratio: 0.9 });
 
-  // the armed row stays in sight as a query or `↓` moves it, so `⏎` picks what can be read
   await page.getByTestId('pop-app').getByRole('combobox').fill('zlong 0');
   const first = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 01' });
   await expect(first).toHaveAttribute('aria-selected', 'true');
@@ -574,7 +569,6 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   await expect(ninth).toBeInViewport({ ratio: 0.9 });
   await page.keyboard.press('Escape');
 
-  // the list scrolls, never the page under the press that opened it
   await page.setViewportSize({ width: 390, height: 240 });
   await page.getByTestId('chip-app').click();
   await expect(page.getByTestId('pop-app')).toBeVisible();
@@ -608,7 +602,6 @@ test('a query in a reopened picker scrolls to the row it arms, so ⏎ picks a ro
   await page.keyboard.press('ArrowDown');
   await expect(row('Strzel 00')).toBeInViewport({ ratio: 0.9 });
 
-  // a window shorter than the list: the page follows the keys too, so `⏎` still picks what can be read
   await page.setViewportSize({ width: 390, height: 300 });
   for (let n = 0; n < 6; n++) await page.keyboard.press('ArrowDown');
   await expect(row('Strzel 06')).toHaveAttribute('aria-selected', 'true');
@@ -741,14 +734,12 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await expect(only).toBeVisible();
   const pop = page.getByTestId('pop-app');
 
-  // a press on the popover's own key strip drops the focus to `body`
   await page.getByTestId('chip-app').click();
   await pop.locator('.gf-tile-keys').click();
   await expect(page.locator('body')).toBeFocused();
   await page.keyboard.press('j');
   await page.keyboard.press('ArrowDown');
   await expect(only).not.toHaveClass(/is-cursor/);
-  // and `Tab` is still the way out
   await page.keyboard.press('Tab');
   await expect(pop).toHaveCount(0);
   await page.getByTestId('chip-app').click();
@@ -760,7 +751,6 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await expect(pop).toHaveCount(0);
   await expect(page.getByTestId('chip-app')).toBeFocused();
 
-  // with a Cursor behind it, `⏎` on `body` does not open the card
   await page.keyboard.press('j');
   await expect(only).toHaveClass(/is-cursor/);
   await page.getByTestId('chip-app').click();
@@ -774,7 +764,6 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await expect(pop).toHaveCount(0);
   await expect(only).toHaveClass(/is-cursor/);
 
-  // the focus on another control: a bare key is still held, a checkbox keeps `space`, that chip still answers `⏎`, and a field still types
   await page.keyboard.press('Escape');
   await expect(only).not.toHaveClass(/is-cursor/);
   await page.getByTestId('chip-status').click();
@@ -880,7 +869,6 @@ test('palette esc leaves the page where it was, and the focus on `body` when wha
   expect(await page.evaluate(() => window.scrollY)).toBe(y);
   await expect(page.locator('body')).toBeFocused();
 
-  // an opener cut by the window's edge is still in view: it takes the focus, and the page stays where it is
   await opener.focus();
   const cut = await page.evaluate(() => {
     const top = document.querySelector('[data-testid="hint-write"]')!.getBoundingClientRect().top + window.scrollY;

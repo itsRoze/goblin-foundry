@@ -78,8 +78,8 @@ export function FilterBar({
     };
   }, [escapeRef, open, close]);
   // the popover is the topmost open thing whatever holds the focus (GF-98), so its hold is too: a prevented key is a claimed one
-  // (useKeyMap), and capture runs ahead of every map. No map binds `space`, so a focused control keeps it, and `body` would only scroll the page with it. `Tab` closes it, as it
-  // does the card menu, and the browser's `Tab` moves on from the chip (GF-92, GF-103)
+  // (useKeyMap), and capture runs ahead of every map. No map binds `space`, so a focused control keeps it, and `body` would only scroll the page with it. `Tab` from the bar or `body` closes it,
+  // as it does the card menu, and the browser's `Tab` moves on from the chip (GF-92, GF-103)
   useEffect(() => {
     if (open === null) return;
     const hold = (e: KeyboardEvent) => {
