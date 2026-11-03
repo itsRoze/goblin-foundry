@@ -16,7 +16,7 @@ import {
 import { useOffersTicket } from '../current';
 import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
-import { formKeys, useFocusOnClose, useKey } from '../keys';
+import { formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
@@ -58,14 +58,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = useRefusal<string>();
-  /** How many times the state tile's line has been spoken, so the same sentence twice scrolls into view twice. */
   const [said, setSaid] = useState(0);
   const nav = useNavigate();
   const { setRefusal: setStateRefusal } = state;
   /** One picker at a time, and `d` is another way to open one, so which is open lives up here. */
   const [picking, setPicking] = useState<Direction | null>(null);
-  /** The one question the tracker asks: `start` on a blocked ticket, whether the button or the key asked it. */
-  const [confirming, setConfirming] = useState(false);
+  const [asking, setAsking] = useState<{ verb: TransitionName } | null>(null);
   const focusTile = useFocusTile();
   const branchCopy = useBranchCopy(ticket);
   const implementationInput = useRef<HTMLInputElement>(null);
@@ -85,7 +83,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
    */
   const { guard } = useBulkLock(ticket);
   const edit = useCallback((body: PatchTicketBody, judged?: string) => guard(() => patch.mutateAsync({ key: ticket.key, body, judged })), [guard, patch, ticket.key]);
-  const sayInState = useCallback(
+  /** A refusal a key just raised: the state tile takes the desk focus and its line comes into view. */
+  const raiseInState = useCallback(
     (text: string) => {
       focusTile('state');
       setStateRefusal(text);
@@ -93,17 +92,16 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     },
     [focusTile, setStateRefusal],
   );
-  /** Every write the state tile makes reports its refusal in the tile's one line. */
   const inState = useCallback(
     async (write: () => Promise<unknown>) => {
       setStateRefusal(null);
       try {
         await write();
       } catch (e) {
-        sayInState(refusalLine(e));
+        setStateRefusal(refusalLine(e));
       }
     },
-    [sayInState, setStateRefusal],
+    [setStateRefusal],
   );
   // `e` is a jump into the field, not a mode: there is nothing to leave (DESIGN.md Interaction)
   useKey('e', focusEditor);
@@ -126,14 +124,14 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const press = useCallback(
     (name: TransitionName) => {
       const asked = lifecycle.named(ticket.status, name);
-      if (!asked.ok) return sayInState(asked.refusal);
+      if (!asked.ok) return raiseInState(asked.refusal);
       if (asksBeforeBlocked(name, ticket)) {
         focusTile('state');
-        return setConfirming(true);
+        return setAsking({ verb: name });
       }
       runEdge(asked.edge);
     },
-    [ticket, runEdge, sayInState, focusTile],
+    [ticket, runEdge, raiseInState, focusTile],
   );
   /** `d` here is the dependencies tile's `+ add` on the `blocked by` side, pressed for you. */
   const openBlockedBy = useCallback(() => {
@@ -183,8 +181,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
 
   // `esc` closes what this screen holds open before the shell walks back
   useEscape(() => {
-    if (confirming) {
-      setConfirming(false);
+    if (asking !== null) {
+      setAsking(null);
       return true;
     }
     if (picking === null) return false;
@@ -318,12 +316,13 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onSimple={(simple) => inState(() => edit({ simple }))}
         onTrash={() => void trash()}
         onBlockedBy={openBlockedBy}
-        confirming={confirming}
-        onCancelConfirm={() => setConfirming(false)}
+        asking={asking}
+        onCancelConfirm={() => setAsking(null)}
         onConfirm={() => {
-          setConfirming(false);
-          const start = lifecycle.named(ticket.status, 'start');
-          if (start.ok) runEdge(start.edge);
+          if (asking === null) return;
+          setAsking(null);
+          const asked = lifecycle.named(ticket.status, asking.verb);
+          if (asked.ok) runEdge(asked.edge);
         }}
         refusal={state.refusal}
         said={said}
@@ -456,7 +455,7 @@ function DependencySection({
       {/* the control sits beside its label, never across the tile from it: this tile is full-width on a wide desk */}
       <h3 className="gf-dep-head">
         <span>{label}</span>
-        <button ref={add} type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onClick={onOpen}>
+        <button ref={add} type="button" className="gf-dep-add" aria-expanded={picking} data-testid={`add-${direction}`} onKeyDown={ignoreHeldEnter} onClick={onOpen}>
           {picking ? 'close' : '+ add'}
         </button>
         <span className="gf-dep-rule" />
@@ -639,7 +638,7 @@ function StateTile({
   onSimple,
   onTrash,
   onBlockedBy,
-  confirming,
+  asking,
   onConfirm,
   onCancelConfirm,
   refusal,
@@ -652,16 +651,15 @@ function StateTile({
   onBlockedBy: () => void;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
-  confirming: boolean;
+  asking: { verb: TransitionName } | null;
   onConfirm: () => void;
   onCancelConfirm: () => void;
   refusal: string | null;
-  /** Times the line has been spoken, so a sentence that repeats the last still scrolls into view. */
   said: number;
 }) {
   const edges = lifecycle.from(ticket.status);
   const start = useRef<HTMLButtonElement>(null);
-  useFocusOnClose(confirming, start);
+  useFocusOnClose(asking !== null, start);
   const line = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     line.current?.scrollIntoView({ block: 'nearest' });
@@ -703,12 +701,12 @@ function StateTile({
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
-            <button key={e.name} ref={e.name === 'start' ? start : undefined} className="gf-btn" data-testid={`move-${e.name}`} onClick={() => onPress(e.name)}>
+            <button key={e.name} ref={e.name === 'start' ? start : undefined} className="gf-btn" data-testid={`move-${e.name}`} onKeyDown={ignoreHeldEnter} onClick={() => onPress(e.name)}>
               {e.name}
             </button>
           ))}
       </div>
-      {confirming && <Confirm text={blockedWarning(ticket.blocked_by)} verb="start" testId="confirm-start" onCancel={onCancelConfirm} onConfirm={onConfirm} />}
+      {asking && <Confirm asked={asking} text={blockedWarning(ticket.blocked_by)} verb={asking.verb} testId="confirm-start" onCancel={onCancelConfirm} onConfirm={onConfirm} />}
       {/* next to what it gates (approve, among the arrows above), not under the ways of stopping */}
       <label className="gf-toggle">
         <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all

@@ -120,6 +120,8 @@ export function useSelecting(): Selecting {
 export interface BulkAsk {
   act: (action: BulkAction) => void;
   question: Question | null;
+  /** The press the question came from, one object per ask, while `question` is redrawn from the members as they stand (`useFocusOnAsk`). */
+  asked: object | null;
   confirm: () => void;
   cancel: () => void;
 }
@@ -173,7 +175,7 @@ export function useBulkAction(members: readonly Member[]): BulkAsk {
   }, [asking, members, submit]);
   const cancel = useCallback(() => setAsking(null), []);
 
-  return { act, question: asking === null ? null : questionFor(asking.action, members), confirm, cancel };
+  return { act, question: asking === null ? null : questionFor(asking.action, members), asked: asking, confirm, cancel };
 }
 
 /**
