@@ -6,7 +6,7 @@
  */
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
-import { ticketKey } from '@goblin/shared';
+import { JUDGED_HEADER, ticketKey } from '@goblin/shared';
 import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
 import { conflict, failed } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
@@ -18,17 +18,15 @@ import { readSettings } from './settings';
  * save the GUI gave up on cannot land late over one it sent after (GF-79). The
  * CLI sends none and is pinned to the read here, as before.
  */
-const JUDGED = 'x-goblin-updated-at';
-
 export function asJudged<Row extends { updated_at: string }>(c: Context, row: Row): Row {
-  const at = c.req.header(JUDGED);
+  const at = c.req.header(JUDGED_HEADER);
   return at === undefined ? row : { ...row, updated_at: at };
 }
 
 /**
- * `row` as it was read: `status`, `updated_at` and whether it is in the trash
- * must still be what the route judged, or the statement matches nothing and
- * the batch is `stale`.
+ * `row` as it was read, or as the client judged it (`asJudged`): `status`,
+ * `updated_at` and whether it is in the trash must still be what was judged,
+ * or the statement matches nothing and the batch is `stale`.
  */
 export function pinnedTicketWrite(db: Db, row: TicketRow, set: Partial<TicketRow>, at: string, what = `ticket ${row.id}`): AtomicWrite {
   return {

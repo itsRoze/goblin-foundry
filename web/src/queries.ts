@@ -167,10 +167,10 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
  * card it is on, so the key travels with the body rather than with the hook.
  */
 export const usePatchTicket = () => {
-  const edit = useCachedEdit();
+  const cache = useCachedEdit();
   return useWrite(
     ({ key, body, judged }: Judged<PatchTicketBody> & { key: string }) => api.patch(`/api/tickets/${key}`, body, judged).then((r) => Landed.parse(r)),
-    ({ key, body }, landed) => edit<Ticket>(['ticket'], { ...body, ...landed }, (t) => t.key === key),
+    ({ key, body }, landed) => cache<Ticket>(['ticket'], { ...body, ...landed }, (t) => t.key === key),
   );
 };
 /** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
@@ -216,18 +216,18 @@ export function useTransition() {
 
 export const useCreateApp = () => useWrite((body: CreateAppBody) => api.post('/api/apps', body).then((r) => AppSchema.parse(r)));
 export const usePatchApp = (id: number) => {
-  const edit = useCachedEdit();
+  const cache = useCachedEdit();
   return useWrite(
     ({ body, judged }: Judged<PatchAppBody>) => api.patch(`/api/apps/${id}`, body, judged).then((r) => Landed.parse(r)),
-    ({ body }, landed) => edit<App>(['app', id], { ...body, ...landed }, () => true),
+    ({ body }, landed) => cache<App>(['app', id], { ...body, ...landed }, () => true),
   );
 };
 export const useCreateProject = () => useWrite((body: CreateProjectBody) => api.post('/api/projects', body).then((r) => ProjectSchema.parse(r)));
 export const usePatchProject = (id: number) => {
-  const edit = useCachedEdit();
+  const cache = useCachedEdit();
   return useWrite(
     ({ body, judged }: Judged<PatchProjectBody>) => api.patch(`/api/projects/${id}`, body, judged).then((r) => Landed.parse(r)),
-    ({ body }, landed) => edit<Project>(['project', id], { ...body, ...landed }, () => true),
+    ({ body }, landed) => cache<Project>(['project', id], { ...body, ...landed }, () => true),
   );
 };
 

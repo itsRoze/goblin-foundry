@@ -19,7 +19,7 @@ const read = async <T>(page: Page, path: string) => (await (await page.request.g
 const expectTitle = (page: Page, text: string) => expect(page.getByTestId('page-title')).toContainText(text);
 
 const UNREACHED = 'could not reach the API; try again';
-const MOVED = 'changed elsewhere while unsaved; e, then ⌘⏎ keeps your words or esc takes theirs';
+const MOVED = 'changed elsewhere while unsaved; in the field, ⌘⏎ saves yours, esc takes theirs';
 
 // past IDLE_MS in web/src/editor.tsx: a write the editor means to send has gone out by then
 const BEAT_MS = 1000;
@@ -36,6 +36,15 @@ function patchesSent(page: Page) {
     if (request.method() === 'PATCH') sent.push(request.postData() ?? '');
   });
   return sent;
+}
+
+/** The first PATCH to `path` is neither answered nor failed: it stays open until the page gives up on it. Later ones go through. */
+async function hangFirstPatch(page: Page, path: string) {
+  let hang = true;
+  await page.route(path, (route) => {
+    if (!isPatch(route) || !hang) return route.continue();
+    hang = false;
+  });
 }
 
 /** What the tab going away does: the page's own listeners fire on the document's visibility, not on a window event. */
@@ -179,12 +188,7 @@ test('a save the API never answers is given up on, says so, and the next write g
   const surface = await SURFACES['a ticket description'](page, 'Hung');
   await page.goto(surface.url);
   const sent = patchesSent(page);
-  // the first PATCH is neither answered nor failed: it stays open until the page gives up on it
-  let hang = true;
-  await page.route(surface.path, (route) => {
-    if (!isPatch(route) || !hang) return route.continue();
-    hang = false;
-  });
+  await hangFirstPatch(page, surface.path);
 
   await typeAtEnd(page, surface.testId, ' one');
   await leave(page);
@@ -205,11 +209,7 @@ test('a save that never answers, left and come back to, is given up on in its fi
   const first = await SURFACES['a ticket description'](page, 'Hungaway');
   const second = await SURFACES['a ticket description'](page, 'Hungbeside');
   await onFirstWithSecondAhead(page, first, second);
-  let hang = true;
-  await page.route(first.path, (route) => {
-    if (!isPatch(route) || !hang) return route.continue();
-    hang = false;
-  });
+  await hangFirstPatch(page, first.path);
 
   const hung = page.waitForRequest((request) => request.method() === 'PATCH');
   await typeAtEnd(page, first.testId, ' one');
@@ -233,11 +233,7 @@ test('a save given up on cannot land over a later one: the API refuses it on the
   const key = surface.path.split('/').at(-1);
   const judgedAt = (await read<{ updated_at: string }>(page, surface.path)).updated_at;
   await page.goto(surface.url);
-  let hang = true;
-  await page.route(surface.path, (route) => {
-    if (!isPatch(route) || !hang) return route.continue();
-    hang = false;
-  });
+  await hangFirstPatch(page, surface.path);
 
   const held = page.waitForRequest((request) => request.method() === 'PATCH');
   await typeAtEnd(page, surface.testId, ' one');
@@ -301,6 +297,57 @@ test('a kept record whose field moved on the server sends nothing until you act,
   await expect(refusal(page, first.testId)).toHaveCount(0);
   const [latest] = await read<{ kind: string; prior: Record<string, unknown>; new: Record<string, unknown> }[]>(page, `${first.path}/events`);
   expect(latest).toMatchObject({ kind: 'updated', prior: { description: 'An agent rewrote this.' }, new: { description: 'Moved origin words kept more' } });
+});
+
+test('⌘⏎ on a kept record whose field moved on the server saves the kept words over it (GF-79)', async ({ page }) => {
+  const { first, sent } = await keptThenMoved(page, 'Kept');
+  const before = sent.length;
+
+  await doc(page, first.testId).click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByTestId('mode-line')).toHaveCount(0);
+  await expect.poll(() => stored(page, first)).toBe('Kept origin words kept');
+  await expect(refusal(page, first.testId)).toHaveCount(0);
+  expect(sent.slice(before)).toEqual(['{"description":"Kept origin words kept"}']);
+});
+
+test('undo is not the act: undone back to the words the kept ones were based on, letting go takes the server’s (GF-79)', async ({ page }) => {
+  const surface = await SURFACES['a ticket description'](page, 'Undone');
+  await page.goto(surface.url);
+  const sent = patchesSent(page);
+  let unreachable = true;
+  await page.route(surface.path, (route) => (isPatch(route) && unreachable ? route.abort() : route.continue()));
+
+  // two undo groups (TipTap closes one after 500 ms of quiet), both refused
+  await typeAtEnd(page, surface.testId, ' kept');
+  await page.waitForTimeout(BEAT_MS);
+  await page.keyboard.type(' more');
+  await leave(page);
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED);
+  unreachable = false;
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+  await page.waitForTimeout(BEAT_MS);
+  const refetched = page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === surface.path);
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  await refetched;
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  const before = sent.length;
+
+  await doc(page, surface.testId).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('Undone origin words kept');
+  await page.waitForTimeout(BEAT_MS);
+  expect(sent.slice(before)).toEqual([]);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('Undone origin words');
+  await leave(page);
+  await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await page.waitForTimeout(BEAT_MS);
+  expect(sent.slice(before)).toEqual([]);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
 });
 
 test('esc on a kept record whose field moved on the server drops the kept words for the server’s, sending nothing (GF-79)', async ({ page }) => {

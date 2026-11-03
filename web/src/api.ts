@@ -1,4 +1,5 @@
 import type { ZodType, z } from 'zod';
+import { JUDGED_HEADER } from '@goblin/shared';
 
 /** A problem+json error (ADR-0004); `hint` is what the GUI shows for a 409. */
 export class ProblemError extends Error {
@@ -39,25 +40,28 @@ export const issuePath = (path: (string | number)[]): string => path.map((p) => 
 const UNREACHED = 'could not reach the API; try again';
 
 /**
- * A write with no answer by then is given up on and told as a lost answer.
- * The API's own work on the largest body it takes is under 10 ms; what the
- * bound covers is the link, and 200 KB crosses a 256 kbit/s one in about 6 s.
+ * A field save with no answer by then is given up on and told as a lost
+ * answer. The API's own work on the largest body it takes is under 10 ms; what
+ * the bound covers is the link, and 200 KB crosses a 256 kbit/s one in about
+ * 6 s. Only a `PATCH`: a whole body sent again lands the same, a create sent
+ * again makes two.
  */
-const WRITE_BOUND_MS = 10_000;
-
-/** The `updated_at` the write was judged on; the API refuses a write whose row has moved since (`api/src/commit.ts`). */
-const JUDGED = 'x-goblin-updated-at';
+const PATCH_BOUND_MS = 10_000;
 
 async function call(method: string, path: string, body?: unknown, judged?: string): Promise<unknown> {
-  const res = await fetch(path, {
-    method,
-    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(judged === undefined ? {} : { [JUDGED]: judged }) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: method === 'GET' ? undefined : AbortSignal.timeout(WRITE_BOUND_MS),
-  }).catch(() => {
+  let text: string;
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method,
+      headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(judged === undefined ? {} : { [JUDGED_HEADER]: judged }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: method === 'PATCH' ? AbortSignal.timeout(PATCH_BOUND_MS) : undefined,
+    });
+    text = await res.text();
+  } catch {
     throw new ProblemError(0, { detail: UNREACHED });
-  });
-  const text = await res.text();
+  }
   const data: unknown = text ? JSON.parse(text) : null;
   if (!res.ok) throw new ProblemError(res.status, (data ?? {}) as ProblemError['problem']);
   return data;
