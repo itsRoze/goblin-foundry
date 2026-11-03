@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /** Named to run late: the earlier specs count tickets and address keys by name. */
 
@@ -36,7 +36,7 @@ async function twice(page: Page, key: string, gapMs: number) {
 
 const GAPS = [30, 100, 400];
 
-test('s ⏎ on a blocked Ticket puts the question on screen with the focus on cancel, so ⏎ dismisses it and Tab ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
+test('s ⏎ on a blocked Ticket puts the question on screen with the focus on cancel, so ⏎ dismisses it and ⇧Tab ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
   await page.setViewportSize(BELOW_THE_FOLD);
   const blocked = await blockedTicket(page, 'Askfocus');
   await askByKey(page);
@@ -57,7 +57,8 @@ test('s ⏎ on a blocked Ticket puts the question on screen with the focus on ca
 
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
-  await page.keyboard.press('Tab');
+  // the answer reads before `cancel`, as on every form, so it is one ⇧Tab away and never a lifecycle button
+  await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');
@@ -108,27 +109,22 @@ test('s ⏎ ⏎ on a Selection and ⏎ ⏎ on its trash write nothing, at 30, 10
     expect((await read(page, free.key)).status, `start gap ${gap}`).toBe('ready');
     await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
 
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+    await expect(page.getByTestId('bulk-confirm-yes')).toHaveAttribute('aria-describedby', /./);
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId('bulk-confirm-yes')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
+
     await page.getByTestId('bulk-trash').focus();
     await twice(page, 'Enter', gap);
     expect((await read(page, blocked.key)).trashed_at, `trash gap ${gap}`).toBeNull();
     expect((await read(page, free.key)).trashed_at, `trash gap ${gap}`).toBeNull();
     await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
   }
-});
-
-test('a double click on the bar’s trash asks and does not answer: the yes is drawn where the verb was', async ({ page }) => {
-  const blocked = await blockedTicket(page, 'Dblclick');
-  const free = await post<Ticket>(page, '/api/tickets', { title: 'Dblclick free', status: 'ready', app_id: blocked.app, simple: true });
-  await page.goto('/?q=Dblclick');
-  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
-  await page.keyboard.press('ControlOrMeta+a');
-  await expect(page.getByTestId('selection-count')).toHaveText('2 selected');
-  await page.getByTestId('bulk-trash').dblclick();
-  await page.waitForTimeout(400);
-  await expect(page.getByTestId('bulk-confirm')).toBeVisible();
-  expect((await read(page, blocked.key)).trashed_at).toBeNull();
-  expect((await read(page, free.key)).trashed_at).toBeNull();
-  await expect(page.getByTestId('bulk-confirm-yes')).toHaveAttribute('aria-describedby', /./);
 });
 
 test('a held ⏎ asks the question once: its repeats neither answer it nor ask it again (GF-82)', async ({ page }) => {
@@ -271,4 +267,96 @@ test('esc in the dependency picker hands the focus back to `+ add`', async ({ pa
 
   await page.getByTestId('add-blocks').click();
   await expect(page.getByRole('combobox', { name: 'blocks — search tickets' })).toBeFocused();
+});
+
+type Box = { x: number; y: number; width: number; height: number };
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const centre = (b: Box) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+
+const WIDTHS = [390, 430, 768, 1024, 1366];
+const CLICK_GAPS = [80, 200, 350, 600];
+
+type Armed = { control: Locator; answer: Locator; wrote: () => Promise<boolean> };
+
+const unchanged = (page: Page, keys: string[]) => async () => {
+  for (const key of keys) {
+    const t = await read(page, key);
+    if (t.status !== 'ready' || t.trashed_at !== null) return true;
+  }
+  return false;
+};
+
+async function pair(page: Page, tag: string) {
+  const blocked = await blockedTicket(page, tag);
+  const free = await post<Ticket>(page, '/api/tickets', { title: `${tag} free`, status: 'ready', app_id: blocked.app, simple: true });
+  await page.goto(`/?q=${encodeURIComponent(tag)}`);
+  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(page.getByTestId('selection-count')).toHaveText('2 selected');
+  return [blocked.key, free.key];
+}
+
+/** Each surface armed up to the control whose press asks the question, so one click asks and a second lands wherever the answer is drawn. */
+const SURFACES: Record<string, (page: Page, tag: string) => Promise<Armed>> = {
+  'the Ticket view': async (page, tag) => {
+    const blocked = await blockedTicket(page, tag);
+    return { control: page.getByTestId('move-start'), answer: page.getByTestId('confirm-start-yes'), wrote: unchanged(page, [blocked.key]) };
+  },
+  'a board column': async (page, tag) => {
+    const blocked = await blockedTicket(page, tag);
+    await page.goto(`/?q=${encodeURIComponent(`${tag} blocked`)}`);
+    await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+    await page.keyboard.press('j');
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('confirm-ready-yes'), wrote: unchanged(page, [blocked.key]) };
+  },
+  'a card': async (page, tag) => {
+    const blocked = await blockedTicket(page, tag);
+    await page.goto(`/?q=${encodeURIComponent(`${tag} blocked`)}`);
+    await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+    await page.getByTestId(`menu-${blocked.key}`).click();
+    await expect(page.getByTestId(`menu-${blocked.key}-start`)).toBeVisible();
+    return { control: page.getByTestId(`menu-${blocked.key}-start`), answer: page.getByTestId('confirm-ready-yes'), wrote: unchanged(page, [blocked.key]) };
+  },
+  'a bulk start': async (page, tag) => {
+    const keys = await pair(page, tag);
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('bulk-confirm-yes'), wrote: unchanged(page, keys) };
+  },
+  'a bulk trash': async (page, tag) => {
+    const keys = await pair(page, tag);
+    return { control: page.getByTestId('bulk-trash'), answer: page.getByTestId('bulk-confirm-yes'), wrote: unchanged(page, keys) };
+  },
+};
+
+for (const width of WIDTHS)
+  for (const [surface, arm] of Object.entries(SURFACES))
+    test(`on ${surface} at ${width}px the answer is not drawn under the control that asked, and a double click on that spot writes nothing`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      const tag = `Spot${width}${surface.replace(/\W/g, '')}`;
+      const { control, answer } = await arm(page, `${tag} rect`);
+      const spot = (await control.boundingBox())!;
+      await control.click();
+      await expect(answer).toBeVisible();
+      const drawn = (await answer.boundingBox())!;
+      expect(overlaps(spot, drawn), `control ${JSON.stringify(spot)} answer ${JSON.stringify(drawn)}`).toBe(false);
+
+      for (const gap of CLICK_GAPS) {
+        const armed = await arm(page, `${tag} gap${gap}`);
+        const { x, y } = centre((await armed.control.boundingBox())!);
+        await page.mouse.click(x, y);
+        await page.waitForTimeout(gap);
+        await page.mouse.click(x, y);
+        await page.waitForTimeout(400);
+        expect(await armed.wrote(), `gap ${gap}`).toBe(false);
+      }
+    });
+
+test('an OS double click on the bar’s trash asks and writes nothing', async ({ page }) => {
+  const keys = await pair(page, 'Dblclick');
+  await page.getByTestId('bulk-trash').dblclick();
+  await page.waitForTimeout(400);
+  expect(await unchanged(page, keys)()).toBe(false);
 });
