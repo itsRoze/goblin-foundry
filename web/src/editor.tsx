@@ -20,32 +20,36 @@ const IDLE_MS = 750;
 export type SaveState = 'idle' | 'saving' | 'saved';
 
 /**
- * One save indicator for a tile, however many fields it holds. `saved` is
- * sticky until the next write, so the header answers "did that land?" for as
- * long as the question is live — and says nothing at all when the write was
- * refused, because the field itself carries that sentence.
+ * One save indicator for a tile, however many fields it holds. `saved` stays
+ * until the tile's editor holds words that have not landed, so the header answers
+ * "did that land?" for as long as the question is live — and says nothing at all
+ * when the write was refused, because the field itself carries that sentence.
  */
 export function useSaving() {
-  const [state, setState] = useState<SaveState>('idle');
+  const [said, setSaid] = useState<SaveState>('idle');
+  const [fieldState, setFieldState] = useState<SaveState>('saved');
   const depth = useRef(0);
   const run = useCallback(async <T,>(write: () => Promise<T>): Promise<T> => {
     depth.current += 1;
-    setState('saving');
+    setSaid('saving');
     try {
       const result = await write();
       depth.current -= 1;
-      if (depth.current === 0) setState('saved');
+      if (depth.current === 0) setSaid('saved');
       return result;
     } catch (e) {
       depth.current -= 1;
-      if (depth.current === 0) setState('idle');
+      if (depth.current === 0) setSaid('idle');
       throw e;
     }
   }, []);
-  return { state, run };
+  const writeIsOut = said === 'saving';
+  const fieldHasLanded = fieldState === 'saved';
+  const state: SaveState = writeIsOut || fieldHasLanded ? said : fieldState;
+  return { state, run, setFieldState };
 }
 
-/** What `useSaving` hands back: the tile's indicator, and the wrapper every field's write goes through. */
+/** What `useSaving` hands back: the tile's indicator, the wrapper every field's write goes through, and where its editor reports its own state. */
 export type Saver = ReturnType<typeof useSaving>;
 
 export const Saving = ({ state, testId = 'saving' }: { state: SaveState; testId?: string }) =>
@@ -207,8 +211,21 @@ const unsaved = (record: FieldRecord) => record.live !== record.agreed.body;
 /** Nothing unsaved, nothing out and nothing that may still land: the record says only what the server said last time, and a mount may start afresh. */
 const settled = (record: FieldRecord) => record.sending === null && record.unanswered.length === 0 && !unsaved(record);
 
-/** The server holds what the field was based on, what it holds now, what it has out, or what it gave up on: nothing moved under the words. */
-const caughtUp = (record: FieldRecord, read: Version) => read.body === record.agreed.body || read.body === record.live || read.body === record.sending || record.unanswered.includes(read.body);
+const landed = (record: FieldRecord) => settled(record) && record.held === null && record.moved === null;
+
+function saveStateOf(record: FieldRecord): SaveState {
+  if (landed(record)) return 'saved';
+  const onItsWay = record.sending !== null || unsaved(record);
+  const nextBeatSendsNothing = record.held !== null || record.moved !== null || record.refusal !== null;
+  return onItsWay && !nextBeatSendsNothing ? 'saving' : 'idle';
+}
+
+/** The parser does not read back everything the serialiser writes (`1. a\n\n b`), so a read's body can differ from the words the server was sent (GF-104). */
+function ownBody(record: FieldRecord, read: Version): string | null {
+  if (read.judged === record.agreed.judged) return record.agreed.body;
+  const bodies = [record.agreed.body, record.live, record.sending, ...record.unanswered].filter((body) => body !== null);
+  return bodies.find((body) => judgement(record.field, body) === read.judged) ?? bodies.find((body) => body === read.body) ?? null;
+}
 
 /** The read held under the caret, once the caret has left: handed back to apply when nothing is unsaved, otherwise it is the body that moved. */
 function unhold(record: FieldRecord): Version | null {
@@ -293,6 +310,7 @@ export function MarkdownField({
   label,
   placeholder,
   onSave,
+  onSaveState,
   fill,
   status,
   testId,
@@ -306,6 +324,8 @@ export function MarkdownField({
   placeholder: string;
   /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. `judged` is the header value naming what it was judged on. */
   onSave: (markdown: string, judged: string) => Promise<unknown>;
+  /** Told the state of the field's words, so the tile says `saved` only of words that have landed. */
+  onSaveState: (state: SaveState) => void;
   /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
   fill?: boolean;
   /** The tile's save word, echoed in the mode line where a phone with its keyboard up can still see it (issue 11). */
@@ -322,6 +342,8 @@ export function MarkdownField({
   const [empty, setEmpty] = useState(record.live.trim() === '');
   const subscribe = useCallback((tell: () => void) => watch(id, record, tell), [id, record]);
   const refusal = useSyncExternalStore(subscribe, () => (record.moved === null ? record.refusal : MOVED));
+  const saveState = useSyncExternalStore(subscribe, () => saveStateOf(record));
+  useEffect(() => onSaveState(saveState), [onSaveState, saveState]);
   /**
    * Focus is somewhere in this field — the document, or one of the mode line's
    * own inputs. Tracked on the container rather than the editor, because
@@ -347,9 +369,15 @@ export function MarkdownField({
       record.live = read.body;
       editorRef.current?.commands.setContent(toDoc(shape, read.body), { emitUpdate: false });
       setEmpty(read.body.trim() === '');
+      notify(record);
     },
     [shape, record],
   );
+
+  /** With the caret gone and nothing unsaved the field shows what a reload would, which is not always what the serialiser wrote. */
+  const showStored = useCallback(() => {
+    if (!engagedRef.current && landed(record) && fetched.judged === record.agreed.judged && fetched.body !== record.live) apply(fetched);
+  }, [apply, fetched, record]);
 
   const take = useCallback(() => {
     if (record.moved === null) return;
@@ -433,6 +461,7 @@ export function MarkdownField({
         setEmpty(editor.isEmpty);
         if (markdown === record.live) return;
         record.live = markdown;
+        notify(record);
         if (!isUndo(transaction)) keep(record);
         if (idle.current) clearTimeout(idle.current);
         idle.current = setTimeout(write, IDLE_MS);
@@ -452,8 +481,9 @@ export function MarkdownField({
     if (!unsaved(record)) take();
     const read = unhold(record);
     if (read !== null) apply(read);
+    showStored();
     write();
-  }, [write, apply, take, record]);
+  }, [write, apply, showStored, take, record]);
   // written in an effect, not in the render body: a discarded render must not reach the live editor
   useLayoutEffect(() => {
     editorRef.current = editor;
@@ -462,29 +492,30 @@ export function MarkdownField({
 
   // a focused editor owns its field: the poll, a window refocus and an agent's write all wait for the caret to leave
   useEffect(() => {
-    if (caughtUp(record, fetched)) {
-      const landedLate = record.unanswered.includes(fetched.body);
-      record.agreed = fetched;
+    const own = ownBody(record, fetched);
+    if (own !== null) {
+      const landedLate = record.unanswered.includes(own);
+      const wasHeldBack = record.held !== null || record.moved !== null;
+      record.agreed = { body: own, judged: fetched.judged };
       record.held = null;
-      const settledRefusal = record.refusal !== null && (landedLate || fetched.body === record.live);
-      if (record.moved !== null || settledRefusal) {
-        record.moved = null;
-        if (settledRefusal) record.refusal = null;
-        notify(record);
-      }
-      if (landedLate) {
-        record.unanswered = [];
-        flush(record);
-      }
+      record.moved = null;
+      if (record.refusal !== null && (landedLate || own === record.live)) record.refusal = null;
+      notify(record);
+      if (landedLate) record.unanswered = [];
+      if (landedLate || wasHeldBack) flush(record);
       return;
     }
-    if (engagedRef.current) record.held = fetched;
-    else if (!unsaved(record)) apply(fetched);
+    if (engagedRef.current) {
+      record.held = fetched;
+      notify(record);
+    } else if (!unsaved(record)) apply(fetched);
     else {
       record.moved = fetched;
       notify(record);
     }
   }, [fetched, apply, record]);
+  // a write's answer and its read arrive in either order, and each can be the one that settles the field
+  useEffect(showStored, [saveState, showStored]);
 
   // navigating away is the last chance to save; the markdown is a plain string by now, so the editor may already be gone
   useEffect(

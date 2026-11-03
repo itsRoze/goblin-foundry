@@ -225,6 +225,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           placeholder="no description — press e"
           value={ticket.description}
           onSave={(description, judged) => about.run(() => edit({ description }, judged))}
+          onSaveState={about.setFieldState}
           status={about.state}
           testId="description"
         />
@@ -289,6 +290,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           placeholder="no ticket design — the plan for this slice goes here"
           value={ticket.design}
           onSave={(body, judged) => design.run(() => edit({ design: body }, judged))}
+          onSaveState={design.setFieldState}
           fill
           status={design.state}
           testId="design"
