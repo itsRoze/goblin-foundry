@@ -582,6 +582,40 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
+test('a query in a reopened picker scrolls to the row it arms, so ⏎ picks a row that can be read (GF-103)', async ({ page }) => {
+  const ids: number[] = [];
+  for (let n = 0; n < 30; n++) {
+    const response = await page.request.post('/api/projects', { data: { name: `Stream ${String(n).padStart(2, '0')}` } });
+    expect(response.ok(), await response.text()).toBe(true);
+    ids.push(((await response.json()) as { id: number }).id);
+  }
+  await page.goto(`/?project_id=${ids[25]}`);
+  const chip = page.getByTestId('chip-project');
+  const pop = page.getByTestId('pop-project');
+  const row = (name: string) => pop.getByRole('option', { name });
+  await expect(chip).toContainText('Stream 25');
+  await chip.focus();
+  await page.keyboard.press('Enter');
+  await expect(row('Stream 25')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Stream 25')).toBeInViewport({ ratio: 0.9 });
+
+  await page.keyboard.type('str');
+  await expect(row('Stream 00')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Stream 00')).toBeInViewport({ ratio: 0.9 });
+  await page.keyboard.press('ArrowUp');
+  await expect(row('Stream 29')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Stream 29')).toBeInViewport({ ratio: 0.9 });
+  await page.keyboard.press('ArrowDown');
+  await expect(row('Stream 00')).toBeInViewport({ ratio: 0.9 });
+
+  await page.keyboard.press('Enter');
+  await expect(chip).toContainText('Stream 00');
+  await expect(page).toHaveURL(new RegExp(`/\\?project_id=${ids[0]}$`));
+
+  // thirty projects would crowd every list the later specs read
+  for (const id of ids) expect((await page.request.delete(`/api/projects/${id}`)).ok()).toBe(true);
+});
+
 test('Tab closes a popover and moves on, so `space` toggles no row and the keys are the board\'s again; a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
   await seed(page, 'Poptab');
   await board(page, 'Poptab');
@@ -612,6 +646,63 @@ test('Tab closes a popover and moves on, so `space` toggles no row and the keys 
   await expect(page.getByTestId('check-planning')).not.toBeChecked();
   await expect(page.getByTestId('check-ready')).not.toBeChecked();
   await expect(page.getByTestId('check-building')).toBeChecked();
+});
+
+test('Tab out of a check popover closes it, and the next key is live (GF-103)', async ({ page, browserName }) => {
+  await seed(page, 'Poplive');
+  const only = card(page, 'Poplive');
+  const text = page.getByLabel('filter by text');
+  for (const which of ['status', 'label']) {
+    await board(page, 'Poplive');
+    await expect(only).toBeVisible();
+    await page.getByTestId(`chip-${which}`).click();
+    await expect(page.getByRole('group', { name: `filter by ${which}` })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId(`pop-${which}`)).toHaveCount(0);
+    await page.keyboard.press('j');
+    await expect(only).toHaveClass(/is-cursor/);
+    await page.keyboard.press('Escape');
+    await expect(only).not.toHaveClass(/is-cursor/);
+  }
+
+  await page.getByTestId('chip-label').click();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('pop-label')).toHaveCount(0);
+  await expect(text).toBeFocused();
+  // Tab into a field selects what it holds, so the key replaces it
+  await page.keyboard.type('j');
+  await expect(text).toHaveValue('j');
+
+  await board(page, 'Poplive');
+  await expect(only).toBeVisible();
+  await page.getByTestId('chip-status').click();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await page.keyboard.press('j');
+  // WebKit's Tab passes over a button, so there the next stop is the text field
+  if (browserName === 'webkit') await expect(text).toHaveValue('j');
+  else await expect(only).toHaveClass(/is-cursor/);
+});
+
+test('`space` on a focused card checkbox toggles it under either kind of popover, and the popover stays (GF-103)', async ({ page }) => {
+  await seed(page, 'Popspace');
+  for (const which of ['status', 'project']) {
+    await board(page, 'Popspace');
+    await expect(card(page, 'Popspace')).toBeVisible();
+    await page.getByTestId(`chip-${which}`).click();
+    const pop = page.getByTestId(`pop-${which}`);
+    await expect(pop).toBeVisible();
+    const check = page.locator('.gf-card-check input, input.gf-card-check').first();
+    await check.focus();
+    await page.keyboard.press('Space');
+    await expect(check).toBeChecked();
+    await expect(page.getByTestId('selection-count')).toHaveText('1 selected');
+    await expect(pop).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(check).not.toBeChecked();
+    await expect(pop).toBeVisible();
+    await expect(page).toHaveURL(/\?q=Popspace$/);
+  }
 });
 
 test('a popover that lost the focus still holds the bare keys, wherever the focus went, and a field goes on typing (GF-103)', async ({ page }) => {
@@ -759,4 +850,20 @@ test('palette esc leaves the page where it was, and the focus on `body` when wha
   await expect(page.getByTestId('palette')).toHaveCount(0);
   expect(await page.evaluate(() => window.scrollY)).toBe(y);
   await expect(page.locator('body')).toBeFocused();
+
+  // an opener cut by the window's edge is still in view: it takes the focus, and the page stays where it is
+  await opener.focus();
+  const cut = await page.evaluate(() => {
+    const top = document.querySelector('[data-testid="hint-write"]')!.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo(0, top + 4);
+    return window.scrollY;
+  });
+  expect(cut).toBeGreaterThan(0);
+  await expect(opener).toBeInViewport();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(cut);
 });
