@@ -701,7 +701,7 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
             // keyed apart from the verbs, or React keeps their buttons under the answers
             <span key="question" ref={line} className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
               <span id={sentence} className="gf-selection-question">{question.text}</span>
-              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
+              <button type="button" tabIndex={0} className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
                 {question.verb}
               </button>
               <button ref={cancel} type="button" className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
