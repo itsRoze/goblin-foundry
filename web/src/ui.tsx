@@ -13,15 +13,29 @@ export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="gf
  * reaches, in the same words. Without one it is the hint alone, as before. The
  * key is the control, the way `⌘K` in the bar already is.
  */
-export function Hint({ k, children, onClick, testId }: { k: ReactNode; children: ReactNode; onClick?: () => void; testId?: string }) {
+export function Hint({
+  k,
+  children,
+  onClick,
+  on,
+  testId,
+}: {
+  k: ReactNode;
+  children: ReactNode;
+  onClick?: () => void;
+  /** A seated hint: offered while `true`; while `false` it keeps its seat in the strip, unseen and out of the tab order, so nothing under the strip moves when it comes back (LESSONS 2026-08-30). Leave it out for a hint that is always offered. */
+  on?: boolean;
+  testId?: string;
+}) {
+  const className = `gf-hint${on === undefined ? '' : on ? ' is-seated' : ' is-seated is-off'}`;
   if (!onClick)
     return (
-      <span className="gf-hint">
+      <span className={className}>
         <Kbd>{k}</Kbd> {children}
       </span>
     );
   return (
-    <button type="button" className="gf-hint" data-testid={testId} onClick={onClick}>
+    <button type="button" className={className} data-testid={testId} onClick={onClick}>
       <Kbd>{k}</Kbd> {children}
     </button>
   );
