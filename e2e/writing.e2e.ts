@@ -156,6 +156,36 @@ test('a project design lives on the project view and is the same editor', async 
   await expect(page.getByTestId('history').locator('li').first()).toContainText('design edited');
 });
 
+test('a numbered list on an empty field stores its one empty item, and the view survives the save and a reload (GF-100)', async ({ page }) => {
+  await newTicket(page, 'Number me');
+  const url = page.url();
+  const tile = page.getByTestId('design-tile');
+  const field = design(page);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  await field.click();
+  await tile.getByTestId('fmt-orderedList').click();
+  await expect(field.locator('ol li')).toHaveCount(1);
+  await page.waitForTimeout(BEAT_MS);
+  expect(errors).toEqual([]);
+  await expect(tile).toBeVisible();
+  await expect(tile.getByTestId('saving')).toHaveText('saved');
+  const key = url.split('/').pop();
+  expect((await json<{ design: string }>(page.request.get(`/api/tickets/${key}`))).design).toBe('1. ');
+
+  await page.reload();
+  await expect(tile).toBeVisible();
+  await expect(field.locator('ol li')).toHaveCount(1);
+  expect(errors).toEqual([]);
+
+  await field.locator('ol li').click();
+  await page.keyboard.type('first');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(tile.getByTestId('saving')).toHaveText('saved');
+  expect((await json<{ design: string }>(page.request.get(`/api/tickets/${key}`))).design).toBe('1. first');
+});
+
 test('the mode line formats what is selected, links it, and is the only way back to a fence', async ({ page }) => {
   await newTicket(page, 'Format me');
   const tile = page.getByTestId('design-tile');
