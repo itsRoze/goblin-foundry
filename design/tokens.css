@@ -16,7 +16,7 @@
 
   /* accents by meaning — the colour is the meaning, so each has one job */
   --gf-system:  #A7C080;   /* green: the controller / ready / focused / ok */
-  --gf-human:   #E67E80;   /* red: your attention is required. Nothing else. */
+  --gf-human:   #F3898B;   /* red: your attention is required. Nothing else. */
   --gf-live:    #E69875;   /* orange: a run is alive right now — watch, don't touch. Only when a run row exists (S5+); hand-built `building` tickets use --gf-system */
   --gf-draft:   #DBBC7F;   /* yellow: not yet real (draft, no design) */
   --gf-review:  #83C092;   /* aqua: in review / merged-pending */

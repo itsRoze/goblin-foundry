@@ -142,7 +142,7 @@
       "human": {
         "role": "accent",
         "displayName": "human (red)",
-        "canonical": "oklch(70.9% 0.128 19.6)",
+        "canonical": "oklch(74.5% 0.129 19.5)",
         "tonalRamp": [
           "#200002",
           "#4D000D",
@@ -380,7 +380,7 @@
       "refersTo": "button-danger",
       "description": "Trash: the destructive one. Human red on the text only; the border stays rule-2.",
       "html": "<button class=\"ds-btn is-danger\">trash <kbd class=\"ds-kbd\">⌘⌫</kbd></button>",
-      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-danger{color:var(--gf-human, #E67E80);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
+      "css": ".ds-btn{font:400 11.5px/1.4 var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-ink, #D3C6AA);background:var(--gf-raised, #343F44);border:1px solid var(--gf-rule-2, #475258);border-radius:0;padding:4px 10px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:border-color 120ms cubic-bezier(.2,.8,.2,1);}.ds-btn.is-danger{color:var(--gf-human, #F3898B);}.ds-btn:hover{border-color:var(--gf-mute, #9DA9A0);}.ds-btn:focus-visible{outline:1px solid var(--gf-system, #A7C080);outline-offset:1px;}.ds-kbd{font:400 10.5px/15px var(--gf-mono, 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace);color:var(--gf-mute, #9DA9A0);border:1px solid var(--gf-rule-2, #475258);padding:0 5px;letter-spacing:.05em;}"
     },
     {
       "name": "Field",
