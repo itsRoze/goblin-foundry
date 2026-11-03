@@ -372,6 +372,7 @@ export function BoardPage() {
     if (cards) keepOnly(new Set(cards.map((t) => t.id)));
   }, [cards, keepOnly]);
   const members = useMemo(() => (cards ?? []).filter((t) => isSelected(selection, t.id)), [cards, selection]);
+  const verbCard = members.length === 0 ? under : undefined;
   /** The order a range runs in: lifecycle columns, top to bottom, folded sections left out (selection.ts). */
   const order = useMemo(
     () => rangeOrder(drawn.map((column) => ({ status: column.status, ids: column.tickets.map((t) => t.id) })), (status) => !vertical || isExpanded(expansion, status)),
@@ -424,7 +425,7 @@ export function BoardPage() {
   /** `d` goes where the button is and presses it: the picker is open when the Ticket view arrives. */
   const blockedBy = (t: TicketSummary) => navigate(ticketPath(t), { state: { picking: 'depends_on' } });
 
-  /** A card's `⋯`: the same verbs, addressed to that card and no other, and the Cursor left where it was (issue 11). */
+  /** A card's `⋯`: the same verbs, pinned to that card and no other, and the Cursor left where it was (issue 11). */
   const menuFor = (t: TicketSummary): CardActions => ({
     move: (name) => press(t, name),
     trash: () => inSlot(t, () => intent.mutateAsync({ key: t.key, intent: 'trash' })),
@@ -566,32 +567,24 @@ export function BoardPage() {
           <Hint k="v" onClick={() => setMenu((m) => !m)} testId="hint-view">
             view
           </Hint>
-          {under !== undefined && (
-            <>
-              <Hint k="x" onClick={() => select(under, false)}>
-                select
-              </Hint>
-              <Hint k="⇧↓">range</Hint>
-            </>
-          )}
           <Hint k="⌘A" onClick={selectEverything} testId="hint-select-all">
             select all
           </Hint>
-          {/* with a Selection the verbs are the selection bar's, addressed to the set; these three are the Cursor's */}
-          {members.length === 0 && (
-            <>
-              {/* `a` is offered only where the card under the Cursor has that arrow, as the state tile offers it */}
-              {under !== undefined && lifecycle.named(under.status, 'approve').ok && (
-                <Hint k="a" onClick={() => press(under, 'approve')}>
-                  approve
-                </Hint>
-              )}
-              <Hint k="s">status</Hint>
-              <Hint k="d" onClick={under === undefined ? undefined : () => blockedBy(under)}>
-                deps
-              </Hint>
-            </>
-          )}
+          {/* `⇧↓` plants a Cursor when there is none (`extend`), so it is never off */}
+          <Hint k="⇧↓">range</Hint>
+          {/* the Cursor's seats come last, the rarest last, so an empty one is blank at the end of the strip and not a hole in it (GF-42) */}
+          <Hint k="x" on={under !== undefined} onClick={() => under && select(under, false)}>
+            select
+          </Hint>
+          <Hint k="s" on={verbCard !== undefined}>
+            status
+          </Hint>
+          <Hint k="d" on={verbCard !== undefined} onClick={() => verbCard && blockedBy(verbCard)}>
+            deps
+          </Hint>
+          <Hint k="a" on={verbCard !== undefined && lifecycle.named(verbCard.status, 'approve').ok} onClick={() => verbCard && press(verbCard, 'approve')}>
+            approve
+          </Hint>
         </>
       }
       navigable
