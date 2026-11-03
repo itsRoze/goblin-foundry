@@ -8,6 +8,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RenderBoundary } from './boundary';
 import { Shell } from './shell';
 import { BoardPage } from './pages/Board';
 import { AppsPage } from './pages/Apps';
@@ -25,22 +26,32 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 1_
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Shell />}>
-            <Route index element={<BoardPage />} />
-            <Route path="apps" element={<AppsPage />} />
-            <Route path="apps/:slugId" element={<AppView />} />
-            <Route path="projects" element={<ProjectsPage />} />
-            <Route path="projects/:slugId" element={<ProjectView />} />
-            <Route path="tickets/:key" element={<TicketView />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="trash" element={<TrashPage />} />
-            <Route path="*" element={<NotFound what="page" />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <RenderBoundary
+      fallback={
+        <main className="gf-desk">
+          <p className="gf-refusal" role="alert">
+            Couldn’t draw the app; reload to try again.
+          </p>
+        </main>
+      }
+    >
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Shell />}>
+              <Route index element={<BoardPage />} />
+              <Route path="apps" element={<AppsPage />} />
+              <Route path="apps/:slugId" element={<AppView />} />
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="projects/:slugId" element={<ProjectView />} />
+              <Route path="tickets/:key" element={<TicketView />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="trash" element={<TrashPage />} />
+              <Route path="*" element={<NotFound what="page" />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </RenderBoundary>
   </StrictMode>,
 );

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { RenderBoundary } from './boundary';
 import { CurrentTicketProvider, useCurrentTicket } from './current';
 import { CreateProvider } from './creating';
 import { DeskProvider, useScreenEscape } from './desk';
@@ -7,7 +8,7 @@ import { useKey, useKeyMap } from './keys';
 import { Palette, type PaletteMode } from './palette-view';
 import { useApps, useProjects } from './queries';
 import { BulkStatus, SelectingProvider, useSelecting } from './selecting';
-import { Kbd } from './ui';
+import { Kbd, Tile } from './ui';
 import { useTileLayout } from './tile-layout';
 
 const CrumbContext = createContext<(crumb: string) => void>(() => {});
@@ -51,6 +52,14 @@ export function Shell() {
     </CurrentTicketProvider>
   );
 }
+
+const CouldNotDraw = () => (
+  <Tile label="page">
+    <p className="gf-refusal" role="alert">
+      Couldn’t draw this page; the bar above still works, and a reload tries again.
+    </p>
+  </Tile>
+);
 
 function ShellBody() {
   const desk = useTileLayout();
@@ -98,7 +107,7 @@ function ShellBody() {
 
   // a bulk action outlives the board it was sent from; off the board, the shell is where it reports
   const selecting = useSelecting();
-  const { pathname } = useLocation();
+  const { pathname, key: visit } = useLocation();
   // a history move leaves it open otherwise, and its next action would land on the new page's Ticket (GF-76)
   useEffect(closePalette, [pathname, closePalette]);
   const reporting = pathname !== '/' && (selecting.pending !== null || selecting.outcome !== null);
@@ -144,7 +153,9 @@ function ShellBody() {
       )}
       <main className="gf-desk" ref={desk}>
         <PaletteContext.Provider value={setPalette}>
-          <Outlet />
+          <RenderBoundary fallback={<CouldNotDraw />} resetOn={visit}>
+            <Outlet />
+          </RenderBoundary>
         </PaletteContext.Provider>
       </main>
       {palette !== null && <Palette mode={palette} onClose={closePalette} />}
