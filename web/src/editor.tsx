@@ -467,6 +467,8 @@ export function MarkdownField({
       onUpdate({ editor, transaction }) {
         const markdown = toMarkdown(shape, editor.getJSON());
         setEmpty(editor.isEmpty);
+        // a click changes nothing, but StarterKit's appended paragraph updates, and a bare marker then serialises differently: reading, not an edit (GF-43)
+        if (!transaction.docChanged) return;
         if (markdown === record.live) return;
         record.live = markdown;
         notify(record);
