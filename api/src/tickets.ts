@@ -22,7 +22,7 @@ import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
-import { asJudged, changedUnderneath, commit, newestId, pinnedTicketWrite } from './commit';
+import { changedUnderneath, commit, judgedRefusal, newestId, pinnedTicketWrite } from './commit';
 import { diff, eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
@@ -186,11 +186,13 @@ export function ticketsRoutes(db: Db) {
     if (broken.length > 0) return unprocessable(c, broken);
     const change = diff(row, { title, description, design, simple, ...placement });
     if (!change.changed) return c.json(await one(row));
+    const judgedAway = await judgedRefusal(c, row, body.data, () => changedUnderneath(c, db, row.id, 'the edit'));
+    if (judgedAway) return judgedAway;
     const at = now();
     const written = await commit(
       c,
       db,
-      [pinnedTicketWrite(db, asJudged(c, row), change.new, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      [pinnedTicketWrite(db, row, change.new, at), await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
       { rolledBack: 'the edit was rolled back', stale: () => changedUnderneath(c, db, row.id, 'the edit') },
     );
     if (written instanceof Response) return written;

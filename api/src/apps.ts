@@ -9,7 +9,7 @@ import {
 } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
-import { asJudged, changedWhile, commit, newestId, pinnedRowWrite } from './commit';
+import { changedWhile, commit, judgedRefusal, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { parseBody } from './http';
@@ -80,12 +80,14 @@ export function appsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const change = diff(row, body.data);
     if (!change.changed) return c.json(toApp(row));
+    const judgedAway = await judgedRefusal(c, row, body.data, () => changedWhile(c, `app ${row.id}`, 'the edit'));
+    if (judgedAway) return judgedAway;
     if (branchWithoutRepository({ ...row, ...change.new })) return unprocessable(c, [branchIssue]);
     const at = now();
     const written = await commit(
       c,
       db,
-      [pinnedRowWrite(db, appTable, asJudged(c, row), change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      [pinnedRowWrite(db, appTable, row, change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
       { rolledBack: 'the edit was rolled back', stale: () => changedWhile(c, `app ${row.id}`, 'the edit') },
     );
     if (written instanceof Response) return written;

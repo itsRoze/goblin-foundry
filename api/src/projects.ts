@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { CreateProjectBodySchema, PatchProjectBodySchema, type Project } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { ctxOf, moveTicketsOfProject, releaseTicketsOfProject, reviveChildren } from './children';
-import { asJudged, changedWhile, commit, livePin, newestId, pinnedRowWrite } from './commit';
+import { changedWhile, commit, judgedRefusal, livePin, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { projectGraph } from './graph';
@@ -98,6 +98,8 @@ export function projectsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const change = diff(row, body.data);
     if (!change.changed) return c.json(toProject(row));
+    const judgedAway = await judgedRefusal(c, row, body.data, () => changedWhile(c, `project ${row.id}`, 'the edit'));
+    if (judgedAway) return judgedAway;
     const appId = change.new.app_id as number | null | undefined;
     if (appId !== undefined) {
       const issue = await appIssue(appId);
@@ -108,7 +110,7 @@ export function projectsRoutes(db: Db) {
       c,
       db,
       [
-        pinnedRowWrite(db, projectTable, asJudged(c, row), change.new, ctx.at, `project ${row.id}`),
+        pinnedRowWrite(db, projectTable, row, change.new, ctx.at, `project ${row.id}`),
         await eventWrite(db, { entity_kind: 'project', entity_id: row.id, actor: ctx.actor, kind: 'updated', prior: change.prior, new: change.new, at: ctx.at }),
         ...(appId === undefined ? [] : [...(await moveTicketsOfProject(ctx, row.id, appId)), ...appStillLive(appId)]),
       ],

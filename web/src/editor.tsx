@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
+import { judgement } from '@goblin/shared';
+import { unreached } from './api';
 import { refusalLine } from './ui';
 
 /**
@@ -144,12 +146,16 @@ const HEADINGS: Control[] = ([1, 2, 3, 4, 5, 6] as const).map((level) => ({
  * taken are never lost with the view (GF-79, GF-83).
  */
 interface FieldRecord {
-  /** The markdown the server is known to hold, with the row version it came with — what a write is compared against and judged on. Advances only when a write lands or a read is taken. */
+  /** The column this field is, which a write names as what it judged. */
+  field: string;
+  /** The markdown the server is known to hold — what a write is compared against and judged on. Advances only when a write lands or a read is taken. */
   agreed: Version;
   /** The markdown in the editor, kept as a string so a flush never touches a destroyed editor. */
   live: string;
   /** The markdown the one write out is carrying: whole bodies land in arrival order, so a second is not sent until it answers. */
   sending: string | null;
+  /** Bodies sent and never answered, which may still land: read back, one is this record's own words and not a move. Cleared once a later write lands, which refuses them unless the field has since been put back to the very words they were judged on. */
+  unanswered: string[];
   /** The sentence the last write was refused with, until one lands. */
   refusal: string | null;
   /** A read that arrived while the caret was in the field; applied on release, never under the caret, and nothing is sent past it. */
@@ -157,24 +163,21 @@ interface FieldRecord {
   /** The server's body, read while the field held words it lacks: nothing is sent until the person keeps their words or takes this. */
   moved: Version | null;
   /** How the latest mount writes: the hook that patches belongs to the view. */
-  save: (markdown: string, judged: string) => Promise<Landed>;
+  save: (markdown: string, judged: string) => Promise<unknown>;
   /** The mount showing this field, told when its sentence changes. */
   listeners: Set<() => void>;
 }
 
-/** A body as the server gave it, with the row's `updated_at` it came with: what a write of it is judged on, so one given up on cannot land late over a later one. */
+/** A body as the server gave it, with what a write of it names as judged (`judgement` in `@goblin/shared`), so one given up on cannot land late over a later one. */
 interface Version {
   body: string;
   judged: string;
 }
 
-/** What a landed write answers with: the row's new version. */
-interface Landed {
-  updated_at: string;
-}
-
 /** `ticket/3/design`: the entity and the column, which together name a record. */
 export type FieldId = `${'ticket' | 'project' | 'app'}/${number}/${'description' | 'design'}`;
+
+const columnOf = (id: FieldId) => id.slice(id.lastIndexOf('/') + 1);
 
 const MOVED = 'changed elsewhere while unsaved; in the field, ⌘⏎ saves yours, esc takes theirs';
 
@@ -183,11 +186,11 @@ const records = new Map<FieldId, FieldRecord>();
 /** The field holds words the server does not. */
 const unsaved = (record: FieldRecord) => record.live !== record.agreed.body;
 
-/** Nothing unsaved and nothing out: the record says only what the server said last time, and a mount may start afresh. */
-const settled = (record: FieldRecord) => record.sending === null && !unsaved(record);
+/** Nothing unsaved, nothing out and nothing that may still land: the record says only what the server said last time, and a mount may start afresh. */
+const settled = (record: FieldRecord) => record.sending === null && record.unanswered.length === 0 && !unsaved(record);
 
-/** The server holds what the field was based on, what it holds now, or what it has out: nothing moved under the words. */
-const caughtUp = (record: FieldRecord, read: Version) => read.body === record.agreed.body || read.body === record.live || read.body === record.sending;
+/** The server holds what the field was based on, what it holds now, what it has out, or what it gave up on: nothing moved under the words. */
+const caughtUp = (record: FieldRecord, read: Version) => read.body === record.agreed.body || read.body === record.live || read.body === record.sending || record.unanswered.includes(read.body);
 
 /** The read held under the caret, once the caret has left: handed back to apply when nothing is unsaved, otherwise it is the body that moved. */
 function unhold(record: FieldRecord): Version | null {
@@ -203,7 +206,7 @@ function unhold(record: FieldRecord): Version | null {
 function recordFor(id: FieldId, fetched: Version, save: FieldRecord['save']): FieldRecord {
   const kept = records.get(id);
   if (kept && !settled(kept)) return kept;
-  return { agreed: fetched, live: fetched.body, sending: null, refusal: null, held: null, moved: null, save, listeners: new Set() };
+  return { field: columnOf(id), agreed: fetched, live: fetched.body, sending: null, unanswered: [], refusal: null, held: null, moved: null, save, listeners: new Set() };
 }
 
 /** Typing is an answer to a body that moved; an undo is not, since undone far enough it takes the server's words. prosemirror-history stamps its own transactions with its plugin key. */
@@ -242,11 +245,13 @@ function flush(record: FieldRecord) {
     return;
   }
   record.sending = markdown;
-  void record.save(markdown, record.agreed.judged).then(
-    (landed) => {
+  const judgedOn = record.agreed.judged;
+  void record.save(markdown, judgedOn).then(
+    () => {
       // only now is this what the server holds; what was typed meanwhile goes out next
-      record.agreed = { body: markdown, judged: landed.updated_at };
+      record.agreed = { body: markdown, judged: judgement(record.field, markdown) };
       record.sending = null;
+      record.unanswered = [];
       record.refusal = null;
       notify(record);
       flush(record);
@@ -254,6 +259,9 @@ function flush(record: FieldRecord) {
     (error: unknown) => {
       // not sent again on its own: the next beat, the blur or the way out retries
       record.sending = null;
+      if (unreached(error)) record.unanswered.push(markdown);
+      const judgementAdvancedByOwnLanding = record.agreed.judged !== judgedOn;
+      if (judgementAdvancedByOwnLanding) return flush(record);
       record.refusal = refusalLine(error);
       notify(record);
     },
@@ -264,7 +272,6 @@ export function MarkdownField({
   id,
   shape,
   value,
-  judged,
   label,
   placeholder,
   onSave,
@@ -277,12 +284,10 @@ export function MarkdownField({
   shape: EditorShape;
   /** What the server holds; `null` and `''` are both "nothing written yet". */
   value: string | null;
-  /** The row's `updated_at` that `value` came with: what a write of it is judged on. */
-  judged: string;
   label: string;
   placeholder: string;
-  /** Resolves with the row's new version when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. */
-  onSave: (markdown: string, judged: string) => Promise<Landed>;
+  /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. `judged` is the header value naming what it was judged on. */
+  onSave: (markdown: string, judged: string) => Promise<unknown>;
   /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
   fill?: boolean;
   /** The tile's save word, echoed in the mode line where a phone with its keyboard up can still see it (issue 11). */
@@ -290,7 +295,7 @@ export function MarkdownField({
   testId?: string;
 }) {
   const server = value ?? '';
-  const fetched = useMemo<Version>(() => ({ body: canonical(shape, server), judged }), [shape, server, judged]);
+  const fetched = useMemo<Version>(() => ({ body: canonical(shape, server), judged: judgement(columnOf(id), server) }), [shape, server, id]);
   const [record] = useState(() => recordFor(id, fetched, onSave));
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Mirrors `engaged` for the callbacks that cannot see React state. */
@@ -425,13 +430,18 @@ export function MarkdownField({
   // a focused editor owns its field: the poll, a window refocus and an agent's write all wait for the caret to leave
   useEffect(() => {
     if (caughtUp(record, fetched)) {
+      const landedLate = record.unanswered.includes(fetched.body);
       record.agreed = fetched;
       record.held = null;
-      const settledRefusal = fetched.body === record.live && record.refusal !== null;
+      const settledRefusal = record.refusal !== null && (landedLate || fetched.body === record.live);
       if (record.moved !== null || settledRefusal) {
         record.moved = null;
         if (settledRefusal) record.refusal = null;
         notify(record);
+      }
+      if (landedLate) {
+        record.unanswered = [];
+        flush(record);
       }
       return;
     }

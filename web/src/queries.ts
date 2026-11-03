@@ -136,11 +136,11 @@ function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>, onSuccess?:
   return useMutation({ mutationFn: fn, onSuccess: (result, vars) => onSuccess?.(vars, result), onSettled: () => qc.invalidateQueries() });
 }
 
-/** What a landed edit answers with that a field keeps: the row's new version, which its next write is judged on. */
+/** What a landed edit answers with that the cache keeps: the row's new version. */
 export const Landed = z.object({ updated_at: z.string() });
 export type Landed = z.infer<typeof Landed>;
 
-/** An edit and the version of the row it was judged on, which the API holds it to; absent, the API judges for itself. */
+/** An edit and what it was judged on (`judgement` in `@goblin/shared`: the field and what it held), which the API holds it to; absent, the API judges for itself. */
 export interface Judged<Body> {
   body: Body;
   judged?: string;

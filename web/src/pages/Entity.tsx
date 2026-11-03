@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router';
 import { parseSlugId, slugPath, type App } from '@goblin/shared';
 import { MarkdownField, Saving, focusEditor, type SaveState, type Saver } from '../editor';
 import { useKey } from '../keys';
-import { useApps, useIntent, type Landed } from '../queries';
+import { useApps, useIntent } from '../queries';
 import { Chip, Empty, InlineForm, Tile, refusalLine, type Field } from '../ui';
 
 /** `/apps/<slug>-<id>`: the id resolves; a stale slug redirects to the current one. */
@@ -135,9 +135,9 @@ export function DescriptionField({
   patch,
 }: {
   kind: 'app' | 'project';
-  entity: { id: number; description: string; updated_at: string };
+  entity: { id: number; description: string };
   saving: Saver;
-  patch: (body: { description: string }, judged: string) => Promise<Landed>;
+  patch: (body: { description: string }, judged: string) => Promise<unknown>;
 }) {
   return (
     <MarkdownField
@@ -146,7 +146,6 @@ export function DescriptionField({
       label="description"
       placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}
       value={entity.description}
-      judged={entity.updated_at}
       onSave={(description, judged) => saving.run(() => patch({ description }, judged))}
       status={saving.state}
       testId={`${kind}-description`}

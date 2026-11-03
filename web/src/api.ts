@@ -38,13 +38,15 @@ export const issuePath = (path: (string | number)[]): string => path.map((p) => 
 
 /** The sentence for a call that got no answer at all: whether the request landed is unknown, so it claims nothing about what changed. */
 const UNREACHED = 'could not reach the API; try again';
+/** The call got no answer at all, so whether it landed is unknown. */
+export const unreached = (e: unknown) => e instanceof ProblemError && e.status === 0;
 
 /** The API's own work on the largest body it takes is under 10 ms, so this is the link: 200 KB crosses a 256 kbit/s one in about 6 s. */
 const PATCH_BOUND_MS = 10_000;
 
 interface Call {
   body?: unknown;
-  /** The row `updated_at` the write was judged on; the API refuses the write if the row has moved since. */
+  /** The field and what it held when the write was judged (`judgement` in `@goblin/shared`); the API refuses the write if that field has changed since. */
   judged?: string;
   signal?: AbortSignal;
 }
