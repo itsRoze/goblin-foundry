@@ -486,7 +486,7 @@ async function seedApp(page: Page, name: string) {
 }
 
 test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps the filter, and it starts on `any` only when nothing is (GF-103)', async ({ page }) => {
-  await seedApp(page, 'Reopened');
+  await seedApp(page, 'Reopzel');
   await seed(page, 'Popreopen');
   await board(page, 'Popreopen');
   const chip = page.getByTestId('chip-app');
@@ -495,25 +495,25 @@ test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps t
   await chip.focus();
   await page.keyboard.press('Enter');
   await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'true');
-  await pop.getByRole('combobox').fill('Reopened');
+  await pop.getByRole('combobox').fill('Reopzel');
   await page.keyboard.press('Enter');
-  await expect(chip).toContainText('Reopened');
+  await expect(chip).toContainText('Reopzel');
   await expect(chip).toBeFocused();
   const address = page.url();
   expect(address).toMatch(/app_id=\d+/);
 
   await page.keyboard.press('Enter');
-  await expect(pop.getByRole('option', { name: 'Reopened' })).toHaveAttribute('aria-selected', 'true');
+  await expect(pop.getByRole('option', { name: 'Reopzel' })).toHaveAttribute('aria-selected', 'true');
   await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'false');
   await page.keyboard.press('Enter');
   await expect(pop).toHaveCount(0);
-  await expect(chip).toContainText('Reopened');
+  await expect(chip).toContainText('Reopzel');
   expect(page.url()).toBe(address);
 
   // `↓` starts from the highlight, and a query still starts from the top of what it found
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowUp');
-  await expect(pop.getByRole('option', { name: 'Reopened' })).toHaveAttribute('aria-selected', 'false');
+  await expect(pop.getByRole('option', { name: 'Reopzel' })).toHaveAttribute('aria-selected', 'false');
   await pop.getByRole('combobox').fill('any');
   await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Enter');
@@ -534,17 +534,17 @@ test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps t
 });
 
 test('⏎ ⏎ on a project chip whose address names no app writes nothing (GF-103)', async ({ page }) => {
-  const app = await page.request.post('/api/apps', { data: { name: 'Reopened home' } });
+  const app = await page.request.post('/api/apps', { data: { name: 'Reopzel home' } });
   expect(app.ok(), await app.text()).toBe(true);
-  const project = await page.request.post('/api/projects', { data: { name: 'Reopened project', app_id: ((await app.json()) as { id: number }).id } });
+  const project = await page.request.post('/api/projects', { data: { name: 'Reopzel project', app_id: ((await app.json()) as { id: number }).id } });
   expect(project.ok(), await project.text()).toBe(true);
   const id = ((await project.json()) as { id: number }).id;
   await page.goto(`/?project_id=${id}`);
   const chip = page.getByTestId('chip-project');
-  await expect(chip).toContainText('Reopened project');
+  await expect(chip).toContainText('Reopzel project');
   await chip.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('pop-project').getByRole('option', { name: 'Reopened project' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('pop-project').getByRole('option', { name: 'Reopzel project' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('pop-project')).toHaveCount(0);
   await expect(chip).toBeFocused();
@@ -585,7 +585,7 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
 test('a query in a reopened picker scrolls to the row it arms, so ⏎ picks a row that can be read (GF-103)', async ({ page }) => {
   const ids: number[] = [];
   for (let n = 0; n < 30; n++) {
-    const response = await page.request.post('/api/projects', { data: { name: `Stream ${String(n).padStart(2, '0')}` } });
+    const response = await page.request.post('/api/projects', { data: { name: `Strzel ${String(n).padStart(2, '0')}` } });
     expect(response.ok(), await response.text()).toBe(true);
     ids.push(((await response.json()) as { id: number }).id);
   }
@@ -593,23 +593,35 @@ test('a query in a reopened picker scrolls to the row it arms, so ⏎ picks a ro
   const chip = page.getByTestId('chip-project');
   const pop = page.getByTestId('pop-project');
   const row = (name: string) => pop.getByRole('option', { name });
-  await expect(chip).toContainText('Stream 25');
+  await expect(chip).toContainText('Strzel 25');
   await chip.focus();
   await page.keyboard.press('Enter');
-  await expect(row('Stream 25')).toHaveAttribute('aria-selected', 'true');
-  await expect(row('Stream 25')).toBeInViewport({ ratio: 0.9 });
+  await expect(row('Strzel 25')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Strzel 25')).toBeInViewport({ ratio: 0.9 });
 
-  await page.keyboard.type('str');
-  await expect(row('Stream 00')).toHaveAttribute('aria-selected', 'true');
-  await expect(row('Stream 00')).toBeInViewport({ ratio: 0.9 });
+  await page.keyboard.type('strz');
+  await expect(row('Strzel 00')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Strzel 00')).toBeInViewport({ ratio: 0.9 });
   await page.keyboard.press('ArrowUp');
-  await expect(row('Stream 29')).toHaveAttribute('aria-selected', 'true');
-  await expect(row('Stream 29')).toBeInViewport({ ratio: 0.9 });
+  await expect(row('Strzel 29')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Strzel 29')).toBeInViewport({ ratio: 0.9 });
   await page.keyboard.press('ArrowDown');
-  await expect(row('Stream 00')).toBeInViewport({ ratio: 0.9 });
+  await expect(row('Strzel 00')).toBeInViewport({ ratio: 0.9 });
+
+  // a window shorter than the list: the page follows the keys too, so `⏎` still picks what can be read
+  await page.setViewportSize({ width: 390, height: 300 });
+  for (let n = 0; n < 6; n++) await page.keyboard.press('ArrowDown');
+  await expect(row('Strzel 06')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Strzel 06')).toBeInViewport({ ratio: 0.9 });
+  await page.setViewportSize({ width: 390, height: 240 });
+  await pop.getByRole('combobox').fill('strzel 1');
+  await expect(row('Strzel 10')).toHaveAttribute('aria-selected', 'true');
+  await expect(row('Strzel 10')).toBeInViewport({ ratio: 0.9 });
+  await pop.getByRole('combobox').fill('strz');
+  await expect(row('Strzel 00')).toBeInViewport({ ratio: 0.9 });
 
   await page.keyboard.press('Enter');
-  await expect(chip).toContainText('Stream 00');
+  await expect(chip).toContainText('Strzel 00');
   await expect(page).toHaveURL(new RegExp(`/\\?project_id=${ids[0]}$`));
 
   // thirty projects would crowd every list the later specs read
@@ -705,6 +717,23 @@ test('`space` on a focused card checkbox toggles it under either kind of popover
   }
 });
 
+test('`space` with the focus on `body` does not scroll the page behind a popover (GF-103)', async ({ page }) => {
+  await seed(page, 'Popbody');
+  await page.setViewportSize({ width: 1000, height: 240 });
+  await board(page, 'Popbody');
+  await expect(card(page, 'Popbody')).toBeVisible();
+  await page.getByTestId('chip-app').click();
+  await page.getByTestId('pop-app').locator('.gf-tile-keys').click();
+  await expect(page.locator('body')).toBeFocused();
+  // the click scrolled the strip into sight
+  await page.evaluate(() => window.scrollTo(0, 0));
+  expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeGreaterThan(0);
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByTestId('pop-app')).toBeVisible();
+});
+
 test('a popover that lost the focus still holds the bare keys, wherever the focus went, and a field goes on typing (GF-103)', async ({ page }) => {
   await seed(page, 'Poplost');
   await board(page, 'Poplost');
@@ -725,9 +754,7 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await page.getByTestId('chip-app').click();
   await pop.locator('.gf-tile-keys').click();
   await page.keyboard.press('c');
-  await page.keyboard.press('x');
   await expect(page.getByTestId('board-create')).toHaveCount(0);
-  await expect(page.getByTestId('selection-bar')).toHaveCount(0);
   await expect(pop).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(pop).toHaveCount(0);
@@ -741,6 +768,8 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await page.keyboard.press('Enter');
   await expect(pop).toBeVisible();
   await expect(page).toHaveURL(/\?q=Poplost$/);
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(pop).toHaveCount(0);
   await expect(only).toHaveClass(/is-cursor/);
