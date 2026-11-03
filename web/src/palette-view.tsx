@@ -139,9 +139,13 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      // `esc` closes the topmost thing: a nested pick first, the panel second, and the panel hands the focus back to what held it
+      // `esc` closes the topmost thing: a nested pick first, the panel second
       if (nest !== null) return setNest(null), setQuery(''), setHighlight(0);
-      if (opener.current instanceof HTMLElement) opener.current.focus();
+      // the focus goes back to what held it, without moving the page, unless that has scrolled away: a focus nobody can see is the GF-80 hazard
+      if (opener.current instanceof HTMLElement) {
+        const { top, bottom } = opener.current.getBoundingClientRect();
+        if (bottom > 0 && top < window.innerHeight) opener.current.focus({ preventScroll: true });
+      }
       return onClose();
     }
     if (e.key === 'Enter') {
