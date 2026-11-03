@@ -278,6 +278,8 @@ test('three tickets move to a project together; one ineligible ticket stops an a
   // an empty palette is a menu shared between its groups; naming the row is how you reach the ninth action
   await palette.getByLabel('command palette').fill('move to pro');
   await palette.getByTestId('run-act-move-project').click();
+  // eight rows is what stays a menu, and the specs before this one have made projects: the name narrows it
+  await palette.getByLabel('command palette').fill('Bulk landing');
   await palette.getByRole('option', { name: 'Bulk landing' }).click();
   await expect(page.getByTestId('bulk-done')).toHaveText('Moved 3 Tickets');
   await expect(count(page)).toHaveCount(0);

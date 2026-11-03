@@ -33,6 +33,17 @@ const PAGES: { label: string; to: string }[] = [
   { label: 'settings', to: '/settings' },
 ];
 
+function isClipped(el: HTMLElement): boolean {
+  const at = el.getBoundingClientRect();
+  // a pixel is rounding: the browser's own scroll to a focused popover stops a fraction of one short
+  const cuts = (edges: { top: number; left: number; bottom: number; right: number }) =>
+    at.top < edges.top - 1 || at.left < edges.left - 1 || at.bottom > edges.bottom + 1 || at.right > edges.right + 1;
+  if (cuts({ top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth })) return true;
+  for (let box = el.parentElement; box && box !== document.body; box = box.parentElement)
+    if (getComputedStyle(box).overflow !== 'visible' && cuts(box.getBoundingClientRect())) return true;
+  return false;
+}
+
 export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => void }) {
   const current = useCurrentTicket();
   const detail = useTicket(current.key ?? '');
@@ -53,6 +64,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
+  const opener = useRef(document.activeElement);
   useEffect(() => input.current?.focus(), []);
 
   // a press anywhere else closes it; there is no backdrop to catch it (DESIGN.md Components)
@@ -139,7 +151,9 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     if (e.key === 'Escape') {
       e.preventDefault();
       // `esc` closes the topmost thing: a nested pick first, the panel second
-      return nest === null ? onClose() : (setNest(null), setQuery(''), setHighlight(0));
+      if (nest !== null) return setNest(null), setQuery(''), setHighlight(0);
+      if (opener.current instanceof HTMLElement && !isClipped(opener.current)) opener.current.focus({ preventScroll: true });
+      return onClose();
     }
     if (e.key === 'Enter') {
       e.preventDefault();
