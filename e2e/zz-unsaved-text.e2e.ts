@@ -604,3 +604,217 @@ test('a create the API never answers says so in a sentence on the board (GF-79)'
   await form.getByLabel('ticket title').press('ControlOrMeta+Enter');
   await expect(form.getByRole('alert')).toHaveText(UNREACHED);
 });
+
+async function ticketHolding(page: Page, name: string, description: string) {
+  const ticket = await post<Ticket>(page, '/api/tickets', { title: `${name} ticket`, description });
+  const surface: Surface = { title: ticket.title, url: `/tickets/${ticket.key}`, path: `/api/tickets/${ticket.key}`, column: 'description', testId: 'description' };
+  await page.goto(surface.url);
+  return surface;
+}
+
+async function helloWorld(page: Page, name: string) {
+  const surface = await ticketHolding(page, name, 'hello world');
+  await expect(doc(page, surface.testId)).toHaveText('hello world');
+  return surface;
+}
+
+// past staleTime in web/src/main.tsx: a refocus refetches by then
+const STALE_MS = 1_100;
+
+async function refetchUnderTheCaret(page: Page, surface: Surface) {
+  await page.waitForTimeout(STALE_MS);
+  const refetched = page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === surface.path);
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  await refetched;
+}
+
+async function pasteBeforeTheSpace(page: Page, surface: Surface, text: string) {
+  await doc(page, surface.testId).click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+End');
+  for (let i = 0; i < ' world'.length; i += 1) await page.keyboard.press('ArrowLeft');
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await doc(page, surface.testId).evaluate((element, text) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+}
+
+const aboutSaving = (page: Page) => page.getByTestId('about-tile').getByTestId('saving');
+/** Well inside IDLE_MS, so a word still sticking from the last save has not yet given way to the write the idle beat sends. */
+const BEFORE_THE_BEAT = { timeout: 300 };
+const clickAway = (page: Page) => page.getByTestId('page-title').click();
+
+for (const [pasted, settled, typed] of [
+  ['1. ', 'hello\n\n1. \n\n world', 'hello\n\n1. \n\nQ world'],
+  ['1. a', 'hello\n\n1. a\n\n world', 'hello\n\n1. a\n\nQ world'],
+] as const) {
+  test(`a letter typed after a pasted \`${pasted}\` is stored, the field says \`saved\` only once it is, and nobody is said to have moved it (GF-104)`, async ({ page }) => {
+    const surface = await helloWorld(page, `Pasted ${pasted}`);
+    const sent = patchesSent(page);
+    await pasteBeforeTheSpace(page, surface, pasted);
+    await expect.poll(() => stored(page, surface)).toBe(settled);
+    await expect(aboutSaving(page)).toHaveText('saved');
+
+    await page.keyboard.type('Q');
+    await expect(aboutSaving(page)).toHaveText('saving…', BEFORE_THE_BEAT);
+    await expect.poll(() => stored(page, surface)).toBe(typed);
+    await expect(aboutSaving(page)).toHaveText('saved');
+
+    await clickAway(page);
+    await page.waitForTimeout(BEAT_MS);
+    await expect(refusal(page, surface.testId)).toHaveCount(0);
+    expect(sent).toEqual([JSON.stringify({ description: settled }), JSON.stringify({ description: typed })]);
+
+    await page.reload();
+    await expect(doc(page, surface.testId).locator('p').last()).toHaveText('Q world');
+    expect(await stored(page, surface)).toBe(typed);
+  });
+}
+
+test('undo after a settled paste of a list stores what the field then shows (GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Undone paste');
+  const sent = patchesSent(page);
+  await pasteBeforeTheSpace(page, surface, '1. ');
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. \n\n world');
+  await expect(aboutSaving(page)).toHaveText('saved');
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('hello world');
+  await expect.poll(() => stored(page, surface)).toBe('hello world');
+
+  await clickAway(page);
+  await page.waitForTimeout(BEAT_MS);
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await page.reload();
+  await expect(doc(page, surface.testId)).toHaveText('hello world');
+  expect(sent).toEqual(['{"description":"hello\\n\\n1. \\n\\n world"}', '{"description":"hello world"}']);
+});
+
+test('letting go of a write that reads back differently shows what a reload shows, and writes nothing (GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Reads back');
+  const sent = patchesSent(page);
+  await pasteBeforeTheSpace(page, surface, '1. ');
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. \n\n world');
+
+  await clickAway(page);
+  await expect(doc(page, surface.testId).locator('ol li')).toHaveText('world');
+  await page.waitForTimeout(BEAT_MS);
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  expect(sent).toEqual(['{"description":"hello\\n\\n1. \\n\\n world"}']);
+  expect(await stored(page, surface)).toBe('hello\n\n1. \n\n world');
+
+  await typeAtEnd(page, surface.testId, 'Q');
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. worldQ');
+});
+
+test('placing the caret in a stored body that reads back differently writes nothing, and a letter typed there lands (GF-43, GF-104)', async ({ page }) => {
+  const surface = await ticketHolding(page, 'Stored unstable', 'hello\n\n1. \n\n world');
+  await expect(doc(page, surface.testId).locator('ol li')).toHaveText('world');
+  const sent = patchesSent(page);
+
+  await doc(page, surface.testId).click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.waitForTimeout(BEAT_MS);
+  await clickAway(page);
+  await expect(page.getByTestId('mode-line')).toHaveCount(0);
+  await page.waitForTimeout(BEAT_MS);
+  expect(sent).toEqual([]);
+  expect(await stored(page, surface)).toBe('hello\n\n1. \n\n world');
+
+  await typeAtEnd(page, surface.testId, 'Q');
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. worldQ');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
+test('a refused save after a pasted list keeps its words and says so, and the next act sends them (GF-79, GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Refused paste');
+  await pasteBeforeTheSpace(page, surface, '1. ');
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. \n\n world');
+  await expect(aboutSaving(page)).toHaveText('saved');
+
+  let unreachable = true;
+  await page.route(surface.path, (route) => (isPatch(route) && unreachable ? route.abort() : route.continue()));
+  await page.keyboard.type('Q');
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED);
+  await expect(aboutSaving(page)).toHaveCount(0);
+  await expect(doc(page, surface.testId).locator('p').last()).toHaveText('Q world');
+  expect(await stored(page, surface)).toBe('hello\n\n1. \n\n world');
+
+  unreachable = false;
+  await leave(page);
+  await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. \n\nQ world');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
+test('`saved` gives way to `saving…` at the first key after a save, until the words land, on a plain body too (GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Sticky word');
+  await typeAtEnd(page, surface.testId, ' one');
+  await expect(aboutSaving(page)).toHaveText('saved');
+  expect(await stored(page, surface)).toBe('hello world one');
+
+  await page.keyboard.type(' two');
+  await expect(aboutSaving(page)).toHaveText('saving…', BEFORE_THE_BEAT);
+  await expect(page.getByTestId('saving-line')).toHaveText('saving…', BEFORE_THE_BEAT);
+  await expect(aboutSaving(page)).toHaveText('saved');
+  expect(await stored(page, surface)).toBe('hello world one two');
+});
+
+test('letters typed under a real rewrite, held until the caret leaves, are never called saved (GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Held word');
+  await typeAtEnd(page, surface.testId, ' one');
+  await expect(aboutSaving(page)).toHaveText('saved');
+
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+  await refetchUnderTheCaret(page, surface);
+  await expect(aboutSaving(page)).toHaveCount(0);
+
+  await page.keyboard.type(' two');
+  await page.waitForTimeout(BEAT_MS);
+  await expect(aboutSaving(page)).toHaveCount(0);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+
+  await clickAway(page);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(aboutSaving(page)).toHaveCount(0);
+  await expect(doc(page, surface.testId)).toHaveText('hello world one two');
+
+  await doc(page, surface.testId).click();
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect.poll(() => stored(page, surface)).toBe('hello world one two');
+  await expect(aboutSaving(page)).toHaveText('saved');
+});
+
+test('letters held back by a rewrite go out once the rewrite is put back, with no second act (GF-104)', async ({ page }) => {
+  const surface = await helloWorld(page, 'Put back');
+  await typeAtEnd(page, surface.testId, ' one');
+  await expect(aboutSaving(page)).toHaveText('saved');
+
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+  await refetchUnderTheCaret(page, surface);
+  await page.keyboard.type(' two');
+  await page.waitForTimeout(BEAT_MS);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+
+  await page.request.patch(surface.path, { data: { description: 'hello world one' }, headers: { 'x-goblin-actor': 'agent' } });
+  await refetchUnderTheCaret(page, surface);
+  await expect.poll(() => stored(page, surface)).toBe('hello world one two');
+  await expect(aboutSaving(page)).toHaveText('saved');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
+test('a save given up on and undone says nothing, because nothing is on its way (GF-104)', async ({ page }) => {
+  test.setTimeout(BOUND_MS + 30_000);
+  const surface = await helloWorld(page, 'Undone hung');
+  await hangFirstPatch(page, surface.path);
+  await typeAtEnd(page, surface.testId, ' one');
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED, { timeout: BOUND_MS + 5_000 });
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(doc(page, surface.testId)).toHaveText('hello world');
+  await page.waitForTimeout(BEAT_MS);
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  await expect(aboutSaving(page)).toHaveCount(0);
+  expect(await stored(page, surface)).toBe('hello world');
+});
