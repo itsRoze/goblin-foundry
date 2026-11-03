@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
-import type { TiptapEditorHTMLElement } from '@tiptap/core';
+import type { JSONContent, TiptapEditorHTMLElement } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
 import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { judgement } from '@goblin/shared';
 import { unreached } from './api';
@@ -246,8 +247,35 @@ function recordFor(id: FieldId, fetched: Version, save: FieldRecord['save']): Fi
   return { field: columnOf(id), agreed: fetched, live: fetched.body, sending: null, unanswered: [], refusal: null, held: null, moved: null, save, listeners: new Set() };
 }
 
+const HISTORY = 'history$';
+
 /** Typing is an answer to a body that moved; an undo is not, since undone far enough it takes the server's words. prosemirror-history stamps its own transactions with its plugin key. */
-const isUndo = (transaction: { getMeta(key: string): unknown }) => transaction.getMeta('history$') !== undefined;
+const isUndo = (transaction: { getMeta(key: string): unknown }) => transaction.getMeta(HISTORY) !== undefined;
+
+/**
+ * Why the whole document is being replaced, which decides what `⌘Z` may take back afterwards (GF-105).
+ * - `outside`: words from elsewhere. Nothing on the stacks is about them, and any press would write the person's older words over them, so the stacks are emptied.
+ * - `asked`: `esc` dropped words the server never held. Its own step, because `⌘Z` is the way back to them.
+ * - `readBack`: the person's own words as a reload reads them. Part of the edit before it, so one press takes both back: as a step of its own a press would change nothing the person can see and send what the server holds, and off the stack every step before it would be gone.
+ */
+type Swap = 'outside' | 'asked' | 'readBack';
+
+/** prosemirror-history has no command for this, but a transaction carrying its key hands it the state it is to have, which is how its own undo works. */
+function emptyHistory({ view }: Editor) {
+  const history = view.state.plugins.find((plugin) => (plugin as unknown as { key: string }).key === HISTORY);
+  if (history) view.dispatch(view.state.tr.setMeta(history, { historyState: history.spec.state?.init({}, view.state) }));
+}
+
+function swapIn(editor: Editor, content: JSONContent, swap: Swap) {
+  const chain = editor.chain();
+  if (swap === 'outside') chain.setMeta('addToHistory', false);
+  if (swap === 'asked') chain.command(({ tr }) => !!closeHistory(tr));
+  // what prosemirror-history reads as "part of the event before this"
+  if (swap === 'readBack') chain.setMeta('appendedTransaction', editor.state.tr);
+  chain.setContent(content, { emitUpdate: false }).run();
+  if (swap === 'outside') emptyHistory(editor);
+  if (swap === 'readBack') editor.view.dispatch(closeHistory(editor.state.tr));
+}
 
 function keep(record: FieldRecord) {
   if (record.moved === null) return;
@@ -370,26 +398,29 @@ export function MarkdownField({
     flush(record);
   }, [record]);
 
-  /** Replace the document wholesale, without pushing the swap onto the undo stack. */
   const apply = useCallback(
-    (read: Version) => {
+    (read: Version, swap: Swap = 'outside') => {
       record.agreed = read;
       record.live = read.body;
-      editorRef.current?.commands.setContent(toDoc(shape, read.body), { emitUpdate: false });
+      const editor = editorRef.current;
+      const alreadyHeld = swap === 'readBack' && editor !== null && toMarkdown(shape, editor.getJSON()) === read.body;
+      if (editor && !alreadyHeld) swapIn(editor, toDoc(shape, read.body), swap);
       setEmpty(read.body.trim() === '');
       notify(record);
     },
     [shape, record],
   );
 
-  /** With the caret gone and nothing unsaved the field shows what a reload would, which is not always what the serialiser wrote. */
+  const lastChangeWasUndo = useRef(false);
+
+  /** With the caret gone and nothing unsaved the field shows what a reload would, which is not always what the serialiser wrote. Not after an undo: no event is left to join, and undoing a swap of its own would send what the server holds, then the next click away would swap it in again. */
   const showStored = useCallback(() => {
-    if (!engagedRef.current && landed(record) && fetched.judged === record.agreed.judged && fetched.body !== record.live) apply(fetched);
+    if (!engagedRef.current && !lastChangeWasUndo.current && landed(record) && fetched.judged === record.agreed.judged && fetched.body !== record.live) apply(fetched, 'readBack');
   }, [apply, fetched, record]);
 
-  const take = useCallback(() => {
+  const take = useCallback((swap?: Swap) => {
     if (record.moved === null) return;
-    apply(record.moved);
+    apply(record.moved, swap);
     record.moved = null;
     record.refusal = null;
     notify(record);
@@ -457,7 +488,7 @@ export function MarkdownField({
           }
           if (event.key === 'Escape') {
             event.preventDefault();
-            take();
+            take('asked');
             (view.dom as HTMLElement).blur();
             return true;
           }
@@ -469,6 +500,7 @@ export function MarkdownField({
         setEmpty(editor.isEmpty);
         // a click changes nothing, but StarterKit's appended paragraph updates, and a bare marker then serialises differently: reading, not an edit (GF-43)
         if (!transaction.docChanged) return;
+        lastChangeWasUndo.current = isUndo(transaction);
         if (markdown === record.live) return;
         record.live = markdown;
         notify(record);
