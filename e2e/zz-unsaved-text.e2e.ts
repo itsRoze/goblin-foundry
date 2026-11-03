@@ -19,7 +19,7 @@ const read = async <T>(page: Page, path: string) => (await (await page.request.g
 const expectTitle = (page: Page, text: string) => expect(page.getByTestId('page-title')).toContainText(text);
 
 const UNREACHED = 'could not reach the API; try again';
-const MOVED = 'changed elsewhere while these words were unsaved; ⌘⏎ saves them over it, esc takes it';
+const MOVED = 'changed elsewhere while unsaved; e, then ⌘⏎ keeps your words or esc takes theirs';
 
 // past IDLE_MS in web/src/editor.tsx: a write the editor means to send has gone out by then
 const BEAT_MS = 1000;

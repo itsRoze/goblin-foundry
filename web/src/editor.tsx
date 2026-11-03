@@ -176,7 +176,7 @@ interface Landed {
 /** `ticket/3/design`: the entity and the column, which together name a record. */
 export type FieldId = `${'ticket' | 'project' | 'app'}/${number}/${'description' | 'design'}`;
 
-const MOVED = 'changed elsewhere while these words were unsaved; ⌘⏎ saves them over it, esc takes it';
+const MOVED = 'changed elsewhere while unsaved; e, then ⌘⏎ keeps your words or esc takes theirs';
 
 const records = new Map<FieldId, FieldRecord>();
 
