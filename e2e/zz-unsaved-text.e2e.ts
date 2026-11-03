@@ -820,3 +820,72 @@ test('a save given up on and undone says nothing, because nothing is on its way 
   await expect(aboutSaving(page)).toHaveCount(0);
   expect(await stored(page, surface)).toBe('hello world');
 });
+
+for (const [kind, named] of [['app', 'an app'], ['project', 'a project']] as const) {
+  const onDescribed = async (page: Page, name: string): Promise<Surface> => {
+    const entity = await post<Named>(page, `/api/${kind}s`, { name: `${name} ${kind}`, description: 'hello world' });
+    const surface: Surface = { title: entity.name, url: `/${kind}s/${entity.id}`, path: `/api/${kind}s/${entity.id}`, column: 'description', testId: `${kind}-description` };
+    await page.goto(surface.url);
+    await expect(doc(page, surface.testId)).toHaveText('hello world');
+    return surface;
+  };
+  const openEditForm = async (page: Page) => {
+    await page.getByRole('button', { name: `edit ${kind}` }).click();
+    await expect(page.getByTestId('edit-form')).toBeVisible();
+  };
+
+  test(`with the \`edit\` form of ${named} open, the word says what the description's write is doing (GF-104)`, async ({ page }) => {
+    const surface = await onDescribed(page, 'Edit form');
+    await slowPatches(page, surface.path, BEAT_MS);
+    await typeAtEnd(page, surface.testId, ' one');
+    await openEditForm(page);
+    await expect(aboutSaving(page)).toHaveText('saving…');
+
+    await expect.poll(() => stored(page, surface)).toBe('hello world one');
+    await expect(aboutSaving(page)).toHaveText('saved');
+  });
+
+  test(`the \`edit\` form of ${named} saves on submit, and the word claims nothing of it (GF-104)`, async ({ page }) => {
+    await onDescribed(page, 'Edit form submit');
+    await openEditForm(page);
+    await expect(aboutSaving(page)).toHaveCount(0);
+
+    const nameField = page.getByTestId('edit-form').getByLabel('name', { exact: true });
+    await nameField.fill('Edit form submitted');
+    await nameField.press('ControlOrMeta+Enter');
+    await expect(page.getByTestId('edit-form')).toHaveCount(0);
+    await expect(page.getByTestId('page-title')).toHaveText('Edit form submitted');
+    await expect(aboutSaving(page)).toHaveCount(0);
+  });
+
+  test(`with the \`edit\` form of ${named} open, a refused write leaves no word, and closing the form brings its sentence back (GF-104)`, async ({ page }) => {
+    const surface = await onDescribed(page, 'Edit form refused');
+    await page.route(surface.path, (route) => (isPatch(route) ? route.abort() : route.continue()));
+    await typeAtEnd(page, surface.testId, ' one');
+    await openEditForm(page);
+    await expect(aboutSaving(page)).toHaveCount(0);
+
+    await page.getByTestId('edit-form').getByRole('button', { name: 'cancel' }).click();
+    await expect(refusal(page, surface.testId)).toHaveText(UNREACHED);
+    await expect(aboutSaving(page)).toHaveCount(0);
+    await expect(doc(page, surface.testId)).toHaveText('hello world one');
+  });
+
+  test(`with the \`edit\` form of ${named} open, words stopped by a body that moved are not called \`saved\` (GF-104)`, async ({ page }) => {
+    const surface = await onDescribed(page, 'Edit form moved');
+    await typeAtEnd(page, surface.testId, ' one');
+    await expect(aboutSaving(page)).toHaveText('saved');
+
+    await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+    await refetchUnderTheCaret(page, surface);
+    await page.keyboard.type(' two');
+    await openEditForm(page);
+    await page.waitForTimeout(BEAT_MS);
+    await expect(aboutSaving(page)).toHaveCount(0);
+
+    await page.getByTestId('edit-form').getByRole('button', { name: 'cancel' }).click();
+    await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+    await expect(aboutSaving(page)).toHaveCount(0);
+    expect(await stored(page, surface)).toBe('An agent rewrote this.');
+  });
+}
