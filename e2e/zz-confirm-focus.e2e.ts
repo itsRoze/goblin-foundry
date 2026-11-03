@@ -8,15 +8,16 @@ const BELOW_THE_FOLD = { width: 500, height: 723 };
 type Ticket = { key: string };
 
 const post = async <T>(page: Page, path: string, data: object) => (await (await page.request.post(path, { data })).json()) as T;
+const read = async (page: Page, key: string) => (await (await page.request.get(`/api/tickets/${key}`)).json()) as { status: string; trashed_at: string | null };
 
 async function blockedTicket(page: Page, name: string, fields: object = {}) {
   const app = await post<{ id: number }>(page, '/api/apps', { name: `${name} app` });
-  const blocker = await post<Ticket>(page, '/api/tickets', { title: `${name} blocker` });
+  const blocker = await post<Ticket>(page, '/api/tickets', { title: 'Holdup' });
   const blocked = await post<Ticket>(page, '/api/tickets', { title: `${name} blocked`, status: 'ready', app_id: app.id, simple: true, ...fields });
   await page.request.post(`/api/tickets/${blocked.key}/dependencies`, { data: { blocker: blocker.key } });
   await page.goto(`/tickets/${blocked.key}`);
   await expect(page.getByTestId('state-tile')).toBeVisible();
-  return blocked;
+  return { ...blocked, app: app.id };
 }
 
 async function askByKey(page: Page) {
@@ -26,14 +27,38 @@ async function askByKey(page: Page) {
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
 }
 
-test('s ⏎ on a blocked Ticket puts `start anyway` on screen and under the focus, so ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
+async function twice(page: Page, key: string, gapMs: number) {
+  await page.keyboard.press(key);
+  await page.waitForTimeout(gapMs);
+  await page.keyboard.press(key);
+  await page.waitForTimeout(400);
+}
+
+const GAPS = [30, 100, 400];
+
+test('s ⏎ on a blocked Ticket puts the question on screen with the focus on cancel, so ⏎ dismisses it and Tab ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
   await page.setViewportSize(BELOW_THE_FOLD);
   const blocked = await blockedTicket(page, 'Askfocus');
   await askByKey(page);
-  await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
-  await expect(page.getByTestId('confirm-start-yes')).toBeInViewport();
+  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-cancel')).toBeInViewport();
   await expect(page.getByTestId('state-tile')).toHaveClass(/is-focus/);
 
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  await expect(page.getByTestId('state-tile')).toContainText('ready');
+  await expect(page.getByTestId('move-start')).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  await expect(page.getByTestId('state-tile')).toContainText('ready');
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');
   await expect(page.getByTestId('confirm-start')).toHaveCount(0);
@@ -42,16 +67,161 @@ test('s ⏎ on a blocked Ticket puts `start anyway` on screen and under the focu
   await expect(page.getByTestId('state-tile')).toContainText('building');
 });
 
-test('a held ⏎ asks the question and does not answer it (GF-82)', async ({ page }) => {
-  await blockedTicket(page, 'Heldenter');
-  await page.keyboard.press('s');
-  await expect(page.getByTestId('run-move-start')).toBeVisible();
+test('s ⏎ ⏎ on a Ticket view writes nothing, at 30, 100 and 400 ms', async ({ page }) => {
+  for (const gap of GAPS) {
+    const blocked = await blockedTicket(page, `Double${gap}`);
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    await twice(page, 'Enter', gap);
+    expect((await read(page, blocked.key)).status, `gap ${gap}`).toBe('ready');
+    await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  }
+});
+
+test('j s ⏎ ⏎ on a board column writes nothing, at 30, 100 and 400 ms', async ({ page }) => {
+  for (const gap of GAPS) {
+    const blocked = await blockedTicket(page, `Column${gap}`);
+    await page.goto(`/?q=${encodeURIComponent(`Column${gap} blocked`)}`);
+    await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+    await page.keyboard.press('j');
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    await twice(page, 'Enter', gap);
+    expect((await read(page, blocked.key)).status, `gap ${gap}`).toBe('ready');
+    await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
+    await expect(page).toHaveURL(/^[^?]*\/\?q=/);
+  }
+});
+
+test('s ⏎ ⏎ on a Selection and ⏎ ⏎ on its trash write nothing, at 30, 100 and 400 ms', async ({ page }) => {
+  for (const gap of GAPS) {
+    const blocked = await blockedTicket(page, `Bulk${gap}`);
+    const free = await post<Ticket>(page, '/api/tickets', { title: `Bulk${gap} free`, status: 'ready', app_id: blocked.app, simple: true });
+    await page.goto(`/?q=${encodeURIComponent(`Bulk${gap}`)}`);
+    await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+a');
+    await expect(page.getByTestId('selection-count')).toHaveText('2 selected');
+    await page.keyboard.press('s');
+    await expect(page.getByTestId('run-move-start')).toBeVisible();
+    await twice(page, 'Enter', gap);
+    expect((await read(page, blocked.key)).status, `start gap ${gap}`).toBe('ready');
+    expect((await read(page, free.key)).status, `start gap ${gap}`).toBe('ready');
+    await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
+
+    await page.getByTestId('bulk-trash').focus();
+    await twice(page, 'Enter', gap);
+    expect((await read(page, blocked.key)).trashed_at, `trash gap ${gap}`).toBeNull();
+    expect((await read(page, free.key)).trashed_at, `trash gap ${gap}`).toBeNull();
+    await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
+  }
+});
+
+test('a double click on the bar’s trash asks and does not answer: the yes is drawn where the verb was', async ({ page }) => {
+  const blocked = await blockedTicket(page, 'Dblclick');
+  const free = await post<Ticket>(page, '/api/tickets', { title: 'Dblclick free', status: 'ready', app_id: blocked.app, simple: true });
+  await page.goto('/?q=Dblclick');
+  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(page.getByTestId('selection-count')).toHaveText('2 selected');
+  await page.getByTestId('bulk-trash').dblclick();
+  await page.waitForTimeout(400);
+  await expect(page.getByTestId('bulk-confirm')).toBeVisible();
+  expect((await read(page, blocked.key)).trashed_at).toBeNull();
+  expect((await read(page, free.key)).trashed_at).toBeNull();
+  await expect(page.getByTestId('bulk-confirm-yes')).toHaveAttribute('aria-describedby', /./);
+});
+
+test('a held ⏎ asks the question once: its repeats neither answer it nor ask it again (GF-82)', async ({ page }) => {
+  const blocked = await blockedTicket(page, 'Heldrepeat');
+  await page.getByTestId('move-start').focus();
   await page.keyboard.down('Enter');
-  await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
-  await page.getByTestId('confirm-start-yes').dispatchEvent('keydown', { key: 'Enter', repeat: true, bubbles: true });
+  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  // a second `down` with the key still held is what the browser sends as a repeat
+  await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
-  await expect(page.getByTestId('state-tile')).toContainText('ready');
+  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+
+  await page.keyboard.down('Enter');
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  await expect(page.getByTestId('move-start')).toBeFocused();
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  expect((await read(page, blocked.key)).status).toBe('ready');
+
+  await page.goto('/?q=Heldrepeat');
+  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+  await page.keyboard.press('j');
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('run-move-start')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await page.keyboard.down('Enter');
+  await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await page.waitForTimeout(300);
+  await expect(page).toHaveURL(/\?q=Heldrepeat$/);
+  expect((await read(page, blocked.key)).status).toBe('ready');
+});
+
+test('a question never takes the caret out of the filter: not as it stands, not when the board restacks, not when another actor moves its card', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const blocked = await blockedTicket(page, 'Caret');
+  await page.goto('/?q=Caret%20bl');
+  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+  await page.keyboard.press('j');
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('run-move-start')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-ready')).toBeVisible();
+  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+
+  const filter = page.getByLabel('filter by text');
+  await filter.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('oc', { delay: 60 });
+  await expect(filter).toHaveValue('Caret bloc');
+  await expect(filter).toBeFocused();
+  await expect(page.getByTestId('confirm-ready')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(page.getByTestId('board')).toHaveAttribute('data-orientation', 'vertical');
+  await page.keyboard.type('k', { delay: 60 });
+  await expect(filter).toHaveValue('Caret block');
+  await expect(filter).toBeFocused();
+
+  await page.request.post(`/api/tickets/${blocked.key}/unapprove`);
+  await expect(page.getByTestId('section-planning').getByTestId(`card-${blocked.key}`)).toBeVisible({ timeout: 8_000 });
+  await page.keyboard.type('e', { delay: 60 });
+  await expect(filter).toHaveValue('Caret blocke');
+  await expect(filter).toBeFocused();
+  expect((await read(page, blocked.key)).status).toBe('planning');
+});
+
+test('a late refusal shows in place: the page does not move and the caret keeps its tile', async ({ page }) => {
+  await page.setViewportSize(BELOW_THE_FOLD);
+  const ticket = await post<Ticket>(page, '/api/tickets', { title: 'Late refusal', status: 'todo', simple: true });
+  await page.route(`**/api/tickets/${ticket.key}/approve`, async (route) => {
+    await new Promise((r) => setTimeout(r, 1200));
+    await route.fulfill({ status: 409, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Refused', status: 409, hint: 'the guard said no, late' }) });
+  });
+  await page.goto(`/tickets/${ticket.key}`);
+  await expect(page.getByTestId('state-tile')).toBeVisible();
+  await page.keyboard.press('a');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const editor = page.getByTestId('about-tile').locator('[contenteditable="true"]').first();
+  await editor.click();
+  await page.keyboard.type('abc', { delay: 30 });
+  await expect(page.getByTestId('about-tile')).toHaveClass(/is-focus/);
+
+  await expect(page.getByTestId('state-refusal')).toHaveText('the guard said no, late');
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByTestId('about-tile')).toHaveClass(/is-focus/);
+  await expect(page.getByTestId('state-tile')).not.toHaveClass(/is-focus/);
+  await expect(editor).toBeFocused();
+  await expect(editor).toContainText('abc');
 });
 
 test('esc and cancel hand the focus back to `start`, and ⏎ there asks again rather than opening something else', async ({ page }) => {
