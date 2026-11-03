@@ -544,9 +544,19 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   const set = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 10' });
   await expect(set).toHaveAttribute('aria-selected', 'true');
   await expect(set).toBeInViewport({ ratio: 0.9 });
+
+  // the armed row stays in sight as a query or `↓` moves it, so `⏎` picks what can be read
+  await page.getByTestId('pop-app').getByRole('combobox').fill('zlong 0');
+  const first = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 01' });
+  await expect(first).toHaveAttribute('aria-selected', 'true');
+  await expect(first).toBeInViewport({ ratio: 0.9 });
+  for (let n = 0; n < 8; n++) await page.keyboard.press('ArrowDown');
+  const ninth = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 09' });
+  await expect(ninth).toHaveAttribute('aria-selected', 'true');
+  await expect(ninth).toBeInViewport({ ratio: 0.9 });
 });
 
-test('Tab and space in a check popover toggle no row the highlight is not on, and a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
+test('Tab closes a popover and moves on, so `space` toggles no row and the keys are the board\'s again; a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
   await seed(page, 'Poptab');
   await board(page, 'Poptab');
   await page.getByTestId('chip-status').click();
@@ -555,9 +565,17 @@ test('Tab and space in a check popover toggle no row the highlight is not on, an
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Tab');
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await expect(page.getByTestId('chip-status')).not.toBeFocused();
   await page.keyboard.press('Space');
   await expect(page).toHaveURL(/\?q=Poptab$/);
-  await expect(page.getByTestId('pop-status').locator('input:focus')).toHaveCount(0);
+
+  await page.goto('/?q=Poptab');
+  await page.getByTestId('chip-app').click();
+  await expect(page.getByTestId('pop-app').getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('pop-app')).toHaveCount(0);
+  await expect(page.getByTestId('chip-app')).not.toBeFocused();
 
   await page.goto('/?q=Poptab');
   await page.getByTestId('chip-status').click();
@@ -605,10 +623,19 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await expect(pop).toHaveCount(0);
   await expect(only).toHaveClass(/is-cursor/);
 
-  // the focus on another control: a bare key is still held, that chip still answers `⏎`, and a field still types
+  // the focus on another control: a bare key is still held, a checkbox keeps `space`, that chip still answers `⏎`, and a field still types
   await page.keyboard.press('Escape');
   await expect(only).not.toHaveClass(/is-cursor/);
   await page.getByTestId('chip-status').click();
+  const check = page.locator('.gf-card-check input, input.gf-card-check').first();
+  await check.focus();
+  await page.keyboard.press('j');
+  await expect(only).not.toHaveClass(/is-cursor/);
+  await page.keyboard.press('Space');
+  await expect(check).toBeChecked();
+  await expect(page.getByTestId('pop-status')).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(check).not.toBeChecked();
   await page.getByTestId('chip-label').focus();
   await page.keyboard.press('j');
   await expect(only).not.toHaveClass(/is-cursor/);
@@ -684,4 +711,22 @@ test('palette esc hands the focus back to what held it, and leaves it on `body` 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pop-status')).toHaveCount(0);
   await expect(page.getByTestId('chip-status')).toBeFocused();
+});
+
+test('palette esc leaves the page where it was, and the focus on `body` when what held it has scrolled away (GF-103)', async ({ page }) => {
+  const key = await seed(page, 'Popscroll');
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.goto(`/tickets/${key}`);
+  const opener = page.getByTestId('hint-write');
+  await opener.focus();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(200);
+  await expect(opener).not.toBeInViewport();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(y);
+  await expect(page.locator('body')).toBeFocused();
 });
