@@ -87,20 +87,30 @@ export function FilterBar({
 /**
  * The text half. It writes after 200 ms of quiet so a bookmark is not one URL
  * per keystroke; the address stays the truth, and a `q` that changed elsewhere
- * (the `×`, a fresh load) replaces what is in the box.
+ * (the `×`, a fresh load) replaces what is in the box. The router draws a
+ * navigation inside `startTransition`, so the box's own write comes back
+ * through the same prop in a later render than a letter typed meanwhile, and
+ * one such render can carry several writes (GF-99).
  */
 function TextFilter({ q, onChange, inputRef }: { q: string | undefined; onChange: (q: string) => void; inputRef: React.RefObject<HTMLInputElement | null> }) {
   const settled = q ?? '';
   const [typed, setTyped] = useState(settled);
   const [lastSettled, setLastSettled] = useState(settled);
+  const [unseenWrites, setUnseenWrites] = useState<string[]>([]);
   // in the render, not an effect: a mount effect runs after a keystroke that beat it and writes the old `q` over it (GF-95)
   if (lastSettled !== settled) {
     setLastSettled(settled);
-    setTyped(settled);
+    const latest = unseenWrites.lastIndexOf(settled);
+    setUnseenWrites(latest === -1 ? [] : unseenWrites.slice(latest + 1));
+    if (latest === -1) setTyped(settled);
   }
   useEffect(() => {
-    if (typed === settled) return;
-    const timer = setTimeout(() => onChange(typed), SETTLE_MS);
+    const trimmed = typed.trim();
+    if (trimmed === settled) return;
+    const timer = setTimeout(() => {
+      setUnseenWrites((writes) => [...writes, trimmed]);
+      onChange(trimmed);
+    }, SETTLE_MS);
     return () => clearTimeout(timer);
   }, [typed, settled, onChange]);
 
