@@ -22,7 +22,7 @@ import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
-import { useKey, useKeyMap } from '../keys';
+import { ignoreHeldEnter, useKey, useKeyMap } from '../keys';
 import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
@@ -678,7 +678,7 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
             clear <Kbd>esc</Kbd>
           </button>
           {question === null ? (
-            <span className="gf-selection-actions">
+            <span key="verbs" className="gf-selection-actions">
               {/* always there, as `a` always answers: on a set that does not share the arrow it refuses with each Ticket's reason */}
               <button type="button" className={`gf-btn${approvable ? ' is-primary' : ''}`} data-testid="bulk-approve" disabled={busy} onClick={() => onAct({ kind: 'transition', name: 'approve' })}>
                 approve <Kbd>a</Kbd>
@@ -694,10 +694,11 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
               </button>
             </span>
           ) : (
-            // the question takes the verbs' place: it is asked where the verb was pressed, and no second verb is in reach meanwhile
-            <span className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
+            // the question takes the verbs' place: it is asked where the verb was pressed, and no second verb is in reach meanwhile.
+            // Keyed apart from the verbs, or React keeps their buttons and the answer never mounts, so it never takes the focus
+            <span key="question" className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
               <span className="gf-selection-question">{question.text}</span>
-              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" onClick={onConfirm}>
+              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" autoFocus onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
                 {question.verb}
               </button>
               <button type="button" className="gf-btn" data-testid="bulk-confirm-cancel" onClick={onCancel}>

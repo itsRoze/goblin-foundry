@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError, fieldLabel } from './api';
 import { useTile } from './desk';
-import { formKeys } from './keys';
+import { formKeys, ignoreHeldEnter } from './keys';
 
 export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="gf-kbd">{children}</kbd>;
 
@@ -365,11 +365,20 @@ export function useRefusal<T>() {
  * a way through it (ADR-0009: `start` means "proceeding despite the blocker").
  */
 export function Confirm({ text, verb, onConfirm, onCancel, testId }: { text: string; verb: string; onConfirm: () => void; onCancel: () => void; testId?: string }) {
+  // the focus lands on the answer, so the answer must carry the question for whoever hears only the focused control
+  const question = useId();
   return (
     <p className="gf-confirm" role="alert" data-testid={testId}>
-      <span>{text}</span>
-      {/* the question takes the focus as it opens: that brings it on screen and puts `⏎` on the answer (GF-44) */}
-      <button type="button" className="gf-btn" data-testid={`${testId ?? 'confirm'}-yes`} autoFocus onClick={onConfirm}>
+      <span id={question}>{text}</span>
+      <button
+        type="button"
+        className="gf-btn"
+        data-testid={`${testId ?? 'confirm'}-yes`}
+        autoFocus
+        aria-describedby={question}
+        onKeyDown={ignoreHeldEnter}
+        onClick={onConfirm}
+      >
         {verb} anyway
       </button>
       <button type="button" className="gf-btn" onClick={onCancel}>

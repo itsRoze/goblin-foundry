@@ -215,7 +215,6 @@ test('esc answers the blocked-start question before it clears the Cursor (GF-77)
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-ready')).toContainText(blocker.key);
-  // the question holds the focus (GF-44), and `esc` from there still reaches the board
   await expect(page.getByTestId('confirm-ready-yes')).toBeFocused();
 
   await page.keyboard.press('Escape');
@@ -415,6 +414,7 @@ test('start asks once about blockers, keeps the question current, ignores a reti
 
   const confirm = page.getByTestId('bulk-confirm');
   await expect(confirm).toContainText('1 Ticket of 2 still has open blockers');
+  await expect(page.getByTestId('bulk-confirm-yes')).toBeFocused();
   const lines = page.getByTestId('bulk-confirm-lines');
   await expect(lines).toContainText(`${held.key} is blocked by ${blocker.key}`);
   expect((await read(page, free.key)).status).toBe('ready');

@@ -22,13 +22,22 @@ export function letGoOfEnter() {
 }
 
 /**
- * What a control opened has closed: the focus comes back to that control. Left alone it falls to
- * `body` with the thing that held it, where `⏎` is the Cursor's (GF-39, GF-44).
+ * On the answer a question focuses as it opens: the repeats of the held `⏎` that asked land
+ * there, and must not answer it unread (GF-82).
+ */
+export function ignoreHeldEnter(e: React.KeyboardEvent) {
+  if (e.key === 'Enter' && e.repeat) e.preventDefault();
+}
+
+/**
+ * What a control opened has closed and taken the focus with it: the focus comes back to that
+ * control instead of lying on `body`, where `⏎` is the Cursor's (GF-39, GF-44). A focus that
+ * went somewhere else, such as the next picker's input, is left there.
  */
 export function useFocusOnClose(open: boolean, control: RefObject<HTMLElement | null>) {
   const was = useRef(open);
   useEffect(() => {
-    if (was.current && !open) control.current?.focus();
+    if (was.current && !open && document.activeElement === document.body) control.current?.focus();
     was.current = open;
   }, [open, control]);
 }

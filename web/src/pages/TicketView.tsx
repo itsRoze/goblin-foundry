@@ -58,6 +58,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
   const [refusal, setRefusal] = useState<string | null>(null);
   const state = useRefusal<string>();
+  /** How many times the state tile's line has been spoken, so the same sentence twice scrolls into view twice. */
+  const [said, setSaid] = useState(0);
   const nav = useNavigate();
   const { setRefusal: setStateRefusal } = state;
   /** One picker at a time, and `d` is another way to open one, so which is open lives up here. */
@@ -83,11 +85,11 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
    */
   const { guard } = useBulkLock(ticket);
   const edit = useCallback((body: PatchTicketBody, judged?: string) => guard(() => patch.mutateAsync({ key: ticket.key, body, judged })), [guard, patch, ticket.key]);
-  /** The state tile's one line, for a refusal or the question: the tile is where the keys are addressing now. */
   const sayInState = useCallback(
     (text: string) => {
       focusTile('state');
       setStateRefusal(text);
+      setSaid((n) => n + 1);
     },
     [focusTile, setStateRefusal],
   );
@@ -324,6 +326,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           if (start.ok) runEdge(start.edge);
         }}
         refusal={state.refusal}
+        said={said}
       />
 
       <ImplementationTile ticket={ticket} branchCopy={branchCopy} input={implementationInput} />
@@ -640,6 +643,7 @@ function StateTile({
   onConfirm,
   onCancelConfirm,
   refusal,
+  said,
 }: {
   ticket: TicketDetail;
   /** A verb, not an edge: the button and the key ask for the move the same way. */
@@ -652,15 +656,16 @@ function StateTile({
   onConfirm: () => void;
   onCancelConfirm: () => void;
   refusal: string | null;
+  /** Times the line has been spoken, so a sentence that repeats the last still scrolls into view. */
+  said: number;
 }) {
   const edges = lifecycle.from(ticket.status);
   const start = useRef<HTMLButtonElement>(null);
   useFocusOnClose(confirming, start);
-  // the line sits below the fold on a phone, and a sentence nobody sees is no answer
   const line = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (refusal !== null) line.current?.scrollIntoView({ block: 'nearest' });
-  }, [refusal]);
+    line.current?.scrollIntoView({ block: 'nearest' });
+  }, [said]);
   const rows: [string, React.ReactNode][] = [['status', <StatusChip status={ticket.status} />]];
   // the condition `start` asks about, said beside the verbs and not only in the dependencies tile further down
   if (isBlocked(ticket))

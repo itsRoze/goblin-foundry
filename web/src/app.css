@@ -170,7 +170,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-field textarea { resize: vertical; }
 /* a select in a kv row (the Ticket view's app and project) wears the input's clothes too, or it renders in the UA's Arial and white */
 .gf-kv select { font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; max-width: 100%; }
-.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); scroll-margin-block: var(--gf-s3); }
 /* the same line as a refusal, with a way through it */
 .gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
 .gf-toggle { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
@@ -778,3 +778,6 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
    `aria-disabled` rather than `disabled` so the keyboard still reaches it. Last in the file
    to satisfy stylelint's `no-descending-specificity`, which reads source order, not weight. */
 .gf-field input[aria-disabled='true'] { color: var(--gf-mute); border-color: var(--gf-rule); cursor: default; }
+
+/* the answer takes the focus on its own, after a click or a tap as much as a key, so the ring that says `⏎` is armed must not wait for focus-visible (GF-44) */
+.gf-confirm .gf-btn:focus, .gf-selection-question + .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
