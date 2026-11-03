@@ -37,6 +37,7 @@ export function FilterBar({
   onChange,
   refusal,
   findRef,
+  escapeRef,
 }: {
   filter: TicketFilter;
   bad: BadValues;
@@ -44,9 +45,17 @@ export function FilterBar({
   refusal: string | null;
   /** Handed back to the board so its `f find` hint can be the control as well as the key (issue 11). */
   findRef?: React.MutableRefObject<(() => void) | null>;
+  /** The board's `esc` chain asks this first: an open popover is the topmost open thing even once the focus has left it (GF-98). */
+  escapeRef?: React.MutableRefObject<(() => boolean) | null>;
 }) {
   const [open, setOpen] = useState<Which | null>(null);
-  const close = useCallback(() => setOpen(null), []);
+  const bar = useRef<HTMLDivElement>(null);
+  // a popover that unmounts under the focus drops it to `body`, where `⏎` is the Cursor's (GF-80), so a close by key hands
+  // it to the chip, where the ring is drawn; after a press the browser draws no ring, so the focus stays where the press put it
+  const close = useCallback((byKey: boolean) => {
+    if (byKey) bar.current?.querySelector<HTMLButtonElement>('.gf-filter-chip[aria-expanded="true"]')?.focus();
+    setOpen(null);
+  }, []);
   const text = useRef<HTMLInputElement>(null);
   const find = useCallback(() => text.current?.focus(), []);
   useKey('f', find);
@@ -57,9 +66,20 @@ export function FilterBar({
       findRef.current = null;
     };
   }, [findRef, find]);
+  useEffect(() => {
+    if (!escapeRef) return;
+    escapeRef.current = () => {
+      if (open === null) return false;
+      close(true);
+      return true;
+    };
+    return () => {
+      escapeRef.current = null;
+    };
+  }, [escapeRef, open, close]);
 
   return (
-    <div className="gf-filters" data-testid="filter-bar">
+    <div className="gf-filters" data-testid="filter-bar" ref={bar}>
       <EntityChip which="app" filter={filter} bad={bad.app_id} onChange={onChange} open={open === 'app'} onOpen={setOpen} onClose={close} />
       <EntityChip which="project" filter={filter} bad={bad.project_id} onChange={onChange} open={open === 'project'} onOpen={setOpen} onClose={close} />
       <StatusChipButton filter={filter} bad={bad.status} onChange={onChange} open={open === 'status'} onOpen={setOpen} onClose={close} />
@@ -163,6 +183,8 @@ function ChipButton({
       title={title}
       data-testid={testId}
       onClick={onClick}
+      // the chip takes the focus back when its popover closes, so a held `⏎` that picked a row would press it again (GF-82)
+      onKeyDown={(e) => e.key === 'Enter' && e.repeat && e.preventDefault()}
     >
       <span className="gf-filter-key">{label}</span>
       {shown !== null && <span className="gf-filter-value">{shown}</span>}
@@ -224,13 +246,13 @@ function EntityChip({
   onChange: (next: TicketFilter) => void;
   open: boolean;
   onOpen: (which: Which) => void;
-  onClose: () => void;
+  onClose: (byKey: boolean) => void;
 }) {
   const names = useNames();
   const apps = useApps(true);
   const projects = useProjects({ archived: true });
   const slot = useRef<HTMLSpanElement>(null);
-  useCloseOnOutside(slot, open, onClose);
+  useCloseOnOutside(slot, open, () => onClose(false));
   const field = which === 'app' ? 'app_id' : 'project_id';
   const chosen = filter[field];
   const label = chosen === undefined ? null : chosen === null ? 'none' : names[which](chosen);
@@ -252,7 +274,7 @@ function EntityChip({
    * app away from a project's app drops the project — the same rule the Ticket
    * view follows, so the board cannot describe a placement the API refuses.
    */
-  const pick = (value: number | null | undefined) => {
+  const pick = (value: number | null | undefined, byKey: boolean) => {
     const next: TicketFilter = { ...filter };
     if (value === undefined) delete next[field];
     else next[field] = value;
@@ -263,12 +285,12 @@ function EntityChip({
     if (which === 'app' && typeof next.project_id === 'number' && !projectFitsApp(projects.data?.find((p) => p.id === next.project_id), value ?? null))
       delete next.project_id;
     onChange(next);
-    onClose();
+    onClose(byKey);
   };
 
   return (
     <span className="gf-filter-slot" ref={slot}>
-      <ChipButton label={which} value={label} bad={bad} open={open} testId={`chip-${which}`} onClick={() => (open ? onClose() : onOpen(which))} />
+      <ChipButton label={which} value={label} bad={bad} open={open} testId={`chip-${which}`} onClick={() => (open ? onClose(false) : onOpen(which))} />
       {open && (
         <Popover testId={`pop-${which}`}>
           <SearchRows label={which} rows={rows} chosen={chosen} onPick={pick} onClose={onClose} />
@@ -289,8 +311,8 @@ function SearchRows({
   label: string;
   rows: Choice[];
   chosen: number | null | undefined;
-  onPick: (value: number | null | undefined) => void;
-  onClose: () => void;
+  onPick: (value: number | null | undefined, byKey: boolean) => void;
+  onClose: (byKey: boolean) => void;
 }) {
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
@@ -304,11 +326,12 @@ function SearchRows({
   const at = Math.min(cursor, Math.max(hits.length - 1, 0));
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') return e.preventDefault(), onClose();
+    if (e.key === 'Escape') return e.preventDefault(), onClose(true);
     if (e.key === 'Enter') {
       e.preventDefault();
+      // a repeat is the held `⏎` that opened the popover from its chip (GF-82)
       const hit = hits[at];
-      if (hit) onPick(hit.value);
+      if (hit && !e.repeat) onPick(hit.value, true);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       setCursor((c) => {
@@ -351,7 +374,7 @@ function SearchRows({
               className={`gf-row gf-picker-hit${i === at ? ' is-on' : ''}`}
               data-testid={`pick-${label}-${CHOICE_KEY(r)}`}
               onMouseMove={() => setCursor(i)}
-              onClick={() => onPick(r.value)}
+              onClick={() => onPick(r.value, false)}
             >
               <span className="gf-pick-title">{r.label}</span>
               {r.value === chosen && <span className="gf-row-trail">✓</span>}
@@ -386,10 +409,10 @@ function StatusChipButton({
   onChange: (next: TicketFilter) => void;
   open: boolean;
   onOpen: (which: Which) => void;
-  onClose: () => void;
+  onClose: (byKey: boolean) => void;
 }) {
   const slot = useRef<HTMLSpanElement>(null);
-  useCloseOnOutside(slot, open, onClose);
+  useCloseOnOutside(slot, open, () => onClose(false));
   const chosen = filter.status ?? DEFAULT_BOARD_STATUSES;
   /** The address carries `status` only when the set differs from the board's default, so equal boards make equal bookmarks. */
   const toggle = (status: TicketStatus) => {
@@ -409,7 +432,7 @@ function StatusChipButton({
         title={chosen.join(', ')}
         open={open}
         testId="chip-status"
-        onClick={() => (open ? onClose() : onOpen('status'))}
+        onClick={() => (open ? onClose(false) : onOpen('status'))}
       />
       {open && (
         <Popover testId="pop-status">
@@ -437,7 +460,7 @@ function CheckRows<T extends string>({
   options: readonly T[];
   chosen: readonly T[];
   onToggle: (option: T) => void;
-  onClose: () => void;
+  onClose: (byKey: boolean) => void;
   testId: (option: T) => string;
   /** What an empty set says; it stays inside the group, so `esc` still closes it. */
   empty?: string;
@@ -456,7 +479,7 @@ function CheckRows<T extends string>({
     const named = e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow');
     if (!named && (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1)) return;
     e.preventDefault();
-    if (e.key === 'Escape') return onClose();
+    if (e.key === 'Escape') return onClose(true);
     const option = options[at];
     if (e.key === 'Enter' || e.key === ' ') {
       if (option !== undefined && !e.repeat) onToggle(option);
@@ -514,10 +537,10 @@ function LabelChipButton({
   onChange: (next: TicketFilter) => void;
   open: boolean;
   onOpen: (which: Which) => void;
-  onClose: () => void;
+  onClose: (byKey: boolean) => void;
 }) {
   const slot = useRef<HTMLSpanElement>(null);
-  useCloseOnOutside(slot, open, onClose);
+  useCloseOnOutside(slot, open, () => onClose(false));
   const chosen = filter.label ?? [];
   const toggle = (name: string) => {
     const next = chosen.includes(name) ? chosen.filter((l) => l !== name) : canonicalLabels([...chosen, name]);
@@ -534,7 +557,7 @@ function LabelChipButton({
         title={chosen.length > 0 ? chosen.join(', ') : undefined}
         open={open}
         testId="chip-label"
-        onClick={() => (open ? onClose() : onOpen('label'))}
+        onClick={() => (open ? onClose(false) : onOpen('label'))}
       />
       {open && (
         <Popover testId="pop-label">
@@ -551,7 +574,7 @@ function LabelChipButton({
  * corner of it. A name already chosen is always a row, so one nobody carries
  * any more can still be let go.
  */
-function LabelChecks({ chosen, onToggle, onClose }: { chosen: readonly string[]; onToggle: (name: string) => void; onClose: () => void }) {
+function LabelChecks({ chosen, onToggle, onClose }: { chosen: readonly string[]; onToggle: (name: string) => void; onClose: (byKey: boolean) => void }) {
   const inUse = useLabelNames();
   const names = useMemo(() => canonicalLabels([...chosen, ...(inUse.data ?? [])]), [chosen, inUse.data]);
   return (

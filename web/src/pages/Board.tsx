@@ -322,6 +322,7 @@ export function BoardPage() {
   const [menu, setMenu] = useState(false);
   const create = useBoardCreate(filter, columns);
   const find = useRef<(() => void) | null>(null);
+  const closePopover = useRef<(() => boolean) | null>(null);
   const cards = tickets.data;
   const lookup = useCallback((key: string) => cards?.find((t) => t.key === key), [cards]);
 
@@ -448,9 +449,10 @@ export function BoardPage() {
         },
   );
 
-  // `esc` closes what is open — the view menu, the create row, a notice, a question — then lets the Selection go,
-  // then the Cursor; the shell walks back from there
+  // `esc` closes what is open — a filter popover, the view menu, the create row, a notice, a question — then lets the
+  // Selection go, then the Cursor; the shell walks back from there
   useEscape(() => {
+    if (closePopover.current?.()) return true;
     if (menu) {
       setMenu(false);
       return true;
@@ -591,7 +593,7 @@ export function BoardPage() {
       span
       testId="board-tile"
     >
-      <FilterBar filter={filter} bad={bad} onChange={write} refusal={problem} findRef={find} />
+      <FilterBar filter={filter} bad={bad} onChange={write} refusal={problem} findRef={find} escapeRef={closePopover} />
       {branchCopy.copied && <p className="gf-implementation-notice" role="status">{under?.key} branch name copied</p>}
       {branchCopy.failed && <p className="gf-refusal" role="alert">Couldn’t copy. Copy this branch name manually: <code className="gf-branch-name">{branchCopy.branch}</code></p>}
       {menu && (

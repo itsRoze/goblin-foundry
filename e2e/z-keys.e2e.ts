@@ -386,8 +386,8 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(page.getByTestId('palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('palette')).toHaveCount(0);
-  // the palette took the focus with it, and today a popover without the focus hears no `esc` (a gap, not the rule), so the chip closes it
-  await page.getByTestId('chip-status').click();
+  // the palette took the focus with it; the popover is still the topmost open thing, so `esc` closes it (GF-98)
+  await page.keyboard.press('Escape');
   await expect(pop).toHaveCount(0);
 
   await page.getByTestId('chip-status').focus();
@@ -397,4 +397,84 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(pop).toBeVisible();
   await expect(page.getByTestId('check-backlog')).toBeChecked();
   await expect(page.getByTestId('chip-status')).toHaveText('status');
+});
+
+test('esc closes a filter popover that lost the focus and hands the focus back to its chip (GF-98)', async ({ page }) => {
+  await seed(page, 'Popesc');
+  await board(page, 'Popesc');
+  const only = card(page, 'Popesc');
+  await expect(only).toBeVisible();
+  const pop = page.getByTestId('pop-status');
+  const chip = page.getByTestId('chip-status');
+
+  // `esc` from inside the popover: the chip takes the focus back, so `⏎` is the chip's and not the Cursor's
+  await page.keyboard.press('j');
+  await expect(only).toHaveClass(/is-cursor/);
+  await chip.click();
+  await expect(page.getByRole('group', { name: 'filter by status' })).toBeFocused();
+  // `⌘A` is not a bare key, so it is the board's behind the popover, which stays open and keeps the focus
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(page.getByTestId('selection-bar')).toContainText('1');
+  await expect(pop).toBeVisible();
+  await expect(page.getByRole('group', { name: 'filter by status' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+  await expect(chip).toBeFocused();
+  await expect(page.getByTestId('selection-bar')).toContainText('1');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(pop).toBeVisible();
+  await expect(page).toHaveURL(/\?q=Popesc$/);
+
+  // the palette takes the focus and leaves it on `body` when it closes; the popover is still open, so `esc` is its
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(pop).toBeVisible();
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+  await expect(page).toHaveURL(/\?q=Popesc$/);
+  await expect(chip).toBeFocused();
+  await expect(only).toHaveClass(/is-cursor/);
+  await page.keyboard.press('Enter');
+  await expect(pop).toBeVisible();
+  await expect(page).toHaveURL(/\?q=Popesc$/);
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+});
+
+test('a held ⏎ on the app chip opens its popover and picks nothing, not the `any` row (GF-98)', async ({ page }) => {
+  await board(page, 'Popesc');
+  await page.getByTestId('chip-app').click();
+  await page.getByTestId('pop-app').getByRole('option', { name: 'Keyboard' }).click();
+  await expect(page.getByTestId('chip-app')).toContainText('Keyboard');
+  await expect(page).toHaveURL(/app_id=\d+/);
+  // a pick by mouse draws no ring, so the focus is not handed to the chip
+  await expect(page.locator('body')).toBeFocused();
+  await page.getByTestId('chip-app').focus();
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await expect(page.getByTestId('pop-app')).toBeVisible();
+  await expect(page.getByTestId('pop-app').getByRole('combobox')).toBeFocused();
+  await expect(page.getByTestId('chip-app')).toContainText('Keyboard');
+  await expect(page).toHaveURL(/app_id=\d+/);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pop-app')).toHaveCount(0);
+  await expect(page.getByTestId('chip-app')).toBeFocused();
+
+  // held on a row it picks once; the chip takes the focus and the repeats press nothing
+  await page.getByTestId('chip-project').click();
+  await page.getByTestId('pop-project').getByRole('combobox').fill('none');
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await expect(page.getByTestId('chip-project')).toContainText('none');
+  await expect(page.getByTestId('pop-project')).toHaveCount(0);
+  await expect(page.getByTestId('chip-project')).toBeFocused();
+  await expect(page).toHaveURL(/project_id=null/);
 });
