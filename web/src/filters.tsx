@@ -315,7 +315,8 @@ function SearchRows({
   onClose: (byKey: boolean) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [cursor, setCursor] = useState(0);
+  /** `null` until a key, the pointer or a query moves it: it starts on what is set, so `⏎ ⏎` from the chip keeps the filter (GF-103). */
+  const [cursor, setCursor] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
   const listId = useId();
@@ -323,7 +324,11 @@ function SearchRows({
 
   const needle = query.trim().toLowerCase();
   const hits = rows.filter((r) => needle === '' || r.label.toLowerCase().includes(needle));
-  const at = Math.min(cursor, Math.max(hits.length - 1, 0));
+  const at = Math.min(cursor ?? Math.max(hits.findIndex((r) => r.value === chosen), 0), Math.max(hits.length - 1, 0));
+  // the list scrolls inside itself, and a highlight below its fold is an armed row nobody can read
+  useLayoutEffect(() => {
+    if (hits[at]) document.getElementById(optionId(hits[at]))?.scrollIntoView({ block: 'nearest' });
+  }, []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') return e.preventDefault(), onClose(true);
@@ -334,10 +339,7 @@ function SearchRows({
       if (hit && !e.repeat) onPick(hit.value, true);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      setCursor((c) => {
-        const next = Math.min(c, Math.max(hits.length - 1, 0)) + (e.key === 'ArrowDown' ? 1 : -1);
-        return (next + hits.length) % Math.max(hits.length, 1);
-      });
+      setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % Math.max(hits.length, 1));
     }
   };
 

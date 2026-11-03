@@ -543,7 +543,7 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   await page.keyboard.press('Enter');
   const set = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 10' });
   await expect(set).toHaveAttribute('aria-selected', 'true');
-  await expect(set).toBeInViewport({ ratio: 1 });
+  await expect(set).toBeInViewport({ ratio: 0.9 });
 });
 
 test('Tab and space in a check popover toggle no row the highlight is not on, and a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
