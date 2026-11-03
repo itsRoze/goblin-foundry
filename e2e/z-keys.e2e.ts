@@ -478,3 +478,210 @@ test('a held ⏎ on the app chip opens its popover and picks nothing, not the `a
   await expect(page.getByTestId('chip-project')).toBeFocused();
   await expect(page).toHaveURL(/project_id=null/);
 });
+
+/** An app the pickers can list, through the API so a spec on its own still has one. */
+async function seedApp(page: Page, name: string) {
+  const response = await page.request.post('/api/apps', { data: { name } });
+  expect(response.ok(), await response.text()).toBe(true);
+}
+
+test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps the filter, and it starts on `any` only when nothing is (GF-103)', async ({ page }) => {
+  await seedApp(page, 'Reopened');
+  await seed(page, 'Popreopen');
+  await board(page, 'Popreopen');
+  const chip = page.getByTestId('chip-app');
+  const pop = page.getByTestId('pop-app');
+
+  await chip.focus();
+  await page.keyboard.press('Enter');
+  await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'true');
+  await pop.getByRole('combobox').fill('Reopened');
+  await page.keyboard.press('Enter');
+  await expect(chip).toContainText('Reopened');
+  await expect(chip).toBeFocused();
+  const address = page.url();
+  expect(address).toMatch(/app_id=\d+/);
+
+  await page.keyboard.press('Enter');
+  await expect(pop.getByRole('option', { name: 'Reopened' })).toHaveAttribute('aria-selected', 'true');
+  await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'false');
+  await page.keyboard.press('Enter');
+  await expect(pop).toHaveCount(0);
+  await expect(chip).toContainText('Reopened');
+  expect(page.url()).toBe(address);
+
+  // `↓` starts from the highlight, and a query still starts from the top of what it found
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowUp');
+  await expect(pop.getByRole('option', { name: 'Reopened' })).toHaveAttribute('aria-selected', 'false');
+  await pop.getByRole('combobox').fill('any');
+  await expect(pop.getByRole('option', { name: 'any' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+  await expect(chip).toHaveText('app');
+  await expect(page).toHaveURL(/\?q=Popreopen$/);
+
+  // `none` is a value too
+  await page.getByTestId('chip-project').focus();
+  await page.keyboard.press('Enter');
+  await page.getByTestId('pop-project').getByRole('combobox').fill('none');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/project_id=null/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('pop-project').getByRole('option', { name: 'none' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/project_id=null/);
+  await expect(page.getByTestId('chip-project')).toContainText('none');
+});
+
+test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page }) => {
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) await seedApp(page, `Zlong ${String(n).padStart(2, '0')}`);
+  await board(page, 'Popreopen');
+  await page.getByTestId('chip-app').click();
+  await page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 10' }).click();
+  await expect(page.getByTestId('chip-app')).toContainText('Zlong 10');
+  await page.getByTestId('chip-app').focus();
+  await page.keyboard.press('Enter');
+  const set = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 10' });
+  await expect(set).toHaveAttribute('aria-selected', 'true');
+  await expect(set).toBeInViewport({ ratio: 1 });
+});
+
+test('Tab and space in a check popover toggle no row the highlight is not on, and a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
+  await seed(page, 'Poptab');
+  await board(page, 'Poptab');
+  await page.getByTestId('chip-status').click();
+  const group = page.getByRole('group', { name: 'filter by status' });
+  await expect(group).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Space');
+  await expect(page).toHaveURL(/\?q=Poptab$/);
+  await expect(page.getByTestId('pop-status').locator('input:focus')).toHaveCount(0);
+
+  await page.goto('/?q=Poptab');
+  await page.getByTestId('chip-status').click();
+  await page.getByTestId('check-planning').click();
+  await expect(page.getByTestId('check-planning')).not.toBeChecked();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('check-planning')).not.toBeChecked();
+  await expect(page.getByTestId('check-ready')).not.toBeChecked();
+  await expect(page.getByTestId('check-building')).toBeChecked();
+});
+
+test('a popover that lost the focus still holds the bare keys, wherever the focus went, and a field goes on typing (GF-103)', async ({ page }) => {
+  await seed(page, 'Poplost');
+  await board(page, 'Poplost');
+  const only = card(page, 'Poplost');
+  await expect(only).toBeVisible();
+  const pop = page.getByTestId('pop-app');
+
+  // a press on the popover's own key strip drops the focus to `body`
+  await page.getByTestId('chip-app').click();
+  await pop.locator('.gf-tile-keys').click();
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('j');
+  await page.keyboard.press('ArrowDown');
+  await expect(only).not.toHaveClass(/is-cursor/);
+  await page.keyboard.press('c');
+  await page.keyboard.press('x');
+  await expect(page.getByTestId('board-create')).toHaveCount(0);
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0);
+  await expect(pop).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+  await expect(page.getByTestId('chip-app')).toBeFocused();
+
+  // with a Cursor behind it, `⏎` on `body` does not open the card
+  await page.keyboard.press('j');
+  await expect(only).toHaveClass(/is-cursor/);
+  await page.getByTestId('chip-app').click();
+  await pop.locator('.gf-tile-keys').click();
+  await page.keyboard.press('Enter');
+  await expect(pop).toBeVisible();
+  await expect(page).toHaveURL(/\?q=Poplost$/);
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+  await expect(only).toHaveClass(/is-cursor/);
+
+  // the focus on another control: a bare key is still held, that chip still answers `⏎`, and a field still types
+  await page.keyboard.press('Escape');
+  await expect(only).not.toHaveClass(/is-cursor/);
+  await page.getByTestId('chip-status').click();
+  await page.getByTestId('chip-label').focus();
+  await page.keyboard.press('j');
+  await expect(only).not.toHaveClass(/is-cursor/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('pop-label')).toBeVisible();
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await page.getByLabel('filter by text').focus();
+  await expect(page.getByTestId('pop-label')).toBeVisible();
+  await page.keyboard.press('End');
+  await page.keyboard.type('j');
+  await expect(page.getByLabel('filter by text')).toHaveValue('Poplostj');
+});
+
+test('`v` over a popover that lost the focus opens nothing newer than it, so `esc` closes what is on top (GF-103)', async ({ page }) => {
+  await seed(page, 'Poporder');
+  await board(page, 'Poporder');
+  await expect(card(page, 'Poporder')).toBeVisible();
+  const pop = page.getByTestId('pop-app');
+  await page.getByTestId('chip-app').click();
+  await pop.locator('.gf-tile-keys').click();
+  await expect(page.locator('body')).toBeFocused();
+  await page.keyboard.press('v');
+  await expect(page.getByTestId('view-menu')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+  await expect(page.getByTestId('view-menu')).toHaveCount(0);
+});
+
+test('the view menu opened first closes last, and a popover opened over it closes first (GF-103)', async ({ page }) => {
+  await seed(page, 'Popmenu');
+  await board(page, 'Popmenu');
+  await expect(card(page, 'Popmenu')).toBeVisible();
+  await page.keyboard.press('v');
+  await expect(page.getByTestId('view-menu')).toBeVisible();
+  await page.getByTestId('chip-status').click();
+  await expect(page.getByTestId('pop-status')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await expect(page.getByTestId('view-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('view-menu')).toHaveCount(0);
+});
+
+test('palette esc hands the focus back to what held it, and leaves it on `body` when that is where it was (GF-103)', async ({ page }) => {
+  await seed(page, 'Poppal');
+  await board(page, 'Poppal');
+  await expect(card(page, 'Poppal')).toBeVisible();
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(page.locator('body')).toBeFocused();
+
+  await page.getByTestId('chip-label').focus();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette').getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(page.getByTestId('chip-label')).toBeFocused();
+
+  await page.getByTestId('chip-status').click();
+  const group = page.getByRole('group', { name: 'filter by status' });
+  await expect(group).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(group).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/status=/);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pop-status')).toHaveCount(0);
+  await expect(page.getByTestId('chip-status')).toBeFocused();
+});
