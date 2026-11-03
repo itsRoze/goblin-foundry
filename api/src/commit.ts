@@ -16,7 +16,7 @@ import { readSettings } from './settings';
  * A client that judged the row itself names the `updated_at` it read, and the
  * write is then pinned to that version in place of this request's own read: a
  * save the GUI gave up on cannot land late over one it sent after (GF-79). The
- * CLI sends none and is pinned to the read here, as before.
+ * CLI sends none and is pinned to the read here.
  */
 export function asJudged<Row extends { updated_at: string }>(c: Context, row: Row): Row {
   const at = c.req.header(JUDGED_HEADER);

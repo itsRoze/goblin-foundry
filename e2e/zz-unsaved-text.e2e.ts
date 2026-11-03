@@ -23,13 +23,12 @@ const MOVED = 'changed elsewhere while unsaved; in the field, ⌘⏎ saves yours
 
 // past IDLE_MS in web/src/editor.tsx: a write the editor means to send has gone out by then
 const BEAT_MS = 1000;
-// WRITE_BOUND_MS in web/src/api.ts: a write with no answer by then is given up on
+// PATCH_BOUND_MS in web/src/api.ts: a save with no answer by then has been given up on
 const BOUND_MS = 10_000;
 
 const doc = (page: Page, testId: string) => page.getByTestId(testId).locator('.gf-doc');
 const refusal = (page: Page, testId: string) => page.getByTestId(testId).getByRole('alert');
 
-/** The body of every PATCH the page sends, in the order they go out. */
 function patchesSent(page: Page) {
   const sent: string[] = [];
   page.on('request', (request) => {
@@ -38,7 +37,6 @@ function patchesSent(page: Page) {
   return sent;
 }
 
-/** The first PATCH to `path` is neither answered nor failed: it stays open until the page gives up on it. Later ones go through. */
 async function hangFirstPatch(page: Page, path: string) {
   let hang = true;
   await page.route(path, (route) => {
@@ -47,7 +45,6 @@ async function hangFirstPatch(page: Page, path: string) {
   });
 }
 
-/** What the tab going away does: the page's own listeners fire on the document's visibility, not on a window event. */
 async function hideTab(page: Page, hidden: boolean) {
   await page.evaluate((state) => {
     Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
@@ -244,7 +241,6 @@ test('a save given up on cannot land over a later one: the API refuses it on the
   await leave(page);
   await expect.poll(() => stored(page, surface)).toBe('Late origin words one two');
 
-  // the given-up request's bytes reach the API only now, as a retransmission would deliver them
   const headers = await request.allHeaders();
   expect(headers['x-goblin-updated-at']).toBe(judgedAt);
   const late = await page.request.patch(surface.path, { data: request.postData() ?? '', headers: { 'content-type': 'application/json', 'x-goblin-updated-at': judgedAt } });
@@ -252,7 +248,6 @@ test('a save given up on cannot land over a later one: the API refuses it on the
   expect(await stored(page, surface)).toBe('Late origin words one two');
 });
 
-/** A refused save kept across a leave, under which another writer rewrote the field; back on it with the rewrite read. */
 async function keptThenMoved(page: Page, name: string) {
   const first = await SURFACES['a ticket description'](page, name);
   const second = await SURFACES['a ticket description'](page, `${name}beside`);

@@ -29,10 +29,10 @@ export function useSaving() {
     depth.current += 1;
     setState('saving');
     try {
-      const landed = await write();
+      const result = await write();
       depth.current -= 1;
       if (depth.current === 0) setState('saved');
-      return landed;
+      return result;
     } catch (e) {
       depth.current -= 1;
       if (depth.current === 0) setState('idle');
@@ -186,13 +186,29 @@ const unsaved = (record: FieldRecord) => record.live !== record.agreed.body;
 /** Nothing unsaved and nothing out: the record says only what the server said last time, and a mount may start afresh. */
 const settled = (record: FieldRecord) => record.sending === null && !unsaved(record);
 
+/** The server holds what the field was based on, what it holds now, or what it has out: nothing moved under the words. */
+const caughtUp = (record: FieldRecord, read: Version) => read.body === record.agreed.body || read.body === record.live || read.body === record.sending;
+
+/** The read held under the caret, once the caret has left: handed back to apply when nothing is unsaved, otherwise it is the body that moved. */
+function unhold(record: FieldRecord): Version | null {
+  const held = record.held;
+  if (held === null) return null;
+  record.held = null;
+  if (!unsaved(record)) return held;
+  record.moved = held;
+  notify(record);
+  return null;
+}
+
 function recordFor(id: FieldId, fetched: Version, save: FieldRecord['save']): FieldRecord {
   const kept = records.get(id);
   if (kept && !settled(kept)) return kept;
   return { agreed: fetched, live: fetched.body, sending: null, refusal: null, held: null, moved: null, save, listeners: new Set() };
 }
 
-/** The person's words over the body that moved: the next write is judged on that body's version, so it lands over it. */
+/** Typing is an answer to a body that moved; an undo is not, since undone far enough it takes the server's words. prosemirror-history stamps its own transactions with its plugin key. */
+const isUndo = (transaction: { getMeta(key: string): unknown }) => transaction.getMeta('history$') !== undefined;
+
 function keep(record: FieldRecord) {
   if (record.moved === null) return;
   record.agreed = record.moved;
@@ -312,7 +328,6 @@ export function MarkdownField({
     [shape, record],
   );
 
-  /** The body that moved over the person's words: theirs are dropped and nothing is sent. */
   const take = useCallback(() => {
     if (record.moved === null) return;
     apply(record.moved);
@@ -360,7 +375,6 @@ export function MarkdownField({
             openLink();
             return true;
           }
-          // `⌘⏎` flushes and lets go; `esc` just lets go — both save, unless the field moved under unsaved words, when they are the two answers
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
             keep(record);
@@ -381,8 +395,7 @@ export function MarkdownField({
         setEmpty(editor.isEmpty);
         if (markdown === record.live) return;
         record.live = markdown;
-        // typing is the answer too; undo is not, since undone far enough it takes the server's words
-        if (transaction.getMeta('history$') === undefined) keep(record);
+        if (!isUndo(transaction)) keep(record);
         if (idle.current) clearTimeout(idle.current);
         idle.current = setTimeout(write, IDLE_MS);
       },
@@ -398,16 +411,9 @@ export function MarkdownField({
   const release = useCallback(() => {
     engagedRef.current = false;
     setEngaged(false);
-    // undone back to what the words were based on, under a body that moved: the server's is taken
     if (!unsaved(record)) take();
-    // a read held while you had the field is applied now — unless the field holds words the server does not, and then it is the body that moved
-    const held = record.held;
-    if (held !== null) {
-      record.held = null;
-      if (!unsaved(record)) apply(held);
-      else record.moved = held;
-      notify(record);
-    }
+    const read = unhold(record);
+    if (read !== null) apply(read);
     write();
   }, [write, apply, take, record]);
   // written in an effect, not in the render body: a discarded render must not reach the live editor
@@ -418,13 +424,10 @@ export function MarkdownField({
 
   // a focused editor owns its field: the poll, a window refocus and an agent's write all wait for the caret to leave
   useEffect(() => {
-    const { body } = fetched;
-    if (body === record.agreed.body || body === record.live || body === record.sending) {
-      // the server holds what the field was based on, what it holds now, or what it has out: caught up, and a read held from before would put an old body back
+    if (caughtUp(record, fetched)) {
       record.agreed = fetched;
       record.held = null;
-      // the server holds the very words a write of them was refused with: there is nothing left to refuse
-      const settledRefusal = body === record.live && record.refusal !== null;
+      const settledRefusal = fetched.body === record.live && record.refusal !== null;
       if (record.moved !== null || settledRefusal) {
         record.moved = null;
         if (settledRefusal) record.refusal = null;

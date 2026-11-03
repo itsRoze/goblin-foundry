@@ -39,16 +39,17 @@ export const issuePath = (path: (string | number)[]): string => path.map((p) => 
 /** The sentence for a call that got no answer at all: whether the request landed is unknown, so it claims nothing about what changed. */
 const UNREACHED = 'could not reach the API; try again';
 
-/**
- * A field save with no answer by then is given up on and told as a lost
- * answer. The API's own work on the largest body it takes is under 10 ms; what
- * the bound covers is the link, and 200 KB crosses a 256 kbit/s one in about
- * 6 s. Only a `PATCH`: a whole body sent again lands the same, a create sent
- * again makes two.
- */
+/** The API's own work on the largest body it takes is under 10 ms, so this is the link: 200 KB crosses a 256 kbit/s one in about 6 s. */
 const PATCH_BOUND_MS = 10_000;
 
-async function call(method: string, path: string, body?: unknown, judged?: string): Promise<unknown> {
+interface Call {
+  body?: unknown;
+  /** The row `updated_at` the write was judged on; the API refuses the write if the row has moved since. */
+  judged?: string;
+  signal?: AbortSignal;
+}
+
+async function call(method: string, path: string, { body, judged, signal }: Call = {}): Promise<unknown> {
   let text: string;
   let res: Response;
   try {
@@ -56,7 +57,7 @@ async function call(method: string, path: string, body?: unknown, judged?: strin
       method,
       headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(judged === undefined ? {} : { [JUDGED_HEADER]: judged }) },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: method === 'PATCH' ? AbortSignal.timeout(PATCH_BOUND_MS) : undefined,
+      signal,
     });
     text = await res.text();
   } catch {
@@ -70,6 +71,7 @@ async function call(method: string, path: string, body?: unknown, judged?: strin
 export async function get<T extends ZodType>(path: string, schema: T): Promise<z.infer<T>> {
   return schema.parse(await call('GET', path));
 }
-export const post = (path: string, body?: unknown) => call('POST', path, body);
-export const patch = (path: string, body: unknown, judged?: string) => call('PATCH', path, body, judged);
+export const post = (path: string, body?: unknown) => call('POST', path, { body });
+/** A whole body sent again lands the same, so a save with no answer in the bound is given up on and told as a lost answer; a create sent again would make two. */
+export const patch = (path: string, body: unknown, judged?: string) => call('PATCH', path, { body, judged, signal: AbortSignal.timeout(PATCH_BOUND_MS) });
 export const del = (path: string) => call('DELETE', path);
