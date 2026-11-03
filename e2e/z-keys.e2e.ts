@@ -922,6 +922,15 @@ test('palette esc hands the focus back to what held it, and leaves it on `body` 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pop-status')).toHaveCount(0);
   await expect(page.getByTestId('chip-status')).toBeFocused();
+
+  await page.setViewportSize({ width: 390, height: 300 });
+  await page.getByTestId('chip-status').click();
+  await expect(group).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('palette')).toHaveCount(0);
+  await expect(group).toBeFocused();
 });
 
 test('palette esc leaves the page where it was, and the focus on `body` when what held it has scrolled away (GF-103)', async ({ page }) => {

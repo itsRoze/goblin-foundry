@@ -289,8 +289,8 @@ function EntityChip({
    * view follows, so the board cannot describe a placement the API refuses.
    */
   const pick = (value: number | null | undefined, byKey: boolean) => {
-    // the row already set is no pick: ADR-0007's side effects are for a move (GF-103)
-    if (value === chosen) return onClose(byKey);
+    // the row already set is no pick: ADR-0007's side effects are for a move. A refused value is not set, and `any` is how it goes (GF-103)
+    if (value === chosen && bad === undefined) return onClose(byKey);
     const next: TicketFilter = { ...filter };
     if (value === undefined) delete next[field];
     else next[field] = value;
