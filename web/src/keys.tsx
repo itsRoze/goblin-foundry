@@ -25,8 +25,9 @@ export function letGoOfEnter() {
  * first). Bare by default, with `⌘`/`ctrl` when `meta` is asked for; a typing
  * target silences all of them, which is what leaves `⌘K` to the editor's link
  * command and `esc` to whichever input holds the caret. So does a key that
- * is already `defaultPrevented`: a control that answered it has claimed it,
- * and a check popover is a focused `div`, which no tag test catches (GF-41).
+ * is already `defaultPrevented`: a control that answered it, or holds it
+ * while it has the focus, has claimed it; a check popover is a focused
+ * `div`, which no tag test catches (GF-41, GF-92).
  * The map's own `preventDefault` claims a key the same way, so two maps on
  * one key would hear only the first registered; no screen binds one twice.
  *
