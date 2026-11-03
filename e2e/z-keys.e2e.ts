@@ -386,7 +386,7 @@ test('a focused filter popover keeps the board keys, and a held ⏎ on its chip 
   await expect(page.getByTestId('palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('palette')).toHaveCount(0);
-  // the palette took the focus with it; the popover is still the topmost open thing, so `esc` closes it (GF-98)
+  // the palette handed the focus back; the popover is still the topmost open thing, so `esc` closes it (GF-98, GF-103)
   await page.keyboard.press('Escape');
   await expect(pop).toHaveCount(0);
 
@@ -427,13 +427,13 @@ test('esc closes a filter popover that lost the focus and hands the focus back t
   await expect(pop).toBeVisible();
   await expect(page).toHaveURL(/\?q=Popesc$/);
 
-  // the palette takes the focus and leaves it on `body` when it closes; the popover is still open, so `esc` is its
+  // the palette takes the focus and hands it back when it closes; the popover is still open, so `esc` is its
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByTestId('palette')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('palette')).toHaveCount(0);
   await expect(pop).toBeVisible();
-  await expect(page.locator('body')).toBeFocused();
+  await expect(page.getByRole('group', { name: 'filter by status' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(pop).toHaveCount(0);
   await expect(page).toHaveURL(/\?q=Popesc$/);

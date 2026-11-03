@@ -53,6 +53,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
+  const opener = useRef(document.activeElement);
   useEffect(() => input.current?.focus(), []);
 
   // a press anywhere else closes it; there is no backdrop to catch it (DESIGN.md Components)
@@ -138,8 +139,10 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      // `esc` closes the topmost thing: a nested pick first, the panel second
-      return nest === null ? onClose() : (setNest(null), setQuery(''), setHighlight(0));
+      // `esc` closes the topmost thing: a nested pick first, the panel second, and the panel hands the focus back to what held it
+      if (nest !== null) return setNest(null), setQuery(''), setHighlight(0);
+      if (opener.current instanceof HTMLElement) opener.current.focus();
+      return onClose();
     }
     if (e.key === 'Enter') {
       e.preventDefault();
