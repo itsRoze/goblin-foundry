@@ -169,7 +169,6 @@ test('a view that dies in use sends what was typed on its way out (GF-102)', asy
   await page.waitForTimeout(1_100);
 
   await page.getByTestId('description').locator('.gf-doc').click();
-  await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(' and its last');
   broken = true;
   await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));

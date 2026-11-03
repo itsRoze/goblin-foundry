@@ -41,7 +41,6 @@ async function onFirstWithBothCached(page: Page, kind: 'apps' | 'projects', firs
 
 async function typeInto(page: Page, testId: string) {
   await page.getByTestId(testId).locator('.gf-doc').click();
-  await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.type(' stray');
 }
 
