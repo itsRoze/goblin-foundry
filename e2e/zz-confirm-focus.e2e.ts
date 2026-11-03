@@ -10,14 +10,19 @@ type Ticket = { key: string };
 const post = async <T>(page: Page, path: string, data: object) => (await (await page.request.post(path, { data })).json()) as T;
 const read = async (page: Page, key: string) => (await (await page.request.get(`/api/tickets/${key}`)).json()) as { status: string; trashed_at: string | null };
 
+let appId = 0;
+test.beforeAll(async ({ request }) => {
+  const response = await request.post('/api/apps', { data: { name: `Ask ${Date.now().toString(36)}` } });
+  appId = ((await response.json()) as { id: number }).id;
+});
+
 async function blockedTicket(page: Page, name: string, fields: object = {}) {
-  const app = await post<{ id: number }>(page, '/api/apps', { name: `${name} app` });
   const blocker = await post<Ticket>(page, '/api/tickets', { title: 'Holdup' });
-  const blocked = await post<Ticket>(page, '/api/tickets', { title: `${name} blocked`, status: 'ready', app_id: app.id, simple: true, ...fields });
+  const blocked = await post<Ticket>(page, '/api/tickets', { title: `${name} blocked`, status: 'ready', app_id: appId, simple: true, ...fields });
   await page.request.post(`/api/tickets/${blocked.key}/dependencies`, { data: { blocker: blocker.key } });
   await page.goto(`/tickets/${blocked.key}`);
   await expect(page.getByTestId('state-tile')).toBeVisible();
-  return { ...blocked, app: app.id };
+  return { ...blocked, app: appId };
 }
 
 async function askByKey(page: Page) {
@@ -57,7 +62,6 @@ test('s ⏎ on a blocked Ticket puts the question on screen with the focus on ca
 
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
-  // the answer reads before `cancel`, as on every form, so it is one ⇧Tab away and never a lifecycle button
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Enter');
@@ -92,6 +96,14 @@ test('j s ⏎ ⏎ on a board column writes nothing, at 30, 100 and 400 ms', asyn
     await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
     await expect(page).toHaveURL(/^[^?]*\/\?q=/);
   }
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('run-move-start')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByTestId('confirm-ready-yes')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
 });
 
 test('s ⏎ ⏎ on a Selection and ⏎ ⏎ on its trash write nothing, at 30, 100 and 400 ms', async ({ page }) => {
@@ -272,13 +284,19 @@ test('esc in the dependency picker hands the focus back to `+ add`', async ({ pa
 type Box = { x: number; y: number; width: number; height: number };
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 const centre = (b: Box) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+/** A rect in page coordinates, so a control measured before a scroll and an answer measured after it share a frame. */
+async function pageBox(locator: Locator): Promise<Box> {
+  const box = (await locator.boundingBox())!;
+  const { x, y } = await locator.page().evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+  return { ...box, x: box.x + x, y: box.y + y };
+}
 
 const WIDTHS = [390, 430, 768, 1024, 1366];
 const CLICK_GAPS = [80, 200, 350, 600];
 
 type Armed = { control: Locator; answer: Locator; wrote: () => Promise<boolean> };
 
-const unchanged = (page: Page, keys: string[]) => async () => {
+const wrote = (page: Page, keys: string[]) => async () => {
   for (const key of keys) {
     const t = await read(page, key);
     if (t.status !== 'ready' || t.trashed_at !== null) return true;
@@ -286,7 +304,7 @@ const unchanged = (page: Page, keys: string[]) => async () => {
   return false;
 };
 
-async function pair(page: Page, tag: string) {
+async function selectedPair(page: Page, tag: string) {
   const blocked = await blockedTicket(page, tag);
   const free = await post<Ticket>(page, '/api/tickets', { title: `${tag} free`, status: 'ready', app_id: blocked.app, simple: true });
   await page.goto(`/?q=${encodeURIComponent(tag)}`);
@@ -300,7 +318,7 @@ async function pair(page: Page, tag: string) {
 const SURFACES: Record<string, (page: Page, tag: string) => Promise<Armed>> = {
   'the Ticket view': async (page, tag) => {
     const blocked = await blockedTicket(page, tag);
-    return { control: page.getByTestId('move-start'), answer: page.getByTestId('confirm-start-yes'), wrote: unchanged(page, [blocked.key]) };
+    return { control: page.getByTestId('move-start'), answer: page.getByTestId('confirm-start-yes'), wrote: wrote(page, [blocked.key]) };
   },
   'a board column': async (page, tag) => {
     const blocked = await blockedTicket(page, tag);
@@ -309,7 +327,7 @@ const SURFACES: Record<string, (page: Page, tag: string) => Promise<Armed>> = {
     await page.keyboard.press('j');
     await page.keyboard.press('s');
     await expect(page.getByTestId('run-move-start')).toBeVisible();
-    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('confirm-ready-yes'), wrote: unchanged(page, [blocked.key]) };
+    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('confirm-ready-yes'), wrote: wrote(page, [blocked.key]) };
   },
   'a card': async (page, tag) => {
     const blocked = await blockedTicket(page, tag);
@@ -317,17 +335,17 @@ const SURFACES: Record<string, (page: Page, tag: string) => Promise<Armed>> = {
     await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
     await page.getByTestId(`menu-${blocked.key}`).click();
     await expect(page.getByTestId(`menu-${blocked.key}-start`)).toBeVisible();
-    return { control: page.getByTestId(`menu-${blocked.key}-start`), answer: page.getByTestId('confirm-ready-yes'), wrote: unchanged(page, [blocked.key]) };
+    return { control: page.getByTestId(`menu-${blocked.key}-start`), answer: page.getByTestId('confirm-ready-yes'), wrote: wrote(page, [blocked.key]) };
   },
   'a bulk start': async (page, tag) => {
-    const keys = await pair(page, tag);
+    const keys = await selectedPair(page, tag);
     await page.keyboard.press('s');
     await expect(page.getByTestId('run-move-start')).toBeVisible();
-    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('bulk-confirm-yes'), wrote: unchanged(page, keys) };
+    return { control: page.getByTestId('run-move-start'), answer: page.getByTestId('bulk-confirm-yes'), wrote: wrote(page, keys) };
   },
   'a bulk trash': async (page, tag) => {
-    const keys = await pair(page, tag);
-    return { control: page.getByTestId('bulk-trash'), answer: page.getByTestId('bulk-confirm-yes'), wrote: unchanged(page, keys) };
+    const keys = await selectedPair(page, tag);
+    return { control: page.getByTestId('bulk-trash'), answer: page.getByTestId('bulk-confirm-yes'), wrote: wrote(page, keys) };
   },
 };
 
@@ -337,16 +355,18 @@ for (const width of WIDTHS)
       await page.setViewportSize({ width, height: 844 });
       const tag = `Spot${width}${surface.replace(/\W/g, '')}`;
       const { control, answer } = await arm(page, `${tag} rect`);
-      const spot = (await control.boundingBox())!;
+      const spot = await pageBox(control);
       await control.click();
       await expect(answer).toBeVisible();
-      const drawn = (await answer.boundingBox())!;
+      const drawn = await pageBox(answer);
       expect(overlaps(spot, drawn), `control ${JSON.stringify(spot)} answer ${JSON.stringify(drawn)}`).toBe(false);
 
       for (const gap of CLICK_GAPS) {
         const armed = await arm(page, `${tag} gap${gap}`);
+        await armed.control.scrollIntoViewIfNeeded();
         const { x, y } = centre((await armed.control.boundingBox())!);
         await page.mouse.click(x, y);
+        expect(await armed.answer.count(), `gap ${gap}: the first click asked`).toBe(1);
         await page.waitForTimeout(gap);
         await page.mouse.click(x, y);
         await page.waitForTimeout(400);
@@ -354,9 +374,53 @@ for (const width of WIDTHS)
       }
     });
 
-test('an OS double click on the bar’s trash asks and writes nothing', async ({ page }) => {
-  const keys = await pair(page, 'Dblclick');
+test('an OS double click on the bar’s trash asks with its first click and dismisses with its second', async ({ page }) => {
+  const keys = await selectedPair(page, 'Dblclick');
+  await page.getByTestId('bulk-trash').click();
+  await expect(page.getByTestId('bulk-confirm-yes')).toBeVisible();
+  await page.getByTestId('bulk-confirm-cancel').click();
+  await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
   await page.getByTestId('bulk-trash').dblclick();
   await page.waitForTimeout(400);
-  expect(await unchanged(page, keys)()).toBe(false);
+  await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
+  expect(await wrote(page, keys)()).toBe(false);
 });
+
+/** Three blockers wrap the sentence at 390, so the answers take the line's second row, where `start` leads the verb row above. */
+async function wrappedTicket(page: Page, tag: string) {
+  const blocked = await blockedTicket(page, tag);
+  let last = '';
+  for (const n of [2, 3]) {
+    const blocker = await post<Ticket>(page, '/api/tickets', { title: `${tag} holdup ${n}` });
+    await page.request.post(`/api/tickets/${blocked.key}/dependencies`, { data: { blocker: blocker.key } });
+    last = blocker.key;
+  }
+  await page.reload();
+  await expect(page.getByTestId('state-blocked')).toContainText(last);
+  return blocked;
+}
+
+/** `start` pressed with its foot this many pixels above the fold: at 0 the line opens entirely below it. */
+const FOOT_GAPS = [0, 15, 30, 45, 60, 75, 90, 105];
+
+for (const footGap of FOOT_GAPS)
+  test(`at 390 with a wrapped sentence and start ${footGap}px above the fold, the answer does not land where start was, and a second click there writes nothing`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const blocked = await wrappedTicket(page, `Sweep${footGap}`);
+    const start = page.getByTestId('move-start');
+    await start.scrollIntoViewIfNeeded();
+    const atRest = (await start.boundingBox())!;
+    await page.evaluate((by) => window.scrollBy(0, by), atRest.y + atRest.height - (844 - footGap));
+    const spot = (await start.boundingBox())!;
+    expect(Math.abs(spot.y + spot.height - (844 - footGap)), 'start sits where the sweep put it').toBeLessThanOrEqual(1);
+    const { x, y } = centre(spot);
+    await page.mouse.click(x, y);
+    const answer = page.getByTestId('confirm-start-yes');
+    expect(await answer.count(), 'the click asked').toBe(1);
+    await page.waitForTimeout(200);
+    const drawn = (await answer.boundingBox())!;
+    expect(overlaps(spot, drawn), `start ${JSON.stringify(spot)} answer ${JSON.stringify(drawn)}`).toBe(false);
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(400);
+    expect((await read(page, blocked.key)).status).toBe('ready');
+  });
