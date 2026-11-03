@@ -27,7 +27,7 @@ export type SaveState = 'idle' | 'saving' | 'saved';
  */
 export function useSaving() {
   const [said, setSaid] = useState<SaveState>('idle');
-  const [fieldState, setFieldState] = useState<SaveState>('saved');
+  const [fieldState, setFieldState] = useState<SaveState | null>(null);
   const depth = useRef(0);
   const run = useCallback(async <T,>(write: () => Promise<T>): Promise<T> => {
     depth.current += 1;
@@ -44,8 +44,8 @@ export function useSaving() {
     }
   }, []);
   const writeIsOut = said === 'saving';
-  const fieldHasLanded = fieldState === 'saved';
-  const state: SaveState = writeIsOut || fieldHasLanded ? said : fieldState;
+  const fieldHasNoWordOfItsOwn = fieldState === null || fieldState === 'saved';
+  const state: SaveState = writeIsOut || fieldHasNoWordOfItsOwn ? said : fieldState;
   return { state, run, setFieldState };
 }
 
@@ -211,12 +211,14 @@ const unsaved = (record: FieldRecord) => record.live !== record.agreed.body;
 /** Nothing unsaved, nothing out and nothing that may still land: the record says only what the server said last time, and a mount may start afresh. */
 const settled = (record: FieldRecord) => record.sending === null && record.unanswered.length === 0 && !unsaved(record);
 
-const landed = (record: FieldRecord) => settled(record) && record.held === null && record.moved === null;
+const heldBack = (record: FieldRecord) => record.held !== null || record.moved !== null;
+
+const landed = (record: FieldRecord) => settled(record) && !heldBack(record);
 
 function saveStateOf(record: FieldRecord): SaveState {
   if (landed(record)) return 'saved';
   const onItsWay = record.sending !== null || unsaved(record);
-  const nextBeatSendsNothing = record.held !== null || record.moved !== null || record.refusal !== null;
+  const nextBeatSendsNothing = heldBack(record) || record.refusal !== null;
   return onItsWay && !nextBeatSendsNothing ? 'saving' : 'idle';
 }
 
@@ -324,8 +326,8 @@ export function MarkdownField({
   placeholder: string;
   /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. `judged` is the header value naming what it was judged on. */
   onSave: (markdown: string, judged: string) => Promise<unknown>;
-  /** Told the state of the field's words, so the tile says `saved` only of words that have landed. */
-  onSaveState: (state: SaveState) => void;
+  /** Told the state of the field's words, so the tile says `saved` only of words that have landed. `null` once the field has gone, as `edit` swaps it for a form, and can no longer hear its write land: the tile goes by its writes alone. */
+  onSaveState: (state: SaveState | null) => void;
   /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
   fill?: boolean;
   /** The tile's save word, echoed in the mode line where a phone with its keyboard up can still see it (issue 11). */
@@ -344,6 +346,12 @@ export function MarkdownField({
   const refusal = useSyncExternalStore(subscribe, () => (record.moved === null ? record.refusal : MOVED));
   const saveState = useSyncExternalStore(subscribe, () => saveStateOf(record));
   useEffect(() => onSaveState(saveState), [onSaveState, saveState]);
+  useEffect(
+    () => () => {
+      if (!heldBack(record)) onSaveState(null);
+    },
+    [onSaveState, record],
+  );
   /**
    * Focus is somewhere in this field — the document, or one of the mode line's
    * own inputs. Tracked on the container rather than the editor, because
@@ -495,7 +503,7 @@ export function MarkdownField({
     const own = ownBody(record, fetched);
     if (own !== null) {
       const landedLate = record.unanswered.includes(own);
-      const wasHeldBack = record.held !== null || record.moved !== null;
+      const wasHeldBack = heldBack(record);
       record.agreed = { body: own, judged: fetched.judged };
       record.held = null;
       record.moved = null;
