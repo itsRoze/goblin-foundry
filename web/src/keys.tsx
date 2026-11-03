@@ -34,18 +34,26 @@ const isHeldEnter = (e: { key: string; repeat: boolean }) => e.key === 'Enter' &
 const focusedOnce = new WeakSet<object>();
 
 /**
+ * Whether the press in flight came from a pointer, whose finger may still be on the spot. What a
+ * pointer's press opens must not scroll under it (LESSONS 2026-08-30); a key's press has no finger
+ * on the screen, so what it opens comes into view. A click a key synthesised has `detail` 0.
+ */
+export const byPointer = (e: Event | undefined) => e instanceof DragEvent || (e instanceof MouseEvent && e.detail > 0);
+
+/**
  * The safe answer takes the focus once per question, for the press that asked it, so `⏎` dismisses
  * what was not read and the action is a ⇧Tab away (GF-44). The board redraws a question when its card
  * moves or the board restacks; that is the same question, and it does not take the focus again. A
- * field holding the caret keeps it.
+ * field holding the caret keeps it. A key's question comes into view; a pointer's opens where it is.
  */
 export function useFocusOnAsk(question: object | null, answer: RefObject<HTMLElement | null>, line: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (question === null || focusedOnce.has(question)) return;
     focusedOnce.add(question);
     if (isTyping(document.activeElement)) return;
-    answer.current?.focus();
-    line.current?.scrollIntoView({ block: 'nearest' });
+    const pointer = byPointer(window.event);
+    answer.current?.focus({ preventScroll: pointer });
+    if (!pointer) line.current?.scrollIntoView({ block: 'nearest' });
   }, [question, answer, line]);
 }
 

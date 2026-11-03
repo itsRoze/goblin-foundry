@@ -378,11 +378,11 @@ export function Confirm({ asked, text, verb, onConfirm, onCancel, testId }: { as
   return (
     <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
       <span id={question}>{text}</span>
-      {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on */}
+      {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on; the bar's answers carry it too */}
       <button type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
         {verb} anyway
       </button>
-      <button ref={cancel} type="button" className="gf-btn" data-testid={`${id}-cancel`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
+      <button ref={cancel} type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-cancel`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
         cancel
       </button>
     </p>

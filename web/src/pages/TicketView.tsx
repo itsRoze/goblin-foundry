@@ -16,7 +16,7 @@ import {
 import { useOffersTicket } from '../current';
 import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
-import { formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '../keys';
+import { byPointer, formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '../keys';
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
@@ -83,12 +83,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
    */
   const { guard } = useBulkLock(ticket);
   const edit = useCallback((body: PatchTicketBody, judged?: string) => guard(() => patch.mutateAsync({ key: ticket.key, body, judged })), [guard, patch, ticket.key]);
-  /** A refusal a key just raised: the state tile takes the desk focus and its line comes into view. */
+  /** A refusal this press raised: the state tile takes the desk focus, and for a key's press its line comes into view. */
   const raiseInState = useCallback(
     (text: string) => {
       focusTile('state');
       setStateRefusal(text);
-      setSaid((n) => n + 1);
+      if (!byPointer(window.event)) setSaid((n) => n + 1);
     },
     [focusTile, setStateRefusal],
   );

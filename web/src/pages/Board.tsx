@@ -704,7 +704,7 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
               <button type="button" tabIndex={0} className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
                 {question.verb}
               </button>
-              <button ref={cancel} type="button" className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
+              <button ref={cancel} type="button" tabIndex={0} className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
                 cancel <Kbd>esc</Kbd>
               </button>
             </span>
