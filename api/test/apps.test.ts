@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { REPOSITORY_WANTS } from '@goblin/shared';
+import { REPOSITORY_WANTS, judgement } from '@goblin/shared';
 import { makeTestApp } from './harness';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
@@ -211,6 +211,18 @@ describe('/api/apps', () => {
       const res = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }));
       expect([res.status, (await res.json()).hint]).toEqual([409, `nothing changed — app ${created.id} changed while the edit was being applied; try again`]);
       h.healWrites();
+      expect(await snapshot(created.id)).toEqual(before);
+    });
+
+    test('an edit judged on what its field held goes through, one judged on an older body of that field is the 409, and a write to another field between refuses nothing', async () => {
+      const created = await req('/api/apps', json('POST', { name: 'Reeder', description: 'first words' })).then((r) => r.json());
+      const onFirst = { 'x-goblin-judged': judgement('description', 'first words') };
+      expect((await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reeder moved' }))).status).toBe(200);
+      const current = await req(`/api/apps/${created.id}`, json('PATCH', { description: 'first words more' }, onFirst));
+      expect([current.status, (await current.json()).description]).toEqual([200, 'first words more']);
+      const before = await snapshot(created.id);
+      const late = await req(`/api/apps/${created.id}`, json('PATCH', { description: 'first words late' }, onFirst));
+      expect([late.status, (await late.json()).hint]).toEqual([409, `nothing changed — app ${created.id} changed while the edit was being applied; try again`]);
       expect(await snapshot(created.id)).toEqual(before);
     });
   });

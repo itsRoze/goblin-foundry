@@ -6,16 +6,32 @@
  */
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
-import { ticketKey } from '@goblin/shared';
+import { JUDGED_HEADER, judgedField, judgement, ticketKey } from '@goblin/shared';
 import { AtomicWriteError, atomically, type AtomicWrite, type Db } from './db';
-import { conflict, failed } from './problems';
+import { conflict, failed, unprocessable } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 
 /**
+ * A client that judged a field itself names the field and what it held
+ * (`judgement` in `@goblin/shared`), and the edit is refused when that field
+ * alone has changed since: a save the GUI gave up on cannot land late over one
+ * it sent after, and a write to any other part of the row meanwhile refuses
+ * nothing (GF-79). The row is still pinned to this request's own read. A
+ * header that names no field of this body is a 422 (ADR-0004).
+ */
+export async function judgedRefusal(c: Context, row: object, body: object, moved: () => Response | Promise<Response>): Promise<Response | null> {
+  const header = c.req.header(JUDGED_HEADER);
+  if (header === undefined) return null;
+  const field = judgedField(header);
+  if (field === null || !(field in body)) return unprocessable(c, [{ path: [JUDGED_HEADER], message: 'expected a field of this body and what it held, as field=hash' }]);
+  return judgement(field, (row as Record<string, string | null | undefined>)[field]) === header ? null : await moved();
+}
+
+/**
  * `row` as it was read: `status`, `updated_at` and whether it is in the trash
- * must still be what the route judged, or the statement matches nothing and
- * the batch is `stale`.
+ * must still be what was read, or the statement matches nothing and the batch
+ * is `stale`.
  */
 export function pinnedTicketWrite(db: Db, row: TicketRow, set: Partial<TicketRow>, at: string, what = `ticket ${row.id}`): AtomicWrite {
   return {

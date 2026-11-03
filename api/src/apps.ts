@@ -9,7 +9,7 @@ import {
 } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
-import { changedWhile, commit, newestId, pinnedRowWrite } from './commit';
+import { changedWhile, commit, judgedRefusal, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { parseBody } from './http';
@@ -80,6 +80,8 @@ export function appsRoutes(db: Db) {
     if (!body.ok) return body.response;
     const change = diff(row, body.data);
     if (!change.changed) return c.json(toApp(row));
+    const judgedAway = await judgedRefusal(c, row, body.data, () => changedWhile(c, `app ${row.id}`, 'the edit'));
+    if (judgedAway) return judgedAway;
     if (branchWithoutRepository({ ...row, ...change.new })) return unprocessable(c, [branchIssue]);
     const at = now();
     const written = await commit(
