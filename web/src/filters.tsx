@@ -77,10 +77,9 @@ export function FilterBar({
       escapeRef.current = null;
     };
   }, [escapeRef, open, close]);
-  // an open popover is the topmost open thing whatever holds the focus (GF-98), so the bare keys are not the board's while it
-  // is open: a prevented key is a claimed one (useKeyMap, keys.tsx), and the capture phase runs ahead of every map. No map
-  // binds `space`, so a focused control keeps it. `Tab` closes it, as it does the card menu, since its keys and their strip
-  // go with the focus; the browser's `Tab` then moves on from the chip, and a palette over it keeps its own (GF-92, GF-103)
+  // the popover is the topmost open thing whatever holds the focus (GF-98), so its hold is too: a prevented key is a claimed one
+  // (useKeyMap), and capture runs ahead of every map. No map binds `space`, so a focused control keeps it. `Tab` closes it, as it
+  // does the card menu, and the browser's `Tab` moves on from the chip (GF-92, GF-103)
   useEffect(() => {
     if (open === null) return;
     const hold = (e: KeyboardEvent) => {
@@ -290,7 +289,7 @@ function EntityChip({
    * view follows, so the board cannot describe a placement the API refuses.
    */
   const pick = (value: number | null | undefined, byKey: boolean) => {
-    // the row already set is no pick: ADR-0007's side effects below are for a move, and `⏎ ⏎` from the chip writes nothing
+    // the row already set is no pick: ADR-0007's side effects are for a move (GF-103)
     if (value === chosen) return onClose(byKey);
     const next: TicketFilter = { ...filter };
     if (value === undefined) delete next[field];
@@ -332,7 +331,7 @@ function SearchRows({
   onClose: (byKey: boolean) => void;
 }) {
   const [query, setQuery] = useState('');
-  /** `null` until a key, the pointer or a query moves it: it starts on what is set, so `⏎ ⏎` from the chip keeps the filter (GF-103). */
+  /** `null` until a key, the pointer or a query moves it, so it starts on the set row and `⏎ ⏎` keeps the filter (GF-103). */
   const [cursor, setCursor] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
@@ -343,8 +342,7 @@ function SearchRows({
   const hits = rows.filter((r) => needle === '' || r.label.toLowerCase().includes(needle));
   const at = Math.min(cursor ?? Math.max(hits.findIndex((r) => r.value === chosen), 0), Math.max(hits.length - 1, 0));
   const armed = hits[at] && optionId(hits[at]);
-  // a highlight below the list's fold is an armed row nobody can read; the pointer is already on the row it highlights, and only
-  // the list moves, since what a press opens must not scroll the page under the finger (LESSONS 2026-08-30)
+  // an armed row below the list's fold can't be read; only the list moves, never the page under a press (LESSONS 2026-08-30), and not at all for the row the pointer is on
   const hovered = useRef(false);
   useLayoutEffect(() => {
     const row = armed ? document.getElementById(armed) : null;

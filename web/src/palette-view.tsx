@@ -141,7 +141,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
       e.preventDefault();
       // `esc` closes the topmost thing: a nested pick first, the panel second
       if (nest !== null) return setNest(null), setQuery(''), setHighlight(0);
-      // the focus goes back to what held it, without moving the page, unless that has scrolled off it: a focus nobody can see is the GF-80 hazard
+      // back to what held the focus, without moving the page, unless that has scrolled off it (GF-80)
       if (opener.current instanceof HTMLElement) {
         const { top, bottom } = opener.current.getBoundingClientRect();
         if (bottom > 0 && top < window.innerHeight) opener.current.focus({ preventScroll: true });
