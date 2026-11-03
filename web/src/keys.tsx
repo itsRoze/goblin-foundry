@@ -35,7 +35,7 @@ const focusedOnce = new WeakSet<object>();
 
 /**
  * The safe answer takes the focus once per question, for the press that asked it, so `⏎` dismisses
- * what was not read and the action is a Tab away (GF-44). The board redraws a question when its card
+ * what was not read and the action is a ⇧Tab away (GF-44). The board redraws a question when its card
  * moves or the board restacks; that is the same question, and it does not take the focus again. A
  * field holding the caret keeps it.
  */
@@ -48,17 +48,6 @@ export function useFocusOnAsk(question: object | null, answer: RefObject<HTMLEle
     line.current?.scrollIntoView({ block: 'nearest' });
   }, [question, answer, line]);
 }
-
-/**
- * A mouse's second click of a double click is the same gesture as the first, so an answer drawn
- * where the verb was pressed must not take it as a yes (GF-44). A finger's taps count up the same
- * way, but a finger that read the question and answers it fast is not a double click, so only the
- * mouse is held to it. A key's click has `detail` 0 and passes.
- */
-export const firstClickOnly = (handler: () => void) => (e: React.MouseEvent) => {
-  if (e.detail > 1 && (e.nativeEvent as PointerEvent).pointerType === 'mouse') return;
-  handler();
-};
 
 /**
  * What a control opened has closed and taken the focus with it: the focus comes back to that

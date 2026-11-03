@@ -780,4 +780,4 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-field input[aria-disabled='true'] { color: var(--gf-mute); border-color: var(--gf-rule); cursor: default; }
 
 /* `cancel` takes the focus on its own, after a click or a tap as much as a key, so the ring that says where `⏎` lands must not wait for focus-visible (GF-44) */
-.gf-confirm .gf-btn:focus, .gf-selection-question + .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
+.gf-confirm .gf-btn:focus, .gf-selection-question ~ .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }

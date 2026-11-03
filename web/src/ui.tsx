@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError, fieldLabel } from './api';
 import { useTile } from './desk';
-import { firstClickOnly, formKeys, ignoreHeldEnter, useFocusOnAsk } from './keys';
+import { formKeys, ignoreHeldEnter, useFocusOnAsk } from './keys';
 
 export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="gf-kbd">{children}</kbd>;
 
@@ -364,8 +364,10 @@ export function useRefusal<T>() {
  * a refusal would, because it is the same kind of sentence — this one just has
  * a way through it (ADR-0009: `start` means "proceeding despite the blocker").
  * `asked` is the press that asked, one object per question, so the focus is
- * taken once for it (`useFocusOnAsk`). `cancel` comes first and takes the focus:
- * `⏎` on a question not yet read dismisses it, and Tab reaches the action.
+ * taken once for it (`useFocusOnAsk`). The buttons keep the forms' order, the
+ * action then `cancel`, so a second press on the spot that asked never lands
+ * on the action; `cancel` takes the focus, so `⏎` on a question not yet read
+ * dismisses it, and ⇧Tab reaches the action.
  */
 export function Confirm({ asked, text, verb, onConfirm, onCancel, testId }: { asked: object; text: string; verb: string; onConfirm: () => void; onCancel: () => void; testId?: string }) {
   const question = useId();
@@ -376,11 +378,11 @@ export function Confirm({ asked, text, verb, onConfirm, onCancel, testId }: { as
   return (
     <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
       <span id={question}>{text}</span>
+      <button type="button" className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
+        {verb} anyway
+      </button>
       <button ref={cancel} type="button" className="gf-btn" data-testid={`${id}-cancel`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
         cancel
-      </button>
-      <button type="button" className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={firstClickOnly(onConfirm)}>
-        {verb} anyway
       </button>
     </p>
   );

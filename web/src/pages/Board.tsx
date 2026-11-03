@@ -22,7 +22,7 @@ import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
-import { firstClickOnly, ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
+import { ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
 import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
@@ -701,11 +701,11 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
             // keyed apart from the verbs, or React keeps their buttons under the answers
             <span key="question" ref={line} className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
               <span id={sentence} className="gf-selection-question">{question.text}</span>
+              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
+                {question.verb}
+              </button>
               <button ref={cancel} type="button" className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
                 cancel <Kbd>esc</Kbd>
-              </button>
-              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={firstClickOnly(onConfirm)}>
-                {question.verb}
               </button>
             </span>
           )}
