@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router';
 import { parseSlugId, slugPath, type App } from '@goblin/shared';
 import { MarkdownField, Saving, focusEditor, type SaveState, type Saver } from '../editor';
 import { useKey } from '../keys';
-import { useApps, useIntent } from '../queries';
+import { useApps, useIntent, type Landed } from '../queries';
 import { Chip, Empty, InlineForm, Tile, refusalLine, type Field } from '../ui';
 
 /** `/apps/<slug>-<id>`: the id resolves; a stale slug redirects to the current one. */
@@ -130,25 +130,24 @@ export function AboutTile<Body>({
  */
 export function DescriptionField({
   kind,
-  entityId,
-  value,
+  entity,
   saving,
   patch,
 }: {
   kind: 'app' | 'project';
-  entityId: number;
-  value: string;
+  entity: { id: number; description: string; updated_at: string };
   saving: Saver;
-  patch: (body: { description: string }) => Promise<unknown>;
+  patch: (body: { description: string }, judged: string) => Promise<Landed>;
 }) {
   return (
     <MarkdownField
-      id={`${kind}/${entityId}/description`}
+      id={`${kind}/${entity.id}/description`}
       shape="inline"
       label="description"
       placeholder={`what this ${kind === 'app' ? 'product' : 'project'} is`}
-      value={value}
-      onSave={(description) => saving.run(() => patch({ description }))}
+      value={entity.description}
+      judged={entity.updated_at}
+      onSave={(description, judged) => saving.run(() => patch({ description }, judged))}
       status={saving.state}
       testId={`${kind}-description`}
     />

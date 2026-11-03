@@ -82,7 +82,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
    * screen makes goes through `guard`, which refuses in the API's shape, so each lands in the slot it already has.
    */
   const { guard } = useBulkLock(ticket);
-  const edit = useCallback((body: PatchTicketBody) => guard(() => patch.mutateAsync({ key: ticket.key, body })), [guard, patch, ticket.key]);
+  const edit = useCallback((body: PatchTicketBody, judged?: string) => guard(() => patch.mutateAsync({ key: ticket.key, body, judged })), [guard, patch, ticket.key]);
   /** Every write the state tile makes reports its refusal in the tile's one line. */
   const inState = useCallback(
     async (write: () => Promise<unknown>) => {
@@ -224,7 +224,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="description"
           placeholder="no description — press e"
           value={ticket.description}
-          onSave={(description) => about.run(() => edit({ description }))}
+          judged={ticket.updated_at}
+          onSave={(description, judged) => about.run(() => edit({ description }, judged))}
           status={about.state}
           testId="description"
         />
@@ -288,7 +289,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           label="ticket design"
           placeholder="no ticket design — the plan for this slice goes here"
           value={ticket.design}
-          onSave={(body) => design.run(() => edit({ design: body }))}
+          judged={ticket.updated_at}
+          onSave={(body, judged) => design.run(() => edit({ design: body }, judged))}
           fill
           status={design.state}
           testId="design"

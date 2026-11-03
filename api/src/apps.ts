@@ -9,7 +9,7 @@ import {
 } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
-import { changedWhile, commit, newestId, pinnedRowWrite } from './commit';
+import { asJudged, changedWhile, commit, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { parseBody } from './http';
@@ -85,7 +85,7 @@ export function appsRoutes(db: Db) {
     const written = await commit(
       c,
       db,
-      [pinnedRowWrite(db, appTable, row, change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
+      [pinnedRowWrite(db, appTable, asJudged(c, row), change.new, at, `app ${row.id}`), await eventWrite(db, { entity_kind: 'app', entity_id: row.id, actor: c.get('actor'), kind: 'updated', prior: change.prior, new: change.new, at })],
       { rolledBack: 'the edit was rolled back', stale: () => changedWhile(c, `app ${row.id}`, 'the edit') },
     );
     if (written instanceof Response) return written;

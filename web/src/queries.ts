@@ -131,9 +131,19 @@ export const useTrash = () => useQuery({ queryKey: ['trash'], queryFn: () => api
 export const useLabelNames = () => useQuery({ queryKey: ['labels'], queryFn: () => api.get('/api/labels', LabelNames) });
 
 /** Every write invalidates everything; the data set is tiny and the API is local (ADR-0004: plain fetch + a query cache). */
-function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>, onSuccess?: (vars: Vars) => void) {
+function useWrite<Vars, Result>(fn: (vars: Vars) => Promise<Result>, onSuccess?: (vars: Vars, result: Result) => void) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: (_result, vars) => onSuccess?.(vars), onSettled: () => qc.invalidateQueries() });
+  return useMutation({ mutationFn: fn, onSuccess: (result, vars) => onSuccess?.(vars, result), onSettled: () => qc.invalidateQueries() });
+}
+
+/** What a landed edit answers with that a field keeps: the row's new version, which its next write is judged on. */
+export const Landed = z.object({ updated_at: z.string() });
+export type Landed = z.infer<typeof Landed>;
+
+/** An edit and the version of the row it was judged on, which the API holds it to; absent, the API judges for itself. */
+export interface Judged<Body> {
+  body: Body;
+  judged?: string;
 }
 
 /**
@@ -159,8 +169,8 @@ export const useCreateTicket = () => useWrite((body: CreateTicketBody) => api.po
 export const usePatchTicket = () => {
   const edit = useCachedEdit();
   return useWrite(
-    ({ key, body }: { key: string; body: PatchTicketBody }) => api.patch(`/api/tickets/${key}`, body),
-    ({ key, body }) => edit<Ticket>(['ticket'], body, (t) => t.key === key),
+    ({ key, body, judged }: Judged<PatchTicketBody> & { key: string }) => api.patch(`/api/tickets/${key}`, body, judged).then((r) => Landed.parse(r)),
+    ({ key, body }, landed) => edit<Ticket>(['ticket'], { ...body, ...landed }, (t) => t.key === key),
   );
 };
 /** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
@@ -208,16 +218,16 @@ export const useCreateApp = () => useWrite((body: CreateAppBody) => api.post('/a
 export const usePatchApp = (id: number) => {
   const edit = useCachedEdit();
   return useWrite(
-    (body: PatchAppBody) => api.patch(`/api/apps/${id}`, body),
-    (body) => edit<App>(['app', id], body, () => true),
+    ({ body, judged }: Judged<PatchAppBody>) => api.patch(`/api/apps/${id}`, body, judged).then((r) => Landed.parse(r)),
+    ({ body }, landed) => edit<App>(['app', id], { ...body, ...landed }, () => true),
   );
 };
 export const useCreateProject = () => useWrite((body: CreateProjectBody) => api.post('/api/projects', body).then((r) => ProjectSchema.parse(r)));
 export const usePatchProject = (id: number) => {
   const edit = useCachedEdit();
   return useWrite(
-    (body: PatchProjectBody) => api.patch(`/api/projects/${id}`, body),
-    (body) => edit<Project>(['project', id], body, () => true),
+    ({ body, judged }: Judged<PatchProjectBody>) => api.patch(`/api/projects/${id}`, body, judged).then((r) => Landed.parse(r)),
+    ({ body }, landed) => edit<Project>(['project', id], { ...body, ...landed }, () => true),
   );
 };
 

@@ -25,13 +25,14 @@ export type SaveState = 'idle' | 'saving' | 'saved';
 export function useSaving() {
   const [state, setState] = useState<SaveState>('idle');
   const depth = useRef(0);
-  const run = useCallback(async (write: () => Promise<unknown>) => {
+  const run = useCallback(async <T,>(write: () => Promise<T>): Promise<T> => {
     depth.current += 1;
     setState('saving');
     try {
-      await write();
+      const landed = await write();
       depth.current -= 1;
       if (depth.current === 0) setState('saved');
+      return landed;
     } catch (e) {
       depth.current -= 1;
       if (depth.current === 0) setState('idle');
@@ -145,20 +146,37 @@ const HEADINGS: Control[] = ([1, 2, 3, 4, 5, 6] as const).map((level) => ({
 interface FieldRecord {
   /** The markdown the server is known to hold — what a write is compared against. Advances only when a write lands. */
   agreed: string;
+  /** The row's `updated_at` that `agreed` was read with: what a write is judged on, so one given up on cannot land late over a later one. */
+  judged: string;
   /** The markdown in the editor, kept as a string so a flush never touches a destroyed editor. */
   live: string;
   /** The markdown the one write out is carrying: whole bodies land in arrival order, so a second is not sent until it answers. */
   sending: string | null;
   /** The sentence the last write was refused with, until one lands. */
   refusal: string | null;
+  /** The server's body, read while the field held words it lacks: nothing is sent until the person keeps their words or takes this. */
+  moved: Version | null;
   /** How the latest mount writes: the hook that patches belongs to the view. */
-  save: (markdown: string) => Promise<unknown>;
-  /** The mount showing this field, told when `refusal` changes. */
+  save: (markdown: string, judged: string) => Promise<Landed>;
+  /** The mount showing this field, told when its sentence changes. */
   listeners: Set<() => void>;
+}
+
+/** A body as the server gave it, with the row version it came with. */
+interface Version {
+  body: string;
+  judged: string;
+}
+
+/** What a landed write answers with: the row's new version. */
+interface Landed {
+  updated_at: string;
 }
 
 /** `ticket/3/design`: the entity and the column, which together name a record. */
 export type FieldId = `${'ticket' | 'project' | 'app'}/${number}/${'description' | 'design'}`;
+
+const MOVED = 'changed elsewhere while these words were unsaved; ⌘⏎ saves them over it, esc takes it';
 
 const records = new Map<FieldId, FieldRecord>();
 
@@ -168,10 +186,20 @@ const unsaved = (record: FieldRecord) => record.live !== record.agreed;
 /** Nothing unsaved and nothing out: the record says only what the server said last time, and a mount may start afresh. */
 const settled = (record: FieldRecord) => record.sending === null && !unsaved(record);
 
-function recordFor(id: FieldId, fetched: string, save: FieldRecord['save']): FieldRecord {
+function recordFor(id: FieldId, fetched: Version, save: FieldRecord['save']): FieldRecord {
   const kept = records.get(id);
   if (kept && !settled(kept)) return kept;
-  return { agreed: fetched, live: fetched, sending: null, refusal: null, save, listeners: new Set() };
+  return { agreed: fetched.body, judged: fetched.judged, live: fetched.body, sending: null, refusal: null, moved: null, save, listeners: new Set() };
+}
+
+/** The person's words over the body that moved: the next write is judged on that body's version, so it lands over it. */
+function keep(record: FieldRecord) {
+  if (record.moved === null) return;
+  record.agreed = record.moved.body;
+  record.judged = record.moved.judged;
+  record.moved = null;
+  record.refusal = null;
+  notify(record);
 }
 
 /** A mount's subscription to its record, which is also what keeps the record on the map while the mount lasts. */
@@ -188,7 +216,7 @@ const notify = (record: FieldRecord) => {
 };
 
 function flush(record: FieldRecord) {
-  if (record.sending !== null) return;
+  if (record.sending !== null || record.moved !== null) return;
   const markdown = record.live;
   if (markdown === record.agreed) {
     // undone back to what the server holds: there is nothing left to refuse
@@ -199,10 +227,11 @@ function flush(record: FieldRecord) {
     return;
   }
   record.sending = markdown;
-  void record.save(markdown).then(
-    () => {
+  void record.save(markdown, record.judged).then(
+    (landed) => {
       // only now is this what the server holds; what was typed meanwhile goes out next
       record.agreed = markdown;
+      record.judged = landed.updated_at;
       record.sending = null;
       record.refusal = null;
       notify(record);
@@ -221,6 +250,7 @@ export function MarkdownField({
   id,
   shape,
   value,
+  judged,
   label,
   placeholder,
   onSave,
@@ -233,10 +263,12 @@ export function MarkdownField({
   shape: EditorShape;
   /** What the server holds; `null` and `''` are both "nothing written yet". */
   value: string | null;
+  /** The row's `updated_at` that `value` came with: what a write of it is judged on. */
+  judged: string;
   label: string;
   placeholder: string;
-  /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. */
-  onSave: (markdown: string) => Promise<unknown>;
+  /** Resolves with the row's new version when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. */
+  onSave: (markdown: string, judged: string) => Promise<Landed>;
   /** This field is what its tile is for, so it takes the whole of it: the mode line sits on the tile's bottom edge and the click target is the tile. */
   fill?: boolean;
   /** The tile's save word, echoed in the mode line where a phone with its keyboard up can still see it (issue 11). */
@@ -245,16 +277,16 @@ export function MarkdownField({
 }) {
   const server = value ?? '';
   const fetched = useMemo(() => canonical(shape, server), [shape, server]);
-  const [record] = useState(() => recordFor(id, fetched, onSave));
+  const [record] = useState(() => recordFor(id, { body: fetched, judged }, onSave));
   /** A refetch that arrived while the caret was here; applied on blur, never under the caret. */
-  const held = useRef<string | null>(null);
+  const held = useRef<Version | null>(null);
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Mirrors `engaged` for the callbacks that cannot see React state. */
   const engagedRef = useRef(false);
   const editorRef = useRef<Editor | null>(null);
   const [empty, setEmpty] = useState(record.live.trim() === '');
   const subscribe = useCallback((tell: () => void) => watch(id, record, tell), [id, record]);
-  const refusal = useSyncExternalStore(subscribe, () => record.refusal);
+  const refusal = useSyncExternalStore(subscribe, () => (record.moved === null ? record.refusal : MOVED));
   /**
    * Focus is somewhere in this field — the document, or one of the mode line's
    * own inputs. Tracked on the container rather than the editor, because
@@ -275,14 +307,24 @@ export function MarkdownField({
 
   /** Replace the document wholesale, without pushing the swap onto the undo stack. */
   const apply = useCallback(
-    (markdown: string) => {
-      record.agreed = markdown;
-      record.live = markdown;
-      editorRef.current?.commands.setContent(toDoc(shape, markdown), { emitUpdate: false });
-      setEmpty(markdown.trim() === '');
+    ({ body, judged }: Version) => {
+      record.agreed = body;
+      record.judged = judged;
+      record.live = body;
+      editorRef.current?.commands.setContent(toDoc(shape, body), { emitUpdate: false });
+      setEmpty(body.trim() === '');
     },
     [shape, record],
   );
+
+  /** The body that moved over the person's words: theirs are dropped and nothing is sent. */
+  const take = useCallback(() => {
+    if (record.moved === null) return;
+    apply(record.moved);
+    record.moved = null;
+    record.refusal = null;
+    notify(record);
+  }, [apply, record]);
 
   /** `⌘K`: the mode line's right slot becomes the URL field, seeded with the link already on the selection. */
   const openLink = useCallback(() => {
@@ -323,9 +365,16 @@ export function MarkdownField({
             openLink();
             return true;
           }
-          // `⌘⏎` flushes and lets go; `esc` just lets go — both save, because there is nothing else to do
-          if ((event.key === 'Enter' && (event.metaKey || event.ctrlKey)) || event.key === 'Escape') {
+          // `⌘⏎` flushes and lets go; `esc` just lets go — both save, unless the field moved under unsaved words, when they are the two answers
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
+            keep(record);
+            (view.dom as HTMLElement).blur();
+            return true;
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            take();
             (view.dom as HTMLElement).blur();
             return true;
           }
@@ -337,6 +386,8 @@ export function MarkdownField({
         setEmpty(editor.isEmpty);
         if (markdown === record.live) return;
         record.live = markdown;
+        // typing is the answer too, unless it undid the words back to what they were based on
+        if (markdown !== record.agreed) keep(record);
         if (idle.current) clearTimeout(idle.current);
         idle.current = setTimeout(write, IDLE_MS);
       },
@@ -352,13 +403,19 @@ export function MarkdownField({
   const release = useCallback(() => {
     engagedRef.current = false;
     setEngaged(false);
-    write();
-    // a refetch held while you had the field is applied now — unless the field holds words the server does not, in which case you are the last writer and it is dropped
+    // undone back to what the words were based on, under a body that moved: the server's is taken
+    if (!unsaved(record)) take();
+    // a refetch held while you had the field is applied now — unless the field holds words the server does not, and then it is the body that moved
     if (held.current !== null) {
       if (!unsaved(record)) apply(held.current);
+      else {
+        record.moved = held.current;
+        notify(record);
+      }
       held.current = null;
     }
-  }, [write, apply, record]);
+    write();
+  }, [write, apply, take, record]);
   // written in an effect, not in the render body: a discarded render must not reach the live editor
   useLayoutEffect(() => {
     editorRef.current = editor;
@@ -367,14 +424,24 @@ export function MarkdownField({
 
   // a focused editor owns its field: the poll, a window refocus and an agent's write all wait for the caret to leave
   useEffect(() => {
-    if (fetched === record.agreed) {
-      // the field caught up on its own — a refetch held from before it did would put the old body back
+    if (fetched === record.agreed || fetched === record.live || fetched === record.sending) {
+      // the server holds what the field was based on, what it holds now, or what it has out: caught up, and a refetch held from before would put the old body back
+      record.agreed = fetched;
+      record.judged = judged;
       held.current = null;
+      if (record.moved !== null) {
+        record.moved = null;
+        notify(record);
+      }
       return;
     }
-    if (engagedRef.current) held.current = fetched;
-    else if (!unsaved(record)) apply(fetched);
-  }, [fetched, apply, record]);
+    if (engagedRef.current) held.current = { body: fetched, judged };
+    else if (!unsaved(record)) apply({ body: fetched, judged });
+    else {
+      record.moved = { body: fetched, judged };
+      notify(record);
+    }
+  }, [fetched, judged, apply, record]);
 
   // navigating away is the last chance to save; the markdown is a plain string by now, so the editor may already be gone
   useEffect(
@@ -413,7 +480,7 @@ export function MarkdownField({
     >
       <EditorContent editor={editor} className="gf-md-content" />
       {editor && engaged && (
-        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} />
+        <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} done={() => keep(record)} />
       )}
       {refusal && (
         <p className="gf-refusal" role="alert">
@@ -440,6 +507,7 @@ function ModeLine({
   openLink,
   range,
   status,
+  done,
 }: {
   editor: Editor;
   shape: EditorShape;
@@ -448,6 +516,8 @@ function ModeLine({
   openLink: () => void;
   range: { current: { from: number; to: number } | null };
   status?: SaveState;
+  /** What `⌘⏎` does before it lets go, for the button that stands in for it. */
+  done: () => void;
 }) {
   // only what this configuration's schema actually has: the inline shape has no strike, so it gets no strike button
   const marks = useMemo(() => MARKS.filter((c) => c.id in editor.schema.marks), [editor]);
@@ -612,7 +682,16 @@ function ModeLine({
           />
         ) : (
           // `done` is what `⌘⏎` does — flush and let go — as a button, for a finger (issue 11); the document saves itself either way
-          <button type="button" className="gf-mode-btn gf-mode-done" title="done · ⌘⏎" data-testid="editor-done" onClick={() => (editor.view.dom as HTMLElement).blur()}>
+          <button
+            type="button"
+            className="gf-mode-btn gf-mode-done"
+            title="done · ⌘⏎"
+            data-testid="editor-done"
+            onClick={() => {
+              done();
+              (editor.view.dom as HTMLElement).blur();
+            }}
+          >
             <kbd className="gf-kbd">⌘⏎</kbd> done
           </button>
         )}

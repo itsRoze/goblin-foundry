@@ -38,11 +38,22 @@ export const issuePath = (path: (string | number)[]): string => path.map((p) => 
 /** The sentence for a call that got no answer at all: whether the request landed is unknown, so it claims nothing about what changed. */
 const UNREACHED = 'could not reach the API; try again';
 
-async function call(method: string, path: string, body?: unknown): Promise<unknown> {
+/**
+ * A write with no answer by then is given up on and told as a lost answer.
+ * The API's own work on the largest body it takes is under 10 ms; what the
+ * bound covers is the link, and 200 KB crosses a 256 kbit/s one in about 6 s.
+ */
+const WRITE_BOUND_MS = 10_000;
+
+/** The `updated_at` the write was judged on; the API refuses a write whose row has moved since (`api/src/commit.ts`). */
+const JUDGED = 'x-goblin-updated-at';
+
+async function call(method: string, path: string, body?: unknown, judged?: string): Promise<unknown> {
   const res = await fetch(path, {
     method,
-    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(judged === undefined ? {} : { [JUDGED]: judged }) },
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal: method === 'GET' ? undefined : AbortSignal.timeout(WRITE_BOUND_MS),
   }).catch(() => {
     throw new ProblemError(0, { detail: UNREACHED });
   });
@@ -56,5 +67,5 @@ export async function get<T extends ZodType>(path: string, schema: T): Promise<z
   return schema.parse(await call('GET', path));
 }
 export const post = (path: string, body?: unknown) => call('POST', path, body);
-export const patch = (path: string, body: unknown) => call('PATCH', path, body);
+export const patch = (path: string, body: unknown, judged?: string) => call('PATCH', path, body, judged);
 export const del = (path: string) => call('DELETE', path);

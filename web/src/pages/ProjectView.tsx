@@ -74,7 +74,8 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
           label="project design"
           placeholder="no project design — the shape of this project goes here"
           value={project.design}
-          onSave={(body) => design.run(() => patch.mutateAsync({ design: body }))}
+          judged={project.updated_at}
+          onSave={(body, judged) => design.run(() => patch.mutateAsync({ body: { design: body }, judged }))}
           fill
           testId="design"
         />
@@ -89,13 +90,13 @@ function ProjectLoaded({ project }: { project: NonNullable<ReturnType<typeof use
         initial={{ name: project.name, app_id: project.app_id === null ? '' : String(project.app_id) }}
         toBody={(v) => ({ name: v.name ?? '', app_id: v.app_id ? Number(v.app_id) : null })}
         saving={about.state}
-        patch={(b) => patch.mutateAsync(b)}
+        patch={(b) => patch.mutateAsync({ body: b })}
         facts={
           <Kv
             rows={[
               ['name', project.name],
               ['app', app ? <Link to={slugPath('apps', app)}>{app.name}</Link> : 'no app yet'],
-              ['description', <DescriptionField kind="project" entityId={project.id} value={project.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
+              ['description', <DescriptionField kind="project" entity={project} saving={about} patch={(body, judged) => patch.mutateAsync({ body, judged })} />],
             ]}
           />
         }

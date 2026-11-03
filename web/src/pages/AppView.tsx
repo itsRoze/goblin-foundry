@@ -96,14 +96,14 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '' }}
         toBody={appBody}
         saving={about.state}
-        patch={(b) => patch.mutateAsync(b)}
+        patch={(b) => patch.mutateAsync({ body: b })}
         facts={
           <Kv
             rows={[
               ['name', app.name],
               ['repository', <Repository remote={app.repository_url} />],
               ['branch', app.default_branch ?? '—'],
-              ['description', <DescriptionField kind="app" entityId={app.id} value={app.description} saving={about} patch={(b) => patch.mutateAsync(b)} />],
+              ['description', <DescriptionField kind="app" entity={app} saving={about} patch={(body, judged) => patch.mutateAsync({ body, judged })} />],
             ]}
           />
         }

@@ -270,7 +270,8 @@ async function keptThenMoved(page: Page, name: string) {
   await page.goForward();
   await expectTitle(page, second.title);
   unreachable = false;
-  await page.request.patch(first.path, { data: { description: 'An agent rewrote this.' } });
+  // as an agent, so history keeps its edit session apart from the person's (ADR-0008)
+  await page.request.patch(first.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
   await page.goBack();
   await expectTitle(page, first.title);
   await expect(refusal(page, first.testId)).toHaveText(MOVED);

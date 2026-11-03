@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { CreateProjectBodySchema, PatchProjectBodySchema, type Project } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { ctxOf, moveTicketsOfProject, releaseTicketsOfProject, reviveChildren } from './children';
-import { changedWhile, commit, livePin, newestId, pinnedRowWrite } from './commit';
+import { asJudged, changedWhile, commit, livePin, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { diff, eventWrite, now } from './events';
 import { projectGraph } from './graph';
@@ -108,7 +108,7 @@ export function projectsRoutes(db: Db) {
       c,
       db,
       [
-        pinnedRowWrite(db, projectTable, row, change.new, ctx.at, `project ${row.id}`),
+        pinnedRowWrite(db, projectTable, asJudged(c, row), change.new, ctx.at, `project ${row.id}`),
         await eventWrite(db, { entity_kind: 'project', entity_id: row.id, actor: ctx.actor, kind: 'updated', prior: change.prior, new: change.new, at: ctx.at }),
         ...(appId === undefined ? [] : [...(await moveTicketsOfProject(ctx, row.id, appId)), ...appStillLive(appId)]),
       ],

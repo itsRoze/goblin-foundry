@@ -13,6 +13,19 @@ import { app as appTable, project as projectTable, ticket as ticketTable, type T
 import { readSettings } from './settings';
 
 /**
+ * A client that judged the row itself names the `updated_at` it read, and the
+ * write is then pinned to that version in place of this request's own read: a
+ * save the GUI gave up on cannot land late over one it sent after (GF-79). The
+ * CLI sends none and is pinned to the read here, as before.
+ */
+const JUDGED = 'x-goblin-updated-at';
+
+export function asJudged<Row extends { updated_at: string }>(c: Context, row: Row): Row {
+  const at = c.req.header(JUDGED);
+  return at === undefined ? row : { ...row, updated_at: at };
+}
+
+/**
  * `row` as it was read: `status`, `updated_at` and whether it is in the trash
  * must still be what the route judged, or the statement matches nothing and
  * the batch is `stale`.
