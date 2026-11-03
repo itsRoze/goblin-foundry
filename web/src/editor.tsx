@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
+import type { TiptapEditorHTMLElement } from '@tiptap/core';
 import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { judgement } from '@goblin/shared';
 import { unreached } from './api';
@@ -61,9 +62,26 @@ export const Saving = ({ state, testId = 'saving' }: { state: SaveState; testId?
  * `⌘2 e` reaches the second editor on a view without touching the mouse.
  */
 export function focusEditor(): void {
-  const inFocusedTile = document.querySelector<HTMLElement>('.gf-tile.is-focus .gf-md [contenteditable="true"]');
-  (inFocusedTile ?? document.querySelector<HTMLElement>('.gf-md [contenteditable="true"]'))?.focus();
+  const inFocusedTile = document.querySelector<TiptapEditorHTMLElement>('.gf-tile.is-focus .gf-md [contenteditable="true"]');
+  const editor = (inFocusedTile ?? document.querySelector<TiptapEditorHTMLElement>('.gf-md [contenteditable="true"]'))?.editor;
+  if (!editor) return;
+  // through the editor, not its element: the editor's focus writes its caret to the browser in the same
+  // instant, where the element's leaves the browser's caret at the document start until the first flush,
+  // and a key pressed in that window acts there (GF-96)
+  editor.view.focus();
+  // the focus is dealt with, which prosemirror-view says with this field: its flush otherwise takes a caret that
+  // reaches the document start inside 200 ms (Home, ⌘↑) for the browser's reset on focus and puts the editor's back
+  internals(editor.view).input.lastFocus = 0;
+  // the editor's focus keeps the browser from scrolling to the field
+  editor.commands.scrollIntoView();
 }
+
+/**
+ * The two fields of prosemirror-view 1.42 that its typings leave out and this file writes, both to keep its
+ * focus handling from putting the editor's caret over the browser's after a caret key (GF-96). A release that
+ * renames either brings the lost keys back silently; the frozen-page specs in `e2e/writing.e2e.ts` would show it.
+ */
+const internals = (view: Editor['view']) => view as unknown as { focused: boolean; input: { lastFocus: number } };
 
 /** ProseMirror stamps its own clipboard HTML with this; anything else claiming to be HTML came from elsewhere. */
 const OWN_SLICE = 'data-pm-slice';
@@ -372,6 +390,21 @@ export function MarkdownField({
           event.preventDefault();
           editorRef.current?.commands.insertContent(toBlocks(shape, text));
           return true;
+        },
+        handleDOMEvents: {
+          /**
+           * prosemirror-view's own focus handler arms a 20 ms timer when it finds `focused` false, and
+           * the timer writes the editor's caret over the browser's whenever it fires between a caret
+           * key's move and the selectionchange that would have read it (GF-96, LESSONS 2026-11-02).
+           * With `focused` already true it arms nothing and skips the rest of that branch, which is
+           * also where it marks the document focused, so that is done here; the flush's own restore
+           * after a focus that reset the caret still runs, and blur still unmarks.
+           */
+          focus(view) {
+            internals(view).focused = true;
+            view.dom.classList.add('ProseMirror-focused');
+            return false;
+          },
         },
         handleKeyDown(view, event) {
           // `⌘K` is the one mark with no key of its own, because it needs somewhere to type the URL
