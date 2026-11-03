@@ -88,6 +88,45 @@ describe('the block editor is markdown in and markdown out', () => {
     expect(toBlocks('inline', '  \n  ')).toEqual([]);
   });
 
+  const settles = (markdown: string, stored: string) => {
+    expect(canonical('block', markdown)).toBe(stored);
+    expect(canonical('block', stored)).toBe(stored);
+  };
+
+  test('a list marker with nothing after it is a list with one empty item, which the editor can hold and store again (GF-100)', () => {
+    expect(toBlocks('block', '1. ')).toEqual([{ type: 'orderedList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] }]);
+    settles('1. ', '1. ');
+    settles('1) ', '1. ');
+    settles('1. a\n2. ', '1. a\n2. ');
+    settles('> 1. ', '> 1. ');
+    settles('> 1. \n> ', '> 1. ');
+  });
+
+  test('a quote with nothing in it is dropped, as it was before, and a quote that opens a list item does not grow the text behind it on each save (GF-100)', () => {
+    settles('> ', '');
+    settles('- > ', '- ');
+    settles('- - > ', '- - ');
+    settles('- >\n*', '- \n\n- ');
+    settles('- >\n  a*b', '- \n  a\\*b');
+    settles('- >\n  a*b\n\nz', '- \n  a\\*b\n\nz');
+  });
+
+  test('a numbered item with nothing in it, inside a quote, with a line after the quote, loads (GF-100)', () => {
+    settles('>1. \na', '> 1. a');
+    settles('> 1. \n  a', '> 1. a');
+    settles('- > 1. \na', '- > 1. a');
+  });
+
+  test('a block that opens with something other than a paragraph keeps its words and holds still (GF-100)', () => {
+    settles('-\n  a\n-\n  b', '- a\n- b');
+    settles('- # a\n  b', '- # a\n  b');
+    settles('- # a', '- # a');
+    settles('- > q', '- > q');
+    settles('- - a', '- - a');
+    settles('# ', '# ');
+    settles('a\n\n# \n\nb', 'a\n\n# \n\nb');
+  });
+
   test('a document round-trips through the editor document it is parsed into', () => {
     const doc = toDoc('block', GOLDEN);
     expect(doc.type).toBe('doc');

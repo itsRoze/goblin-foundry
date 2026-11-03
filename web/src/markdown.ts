@@ -168,6 +168,31 @@ const OpenFence = Extension.create({
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
   shape === 'block' ? [blockKit(), TaskList, TaskItem, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), WholeMarks, RevealSyntax];
 
+/**
+ * marked's quote tokenizer re-reads a list it finds last in a quote, with the
+ * line after the quote appended, through marked's own list tokenizer alone. The
+ * numbered-list tokenizer from `@tiptap/extension-list` reads `1. ` and `1. \na`
+ * as lists where marked's does not, so for `>1. \na` that re-read got nothing
+ * back and marked died reading its `raw` (GF-100). `instance` is marked's one
+ * global, the same one the managers register their tokenizers into.
+ */
+function readListsAsLexed(instance: MarkdownManager['instance']): void {
+  const markedList = new instance.Tokenizer().list;
+  instance.use({
+    tokenizer: {
+      list(src) {
+        const list = markedList.call(this, src);
+        if (list) return list;
+        for (const tokenize of this.lexer.options.extensions?.block ?? []) {
+          const token = tokenize.call(this, src, []);
+          if (token?.type === 'list') return token as NonNullable<typeof list>;
+        }
+        return list;
+      },
+    },
+  });
+}
+
 const managers = new Map<EditorShape, MarkdownManager>();
 
 /** The parser/serialiser pair for a shape. Extensions never change, so one manager each is enough. */
@@ -175,9 +200,16 @@ function managerFor(shape: EditorShape): MarkdownManager {
   let manager = managers.get(shape);
   if (!manager) {
     manager = new MarkdownManager({ extensions: extensionsFor(shape) });
+    if (managers.size === 0) readListsAsLexed(manager.instance);
     managers.set(shape, manager);
   }
   return manager;
+}
+
+/** The parser hands back a list item with nothing in it for `1. `, where the schema says one opens with a paragraph, and the serialiser reads the child that is not there (GF-100). */
+function fillEmptyItem(json: JSONContent): JSONContent {
+  if (json.content?.length) return { ...json, content: json.content.map(fillEmptyItem) };
+  return json.type === 'listItem' ? { ...json, content: [{ type: 'paragraph' }] } : json;
 }
 
 const FENCE = /^\s*(?:```|~~~)/;
@@ -197,9 +229,9 @@ export const flattenBlocks = (markdown: string): string =>
     .map((line) => line.replace(BLOCK_MARKER, ''))
     .join('\n');
 
-/** Markdown in, the blocks it holds out. The inline shape flattens first (see `flattenBlocks`). */
+/** Markdown in, the blocks it holds out, an empty list item filled (see `fillEmptyItem`). The inline shape flattens first (see `flattenBlocks`). */
 export const toBlocks = (shape: EditorShape, markdown: string): JSONContent[] =>
-  managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown).content ?? [];
+  (managerFor(shape).parse(shape === 'inline' ? flattenBlocks(markdown) : markdown).content ?? []).map(fillEmptyItem);
 
 /**
  * Markdown in, editor document out. Empty markdown parses to a document with no block, which
