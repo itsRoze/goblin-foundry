@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page, Route } from '@playwright/test';
+import type { TiptapEditorHTMLElement } from '@tiptap/core';
 
 /**
  * Text a person typed is never silently lost (GF-79, GF-83). It may be
@@ -632,15 +633,21 @@ async function refetchUnderTheCaret(page: Page, surface: Surface) {
   await refetched;
 }
 
-async function pasteBeforeTheSpace(page: Page, surface: Surface, text: string) {
-  await clickPastTheWords(page, doc(page, surface.testId));
-  for (let i = 0; i < ' world'.length; i += 1) await page.keyboard.press('ArrowLeft');
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+const twoFrames = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
+async function pasteAtTheCaret(page: Page, surface: Surface, text: string) {
+  await twoFrames(page);
   await doc(page, surface.testId).evaluate((element, text) => {
     const data = new DataTransfer();
     data.setData('text/plain', text);
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
   }, text);
+}
+
+async function pasteBeforeTheSpace(page: Page, surface: Surface, text: string) {
+  await clickPastTheWords(page, doc(page, surface.testId));
+  for (let i = 0; i < ' world'.length; i += 1) await page.keyboard.press('ArrowLeft');
+  await pasteAtTheCaret(page, surface, text);
 }
 
 const aboutSaving = (page: Page) => page.getByTestId('about-tile').getByTestId('saving');
@@ -692,6 +699,246 @@ test('undo after a settled paste of a list stores what the field then shows (GF-
   await page.reload();
   await expect(doc(page, surface.testId)).toHaveText('hello world');
   expect(sent).toEqual(['{"description":"hello\\n\\n1. \\n\\n world"}', '{"description":"hello world"}']);
+});
+
+/** A key that acts on the selection the editor has read, which a click reaches a frame later. */
+const caretAtEndOf = async (page: Page, line: Locator) => {
+  await clickPastTheWords(page, line);
+  await twoFrames(page);
+};
+
+const wholeParagraph = async (page: Page, surface: Surface, words: string) => {
+  await caretAtEndOf(page, doc(page, surface.testId).getByText(words, { exact: true }));
+  for (let i = 0; i <= words.length; i += 1) await page.keyboard.press('Backspace');
+};
+
+const lineBelow = async (page: Page, line: Locator, words: string) => {
+  await caretAtEndOf(page, line);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type(words);
+};
+
+const THREE = 'aaa\n\nbbb\n\nccc';
+
+/** One person and nobody else: every step they took comes back, in order, whatever the click away showed them. `stored` is the body before the first press and `steps` what each press stores. */
+const ONE_PERSON: { edit: string; body: string; words: (page: Page, surface: Surface) => Promise<unknown>; stored: string; steps: string[] }[] = [
+  {
+    edit: 'a paragraph deleted, then a URL typed',
+    body: THREE,
+    words: async (page, surface) => {
+      await wholeParagraph(page, surface, 'bbb');
+      await expect.poll(() => stored(page, surface)).toBe('aaa\n\nccc');
+      await typeAtEnd(page, surface.testId, ' see http://x.y', doc(page, surface.testId).getByText('ccc'));
+    },
+    stored: 'aaa\n\nccc see http://x.y',
+    steps: ['aaa\n\nccc', THREE],
+  },
+  {
+    edit: 'a paragraph deleted, then an email typed',
+    body: THREE,
+    words: async (page, surface) => {
+      await wholeParagraph(page, surface, 'bbb');
+      await expect.poll(() => stored(page, surface)).toBe('aaa\n\nccc');
+      await typeAtEnd(page, surface.testId, ' mail x@y.z', doc(page, surface.testId).getByText('ccc'));
+    },
+    stored: 'aaa\n\nccc mail x@y.z',
+    steps: ['aaa\n\nccc', THREE],
+  },
+  {
+    edit: 'a paragraph deleted, then `1) step` typed on its own line',
+    body: THREE,
+    words: async (page, surface) => {
+      await wholeParagraph(page, surface, 'bbb');
+      await expect.poll(() => stored(page, surface)).toBe('aaa\n\nccc');
+      await lineBelow(page, doc(page, surface.testId).getByText('ccc'), '1) step');
+    },
+    stored: 'aaa\n\nccc\n\n1) step',
+    steps: ['aaa\n\nccc', THREE],
+  },
+  {
+    edit: 'a pasted `1. a`',
+    body: 'hello world',
+    words: (page, surface) => pasteBeforeTheSpace(page, surface, '1. a'),
+    stored: 'hello\n\n1. a\n\n world',
+    steps: ['hello world'],
+  },
+  {
+    edit: 'a pasted `1. `',
+    body: 'hello world',
+    words: (page, surface) => pasteBeforeTheSpace(page, surface, '1. '),
+    stored: 'hello\n\n1. \n\n world',
+    steps: ['hello world'],
+  },
+  {
+    edit: 'a paragraph deleted, then words that read back as they are',
+    body: THREE,
+    words: async (page, surface) => {
+      await wholeParagraph(page, surface, 'bbb');
+      await expect.poll(() => stored(page, surface)).toBe('aaa\n\nccc');
+      await typeAtEnd(page, surface.testId, ' more', doc(page, surface.testId).getByText('ccc'));
+    },
+    stored: 'aaa\n\nccc more',
+    steps: ['aaa\n\nccc', THREE],
+  },
+  {
+    edit: 'a URL typed, a click away, then `1) step` typed',
+    body: THREE,
+    words: async (page, surface) => {
+      await typeAtEnd(page, surface.testId, ' see http://x.y', doc(page, surface.testId).getByText('ccc'));
+      await expect.poll(() => stored(page, surface)).toBe('aaa\n\nbbb\n\nccc see http://x.y');
+      await clickAway(page);
+      await expect(doc(page, surface.testId).locator('a')).toHaveText('http://x.y');
+      await lineBelow(page, doc(page, surface.testId).getByText('ccc see'), '1) step');
+    },
+    stored: 'aaa\n\nbbb\n\nccc see [http://x.y](http://x.y)\n\n1) step',
+    steps: ['aaa\n\nbbb\n\nccc see [http://x.y](http://x.y)', THREE],
+  },
+];
+
+for (const { edit, body, words, stored: held, steps } of ONE_PERSON) {
+  for (const blurs of [false, true]) {
+    test(`one person, nobody else: after ${edit} and a click away, ${blurs ? 'undo with a click away between presses' : 'undo'} brings back each step and sends nothing twice (GF-105)`, async ({ page }) => {
+      const surface = await ticketHolding(page, `Undone ${edit} ${blurs}`, body);
+      const firstWords = doc(page, surface.testId).locator('p').first();
+      await expect(firstWords).toBeVisible();
+      const sent = patchesSent(page);
+      await words(page, surface);
+      await expect.poll(() => stored(page, surface)).toBe(held);
+      await clickAway(page);
+      await expect(page.getByTestId('mode-line')).toHaveCount(0);
+      await page.waitForTimeout(BEAT_MS);
+      await expect(refusal(page, surface.testId)).toHaveCount(0);
+
+      await firstWords.click();
+      await expect(page.getByTestId('mode-line')).toBeVisible();
+      for (const step of steps) {
+        await page.keyboard.press('ControlOrMeta+z');
+        await expect.poll(() => stored(page, surface)).toBe(step);
+        if (!blurs) continue;
+        await clickAway(page);
+        await expect(page.getByTestId('mode-line')).toHaveCount(0);
+        await page.waitForTimeout(BEAT_MS);
+        await firstWords.click();
+        await expect(page.getByTestId('mode-line')).toBeVisible();
+      }
+      await page.keyboard.press('ControlOrMeta+z');
+      await page.waitForTimeout(BEAT_MS);
+      expect(await stored(page, surface)).toBe(steps.at(-1));
+      expect(sent.filter((write, i) => write === sent[i - 1])).toEqual([]);
+      await expect(refusal(page, surface.testId)).toHaveCount(0);
+    });
+  }
+}
+
+test('words on their way when the field was left are read in on the way back, so landing swaps nothing and undo has nothing to send (GF-105)', async ({ page }) => {
+  const first = await SURFACES['a ticket description'](page, 'Back on its way');
+  const second = await SURFACES['a ticket description'](page, 'Back on its way second');
+  await onFirstWithSecondAhead(page, first, second);
+  await slowPatches(page, first.path, LINK_MS * 3);
+  const sent = patchesSent(page);
+
+  await typeAtEnd(page, first.testId, ' see http://x.y');
+  await page.goForward();
+  await expectTitle(page, second.title);
+  await page.goBack();
+  await expectTitle(page, first.title);
+  await expect(doc(page, first.testId).locator('a')).toHaveText('http://x.y');
+  const held = 'Back on its way origin words see http://x.y';
+  await expect.poll(() => stored(page, first)).toBe(held);
+  await page.waitForTimeout(BEAT_MS);
+  expect(await doc(page, first.testId).evaluate((element) => (element as TiptapEditorHTMLElement).editor?.can().undo())).toBe(false);
+
+  await doc(page, first.testId).click({ position: { x: 1, y: 1 } });
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(BEAT_MS);
+  await expect(doc(page, first.testId).locator('a')).toHaveText('http://x.y');
+  expect(sent).toEqual([JSON.stringify({ description: held })]);
+  expect(await stored(page, first)).toBe(held);
+});
+
+/** An agent's words came in over what the person did: nothing on the undo stack is about them, so no press writes over them. */
+const OVER_AN_AGENT: { edit: string; words: (page: Page, surface: Surface) => Promise<unknown>; stored: string }[] = [
+  {
+    edit: 'a click away from words typed at the end',
+    words: (page, surface) => typeAtEnd(page, surface.testId, ' Q', doc(page, surface.testId).getByText('mine two')),
+    stored: 'mine one\n\nmine two Q',
+  },
+  {
+    edit: 'a paragraph deleted',
+    words: (page, surface) => wholeParagraph(page, surface, 'mine one'),
+    stored: 'mine two',
+  },
+  {
+    edit: 'everything deleted',
+    words: async (page, surface) => {
+      await doc(page, surface.testId).click();
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.press('Backspace');
+    },
+    stored: '',
+  },
+  {
+    edit: 'everything typed over',
+    words: async (page, surface) => {
+      await doc(page, surface.testId).click();
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.type('X');
+    },
+    stored: 'X',
+  },
+  {
+    edit: 'everything pasted over',
+    words: async (page, surface) => {
+      await doc(page, surface.testId).click();
+      await page.keyboard.press('ControlOrMeta+a');
+      await pasteAtTheCaret(page, surface, 'pasted one\n\npasted two');
+    },
+    stored: 'pasted one\n\npasted two',
+  },
+];
+
+for (const { edit, words, stored: held } of OVER_AN_AGENT) {
+  test(`after ${edit}, then an agent’s words, undo and redo do not put the person’s back over them (GF-105)`, async ({ page }) => {
+    const surface = await ticketHolding(page, `Over an agent ${edit}`, 'mine one\n\nmine two');
+    await expect(doc(page, surface.testId).getByText('mine two')).toBeVisible();
+    await words(page, surface);
+    await expect.poll(() => stored(page, surface)).toBe(held);
+    await clickAway(page);
+    await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+    await refetchUnderTheCaret(page, surface);
+    await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+    const sent = patchesSent(page);
+
+    await doc(page, surface.testId).click();
+    await expect(page.getByTestId('mode-line')).toBeVisible();
+    for (const key of ['ControlOrMeta+z', 'ControlOrMeta+z', 'ControlOrMeta+Shift+z']) {
+      await page.keyboard.press(key);
+      await page.waitForTimeout(BEAT_MS);
+      await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+    }
+    expect(sent).toEqual([]);
+    expect(await stored(page, surface)).toBe('An agent rewrote this.');
+  });
+}
+
+test('words typed after an agent’s come off with one undo, and the next press leaves the agent’s where they are (GF-105)', async ({ page }) => {
+  const surface = await helloWorld(page, 'After an agent');
+  await typeAtEnd(page, surface.testId, ' BEFORE');
+  await expect.poll(() => stored(page, surface)).toBe('hello world BEFORE');
+  await clickAway(page);
+  await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
+  await refetchUnderTheCaret(page, surface);
+  await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
+
+  await typeAtEnd(page, surface.testId, ' AFTER');
+  await expect.poll(() => stored(page, surface)).toBe('An agent rewrote this. AFTER');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(() => stored(page, surface)).toBe('An agent rewrote this.');
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(BEAT_MS);
+  expect(await stored(page, surface)).toBe('An agent rewrote this.');
+  await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
 });
 
 test('letting go of a write that reads back differently shows what a reload shows, and writes nothing (GF-104)', async ({ page }) => {
