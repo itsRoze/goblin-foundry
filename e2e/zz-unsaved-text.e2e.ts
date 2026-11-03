@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { Locator, Page, Route } from '@playwright/test';
 
 /**
  * Text a person typed is never silently lost (GF-79, GF-83). It may be
@@ -52,10 +52,14 @@ async function hideTab(page: Page, hidden: boolean) {
   }, hidden ? 'hidden' : 'visible');
 }
 
-async function typeAtEnd(page: Page, testId: string, words: string) {
-  await doc(page, testId).click();
+async function clickPastTheWords(page: Page, line: Locator) {
+  const { width, height } = (await line.boundingBox())!;
+  await line.click({ position: { x: width - 1, y: height / 2 } });
   await expect(page.getByTestId('mode-line')).toBeVisible();
-  await page.keyboard.press('ControlOrMeta+End');
+}
+
+async function typeAtEnd(page: Page, testId: string, words: string, line = doc(page, testId)) {
+  await clickPastTheWords(page, line);
   await page.keyboard.type(words);
 }
 
@@ -629,9 +633,7 @@ async function refetchUnderTheCaret(page: Page, surface: Surface) {
 }
 
 async function pasteBeforeTheSpace(page: Page, surface: Surface, text: string) {
-  await doc(page, surface.testId).click();
-  await expect(page.getByTestId('mode-line')).toBeVisible();
-  await page.keyboard.press('ControlOrMeta+End');
+  await clickPastTheWords(page, doc(page, surface.testId));
   for (let i = 0; i < ' world'.length; i += 1) await page.keyboard.press('ArrowLeft');
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   await doc(page, surface.testId).evaluate((element, text) => {
@@ -705,7 +707,7 @@ test('letting go of a write that reads back differently shows what a reload show
   expect(sent).toEqual(['{"description":"hello\\n\\n1. \\n\\n world"}']);
   expect(await stored(page, surface)).toBe('hello\n\n1. \n\n world');
 
-  await typeAtEnd(page, surface.testId, 'Q');
+  await typeAtEnd(page, surface.testId, 'Q', doc(page, surface.testId).locator('ol li'));
   await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. worldQ');
 });
 
@@ -723,7 +725,7 @@ test('placing the caret in a stored body that reads back differently writes noth
   expect(sent).toEqual([]);
   expect(await stored(page, surface)).toBe('hello\n\n1. \n\n world');
 
-  await typeAtEnd(page, surface.testId, 'Q');
+  await typeAtEnd(page, surface.testId, 'Q', doc(page, surface.testId).locator('ol li'));
   await expect.poll(() => stored(page, surface)).toBe('hello\n\n1. worldQ');
   await expect(refusal(page, surface.testId)).toHaveCount(0);
 });
