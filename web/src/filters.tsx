@@ -78,14 +78,14 @@ export function FilterBar({
     };
   }, [escapeRef, open, close]);
   // the popover is the topmost open thing whatever holds the focus (GF-98), so its hold is too: a prevented key is a claimed one
-  // (useKeyMap), and capture runs ahead of every map. No map binds `space`, so a focused control keeps it. `Tab` closes it, as it
+  // (useKeyMap), and capture runs ahead of every map. No map binds `space`, so a focused control keeps it, and `body` would only scroll the page with it. `Tab` closes it, as it
   // does the card menu, and the browser's `Tab` moves on from the chip (GF-92, GF-103)
   useEffect(() => {
     if (open === null) return;
     const hold = (e: KeyboardEvent) => {
       if (e.key === 'Tab' && (e.target === document.body || bar.current?.contains(e.target as Node))) return close(true);
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
-      if (e.key === ' ' || (e.key === 'Enter' && holdsEnter(e.target))) return;
+      if ((e.key === ' ' && e.target !== document.body) || (e.key === 'Enter' && holdsEnter(e.target))) return;
       if (e.key.length === 1 || e.key === 'Enter' || e.key.startsWith('Arrow')) e.preventDefault();
     };
     window.addEventListener('keydown', hold, true);
@@ -342,16 +342,17 @@ function SearchRows({
   const hits = rows.filter((r) => needle === '' || r.label.toLowerCase().includes(needle));
   const at = Math.min(cursor ?? Math.max(hits.findIndex((r) => r.value === chosen), 0), Math.max(hits.length - 1, 0));
   const armed = hits[at] && optionId(hits[at]);
-  // an armed row below the list's fold can't be read; only the list moves, never the page under a press (LESSONS 2026-08-30), and not at all for the row the pointer is on
-  const hovered = useRef(false);
+  // `⏎` picks the armed row, so a key brings it on screen, page and all. A press may move only the list (LESSONS 2026-08-30), and the row the pointer is on needs nothing
+  const moved = useRef<'open' | 'key' | 'pointer'>('open');
   useLayoutEffect(() => {
     const row = armed ? document.getElementById(armed) : null;
     const list = row?.parentElement;
-    if (row && list && !hovered.current) {
+    if (!row || !list) return;
+    if (moved.current === 'key') row.scrollIntoView({ block: 'nearest' });
+    if (moved.current === 'open') {
       const [r, l] = [row.getBoundingClientRect(), list.getBoundingClientRect()];
       list.scrollTop += Math.min(r.top - l.top, 0) + Math.max(r.bottom - l.bottom, 0);
     }
-    hovered.current = false;
   }, [armed, needle]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -363,6 +364,7 @@ function SearchRows({
       if (hit && !e.repeat) onPick(hit.value, true);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
+      moved.current = 'key';
       setCursor((at + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % Math.max(hits.length, 1));
     }
   };
@@ -376,12 +378,13 @@ function SearchRows({
         aria-expanded={hits.length > 0}
         aria-controls={hits.length > 0 ? listId : undefined}
         aria-autocomplete="list"
-        aria-activedescendant={hits[at] ? optionId(hits[at]) : undefined}
+        aria-activedescendant={armed}
         aria-label={`filter by ${label} — search`}
         placeholder={`search ${label}s`}
         autoComplete="off"
         value={query}
         onChange={(e) => {
+          moved.current = 'key';
           setQuery(e.target.value);
           setCursor(0);
         }}
@@ -400,7 +403,7 @@ function SearchRows({
               className={`gf-row gf-picker-hit${i === at ? ' is-on' : ''}`}
               data-testid={`pick-${label}-${CHOICE_KEY(r)}`}
               onMouseMove={() => {
-                hovered.current = i !== at;
+                moved.current = 'pointer';
                 setCursor(i);
               }}
               onClick={() => onPick(r.value, false)}
