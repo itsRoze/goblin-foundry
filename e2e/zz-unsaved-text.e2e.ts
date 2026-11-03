@@ -730,6 +730,35 @@ test('placing the caret in a stored body that reads back differently writes noth
   await expect(refusal(page, surface.testId)).toHaveCount(0);
 });
 
+for (const body of ['# ', '> > ', '1. \n\n# ', '> a\n\n# ', '# \n\n- a', '> \n\n- a\n- b', '* ```\nc\n```']) {
+  test(`placing the caret in a stored ${JSON.stringify(body)}, and an undo with nothing to undo, write nothing (GF-43, GF-105)`, async ({ page }) => {
+    const surface = await ticketHolding(page, `Bare ${JSON.stringify(body)}`, body);
+    await expect(doc(page, surface.testId)).toBeVisible();
+    const sent = patchesSent(page);
+
+    await doc(page, surface.testId).click();
+    await expect(page.getByTestId('mode-line')).toBeVisible();
+    await page.waitForTimeout(BEAT_MS);
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.waitForTimeout(BEAT_MS);
+    await clickAway(page);
+    await expect(page.getByTestId('mode-line')).toHaveCount(0);
+    await page.waitForTimeout(BEAT_MS);
+    expect(sent).toEqual([]);
+    expect(await stored(page, surface)).toBe(body);
+    await expect(refusal(page, surface.testId)).toHaveCount(0);
+  });
+}
+
+test('a letter typed in a stored bare marker lands (GF-105)', async ({ page }) => {
+  const surface = await ticketHolding(page, 'Bare typed', '# ');
+  await doc(page, surface.testId).click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await page.keyboard.type('Q');
+  await expect.poll(() => stored(page, surface)).toBe('# Q');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
 test('a refused save after a pasted list keeps its words and says so, and the next act sends them (GF-79, GF-104)', async ({ page }) => {
   const surface = await helloWorld(page, 'Refused paste');
   await pasteBeforeTheSpace(page, surface, '1. ');
