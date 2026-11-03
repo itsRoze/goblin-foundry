@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
+declare global {
+  interface Window {
+    addressWrites: string[];
+  }
+}
+
 /**
  * Issue 06's exit criterion: the Filter lives in the address, so a bookmarked
  * URL is a saved view and reload, back and forward all land on the same board.
@@ -143,6 +149,60 @@ test('the text box follows the address when something else changes it', async ({
 
   await page.getByLabel('clear filters').click();
   await expect(box).toHaveValue('');
+});
+
+// the router draws a written address inside `startTransition`, so a letter typed between the write and that draw is the GF-99 case
+test('a letter typed while the address catches up is kept, and the address follows it', async ({ page }) => {
+  await page.addInitScript(() => {
+    const replace = history.replaceState.bind(history);
+    let typed = false;
+    history.replaceState = (data, unused, url) => {
+      replace(data, unused, url);
+      if (typed || !String(url).includes('q=entirel')) return;
+      typed = true;
+      document.execCommand('insertText', false, 'y');
+    };
+  });
+  await page.goto('/');
+  const box = page.getByLabel('filter by text');
+  await box.pressSequentially('entirel');
+  await expect(box).toHaveValue('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+});
+
+test('a trailing space stays in the box and writes the address once', async ({ page }) => {
+  await page.addInitScript(() => {
+    const replace = history.replaceState.bind(history);
+    window.addressWrites = [];
+    history.replaceState = (data, unused, url) => {
+      // the router's own first call carries no address
+      if (url != null) window.addressWrites.push(String(url));
+      replace(data, unused, url);
+    };
+  });
+  await page.goto('/');
+  const box = page.getByLabel('filter by text');
+  await box.fill('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+  await box.press('Space');
+  await page.waitForTimeout(1000);
+  await expect(box).toHaveValue('entirely ');
+  expect(await page.evaluate(() => window.addressWrites)).toEqual(['/?q=entirely']);
+});
+
+test('back after typing a filter leaves the board, and forward brings the filter back', async ({ page }) => {
+  await page.goto('/apps');
+  await page.getByRole('navigation', { name: 'workspaces' }).getByRole('link', { name: 'board' }).click();
+  await expect(page.getByTestId('board')).toBeVisible();
+  const box = page.getByLabel('filter by text');
+  await box.pressSequentially('entirely');
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/apps$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/\?q=entirely$/);
+  await expect(page.getByLabel('filter by text')).toHaveValue('entirely');
 });
 
 test('a value the API refuses is shown, not corrected', async ({ page }) => {
