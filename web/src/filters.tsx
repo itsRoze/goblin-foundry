@@ -497,6 +497,7 @@ function CheckRows<T extends string>({
         <label key={option} className={`gf-check${i === at ? ' is-on' : ''}`} onMouseMove={() => setCursor(i)}>
           <input
             type="checkbox"
+            tabIndex={-1}
             checked={chosen.includes(option)}
             // the cursor follows the click, so `space` afterwards toggles the row you just touched
             onChange={() => {
