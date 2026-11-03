@@ -322,11 +322,13 @@ test('undo is not the act: undone back to the words the kept ones were based on,
   await expect(refusal(page, surface.testId)).toHaveText(UNREACHED);
   unreachable = false;
   await page.request.patch(surface.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
-  await page.waitForTimeout(BEAT_MS);
-  const refetched = page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === surface.path);
-  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
-  await refetched;
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  // a window refocus refetches only once the cached body is past staleTime, so nudge until the read lands
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+      return (await refusal(page, surface.testId).count()) ? refusal(page, surface.testId).innerText() : null;
+    })
+    .toBe(MOVED);
   const before = sent.length;
 
   await doc(page, surface.testId).click();
