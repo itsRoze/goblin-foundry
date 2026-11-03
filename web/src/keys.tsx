@@ -40,6 +40,8 @@ const focusedOnce = new WeakSet<object>();
  */
 export const byPointer = (e: Event | undefined) => e instanceof DragEvent || (e instanceof MouseEvent && e.detail > 0);
 
+const byKey = (e: Event | undefined) => e instanceof KeyboardEvent || (e instanceof MouseEvent && !byPointer(e));
+
 /**
  * The safe answer takes the focus once per question, for the press that asked it, so `⏎` dismisses
  * what was not read and the action is a ⇧Tab away (GF-44). The board redraws a question when its card
@@ -60,12 +62,18 @@ export function useFocusOnAsk(question: object | null, answer: RefObject<HTMLEle
 /**
  * What a control opened has closed and taken the focus with it: the focus comes back to that
  * control instead of lying on `body`, where `⏎` is the Cursor's (GF-39, GF-44). A focus that
- * went somewhere else, such as the next picker's input, is left there.
+ * went somewhere else, such as the next picker's input, is left there. Nothing but a key's own
+ * close scrolls, and that only by what the control is clipped: a bare `focus()` centres it, which
+ * moved the page 379px to bring back 29. A close that lands after a write has no press in
+ * `window.event` to go by, so it counts as a pointer's.
  */
 export function useFocusOnClose(open: boolean, control: RefObject<HTMLElement | null>) {
   const was = useRef(open);
   useEffect(() => {
-    if (was.current && !open && document.activeElement === document.body) control.current?.focus();
+    if (was.current && !open && document.activeElement === document.body) {
+      control.current?.focus({ preventScroll: true });
+      if (byKey(window.event)) control.current?.scrollIntoView({ block: 'nearest' });
+    }
     was.current = open;
   }, [open, control]);
 }
