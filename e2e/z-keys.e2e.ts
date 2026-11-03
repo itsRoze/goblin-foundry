@@ -533,6 +533,24 @@ test('a reopened picker highlights what is set, so ⏎ ⏎ from its chip keeps t
   await expect(page.getByTestId('chip-project')).toContainText('none');
 });
 
+test('⏎ ⏎ on a project chip whose address names no app writes nothing (GF-103)', async ({ page }) => {
+  const app = await page.request.post('/api/apps', { data: { name: 'Reopened home' } });
+  expect(app.ok(), await app.text()).toBe(true);
+  const project = await page.request.post('/api/projects', { data: { name: 'Reopened project', app_id: ((await app.json()) as { id: number }).id } });
+  expect(project.ok(), await project.text()).toBe(true);
+  const id = ((await project.json()) as { id: number }).id;
+  await page.goto(`/?project_id=${id}`);
+  const chip = page.getByTestId('chip-project');
+  await expect(chip).toContainText('Reopened project');
+  await chip.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('pop-project').getByRole('option', { name: 'Reopened project' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('pop-project')).toHaveCount(0);
+  await expect(chip).toBeFocused();
+  await expect(page).toHaveURL(new RegExp(`/\\?project_id=${id}$`));
+});
+
 test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page }) => {
   for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) await seedApp(page, `Zlong ${String(n).padStart(2, '0')}`);
   await board(page, 'Popreopen');
@@ -554,6 +572,14 @@ test('a reopened picker scrolls what is set into sight (GF-103)', async ({ page 
   const ninth = page.getByTestId('pop-app').getByRole('option', { name: 'Zlong 09' });
   await expect(ninth).toHaveAttribute('aria-selected', 'true');
   await expect(ninth).toBeInViewport({ ratio: 0.9 });
+  await page.keyboard.press('Escape');
+
+  // the list scrolls, never the page under the press that opened it
+  await page.setViewportSize({ width: 390, height: 240 });
+  await page.getByTestId('chip-app').click();
+  await expect(page.getByTestId('pop-app')).toBeVisible();
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test('Tab closes a popover and moves on, so `space` toggles no row and the keys are the board\'s again; a click then ↓ then space toggles the highlight (GF-103)', async ({ page }) => {
@@ -602,6 +628,11 @@ test('a popover that lost the focus still holds the bare keys, wherever the focu
   await page.keyboard.press('j');
   await page.keyboard.press('ArrowDown');
   await expect(only).not.toHaveClass(/is-cursor/);
+  // and `Tab` is still the way out
+  await page.keyboard.press('Tab');
+  await expect(pop).toHaveCount(0);
+  await page.getByTestId('chip-app').click();
+  await pop.locator('.gf-tile-keys').click();
   await page.keyboard.press('c');
   await page.keyboard.press('x');
   await expect(page.getByTestId('board-create')).toHaveCount(0);
