@@ -78,19 +78,20 @@ export function FilterBar({
     };
   }, [escapeRef, open, close]);
   // an open popover is the topmost open thing whatever holds the focus (GF-98), so the bare keys are not the board's while it
-  // is open; a prevented key is a claimed one (useKeyMap, keys.tsx), and this runs ahead of every map. A modified character
-  // stays global (`⌘K`, `⌘1–6`), an unbound named key (Tab, F5) stays the browser's, a field keeps typing, no map binds
-  // `space` so a focused control keeps it, and a focused button or link answers `⏎` itself (GF-92, GF-103)
+  // is open: a prevented key is a claimed one (useKeyMap, keys.tsx), and the capture phase runs ahead of every map. No map
+  // binds `space`, so a focused control keeps it. `Tab` closes it, as it does the card menu, since its keys and their strip
+  // go with the focus; the browser's `Tab` then moves on from the chip, and a palette over it keeps its own (GF-92, GF-103)
   useEffect(() => {
     if (open === null) return;
     const hold = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && (e.target === document.body || bar.current?.contains(e.target as Node))) return close(true);
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       if (e.key === ' ' || (e.key === 'Enter' && holdsEnter(e.target))) return;
       if (e.key.length === 1 || e.key === 'Enter' || e.key.startsWith('Arrow')) e.preventDefault();
     };
     window.addEventListener('keydown', hold, true);
     return () => window.removeEventListener('keydown', hold, true);
-  }, [open]);
+  }, [open, close]);
 
   return (
     <div className="gf-filters" data-testid="filter-bar" ref={bar}>
@@ -289,6 +290,8 @@ function EntityChip({
    * view follows, so the board cannot describe a placement the API refuses.
    */
   const pick = (value: number | null | undefined, byKey: boolean) => {
+    // the row already set is no pick: ADR-0007's side effects below are for a move, and `⏎ ⏎` from the chip writes nothing
+    if (value === chosen) return onClose(byKey);
     const next: TicketFilter = { ...filter };
     if (value === undefined) delete next[field];
     else next[field] = value;
@@ -340,17 +343,21 @@ function SearchRows({
   const hits = rows.filter((r) => needle === '' || r.label.toLowerCase().includes(needle));
   const at = Math.min(cursor ?? Math.max(hits.findIndex((r) => r.value === chosen), 0), Math.max(hits.length - 1, 0));
   const armed = hits[at] && optionId(hits[at]);
-  // the list scrolls inside itself, and a highlight below its fold is an armed row nobody can read; the pointer is already on the row it highlights
-  const byPointer = useRef(false);
+  // a highlight below the list's fold is an armed row nobody can read; the pointer is already on the row it highlights, and only
+  // the list moves, since what a press opens must not scroll the page under the finger (LESSONS 2026-08-30)
+  const hovered = useRef(false);
   useLayoutEffect(() => {
-    if (armed && !byPointer.current) document.getElementById(armed)?.scrollIntoView({ block: 'nearest' });
-    byPointer.current = false;
+    const row = armed ? document.getElementById(armed) : null;
+    const list = row?.parentElement;
+    if (row && list && !hovered.current) {
+      const [r, l] = [row.getBoundingClientRect(), list.getBoundingClientRect()];
+      list.scrollTop += Math.min(r.top - l.top, 0) + Math.max(r.bottom - l.bottom, 0);
+    }
+    hovered.current = false;
   }, [armed, needle]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') return e.preventDefault(), onClose(true);
-    // as the card menu's does: the keys and their strip go with the focus, and the browser's `Tab` moves on from the chip
-    if (e.key === 'Tab') return onClose(true);
     if (e.key === 'Enter') {
       e.preventDefault();
       // a repeat is the held `⏎` that opened the popover from its chip (GF-82)
@@ -395,7 +402,7 @@ function SearchRows({
               className={`gf-row gf-picker-hit${i === at ? ' is-on' : ''}`}
               data-testid={`pick-${label}-${CHOICE_KEY(r)}`}
               onMouseMove={() => {
-                byPointer.current = i !== at;
+                hovered.current = i !== at;
                 setCursor(i);
               }}
               onClick={() => onPick(r.value, false)}
@@ -497,7 +504,6 @@ function CheckRows<T extends string>({
 
   // a held `⏎` that opened the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Tab') return onClose(true);
     if (e.key !== 'Escape' && e.key !== 'Enter' && e.key !== ' ' && !e.key.startsWith('Arrow')) return;
     e.preventDefault();
     if (e.key === 'Escape') return onClose(true);
