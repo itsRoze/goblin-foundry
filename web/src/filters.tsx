@@ -9,7 +9,7 @@ import {
   type TicketFilter,
   type TicketStatus,
 } from '@goblin/shared';
-import { useKey } from './keys';
+import { holdsEnter, isTyping, useKey } from './keys';
 import { useApps, useLabelNames, useProjects } from './queries';
 import { projectFitsApp, useNames } from './tickets';
 import { Hint, Kbd, useCloseOnOutside } from './ui';
@@ -77,6 +77,20 @@ export function FilterBar({
       escapeRef.current = null;
     };
   }, [escapeRef, open, close]);
+  // an open popover is the topmost open thing whatever holds the focus (GF-98), so the bare keys are not the board's while it
+  // is open; a prevented key is a claimed one (useKeyMap, keys.tsx), and this runs ahead of every map. A modified character
+  // stays global (`⌘K`, `⌘1–6`), an unbound named key (Tab, F5) stays the browser's, a field keeps typing, and a focused
+  // button or link answers `⏎` and `space` itself (GF-92, GF-103)
+  useEffect(() => {
+    if (open === null) return;
+    const hold = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if ((e.key === 'Enter' || e.key === ' ') && holdsEnter(e.target)) return;
+      if (e.key.length === 1 || e.key === 'Enter' || e.key.startsWith('Arrow')) e.preventDefault();
+    };
+    window.addEventListener('keydown', hold, true);
+    return () => window.removeEventListener('keydown', hold, true);
+  }, [open]);
 
   return (
     <div className="gf-filters" data-testid="filter-bar" ref={bar}>
@@ -473,13 +487,9 @@ function CheckRows<T extends string>({
   // the rows can change under the cursor (a poll brings a new label), so it is clamped rather than trusted
   const at = Math.min(cursor, Math.max(options.length - 1, 0));
 
-  // the group holds every bare key a map could bind while it has the focus, answered or not: a prevented key is a
-  // claimed one (useKeyMap, keys.tsx), which is what keeps `j k x a s` off the board behind it (GF-92). A modified
-  // character stays global (`⌘K`, `⌘1–6`) and an unbound named key (Tab, F5) stays the browser's. A held `⏎` that opened
-  // the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it.
+  // a held `⏎` that opened the popover from its chip repeats into the first row, as it did into the card menu (GF-82): a toggle ignores it
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const named = e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow');
-    if (!named && (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1)) return;
+    if (e.key !== 'Escape' && e.key !== 'Enter' && e.key !== ' ' && !e.key.startsWith('Arrow')) return;
     e.preventDefault();
     if (e.key === 'Escape') return onClose(true);
     const option = options[at];

@@ -6,13 +6,13 @@ import { useEffect, useRef } from 'react';
  * click, and `j`, `x` and `esc` must go on meaning the board (issue 03b). It is
  * opt-in because other checkboxes live in popovers that answer `esc` themselves.
  */
-const isTyping = (t: EventTarget | null) =>
+export const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement &&
   !('passesKeys' in t.dataset) &&
   (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
 
 /** A link or button answers `⏎` itself (GF-39); the graph canvas, focusable for its pan and zoom keys, holds it and answers with nothing (GF-80). */
-const holdsEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
+export const holdsEnter = (t: EventTarget | null): t is HTMLElement | SVGElement =>
   (t instanceof HTMLElement || t instanceof SVGElement) && t.matches('a[href], button, svg[tabindex]');
 
 export function letGoOfEnter() {
