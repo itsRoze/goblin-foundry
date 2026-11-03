@@ -943,6 +943,9 @@ test('palette esc leaves the page where it was, and the focus on `body` when wha
   await page.goto(`/tickets/${key}`);
   const opener = page.getByTestId('hint-write');
   await opener.focus();
+  // the web fonts arriving late grow this page by 4px, and that moves a window scrolled to its foot
+  await page.evaluate(() => Promise.all([...document.fonts].map((face) => face.load())));
+  await page.evaluate(() => new Promise(requestAnimationFrame));
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const y = await page.evaluate(() => window.scrollY);
   expect(y).toBeGreaterThan(200);
