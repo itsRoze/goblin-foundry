@@ -191,3 +191,66 @@ for (const footGap of FOOT_GAPS)
     await page.waitForTimeout(400);
     expect((await read(page, key)).status).toBe('ready');
   });
+
+const LONG_DESCRIPTION = Array.from({ length: 60 }, (_, n) => `Paragraph ${n} of a long description.`).join('\n\n');
+const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
+async function tap(page: Page, control: Locator) {
+  const box = (await control.boundingBox())!;
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/** Scrolls until the top of `control` sits this many pixels above the viewport, and says where the page rests. */
+async function clipTop(control: Locator, by: number) {
+  const page = control.page();
+  await page.evaluate((down) => window.scrollBy(0, down), (await control.boundingBox())!.y + by);
+  expect(Math.abs((await control.boundingBox())!.y + by), 'the control sits where the sweep put it').toBeLessThanOrEqual(1);
+  return scrollY(page);
+}
+
+async function longBlocked(page: Page, name: string) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const key = await blocked(page, mine(name));
+  await page.request.patch(`/api/tickets/${key}`, { data: { description: LONG_DESCRIPTION } });
+  await page.goto(`/tickets/${key}`);
+  await expect(page.getByTestId('state-tile')).toBeVisible();
+  return key;
+}
+
+for (const by of [3, 29, 40]) {
+  async function askedWithStartClipped(page: Page, name: string) {
+    const key = await longBlocked(page, `${name}${by}`);
+    await page.getByTestId('move-start').tap();
+    await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+    return { key, rest: await clipTop(page.getByTestId('move-start'), by) };
+  }
+
+  test(`with start ${by}px above the top at 1366, a tap on cancel leaves the page where it is and the focus on start`, async ({ page }) => {
+    const { rest } = await askedWithStartClipped(page, 'StayCancel');
+    await tap(page, page.getByTestId('confirm-start-cancel'));
+    await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+    await expect(page.getByTestId('move-start')).toBeFocused();
+    expect(await scrollY(page)).toBe(rest);
+  });
+
+  test(`with start ${by}px above the top at 1366, a tap on start anyway leaves the page where it is and writes`, async ({ page }) => {
+    const { key, rest } = await askedWithStartClipped(page, 'StayYes');
+    await tap(page, page.getByTestId('confirm-start-yes'));
+    await expect(page.getByTestId('state-tile')).toContainText('building');
+    expect((await read(page, key)).status).toBe('building');
+    expect(await scrollY(page)).toBe(rest);
+  });
+
+  test(`with + add ${by}px above the top at 1366, a tap on a candidate leaves the page where it is and the focus on + add`, async ({ page }) => {
+    const spare = (await post<Ticket>(page, '/api/tickets', { title: mine(`StayPick${by} spare`), app_id: appId, simple: true })).key;
+    await longBlocked(page, `StayPick${by}`);
+    await page.getByTestId('add-depends_on').tap();
+    await page.getByRole('combobox', { name: 'blocked by — search tickets' }).fill(spare);
+    await expect(page.getByTestId(`pick-${spare}`)).toBeVisible();
+    const rest = await clipTop(page.getByTestId('add-depends_on'), by);
+    await tap(page, page.getByTestId(`pick-${spare}`));
+    await expect(page.getByTestId('deps-depends_on')).toContainText(spare);
+    await expect(page.getByTestId('picker-depends_on')).toHaveCount(0);
+    await expect(page.getByTestId('add-depends_on')).toBeFocused();
+    expect(await scrollY(page)).toBe(rest);
+  });
+}
