@@ -19,12 +19,32 @@ const read = async <T>(page: Page, path: string) => (await (await page.request.g
 const expectTitle = (page: Page, text: string) => expect(page.getByTestId('page-title')).toContainText(text);
 
 const UNREACHED = 'could not reach the API; try again';
+const MOVED = 'changed elsewhere while these words were unsaved; ⌘⏎ saves them over it, esc takes it';
 
 // past IDLE_MS in web/src/editor.tsx: a write the editor means to send has gone out by then
 const BEAT_MS = 1000;
+// WRITE_BOUND_MS in web/src/api.ts: a write with no answer by then is given up on
+const BOUND_MS = 10_000;
 
 const doc = (page: Page, testId: string) => page.getByTestId(testId).locator('.gf-doc');
 const refusal = (page: Page, testId: string) => page.getByTestId(testId).getByRole('alert');
+
+/** The body of every PATCH the page sends, in the order they go out. */
+function patchesSent(page: Page) {
+  const sent: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH') sent.push(request.postData() ?? '');
+  });
+  return sent;
+}
+
+/** What the tab going away does: the page's own listeners fire on the document's visibility, not on a window event. */
+async function hideTab(page: Page, hidden: boolean) {
+  await page.evaluate((state) => {
+    Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, hidden ? 'hidden' : 'visible');
+}
 
 async function typeAtEnd(page: Page, testId: string, words: string) {
   await doc(page, testId).click();
@@ -128,7 +148,7 @@ for (const [name, make] of Object.entries(SURFACES)) {
   });
 }
 
-test('a 409 on the blur save keeps the words over what the other writer put there (GF-79)', async ({ page }) => {
+test('a 409 on the blur save keeps the words, and once the other writer’s body is read the field says it moved; typing then replaces it (GF-79)', async ({ page }) => {
   const surface = await SURFACES['a ticket description'](page, 'Conflicted');
   const key = surface.path.split('/').at(-1);
   await page.goto(surface.url);
@@ -146,12 +166,154 @@ test('a 409 on the blur save keeps the words over what the other writer put ther
   await leave(page);
   await refetched;
   await expect(doc(page, surface.testId)).toHaveText('Conflicted origin words mine');
-  await expect(refusal(page, surface.testId)).toHaveText(hint);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
 
-  await doc(page, surface.testId).click();
+  await typeAtEnd(page, surface.testId, ' more');
   await leave(page);
-  await expect.poll(() => stored(page, surface)).toBe('Conflicted origin words mine');
+  await expect.poll(() => stored(page, surface)).toBe('Conflicted origin words mine more');
   await expect(refusal(page, surface.testId)).toHaveCount(0);
+});
+
+test('a save the API never answers is given up on, says so, and the next write goes out once the API answers again (GF-79)', async ({ page }) => {
+  test.setTimeout(BOUND_MS + 30_000);
+  const surface = await SURFACES['a ticket description'](page, 'Hung');
+  await page.goto(surface.url);
+  const sent = patchesSent(page);
+  // the first PATCH is neither answered nor failed: it stays open until the page gives up on it
+  let hang = true;
+  await page.route(surface.path, (route) => {
+    if (!isPatch(route) || !hang) return route.continue();
+    hang = false;
+  });
+
+  await typeAtEnd(page, surface.testId, ' one');
+  await leave(page);
+  await expect(page.getByTestId('saving')).toHaveText('saving…');
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED, { timeout: BOUND_MS + 5_000 });
+  await expect(doc(page, surface.testId)).toHaveText('Hung origin words one');
+  await expect(page.getByTestId('saving')).toHaveCount(0);
+
+  await typeAtEnd(page, surface.testId, ' two');
+  await leave(page);
+  await expect.poll(() => stored(page, surface)).toBe('Hung origin words one two');
+  await expect(refusal(page, surface.testId)).toHaveCount(0);
+  expect(sent).toEqual(['{"description":"Hung origin words one"}', '{"description":"Hung origin words one two"}']);
+});
+
+test('a save that never answers, left and come back to, is given up on in its field, and the next act sends the words (GF-79)', async ({ page }) => {
+  test.setTimeout(BOUND_MS + 30_000);
+  const first = await SURFACES['a ticket description'](page, 'Hungaway');
+  const second = await SURFACES['a ticket description'](page, 'Hungbeside');
+  await onFirstWithSecondAhead(page, first, second);
+  let hang = true;
+  await page.route(first.path, (route) => {
+    if (!isPatch(route) || !hang) return route.continue();
+    hang = false;
+  });
+
+  const hung = page.waitForRequest((request) => request.method() === 'PATCH');
+  await typeAtEnd(page, first.testId, ' one');
+  await hung;
+  await page.goForward();
+  await expectTitle(page, second.title);
+  await page.goBack();
+  await expectTitle(page, first.title);
+  await expect(doc(page, first.testId)).toHaveText('Hungaway origin words one');
+  await expect(refusal(page, first.testId)).toHaveText(UNREACHED, { timeout: BOUND_MS + 5_000 });
+
+  await doc(page, first.testId).click();
+  await leave(page);
+  await expect.poll(() => stored(page, first)).toBe('Hungaway origin words one');
+  await expect(refusal(page, first.testId)).toHaveCount(0);
+});
+
+test('a save given up on cannot land over a later one: the API refuses it on the version it was judged on (GF-79)', async ({ page }) => {
+  test.setTimeout(BOUND_MS + 30_000);
+  const surface = await SURFACES['a ticket description'](page, 'Late');
+  const key = surface.path.split('/').at(-1);
+  const judgedAt = (await read<{ updated_at: string }>(page, surface.path)).updated_at;
+  await page.goto(surface.url);
+  let hang = true;
+  await page.route(surface.path, (route) => {
+    if (!isPatch(route) || !hang) return route.continue();
+    hang = false;
+  });
+
+  const held = page.waitForRequest((request) => request.method() === 'PATCH');
+  await typeAtEnd(page, surface.testId, ' one');
+  await leave(page);
+  const request = await held;
+  await expect(refusal(page, surface.testId)).toHaveText(UNREACHED, { timeout: BOUND_MS + 5_000 });
+  await typeAtEnd(page, surface.testId, ' two');
+  await leave(page);
+  await expect.poll(() => stored(page, surface)).toBe('Late origin words one two');
+
+  // the given-up request's bytes reach the API only now, as a retransmission would deliver them
+  const headers = await request.allHeaders();
+  expect(headers['x-goblin-updated-at']).toBe(judgedAt);
+  const late = await page.request.patch(surface.path, { data: request.postData() ?? '', headers: { 'content-type': 'application/json', 'x-goblin-updated-at': judgedAt } });
+  expect([late.status(), (await late.json()).hint]).toEqual([409, `nothing changed — ticket ${key} changed while the edit was being applied; try again`]);
+  expect(await stored(page, surface)).toBe('Late origin words one two');
+});
+
+/** A refused save kept across a leave, under which another writer rewrote the field; back on it with the rewrite read. */
+async function keptThenMoved(page: Page, name: string) {
+  const first = await SURFACES['a ticket description'](page, name);
+  const second = await SURFACES['a ticket description'](page, `${name}beside`);
+  await onFirstWithSecondAhead(page, first, second);
+  const sent = patchesSent(page);
+  let unreachable = true;
+  await page.route(first.path, (route) => (isPatch(route) && unreachable ? route.abort() : route.continue()));
+  await typeAtEnd(page, first.testId, ' kept');
+  await leave(page);
+  await expect(refusal(page, first.testId)).toHaveText(UNREACHED);
+  await page.goForward();
+  await expectTitle(page, second.title);
+  unreachable = false;
+  await page.request.patch(first.path, { data: { description: 'An agent rewrote this.' } });
+  await page.goBack();
+  await expectTitle(page, first.title);
+  await expect(refusal(page, first.testId)).toHaveText(MOVED);
+  await expect(doc(page, first.testId)).toHaveText(`${name} origin words kept`);
+  return { first, second, sent };
+}
+
+test('a kept record whose field moved on the server sends nothing until you act, and your act then replaces it, in history too (GF-79)', async ({ page }) => {
+  const { first, second, sent } = await keptThenMoved(page, 'Moved');
+  const before = sent.length;
+
+  await page.goForward();
+  await expectTitle(page, second.title);
+  await page.goBack();
+  await expectTitle(page, first.title);
+  await hideTab(page, true);
+  await page.waitForTimeout(BEAT_MS);
+  await hideTab(page, false);
+  expect(sent.slice(before)).toEqual([]);
+  expect(await stored(page, first)).toBe('An agent rewrote this.');
+  await expect(refusal(page, first.testId)).toHaveText(MOVED);
+  await expect(doc(page, first.testId)).toHaveText('Moved origin words kept');
+
+  await typeAtEnd(page, first.testId, ' more');
+  await leave(page);
+  await expect.poll(() => stored(page, first)).toBe('Moved origin words kept more');
+  await expect(refusal(page, first.testId)).toHaveCount(0);
+  const [latest] = await read<{ kind: string; prior: Record<string, unknown>; new: Record<string, unknown> }[]>(page, `${first.path}/events`);
+  expect(latest).toMatchObject({ kind: 'updated', prior: { description: 'An agent rewrote this.' }, new: { description: 'Moved origin words kept more' } });
+});
+
+test('esc on a kept record whose field moved on the server drops the kept words for the server’s, sending nothing (GF-79)', async ({ page }) => {
+  const { first, sent } = await keptThenMoved(page, 'Dropped');
+  const before = sent.length;
+
+  await doc(page, first.testId).click();
+  await expect(page.getByTestId('mode-line')).toBeVisible();
+  await leave(page);
+  await expect(doc(page, first.testId)).toHaveText('An agent rewrote this.');
+  await expect(refusal(page, first.testId)).toHaveCount(0);
+  await page.waitForTimeout(BEAT_MS);
+  expect(sent.slice(before)).toEqual([]);
+  expect(await stored(page, first)).toBe('An agent rewrote this.');
 });
 
 test('a 422 keeps the words in the field under the sentence that refused them (GF-79)', async ({ page }) => {

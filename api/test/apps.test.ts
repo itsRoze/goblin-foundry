@@ -213,5 +213,18 @@ describe('/api/apps', () => {
       h.healWrites();
       expect(await snapshot(created.id)).toEqual(before);
     });
+
+    test('an edit judged on an older version of the app is the same 409, and one judged on the current version goes through', async () => {
+      const created = await req('/api/apps', json('POST', { name: 'Reeder' })).then((r) => r.json());
+      await Bun.sleep(2);
+      expect((await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reeder moved' }))).status).toBe(200);
+      const before = await snapshot(created.id);
+      const late = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }, { 'x-goblin-updated-at': created.updated_at }));
+      expect([late.status, (await late.json()).hint]).toEqual([409, `nothing changed — app ${created.id} changed while the edit was being applied; try again`]);
+      expect(await snapshot(created.id)).toEqual(before);
+      const { updated_at } = await req(`/api/apps/${created.id}`).then((r) => r.json());
+      const current = await req(`/api/apps/${created.id}`, json('PATCH', { name: 'Reader' }, { 'x-goblin-updated-at': updated_at }));
+      expect([current.status, (await current.json()).name]).toEqual([200, 'Reader']);
+    });
   });
 });

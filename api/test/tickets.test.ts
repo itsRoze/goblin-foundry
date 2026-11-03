@@ -122,6 +122,18 @@ describe('/api/tickets', () => {
       h.healWrites();
       expect(await snapshot(t.key)).toEqual(before);
     });
+
+    test('an edit judged on an older version of the ticket is the same 409, and one judged on the current version goes through', async () => {
+      const t = await newTicket({ title: 'draft title' });
+      await Bun.sleep(2);
+      expect((await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'moved title' }))).status).toBe(200);
+      const before = await snapshot(t.key);
+      const late = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'late title' }, { 'x-goblin-updated-at': t.updated_at }));
+      expect([late.status, (await late.json()).hint]).toEqual([409, `nothing changed — ticket ${t.key} changed while the edit was being applied; try again`]);
+      expect(await snapshot(t.key)).toEqual(before);
+      const current = await req(`/api/tickets/${t.key}`, json('PATCH', { title: 'late title' }, { 'x-goblin-updated-at': (await read(t.key)).updated_at }));
+      expect([current.status, (await current.json()).title]).toEqual([200, 'late title']);
+    });
   });
 
   test('status is not an editable field', async () => {
