@@ -121,6 +121,35 @@ test.describe('the horizontal board by finger', () => {
     await expect(page.locator('[data-testid^="refusal-"]')).toHaveCount(0);
   });
 
+  test('a drop that asks leaves a page scrolled down a tall column where it is', async ({ page }) => {
+    const tag = `Tall ${Date.now().toString(36)}`;
+    for (let n = 0; n < 25; n += 1) await seed(page, `${tag} filler ${n}`, { status: 'ready', app_id: app.id, simple: true });
+    const blocker = await seed(page, `${tag} blocker`, { app_id: app.id, simple: true });
+    const key = await seed(page, `${tag} held`, { status: 'ready', app_id: app.id, simple: true });
+    await page.request.post(`/api/tickets/${key}/dependencies`, { data: { blocker } });
+    await page.goto(`/?q=${encodeURIComponent(tag)}`);
+    const held = page.getByTestId(`card-${key}`);
+    await held.waitFor();
+    await page.getByTestId('board').evaluate((board) => {
+      board.scrollLeft = board.querySelector<HTMLElement>('[data-testid=col-ready]')!.offsetLeft;
+    });
+    await held.evaluate((e) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 300));
+    const scrolled = await page.evaluate(() => window.scrollY);
+    expect(scrolled).toBeGreaterThan(1000);
+
+    const from = await centre(held);
+    await finger.down(from);
+    await page.waitForTimeout(HOLD_MS);
+    await expect(page.getByTestId('ghost')).toBeVisible();
+    const building = (await page.getByTestId('col-building').boundingBox())!;
+    await finger.moveTo(from, { x: building.x + 40, y: from.y });
+    await expect(page.getByTestId('col-building')).toHaveClass(/is-over/);
+    await finger.up();
+
+    await expect(page.getByTestId('confirm-building-cancel')).toBeFocused();
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  });
+
   test('a finger at the edge scrolls the kanban to a column that was off screen', async ({ page }) => {
     const key = await seed(page, 'Shipped by finger', { status: 'review', app_id: app.id, simple: true });
     await page.goto('/?q=Shipped%20by%20finger');

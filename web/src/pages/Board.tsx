@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import {
@@ -22,7 +22,7 @@ import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
-import { useKey, useKeyMap } from '../keys';
+import { ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
 import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
@@ -660,8 +660,12 @@ export function BoardPage() {
 function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: { count: number; total: number; approvable: boolean; bulk: BulkAsk; onSelectAll: () => void; onClear: () => void }) {
   const { pending, outcome, report } = useSelecting();
   const openPalette = useOpenPalette();
-  const { question, act: onAct, confirm: onConfirm, cancel: onCancel } = bulk;
+  const { question, asked, act: onAct, confirm: onConfirm, cancel: onCancel } = bulk;
   const busy = pending !== null;
+  const cancel = useRef<HTMLButtonElement>(null);
+  const line = useRef<HTMLSpanElement>(null);
+  useFocusOnAsk(asked, cancel, line);
+  const sentence = useId();
   if (count === 0 && pending === null && outcome === null) return null;
   return (
     <div className="gf-selection" role="region" aria-label="selection" data-testid="selection-bar">
@@ -678,7 +682,7 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
             clear <Kbd>esc</Kbd>
           </button>
           {question === null ? (
-            <span className="gf-selection-actions">
+            <span key="verbs" className="gf-selection-actions">
               {/* always there, as `a` always answers: on a set that does not share the arrow it refuses with each Ticket's reason */}
               <button type="button" className={`gf-btn${approvable ? ' is-primary' : ''}`} data-testid="bulk-approve" disabled={busy} onClick={() => onAct({ kind: 'transition', name: 'approve' })}>
                 approve <Kbd>a</Kbd>
@@ -694,13 +698,13 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
               </button>
             </span>
           ) : (
-            // the question takes the verbs' place: it is asked where the verb was pressed, and no second verb is in reach meanwhile
-            <span className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
-              <span className="gf-selection-question">{question.text}</span>
-              <button type="button" className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" onClick={onConfirm}>
+            // keyed apart from the verbs, or React keeps their buttons under the answers
+            <span key="question" ref={line} className="gf-selection-actions" role="alert" data-testid="bulk-confirm">
+              <span id={sentence} className="gf-selection-question">{question.text}</span>
+              <button type="button" tabIndex={0} className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
                 {question.verb}
               </button>
-              <button type="button" className="gf-btn" data-testid="bulk-confirm-cancel" onClick={onCancel}>
+              <button ref={cancel} type="button" tabIndex={0} className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
                 cancel <Kbd>esc</Kbd>
               </button>
             </span>
@@ -753,7 +757,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
           {refusal.text}
         </p>
       )}
-      {pending && <Confirm text={pending.text} verb="start" onConfirm={pending.go} onCancel={onCancel} testId={`confirm-${status}`} />}
+      {pending && <Confirm asked={pending} text={pending.text} verb="start" onConfirm={pending.go} onCancel={onCancel} testId={`confirm-${status}`} />}
       {notice && (
         <p className="gf-confirm gf-notice" role="status" data-testid={`notice-${status}`}>
           <span>
