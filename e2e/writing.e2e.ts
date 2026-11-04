@@ -767,20 +767,23 @@ interface Surface {
   path: string;
   url: string;
   field: Locator;
+  saving: Locator;
   column: 'description' | 'design';
 }
+
+const savingIn = (page: Page, tile: 'about-tile' | 'design-tile') => page.getByTestId(tile).getByTestId('saving');
 
 const SURFACES: Record<string, (page: Page, markdown: string) => Promise<Surface>> = {
   "a ticket's description": async (page, markdown) => {
     const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Written below', description: markdown } }));
-    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: description(page), column: 'description' };
+    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: description(page), saving: savingIn(page, 'about-tile'), column: 'description' };
   },
   "a ticket's design": async (page, markdown) => {
     const ticket = await json<{ key: string }>(page.request.post('/api/tickets', { data: { title: 'Written below' } }));
     await page.request.patch(`/api/tickets/${ticket.key}`, { data: { design: markdown } });
-    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: design(page), column: 'design' };
+    return { path: `/api/tickets/${ticket.key}`, url: `/tickets/${ticket.key}`, field: design(page), saving: savingIn(page, 'design-tile'), column: 'design' };
   },
-  "a project's design": async (page, markdown) => ({ ...(await sharedProject(page, { design: markdown })), field: design(page), column: 'design' }),
+  "a project's design": async (page, markdown) => ({ ...(await sharedProject(page, { design: markdown })), field: design(page), saving: savingIn(page, 'design-tile'), column: 'design' }),
 };
 
 const stored = async (page: Page, surface: Surface) => (await json<Record<string, string>>(page.request.get(surface.path)))[surface.column];
@@ -830,6 +833,8 @@ for (const [name, seed] of Object.entries(SURFACES)) {
 
     await page.keyboard.type('Below.');
     await expect.poll(() => stored(page, surface)).toBe(below);
+    // the server holds it before the field hears so, and a save's answer sends what the field holds by then, which here would be a word cut short
+    await expect(surface.saving).toHaveText('saved');
     for (let i = 0; i < 'Below.'.length; i += 1) await page.keyboard.press('Backspace');
     await expect.poll(() => stored(page, surface)).toBe(LISTED);
 
