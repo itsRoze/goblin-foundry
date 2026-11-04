@@ -36,9 +36,10 @@ const focusedOnce = new WeakSet<object>();
 /**
  * Whether the press in flight came from a pointer, whose finger may still be on the spot. What a
  * pointer's press opens must not scroll under it (LESSONS 2026-08-30); a key's press has no finger
- * on the screen, so what it opens comes into view. A click a key synthesised has `detail` 0.
+ * on the screen, so what it opens comes into view. A click a key synthesised has `detail` 0, and so
+ * does the `pointerup` a finger's drop asks from.
  */
-export const byPointer = (e: Event | undefined) => e instanceof DragEvent || (e instanceof MouseEvent && e.detail > 0);
+export const byPointer = (e: Event | undefined) => e instanceof DragEvent || (e instanceof MouseEvent && (e.detail > 0 || e.type === 'pointerup'));
 
 const byKey = (e: Event | undefined) => e instanceof KeyboardEvent || (e instanceof MouseEvent && !byPointer(e));
 
