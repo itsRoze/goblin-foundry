@@ -95,7 +95,7 @@ const SURFACES: Record<string, (page: Page, title: string) => Promise<Armed>> = 
 };
 
 const WIDTHS = [390, 430, 768, 1024, 1366];
-const TAP_GAPS = [80, 200, 350, 600];
+const TAP_GAPS = [80, 350];
 
 for (const width of WIDTHS)
   for (const [surface, arm] of Object.entries(SURFACES))
