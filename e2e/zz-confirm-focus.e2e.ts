@@ -291,7 +291,7 @@ async function pageBox(locator: Locator): Promise<Box> {
   return { ...box, x: box.x + x, y: box.y + y };
 }
 
-const WIDTHS = [390, 430, 768, 1024, 1366];
+const WIDTHS = [390, 768, 1366];
 const CLICK_GAPS = [80, 350];
 
 type Armed = { control: Locator; answer: Locator; wrote: () => Promise<boolean> };

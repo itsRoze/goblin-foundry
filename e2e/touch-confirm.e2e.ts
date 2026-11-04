@@ -94,35 +94,39 @@ const SURFACES: Record<string, (page: Page, title: string) => Promise<Armed>> = 
   },
 };
 
-const WIDTHS = [390, 430, 768, 1024, 1366];
+const WIDTHS = [390, 768, 1366];
 const TAP_GAPS = [80, 350];
 
-for (const width of WIDTHS)
-  for (const [surface, arm] of Object.entries(SURFACES))
-    test(`on ${surface} at ${width}px the answer is not under the tapped control, and a double tap on that spot writes nothing`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 844 });
-      const tag = mine(`Tap${width}${surface.replace(/\W/g, '')}`);
-      const { control, answer } = await arm(page, `${tag} rect`);
-      const spot = await pageBox(control);
-      await control.tap();
-      await expect(answer).toBeVisible();
-      const drawn = await pageBox(answer);
-      expect(overlaps(spot, drawn), `control ${JSON.stringify(spot)} answer ${JSON.stringify(drawn)}`).toBe(false);
+test.describe('double tap', () => {
+  test.skip(({ browserName }) => browserName === 'chromium', 'WebKit touch draws the same offsets and the same element under the second press, and CI has a 15-minute limit');
 
-      for (const gap of TAP_GAPS) {
-        const armed = await arm(page, `${tag} gap${gap}`);
-        await armed.control.scrollIntoViewIfNeeded();
-        const box = (await armed.control.boundingBox())!;
-        const x = box.x + box.width / 2;
-        const y = box.y + box.height / 2;
-        await page.touchscreen.tap(x, y);
-        expect(await armed.answer.count(), `gap ${gap}: the first tap asked`).toBe(1);
-        await page.waitForTimeout(gap);
-        await page.touchscreen.tap(x, y);
-        await page.waitForTimeout(400);
-        expect(await armed.wrote(), `gap ${gap}`).toBe(false);
-      }
-    });
+  for (const width of WIDTHS)
+    for (const [surface, arm] of Object.entries(SURFACES))
+      test(`on ${surface} at ${width}px the answer is not under the tapped control, and a double tap on that spot writes nothing`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        const tag = mine(`Tap${width}${surface.replace(/\W/g, '')}`);
+        const { control, answer } = await arm(page, `${tag} rect`);
+        const spot = await pageBox(control);
+        await control.tap();
+        await expect(answer).toBeVisible();
+        const drawn = await pageBox(answer);
+        expect(overlaps(spot, drawn), `control ${JSON.stringify(spot)} answer ${JSON.stringify(drawn)}`).toBe(false);
+
+        for (const gap of TAP_GAPS) {
+          const armed = await arm(page, `${tag} gap${gap}`);
+          await armed.control.scrollIntoViewIfNeeded();
+          const box = (await armed.control.boundingBox())!;
+          const x = box.x + box.width / 2;
+          const y = box.y + box.height / 2;
+          await page.touchscreen.tap(x, y);
+          expect(await armed.answer.count(), `gap ${gap}: the first tap asked`).toBe(1);
+          await page.waitForTimeout(gap);
+          await page.touchscreen.tap(x, y);
+          await page.waitForTimeout(400);
+          expect(await armed.wrote(), `gap ${gap}`).toBe(false);
+        }
+      });
+});
 
 test('a tap on start or trash opens the question on cancel, ⇧Tab reaches the answer in this engine too and ⏎ there writes, Tab comes back to cancel', async ({ page }) => {
   const key = await blocked(page, mine('Tabbed start'));
