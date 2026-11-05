@@ -15,9 +15,8 @@
   --gf-dim:     #7A8478;   /* decorative only: drag handles, dividers, never words */
 
   /* accents by meaning — the colour is the meaning, so each has one job */
-  --gf-system:  #A7C080;   /* green: the controller / ready / focused / ok */
+  --gf-system:  #A7C080;   /* green: the tracker's own voice / ready / ok / focused / where you are */
   --gf-human:   #F3898B;   /* red: your attention is required. Nothing else. */
-  --gf-live:    #E69875;   /* orange: a run is alive right now — watch, don't touch. Only when a run row exists (S5+); hand-built `building` tickets use --gf-system */
   --gf-draft:   #DBBC7F;   /* yellow: not yet real (draft, no design) */
   --gf-review:  #83C092;   /* aqua: in review / merged-pending */
   --gf-link:    #7FBBB3;   /* blue: links and paths */
@@ -46,12 +45,8 @@
   --gf-ease: cubic-bezier(.2, .8, .2, 1);
   --gf-fast: 120ms;          /* hover, focus, selection */
   --gf-move: 200ms;          /* tiles resizing, rows reordering */
-  --gf-breathe: 1.6s;        /* the one ambient animation: a live run's node */
 }
-/* Reduced motion: transitions collapse to instant; the breathe animation is
-   switched OFF in the component (animation: none), never set to 0s — a 0s
-   loop still flickers. */
+/* Reduced motion: transitions collapse to instant. */
 @media (prefers-reduced-motion: reduce) {
   :root { --gf-fast: 0ms; --gf-move: 0ms; }
-  .gf-breathe { animation: none !important; }
 }

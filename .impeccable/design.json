@@ -97,14 +97,14 @@
       "mute": {
         "role": "neutral",
         "displayName": "mute",
-        "canonical": "oklch(72.3% 0.019 153.4)",
+        "canonical": "oklch(74.2% 0.019 153.4)",
         "tonalRamp": [
           "#060D08",
           "#1E2821",
           "#3B453D",
           "#5A645C",
           "#7A867D",
-          "#9DA9A0",
+          "#A3AFA6",
           "#C0CDC4",
           "#E6F2E9"
         ]
@@ -152,21 +152,6 @@
           "#EA8284",
           "#FFB2B1",
           "#FFE8E8"
-        ]
-      },
-      "live": {
-        "role": "accent",
-        "displayName": "live (orange)",
-        "canonical": "oklch(75.0% 0.106 44.9)",
-        "tonalRamp": [
-          "#1C0300",
-          "#421500",
-          "#6E2B03",
-          "#914B29",
-          "#B66C4B",
-          "#DC8F6C",
-          "#FEB695",
-          "#FEEAE1"
         ]
       },
       "draft": {
@@ -295,11 +280,6 @@
         "name": "move",
         "value": "200ms",
         "purpose": "Tiles resizing, rows reordering. 0ms under prefers-reduced-motion."
-      },
-      {
-        "name": "breathe",
-        "value": "1.6s",
-        "purpose": "The one ambient animation: a live run's node, opacity. animation: none under prefers-reduced-motion, never 0s."
       }
     ],
     "breakpoints": [
@@ -475,7 +455,6 @@
       "Do give a new state an existing meaning before you reach for a new colour, and say what the colour means in the status note or the column header, not only in the hue.",
       "Do set identifiers, keys, paths, timestamps and numbers in JetBrains Mono, and words in IBM Plex Sans.",
       "Do keep a number inside a row at text size (Mono 500 15); only a project outcome tile gets Mono 500 22.",
-      "Do write the run cost as `$x.xx / cap`, spent first, cap second, in mute.",
       "Do show every tile's keys in its header, and give every drag a key that does the same thing.",
       "Do refuse with one plain sentence, inline, where the action was refused, and let it clear itself.",
       "Do show blocked as ◇ and a struck title, and cancelled as a struck title in mute.",
@@ -486,12 +465,11 @@
       "Don't use a `border-radius` other than `0`, a gradient, a shadow that is not the focus inset, a blur, or a glow.",
       "Don't use opacity as a state mark; `.gf-btn:disabled` is the one documented exception, because a disabled control is a missing affordance, not a state.",
       "Don't use `--gf-human` for anything but \"your attention is required\", and don't invent a destructive red.",
-      "Don't use `--gf-live` for \"in progress\"; orange means a run is alive and costing money, and until a run row exists a hand-built `building` ticket is `--gf-system`.",
       "Don't set a whole paragraph in mono, or put `--gf-dim` on words.",
       "Don't raise a modal or a toast for a refusal, a confirm, or a save state.",
       "Don't add a grip, a handle or an icon to a card; the card is the drag target and marks are glyphs.",
-      "Don't reach for stock Everforest values for small text; the palette here was lifted to clear 4.5:1 on `--gf-tile`.",
-      "Don't add a marquee, scanline, pulse-glow or spring; the live node's breathe is the one ambient animation.",
+      "Don't reach for stock Everforest values for small text; the palette here was lifted to clear 4.5:1 on `--gf-raised`.",
+      "Don't add a marquee, scanline, pulse-glow or spring; there is no ambient animation.",
       "Don't draw a pie chart, a hero number or display type; a ticket design is not a magazine."
     ]
   }
