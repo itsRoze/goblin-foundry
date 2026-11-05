@@ -179,7 +179,7 @@ a.gf-path { text-decoration: underline; }
 /* under its field's input, past `.gf-field`'s 100px label and its gap */
 .gf-field-refusal { margin-left: calc(100px + var(--gf-s3)); }
 /* the same line as a refusal, with a way through it */
-.gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
+.gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; align-content: flex-start; flex-wrap: wrap; }
 .gf-toggle { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
 
 /* history */
@@ -800,7 +800,7 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-field input[aria-disabled='true'] { color: var(--gf-mute); border-color: var(--gf-rule); cursor: default; }
 
 /* `leave it` takes the focus on its own, after a click or a tap as much as a key, so the ring that says where `⏎` lands must not wait for focus-visible (GF-44) */
-.gf-confirm .gf-btn:focus, .gf-selection-question ~ .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
+.gf-confirm .gf-btn:focus, .gf-confirm > span:focus, .gf-selection-question ~ .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
 
 /*
  * A coarse pointer (issue 11): every control a finger is meant for is at least 32px on a side — the box grows,

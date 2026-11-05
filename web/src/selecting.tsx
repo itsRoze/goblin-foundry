@@ -32,7 +32,8 @@ export interface PendingBulk {
 export type BulkOutcome =
   | { kind: 'done'; text: string }
   | { kind: 'said'; text: string }
-  | { kind: 'refused'; refusals: BulkRefusal[]; sentence: string | null }
+  /** `withdrawn`: a question went because the Tickets changed under it, so the focus that fell with its answers lands on the way out of this. */
+  | { kind: 'refused'; refusals: BulkRefusal[]; sentence: string | null; withdrawn?: boolean }
   | { kind: 'unknown' };
 
 export const NOTHING_CHANGED = 'Nothing changed';
@@ -132,11 +133,11 @@ export interface BulkAsk {
  * needs a yes is asked once; the rest goes as one request (ADR-0010).
  *
  * The question is bound to exactly the Tickets it was asked about, as they
- * stood. A different set withdraws it. A change to what makes a member
+ * stood. A different set withdraws it, in words. A change to what makes a member
  * eligible or blocked is checked again, and the question — always drawn from
  * the members as they are now — says the new thing before any yes is given;
- * if nothing is left to ask, it is withdrawn rather than left asking about
- * nothing. A retitled Ticket changes neither signature, so it disturbs nothing.
+ * if nothing is left to ask, it is withdrawn in words rather than left asking
+ * about nothing (GF-116). A retitled Ticket changes neither signature, so it disturbs nothing.
  */
 export function useBulkAction(members: readonly Member[]): BulkAsk {
   const { pending, report, submit } = useSelecting();
@@ -159,12 +160,20 @@ export function useBulkAction(members: readonly Member[]): BulkAsk {
 
   useEffect(() => {
     if (asking === null) return;
-    if (asking.set !== setNow) return setAsking(null);
+    if (asking.set !== setNow) {
+      setAsking(null);
+      // a Selection emptied has no bar left to say it in, and nothing to say it about
+      if (members.length > 0) report({ kind: 'refused', refusals: [], sentence: 'the Selection changed, so the question went', withdrawn: true });
+      return;
+    }
     const refusals = preflight(asking.action, members);
     if (refusals.length > 0) {
       setAsking(null);
-      report({ kind: 'refused', refusals, sentence: null });
-    } else if (questionFor(asking.action, members) === null) setAsking(null);
+      report({ kind: 'refused', refusals, sentence: null, withdrawn: true });
+    } else if (questionFor(asking.action, members) === null) {
+      setAsking(null);
+      report({ kind: 'refused', refusals: [], sentence: 'nothing blocks these now', withdrawn: true });
+    }
     // `members` is read, not listed: the two signatures are what about it matters here
   }, [asking, setNow, eligibleNow, report]);
 
@@ -204,6 +213,11 @@ function byReason(refusals: readonly BulkRefusal[]): { reason: string; keys: str
 /** What is out, or how it ended — drawn in the board's selection bar, and by the shell on every other page. */
 export function BulkStatus({ onDismiss }: { onDismiss: () => void }) {
   const { pending, outcome } = useSelecting();
+  const dismiss = useRef<HTMLButtonElement>(null);
+  const withdrawn = outcome?.kind === 'refused' && outcome.withdrawn === true;
+  useEffect(() => {
+    if (withdrawn && document.activeElement === document.body) dismiss.current?.focus({ preventScroll: true });
+  }, [withdrawn]);
   if (pending !== null)
     return (
       <p className="gf-bulk-status" role="status" data-testid="bulk-pending">
@@ -221,7 +235,7 @@ export function BulkStatus({ onDismiss }: { onDismiss: () => void }) {
     <div className="gf-bulk-status is-held" role="alert" data-testid={`bulk-${outcome.kind}`}>
       <p className="gf-bulk-title">
         <span>{outcome.kind === 'refused' ? NOTHING_CHANGED : OUTCOME_UNKNOWN}</span>
-        <button type="button" className="gf-filter-clear gf-bulk-dismiss" aria-label="dismiss" data-testid="bulk-dismiss" onClick={onDismiss}>
+        <button ref={dismiss} type="button" className="gf-filter-clear gf-bulk-dismiss" aria-label="dismiss" data-testid="bulk-dismiss" onClick={onDismiss}>
           ×
         </button>
       </p>

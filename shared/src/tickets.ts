@@ -92,8 +92,9 @@ export const isOpenBlocker = (status: TicketStatus): boolean => !isTerminal(stat
  */
 export const isBlocked = (t: Pick<Ticket, 'status' | 'blocked_by'>): boolean => t.blocked_by.length > 0 && !isTerminal(t.status);
 
-/** *GF-3 and GF-7 still block this* — the one sentence the `start` confirm asks with. */
+/** *GF-3 and GF-7 still block this* — the one sentence the `start` confirm asks with. With no keys it is what the line says where the question stood (GF-116). */
 export function blockedWarning(keys: string[]): string {
+  if (keys.length === 0) return 'nothing blocks this now';
   if (keys.length === 1) return `${keys[0]} still blocks this`;
   return `${keys.slice(0, -1).join(', ')} and ${keys[keys.length - 1]} still block this`;
 }

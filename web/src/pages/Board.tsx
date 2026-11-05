@@ -6,6 +6,7 @@ import {
   FILTER_PARAMS,
   asksBeforeBlocked,
   blockedWarning,
+  whyStartNoLongerAsked,
   lifecycle,
   opensTerminal,
   parseTicketFilter,
@@ -34,7 +35,7 @@ import { StartModal } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
-import { Confirm, Empty, ForPointer, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, ForPointer, Hint, Kbd, Tile, refusalLine, useMinute, useQuestion, useRefusal } from '../ui';
 
 /**
  * Per-device display preferences, and nothing else: a View option decides how
@@ -154,8 +155,17 @@ interface Refusal extends Slot {
   text: string;
 }
 
-/** A move the board is holding until the human says yes; same slot as a refusal, with a way through. */
+/** The press that asked, one object per question: which arrow it would take, and whose. */
+interface Asked {
+  card: DraggedCard;
+  edge: Transition;
+  slot: Slot;
+}
+
+/** A move the board is holding until the human says yes; same slot as a refusal, with a way through. Drawn from the Ticket as it stands, not as it was asked about; `gone` once that no longer warrants asking. */
 interface Pending extends Refusal {
+  asked: Asked;
+  gone: boolean;
   go: () => void;
 }
 
@@ -184,11 +194,16 @@ const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[da
  * They differ only in which slot the sentence lands in — the column you
  * dropped on, or the card the key or the menu was about.
  */
-function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
+function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, boardRead: boolean, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
   const move = useTransition();
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
-  const [pending, setPending] = useState<Pending | null>(null);
+  // a read still on its way knows nothing about the card, so it decides nothing about the question
+  const { question, left, ask } = useQuestion<Asked>(({ card }) => {
+    const ticket = lookup(card.key);
+    if (ticket) return whyStartNoLongerAsked(ticket);
+    return boardRead ? `${card.key} has left this board` : null;
+  });
   /** The card the Start modal is open on, as it was when it opened: a poll must not change what is being decided about. */
   const [starting, setStarting] = useState<TicketSummary | null>(null);
   const moved = useRef(onMoved);
@@ -199,39 +214,59 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
     held.current = heldLine;
   }, [onMoved, heldLine]);
 
-  const run = useCallback(
-    (card: DraggedCard, found: Found<Transition>, slot: Slot) => {
-      setPending(null);
-      if (!found.ok) return setRefusal({ ...slot, text: found.refusal });
-      const { edge } = found;
+  const send = useCallback(
+    (card: DraggedCard, edge: Transition, slot: Slot) => {
+      const line = held.current(card.key);
+      // after this click has finished bubbling: a refusal clears itself on the next click it hears (`useRefusal`),
+      // and said inside the click that caused it, that would be this one
+      if (line !== null) return void setTimeout(() => setRefusal({ ...slot, text: line }));
       const ticket = lookup(card.key);
-      const go = () => {
-        setPending(null);
-        const line = held.current(card.key);
-        // after this click has finished bubbling: a refusal clears itself on the next click it hears (`useRefusal`),
-        // and said inside the click that caused it, that would be this one
-        if (line !== null) return void setTimeout(() => setRefusal({ ...slot, text: line }));
-        // one way to start a single Ticket, whichever gesture asked (a bulk start on a Selection never comes through here)
-        if (edge.name === 'start' && ticket) return setStarting(ticket);
-        move.mutate(
-          { key: card.key, name: edge.name, to: edge.to },
-          { onError: (error) => setRefusal({ ...slot, text: refusalLine(error) }), onSuccess: () => moved.current(card, edge.to) },
-        );
-      };
-      if (ticket && asksBeforeBlocked(edge.name, ticket)) return setPending({ ...slot, text: blockedWarning(ticket.blocked_by), go });
-      go();
+      // one way to start a single Ticket, whichever gesture asked (a bulk start on a Selection never comes through here)
+      if (edge.name === 'start' && ticket) return setStarting(ticket);
+      move.mutate(
+        { key: card.key, name: edge.name, to: edge.to },
+        { onError: (error) => setRefusal({ ...slot, text: refusalLine(error) }), onSuccess: () => moved.current(card, edge.to) },
+      );
     },
     [lookup, move, setRefusal],
   );
 
+  const run = useCallback(
+    (card: DraggedCard, found: Found<Transition>, slot: Slot) => {
+      ask(null);
+      if (!found.ok) return setRefusal({ ...slot, text: found.refusal });
+      const ticket = lookup(card.key);
+      if (ticket && asksBeforeBlocked(found.edge.name, ticket)) return ask({ card, edge: found.edge, slot });
+      send(card, found.edge, slot);
+    },
+    [lookup, send, setRefusal, ask],
+  );
+
+  const about = question === null ? undefined : lookup(question.card.key);
+  const pending: Pending | null =
+    question !== null && about !== undefined
+      ? {
+          ...question.slot,
+          asked: question,
+          gone: false,
+          text: blockedWarning(about.blocked_by),
+          go: () => {
+            ask(null);
+            send(question.card, question.edge, question.slot);
+          },
+        }
+      : left !== null
+        ? { ...left.asked.slot, asked: left.asked, gone: true, text: left.text, go: () => {} }
+        : null;
+
   /** The drop: the column names the edge, and a column with no arrow says so instead of swallowing the gesture. */
   const drop = useCallback(
     (card: DraggedCard, to: TicketStatus) => {
-      setPending(null);
+      ask(null);
       if (card.status === to) return; // a card dropped back where it came from has not moved — position in a column means nothing
       run(card, lifecycle.toward(card.status, to), { status: to, key: null });
     },
-    [run],
+    [run, ask],
   );
 
   /** A key or a menu row: the verb is named, so the refusal is about the arrow that is missing, said under the card. */
@@ -252,7 +287,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
         canMonitor: ({ source }) => asDraggedCard(source.data) !== null,
         onDragStart: ({ source }) => {
           setRefusal(null); // a refusal clears on the next drag (DESIGN.md Components)
-          setPending(null);
+          ask(null);
           setDragging(asDraggedCard(source.data)?.status ?? null);
         },
         onDrop: ({ source, location }) => {
@@ -262,7 +297,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
           if (card && typeof to === 'string') latest.current(card, to as TicketStatus);
         },
       }),
-    [setRefusal],
+    [setRefusal, ask],
   );
 
   const start = useStart();
@@ -281,7 +316,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
     terminal.press(ticket);
   };
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []), starting, startRun, startClosed, terminal, pressTerminal };
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, terminal, pressTerminal };
 }
 
 /**
@@ -379,7 +414,8 @@ export function BoardPage() {
     },
     [lookup, sending],
   );
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, onMoved, heldLine);
+  const boardRead = cards !== undefined;
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -833,7 +869,7 @@ function Said({ status, refusal, pending, notice, terminal, onDismissTerminal, o
         </p>
       )}
       {terminal && <TerminalNotOpened said={terminal} onDismiss={onDismissTerminal} />}
-      {pending && <Confirm asked={pending} text={pending.text} verb="start" onConfirm={pending.go} onDismiss={onDismiss} testId={`confirm-${status}`} />}
+      {pending && <Confirm asked={pending.asked} text={pending.text} verb="start" gone={pending.gone} onConfirm={pending.go} onDismiss={onDismiss} testId={`confirm-${status}`} />}
       {notice && (
         <p className="gf-confirm gf-notice" role="status" data-testid={`notice-${status}`}>
           <span>

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode, Fragment } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, Fragment } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError, fieldLabel } from './api';
@@ -385,6 +385,37 @@ export function useRefusal<T>() {
   return { refusal, setRefusal };
 }
 
+/** The line a question leaves where it stood, and the press that asked it. */
+export interface LeftByQuestion<A extends object = object> {
+  asked: A;
+  text: string;
+}
+
+/**
+ * One question, for as long as what it asks about warrants it (GF-116). `whyGone` reads the Ticket as
+ * it stands; the moment it has a reason, the question is closed for good and that reason stays in its
+ * place for a refusal's lifetime. `left` holds it from the same render, so the line arrives in the
+ * commit the answers leave, and what falls to `body` lands on the line.
+ */
+export function useQuestion<A extends object>(whyGone: (asked: A) => string | null) {
+  const [asking, setAsking] = useState<A | null>(null);
+  const { refusal: said, setRefusal: setSaid } = useRefusal<LeftByQuestion<A>>();
+  const why = asking === null ? null : whyGone(asking);
+  useEffect(() => {
+    if (asking === null || why === null) return;
+    setAsking(null);
+    setSaid({ asked: asking, text: why });
+  }, [asking, why, setSaid]);
+  const ask = useCallback(
+    (asked: A | null) => {
+      setSaid(null);
+      setAsking(asked);
+    },
+    [setSaid],
+  );
+  return { question: why === null ? asking : null, left: asking !== null && why !== null ? { asked: asking, text: why } : said, ask };
+}
+
 /**
  * The one question the tracker asks before doing what you said. It lives where
  * a refusal would, because it is the same kind of sentence — this one just has
@@ -394,13 +425,51 @@ export function useRefusal<T>() {
  * action then `leave it`, so a second press on the spot that asked never lands
  * on the action; `leave it` takes the focus, so `⏎` on a question not yet read
  * dismisses it, and ⇧Tab reaches the action.
+ *
+ * `gone` is the same line once the Ticket changed under it (`useQuestion`): the reason and no answers,
+ * reaching down to where the question ended, whatever left above it, so what lies below does not come
+ * up under a pointer aimed at an answer. The focus that fell with the answers lands here, where a `⏎` meant for `leave it` still
+ * writes nothing and opens nothing.
  */
-export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string }) {
+export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone = false }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string; gone?: boolean }) {
   const question = useId();
   const dismiss = useRef<HTMLButtonElement>(null);
   const line = useRef<HTMLParagraphElement>(null);
+  const said = useRef<HTMLSpanElement>(null);
+  const end = useRef<number | null>(null);
   useFocusOnAsk(asked, dismiss, line);
+  // both against the parent, because a tile packed or a page scrolled moves the line without changing what is below it
+  const topInParent = (at: HTMLElement) => at.getBoundingClientRect().top - (at.parentElement?.getBoundingClientRect().top ?? 0);
+  useLayoutEffect(() => {
+    if (!gone && line.current) end.current = topInParent(line.current) + line.current.getBoundingClientRect().height;
+  });
+  useLayoutEffect(() => {
+    const at = line.current;
+    if (!at) return;
+    at.style.minHeight = gone && end.current !== null ? `${Math.max(0, end.current - topInParent(at))}px` : '';
+  }, [gone]);
+  useEffect(() => {
+    if (gone && document.activeElement === document.body) said.current?.focus({ preventScroll: true });
+  }, [gone]);
   const id = testId ?? 'confirm';
+  if (gone)
+    return (
+      <p ref={line} className="gf-confirm" role="alert">
+        <span
+          ref={said}
+          tabIndex={-1}
+          data-testid={`${id}-gone`}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            // claimed, so the Cursor does not hear it
+            e.preventDefault();
+            if (!e.repeat) onDismiss();
+          }}
+        >
+          {text}
+        </span>
+      </p>
+    );
   return (
     <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
       <span id={question}>{text}</span>

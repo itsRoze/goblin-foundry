@@ -85,6 +85,7 @@ export {
   type Transition,
   type Found,
   asksBeforeBlocked,
+  whyStartNoLongerAsked,
   type ApproveRequirement,
   type GuardFields,
   TRANSITION_PAST,
