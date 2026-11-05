@@ -182,6 +182,22 @@ describe('goblin', () => {
     });
     afterEach(() => rmSync(root, { recursive: true, force: true }));
 
+    test('`app branches` reads what is in the Checkout, and an App without one exits 1 with the sentence', async () => {
+      git(repo, 'branch', 'feature/one');
+      const read = await json(['app', 'branches', '1']);
+      expect(read.default).toBe('main');
+      expect(read.worktrees_in).toBe(join(root, 'worktrees', 'subway-reader'));
+      expect(read.branches.map((b: { name: string }) => b.name)).toEqual(['feature/one', 'main']);
+
+      expect((await json(['app', 'branches', 'subway-reader-1'])).default).toBe('main');
+
+      await json(['app', 'create', '--name', 'No Checkout']);
+      const refused = await run(['app', 'branches', '2']);
+      expect(refused.code).toBe(1);
+      expect(refused.out).toBe('');
+      expect(JSON.parse(refused.err).hint).toBe('No Checkout has no Checkout, so it has no branches to read');
+    });
+
     test('bare, it stays the plain Transition', async () => {
       const key = await ready();
       expect(await json(['ticket', 'start', key, '--actor', 'agent'])).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });

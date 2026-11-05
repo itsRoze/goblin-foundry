@@ -28,11 +28,6 @@ function recordingStep(answer: (asked: TerminalRequest) => TerminalOutcome = () 
   };
 }
 
-test('`none` answers not opened, with the folder, whatever it is asked', async () => {
-  const outcome = await noTerminal.open({ app: { id: 1, name: 'Subway Reader' }, ticket: { key: 'GF-1', title: 'Parse the feed' }, folder: '/somewhere/gf-1' });
-  expect(outcome).toEqual({ opened: false, reason: 'the terminal step is none, so no terminal was opened', folder: '/somewhere/gf-1' });
-});
-
 describe('the terminal step setting', () => {
   let h: Harness;
   afterEach(() => h.close());

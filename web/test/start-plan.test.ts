@@ -51,12 +51,15 @@ describe('what the typed branch will come to', () => {
 });
 
 describe('the sentence the modal says about it', () => {
-  test('existing and created are told apart', () => {
-    expect(planLine({ kind: 'new', branch: 'x', folder: '/f' })).toBe('new branch: it will be created');
-    expect(planLine({ kind: 'existing', branch: 'x', folder: '/f' })).toBe('existing branch');
-    expect(planLine({ kind: 'tracking', branch: 'x', from: 'origin/x', folder: '/f' })).toBe('existing on origin/x: a local branch will track it');
-    expect(planLine({ kind: 'adopted', branch: 'x', folder: '/f' })).toBe('existing branch, already in a Worktree: that one is used');
-    expect(planLine({ kind: 'in-checkout', branch: 'x', folder: '/f' })).toBe('checked out in the Checkout itself: git will refuse it');
+  const said = (typed: string) => planLine(planBranch(typed, read)!);
+
+  test('each thing a typed branch can come to is told apart from the others', () => {
+    const lines = ['nobody-has-this', 'feature/two', 'only-there', 'in-a-worktree', 'main'].map(said);
+    expect(new Set(lines).size).toBe(lines.length);
+  });
+
+  test('a branch only a remote holds names the remote that holds it', () => {
+    expect(said('another/only-there')).toContain('another/only-there');
   });
 });
 

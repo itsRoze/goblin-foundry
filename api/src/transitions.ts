@@ -7,7 +7,6 @@
  * that body and that Worktree, and it is not one of them: it moves no Status.
  */
 import { existsSync } from 'node:fs';
-import { eq } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { StartWorktreeBodySchema, defaultWorktreeBranch, lifecycle, noTerminalAt, opensTerminal, ticketKey, worktreeBase, type StartWorktreeBody } from '@goblin/shared';
 import type { ActorEnv } from './actor';
@@ -16,9 +15,9 @@ import type { Db } from './db';
 import { eventWrite, now } from './events';
 import { parseBody } from './http';
 import { conflict, notFound } from './problems';
-import { app as appTable, type TicketRow } from './schema';
+import type { TicketRow } from './schema';
 import { readSettings } from './settings';
-import { openTerminal, type TerminalSteps } from './terminal';
+import { appOfTicket, openTerminal, type TerminalSteps } from './terminal';
 import { makeWorktree } from './worktree';
 
 export interface TransitionDeps {
@@ -39,7 +38,7 @@ export interface TransitionDeps {
 async function worktreeFor(c: Context, db: Db, row: TicketRow, body: StartWorktreeBody) {
   const { ticket_prefix, worktree_root } = await readSettings(db);
   const key = ticketKey(ticket_prefix, row.id);
-  const [app] = row.app_id === null ? [] : await db.select().from(appTable).where(eq(appTable.id, row.app_id));
+  const app = await appOfTicket(db, row);
   if (!app?.checkout) return conflict(c, `nothing changed — ${app?.name ?? 'its App'} has no Checkout, so ${key} cannot be given a Worktree; record the folder that holds its repository on the App`);
   const made = await makeWorktree({
     checkout: app.checkout,

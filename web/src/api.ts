@@ -29,7 +29,7 @@ export class ProblemError extends Error {
  * here too, so the sentence under a refused field and the label above it
  * cannot drift apart.
  */
-const FIELD_LABELS: Record<string, string> = { repository_url: 'repository', default_branch: 'branch' };
+const FIELD_LABELS: Record<string, string> = { repository_url: 'repository', default_branch: 'branch', worktree_root: 'worktree root', terminal_step: 'terminal step' };
 
 export const fieldLabel = (name: string): string => FIELD_LABELS[name] ?? name;
 

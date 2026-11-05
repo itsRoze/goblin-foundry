@@ -9,8 +9,10 @@ import type { TerminalRequest, TerminalStep } from './terminal';
  * their labels). `herdr`, Homebrew's Herdr 1, is another program and never asked.
  *
  * An App is one space and a Ticket is one tab in it. The step keeps no state:
- * the terminal carries the Ticket Key and the App as labels in Herdr's core, so
- * reuse is a lookup and a closed terminal simply is not found. Herdr's app starts
+ * the terminal carries the Ticket Key, the App and the Worktree folder as labels
+ * in Herdr's core, so reuse is a lookup and a closed terminal simply is not found.
+ * The folder is the one it was opened in, since the operator may have `cd`ed
+ * away from it and a Ticket may have moved to another Worktree. Herdr's app starts
  * the terminal rather than this process, so it has no parent to die with and
  * outlives the page and the daemon.
  */
@@ -99,7 +101,12 @@ async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Req
     throw new Error(`Herdr refused ${command}: ${read(answer.out, RefusedSchema)?.error ?? answer.err}`);
   };
 
-  const live = (await carrying(`goblin.ticket=${request.ticket.key}`)).find((terminal) => spaceShowing.has(terminal));
+  const ticketLabel = `goblin.ticket=${request.ticket.key}`;
+  const worktreeLabel = `goblin.worktree=${request.folder}`;
+  const forTicket = await carrying(ticketLabel);
+  // both, because a Ticket can leave a terminal in its old Worktree, and two Tickets can share a folder
+  const inWorktree = await carrying(worktreeLabel);
+  const live = forTicket.find((terminal) => spaceShowing.has(terminal) && inWorktree.includes(terminal));
   if (live) {
     await windowDoes('pane.focus', { terminal: live });
     return;
@@ -115,19 +122,16 @@ async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Req
     MadeSchema,
   );
 
-  const tagged = await hc('label', made.terminal, `goblin.ticket=${request.ticket.key}`, appLabel);
+  const tagged = await hc('label', made.terminal, ticketLabel, appLabel, worktreeLabel);
   if (!tagged.ok) throw new Error(`Herdr made terminal ${made.terminal} but it could not be tagged, so it will not be found again: ${tagged.err}`);
 }
 
+/** Every way Herdr fails throws its sentence, which `openTerminal` reports as a terminal that did not open. */
 export function herdrTerminal({ env = process.env, appBundle = HERDR_APP, timeoutMs = TOO_LONG_MS }: HerdrOptions = {}): TerminalStep {
   return {
     open: async (request) => {
-      try {
-        await show(request, { env, appBundle, timeoutMs });
-        return { opened: true };
-      } catch (e) {
-        return { opened: false, reason: e instanceof Error ? e.message : String(e), folder: request.folder };
-      }
+      await show(request, { env, appBundle, timeoutMs });
+      return { opened: true };
     },
   };
 }

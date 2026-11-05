@@ -408,7 +408,6 @@ const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' :
 /** The name of a thing an event points at; `#3` once it is gone. */
 export type Namer = (id: unknown) => string;
 
-/** One history line per event: what happened, not what it means (DESIGN.md Voice). */
 /** Both ends, because a cleared Checkout's folder is said nowhere else; an edit session can end where it began. */
 function checkoutMoved(from: unknown, to: unknown): string {
   if (from === to) return to === null ? 'checkout set and cleared' : `checkout changed back to ${str(to)}`;
@@ -416,7 +415,9 @@ function checkoutMoved(from: unknown, to: unknown): string {
   return from === null ? `checkout set to ${str(to)}` : `checkout ${str(from)} → ${str(to)}`;
 }
 
+/** One history line per event: what happened, not what it means (DESIGN.md Voice). */
 export function describeEvent(e: Event, appName: Namer): string {
+  if (e.kind === 'created' && e.new.checkout) return `created · checkout ${str(e.new.checkout)}`;
   if (e.kind !== 'updated') return e.kind;
   const keys = Object.keys(e.new);
   const prior = e.prior ?? {};
@@ -436,13 +437,15 @@ export function describeEvent(e: Event, appName: Namer): string {
 
 const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_PAST ? TRANSITION_PAST[name as TransitionName] : String(name));
 
+const worktreeSaid = (fields: Event['new']) => `worktree ${str(fields.worktree_branch)} in ${str(fields.worktree_folder)}`;
+
 /**
  * A ticket's history. A description edit is one quiet line — the body is in
  * the event, never on screen here.
  */
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
   // `approved · planning → ready`: the decision first, the state pair after it
-  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}${'worktree_branch' in e.new ? ` · worktree ${str(e.new.worktree_branch)}` : ''}`;
+  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}${'worktree_branch' in e.new ? ` · ${worktreeSaid(e.new)}` : ''}`;
   // one edge, written on both its ends: each side's history says which end this ticket is (ADR-0009)
   if (e.kind === 'dependency_added' || e.kind === 'dependency_removed') {
     const undone = e.kind === 'dependency_removed' ? 'no longer ' : '';
@@ -451,7 +454,7 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
   if (e.kind === 'implementation_link_added') return `linked implementation · ${str(e.new.url)}`;
   if (e.kind === 'implementation_link_removed') return `removed implementation link · ${str(e.prior?.url)}`;
   if (e.kind === 'labelled') return describeLabels(e);
-  if (e.kind === 'worktree_recorded') return `worktree ${str(e.new.worktree_branch)}`;
+  if (e.kind === 'worktree_recorded') return worktreeSaid(e.new);
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];

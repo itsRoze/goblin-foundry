@@ -58,6 +58,24 @@ describe("an App's Checkout, against real git", () => {
     expect((await readApp(app.id)).checkout).toBe(repo);
   });
 
+  test('a save that resends the Checkout it already has is not asked about a folder that has since moved', async () => {
+    const app = await createApp({ checkout: repo });
+    rmSync(repo, { recursive: true, force: true });
+
+    const res = await req(`/api/apps/${app.id}`, json('PATCH', { name: 'Subway Reader 2', checkout: repo }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ name: 'Subway Reader 2', checkout: repo });
+    const events = await (await req(`/api/apps/${app.id}/events`)).json();
+    expect(events[0].new).toEqual({ name: 'Subway Reader 2' });
+  });
+
+  test('a changed Checkout is still checked, even with the old one gone', async () => {
+    const app = await createApp({ checkout: repo });
+    rmSync(repo, { recursive: true, force: true });
+    const typo = join(root, 'typo');
+    expect((await setCheckout(app.id, typo)).status).toBe(422);
+  });
+
   test('a linked worktree of a repository records the repository, not a folder that will be cleaned up', async () => {
     writeFileSync(join(repo, 'README'), 'x');
     git(repo, 'add', '.');
