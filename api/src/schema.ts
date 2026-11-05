@@ -23,6 +23,8 @@ export const app = sqliteTable('app', {
   name: text('name').notNull(),
   repository_url: text('repository_url'),
   default_branch: text('default_branch'),
+  /** The Checkout: the folder on this machine that holds its repository. Always that repository's top level, absolute. */
+  checkout: text('checkout'),
   description: text('description').notNull().default(''),
   ...lifecycle,
 });

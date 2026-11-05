@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeTestApp } from '@goblin/api/test/harness';
@@ -159,6 +159,31 @@ describe('goblin', () => {
     const refused = await run(['app', 'create', '--name', 'X', '--repository-url', '/Users/roze/dev/x']);
     expect(refused.code).toBe(1);
     expect(JSON.parse(refused.err).issues).toEqual([{ path: ['repository_url'], message: REPOSITORY_WANTS }]);
+  });
+
+  test('`--checkout` records the repository a folder is in, `null` clears it, and a refusal says why', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'gf-cli-checkout-')));
+    try {
+      const repo = join(root, 'subway-reader');
+      const inside = join(repo, 'src');
+      mkdirSync(inside, { recursive: true });
+      expect(Bun.spawnSync(['git', 'init', '-q'], { cwd: repo }).exitCode).toBe(0);
+
+      const created = await json(['app', 'create', '--name', 'Subway Reader', '--checkout', inside, '--actor', 'agent']);
+      expect(created.checkout).toBe(repo);
+      expect((await json(['app', 'show', '1'])).checkout).toBe(repo);
+
+      const refused = await run(['app', 'update', '1', '--checkout', join(root, 'typo')]);
+      expect(refused.code).toBe(1);
+      expect(JSON.parse(refused.err).issues).toEqual([{ path: ['checkout'], message: `no folder at ${join(root, 'typo')}` }]);
+      expect((await json(['app', 'show', '1'])).checkout).toBe(repo);
+
+      expect((await json(['app', 'update', '1', '--checkout', 'null'])).checkout).toBeNull();
+      expect((await json(['app', 'update', '1', '--checkout', repo])).checkout).toBe(repo);
+      expect((await run(['app', 'update', '--help'])).out).toContain('--checkout');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test('`null` clears a nullable field; an update never touches what it does not name', async () => {

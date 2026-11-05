@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { and, asc, isNull } from 'drizzle-orm';
 import { diff } from '@goblin/history';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
+import { resolveCheckout } from './checkout';
 import { changedWhile, commit, judgedRefusal, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
 import { eventWrite, now } from './events';
@@ -22,6 +23,13 @@ type AppRow = typeof appTable.$inferSelect;
 export const toApp = ({ trashed_via: _, ...row }: AppRow): App => row;
 
 const branchIssue = { path: ['default_branch'], message: DEFAULT_BRANCH_NEEDS_REPOSITORY };
+
+/** The body with the folder it named replaced by what the Checkout records, or the refusal. Clearing and not mentioning it ask nothing of this machine. */
+async function withResolvedCheckout<Body extends { checkout?: string | null }>(c: Context, body: Body): Promise<Body | Response> {
+  if (!body.checkout) return body;
+  const resolved = await resolveCheckout(body.checkout);
+  return resolved.ok ? { ...body, checkout: resolved.folder } : unprocessable(c, [{ path: ['checkout'], message: resolved.reason }]);
+}
 
 export function appsRoutes(db: Db) {
   const r = new Hono<ActorEnv>();
@@ -46,12 +54,15 @@ export function appsRoutes(db: Db) {
     const body = await parseBody(c, CreateAppBodySchema);
     if (!body.ok) return body.response;
     if (branchWithoutRepository(body.data)) return unprocessable(c, [branchIssue]);
+    const data = await withResolvedCheckout(c, body.data);
+    if (data instanceof Response) return data;
     const at = now();
     const fields = {
-      name: body.data.name,
-      repository_url: body.data.repository_url ?? null,
-      default_branch: body.data.default_branch ?? null,
-      description: body.data.description ?? '',
+      name: data.name,
+      repository_url: data.repository_url ?? null,
+      default_branch: data.default_branch ?? null,
+      checkout: data.checkout ?? null,
+      description: data.description ?? '',
     };
     const written = await commit(
       c,
@@ -76,9 +87,11 @@ export function appsRoutes(db: Db) {
     const row = await findLive(c);
     if (!row) return missing(c);
     if (!body.ok) return body.response;
-    const change = diff(row, body.data);
+    const data = await withResolvedCheckout(c, body.data);
+    if (data instanceof Response) return data;
+    const change = diff(row, data);
     if (!change.changed) return c.json(toApp(row));
-    const judgedAway = await judgedRefusal(c, row, body.data, () => changedWhile(c, `app ${row.id}`, 'the edit'));
+    const judgedAway = await judgedRefusal(c, row, data, () => changedWhile(c, `app ${row.id}`, 'the edit'));
     if (judgedAway) return judgedAway;
     if (branchWithoutRepository({ ...row, ...change.new })) return unprocessable(c, [branchIssue]);
     const at = now();

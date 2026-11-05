@@ -95,7 +95,7 @@ describe('/api/apps', () => {
     ]);
     expect(events[0]).toMatchObject({ entity_kind: 'app', entity_id: created.id, prior: { name: 'Subway Reeder' }, new: { name: 'Subway Reader' } });
     expect(events[1].prior).toBeNull();
-    expect(events[1].new).toEqual({ name: 'Subway Reeder', description: 'd', repository_url: null, default_branch: null });
+    expect(events[1].new).toEqual({ name: 'Subway Reeder', description: 'd', repository_url: null, default_branch: null, checkout: null });
   });
 
   test('patch: default_branch is refused when the app has no repository, and a body with trashed_at is refused', async () => {
