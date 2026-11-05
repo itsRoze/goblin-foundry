@@ -41,12 +41,41 @@ jobs:
         with:
           bun-version: 1.3.9
       - run: bun install --frozen-lockfile
-      # Healthy takes 35 s to 50 s, and a slow mirror has taken 2m18s and finished. A mirror that
-      # crawls would use the whole job limit and read as a test failure, so it fails here instead.
-      # No retry inside the step: `timeout` kills bunx and leaves apt-get holding its lock.
+      # What stalls is the Ubuntu mirror sending the 139 MB of .debs `--with-deps` asks for
+      # (docs/LESSONS.md). apt keeps them in ~/apt-archives and the cache brings them back, so a
+      # warm install downloads none of them. `apt-get update` still asks the mirror for its lists.
+      - name: Restore apt's downloaded packages
+        id: debs-restored
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-archives/*.deb
+          key: apt-debs-${{ runner.os }}-${{ runner.arch }}-
+          restore-keys: apt-debs-${{ runner.os }}-${{ runner.arch }}-
+      - name: Keep apt's downloads where the cache can reach them
+        run: |
+          mkdir -p ~/apt-archives/partial
+          echo "Dir::Cache::Archives \"$HOME/apt-archives/\";" | sudo tee /etc/apt/apt.conf.d/99-gf-archives
+      # Healthy takes 35 s to 70 s. On a slow mirror, installs have finished at 3m31s and at 7m52s,
+      # which this limit fails. A mirror that crawls would use the whole job limit and read as a
+      # test failure, so it fails here instead. No retry inside the step: `timeout` kills bunx and
+      # leaves apt-get holding its lock.
       - name: Install Playwright browsers
         timeout-minutes: 4
         run: bunx playwright install --with-deps chromium webkit
+      # autoclean drops the packages the mirror no longer offers, so the cache holds one set and
+      # is saved again only when that set changed.
+      - name: Name the set of packages apt holds
+        id: debs
+        run: |
+          sudo apt-get autoclean -qq
+          sum=$(cd ~/apt-archives && ls *.deb | sha256sum | cut -c1-16)
+          echo "key=apt-debs-${{ runner.os }}-${{ runner.arch }}-$sum" >> "$GITHUB_OUTPUT"
+      - name: Save apt's downloaded packages
+        if: steps.debs.outputs.key != steps.debs-restored.outputs.cache-matched-key
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-archives/*.deb
+          key: ${{ steps.debs.outputs.key }}
       - name: Run this shard of the suite
         run: bun run test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
