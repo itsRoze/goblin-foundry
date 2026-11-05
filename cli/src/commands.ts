@@ -105,6 +105,7 @@ const appFields = (creating: boolean): Flag[] => [
   { name: 'name', kind: 'string', required: creating, value: '<name>', summary: 'what it is called' },
   { name: 'repository-url', kind: 'string', nullable: true, value: '<remote|null>', summary: 'the git remote it lives at' },
   { name: 'default-branch', kind: 'string', nullable: true, value: '<branch|null>', summary: 'only alongside a repository url' },
+  { name: 'checkout', kind: 'string', nullable: true, value: '<folder|null>', summary: 'an absolute folder inside its repository on this machine; the repository is what gets recorded' },
   { name: 'description', kind: 'text', value: TEXT, summary: 'markdown' },
 ];
 

@@ -405,6 +405,8 @@ export function describeEvent(e: Event, appName: Namer): string {
   // the bodies are in the event (recovery is the edit session, ADR-0008); the history says only that a sitting happened
   if (keys.length === 1 && keys[0] === 'design') return 'design edited';
   if (keys.length === 1 && keys[0] === 'description') return 'description edited';
+  // the history says which folder: who pointed the App where is what this line is for
+  if (keys.length === 1 && keys[0] === 'checkout') return e.new.checkout === null ? 'checkout cleared' : `checkout set to ${str(e.new.checkout)}`;
   return `updated ${keys.map(fieldLabel).join(', ')}`;
 }
 

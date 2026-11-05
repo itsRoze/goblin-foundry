@@ -233,6 +233,8 @@ async function seed(base: string): Promise<Record<string, string>> {
     // the SSH remote git prints, so the App view's longest repository line and its derived link are on screen (GF-8)
     repository_url: 'git@github.com:itsRoze/subway-reader.git',
     default_branch: 'main',
+    // this repository, because a Checkout has to be a real one: the App view's longest path is what a closeout looks at
+    checkout: ROOT,
     description: 'An offline RSS reader for the phone in your pocket. Fixture data for looking at screens; nothing here is real.',
   });
   await api('POST', '/apps', { name: 'Goblin Foundry', repository_url: 'https://github.com/itsRoze/goblin-foundry', default_branch: 'main', description: 'The factory tracks itself.' });

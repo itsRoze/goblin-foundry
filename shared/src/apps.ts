@@ -13,6 +13,8 @@ export const AppSchema = z.object({
   name: z.string(),
   repository_url: z.string().nullable(),
   default_branch: z.string().nullable(),
+  /** The folder on this machine that holds its repository (GLOSSARY.md): `null` until someone records one. */
+  checkout: z.string().nullable(),
   description: z.string(),
   ...timestamps,
 });
@@ -68,6 +70,9 @@ export function repositoryHref(remote: string): string | null {
   return `https://${parsed.host}/${parsed.path.replace(/\.git$/, '')}`;
 }
 
+/** Only the shape. Whether the folder exists and is in a repository is the API's to find out, against this machine. */
+const CHECKOUT_WANTS = 'wants a folder on this machine';
+
 const appFields = {
   name: z.string().trim().min(1).max(200),
   repository_url: z
@@ -76,6 +81,7 @@ const appFields = {
     .refine((v) => parseGitRemote(v) !== null, REPOSITORY_WANTS)
     .nullable(),
   default_branch: z.string().trim().min(1).max(200).nullable(),
+  checkout: z.string().trim().min(1, CHECKOUT_WANTS).max(4096).nullable(),
   description: z.string().max(10_000),
 };
 
@@ -84,6 +90,7 @@ export const CreateAppBodySchema = z.strictObject({
   name: appFields.name,
   repository_url: appFields.repository_url.optional(),
   default_branch: appFields.default_branch.optional(),
+  checkout: appFields.checkout.optional(),
   description: appFields.description.optional(),
 });
 export type CreateAppBody = z.infer<typeof CreateAppBodySchema>;
@@ -92,6 +99,7 @@ export const PatchAppBodySchema = z.strictObject({
   name: appFields.name.optional(),
   repository_url: appFields.repository_url.optional(),
   default_branch: appFields.default_branch.optional(),
+  checkout: appFields.checkout.optional(),
   description: appFields.description.optional(),
 });
 export type PatchAppBody = z.infer<typeof PatchAppBodySchema>;

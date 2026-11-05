@@ -77,9 +77,9 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--gf-s3); align-items: baseline; }
 .gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
-/* a git remote is a path, and a path is mono (DESIGN.md Typography): the face is
-   what tells the linked value from the ink ones above and below it, not the hue */
-.gf-remote { font: var(--gf-t-meta); }
+/* a git remote or a Checkout is a path, and a path is mono (DESIGN.md Typography): the
+   face is what tells the value from the ink ones above and below it, not the hue */
+.gf-path { font: var(--gf-t-meta); }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an

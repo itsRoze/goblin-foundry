@@ -55,7 +55,7 @@ describe('an inert field', () => {
   const send = (v: Record<string, string>) => appBody(submittedValues(appFormFields, v));
 
   test('the app form labels its fields the way a refusal names them', () => {
-    expect(appFormFields.map((f) => f.label)).toEqual(['name', 'repository', 'branch', 'description']);
+    expect(appFormFields.map((f) => f.label)).toEqual(['name', 'repository', 'branch', 'checkout', 'description']);
   });
 
   test('a branch is dropped while there is no repository, so the pair is never sent illegal', () => {
@@ -72,6 +72,12 @@ describe('an inert field', () => {
     for (const remote of ['https://github.com/o/r', 'git@github.com:o/r.git']) {
       expect(send({ name: 'A', repository_url: remote, default_branch: 'main' })).toMatchObject({ repository_url: remote, default_branch: 'main' });
     }
+  });
+
+  test('an empty Checkout field is a cleared Checkout, and a typed one is sent for the API to judge', () => {
+    expect(send({ name: 'A', checkout: '' })).toMatchObject({ checkout: null });
+    expect(send({ name: 'A', checkout: '   ' })).toMatchObject({ checkout: null });
+    expect(send({ name: 'A', checkout: '/Users/roze/dev/x' })).toMatchObject({ checkout: '/Users/roze/dev/x' });
   });
 
   test('a form with no inert field sends everything it holds', () => {
