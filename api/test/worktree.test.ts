@@ -375,6 +375,15 @@ describe('Start makes the Ticket a Worktree, against real git', () => {
       expect(branches(repo)).toEqual(['main']);
     });
 
+    test('a Checkout with no commit yet, saying so rather than naming a HEAD that is not there', async () => {
+      rmSync(repo, { recursive: true, force: true });
+      mkdirSync(repo);
+      git(repo, 'init', '-q', '-b', 'main');
+      const key = await ready();
+      expect(await refused(key, {})).toBe(`nothing changed — no Worktree for ${key}: ${repo} has no commit yet, so there is nothing to cut ${key.toLowerCase()}-parse-the-feed from`);
+      expect(existsSync(worktrees)).toBe(false);
+    });
+
     test('a base dressed as a flag', async () => {
       const key = await ready();
       expect(await refused(key, { branch: 'cut', base: '--detach' })).toContain('no branch or commit named --detach');

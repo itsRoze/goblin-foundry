@@ -33,6 +33,8 @@ export const AppBranchesSchema = z.object({
   /** The folder a new Worktree of this Checkout is made in, under the Worktree root. */
   worktrees_in: z.string(),
   branches: z.array(CheckoutBranchSchema),
+  /** False until the first commit, as `git init` leaves it: nothing a new branch could be cut from, so no Worktree can be made. A Checkout with no branch can still have one. */
+  has_commit: z.boolean(),
 });
 export type AppBranches = z.infer<typeof AppBranchesSchema>;
 

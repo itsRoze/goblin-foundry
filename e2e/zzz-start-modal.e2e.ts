@@ -329,6 +329,45 @@ test.describe('the Start modal', () => {
     expect(await read(page, key)).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });
   });
 
+  test('a Checkout with no commit yet says so, rather than forecasting a branch git cannot cut', async ({ page }) => {
+    const empty = join(root, `fresh-${n}`);
+    mkdirSync(empty);
+    git(empty, 'init', '-q', '-b', 'main');
+    const home = await page.request.post('/api/apps', { data: { name: `Fresh App ${n}`, checkout: empty } });
+    const key = await ready(page, `Fresh start ${n}`, ((await home.json()) as { id: number }).id);
+    await openOnTicket(page, key);
+    await expect(modal(page)).toContainText(`the Checkout ${empty} has no commit yet, so ${key} cannot be given a Worktree`);
+    await expect(modal(page).getByLabel('branch')).toHaveCount(0);
+    await expect(modal(page).getByTestId('start-cancel')).toBeFocused();
+    await modal(page).getByTestId('start-plain').click();
+    await expect(modal(page)).toHaveCount(0);
+    expect(await read(page, key)).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });
+  });
+
+  test('a Checkout with no branch offers no list, and still starts from where it is', async ({ page }) => {
+    const bare = join(root, `branchless-${n}`);
+    mkdirSync(bare);
+    git(bare, 'init', '-q', '-b', 'main');
+    git(bare, 'commit', '-q', '--allow-empty', '-m', 'first');
+    git(bare, 'switch', '-q', '--detach');
+    git(bare, 'branch', '-q', '-D', 'main');
+    const home = await page.request.post('/api/apps', { data: { name: `Branchless App ${n}`, checkout: bare } });
+    const title = `No branches ${n}`;
+    const key = await ready(page, title, ((await home.json()) as { id: number }).id);
+    await openOnTicket(page, key);
+    await expect(modal(page).getByTestId('start-line')).toHaveText('new branch: it will be created');
+    await expect(modal(page).getByTestId('start-go')).toBeVisible();
+    // a hint for a list with no rows would be a promise the keys cannot keep (Voice)
+    await expect(modal(page).locator('.gf-start-hint')).toHaveCount(0);
+    await page.keyboard.press('ArrowDown');
+    await expect(modal(page).getByRole('listbox')).toHaveCount(0);
+    await page.keyboard.press('Enter');
+    await expect(modal(page)).toHaveCount(0);
+    const folder = join(worktrees, `branchless-${n}`, slugged(key, title));
+    expect(await read(page, key)).toMatchObject({ status: 'building', worktree_folder: folder });
+    expect(git(folder, 'rev-parse', 'HEAD')).toBe(git(bare, 'rev-parse', 'HEAD'));
+  });
+
   test('a Ticket with no App, or a Checkout gone from the machine, still has a way through', async ({ page }) => {
     // trashing its App is the one way a `ready` Ticket comes to have none, since the guard wants one on the way in
     const left = (await (await page.request.post('/api/apps', { data: { name: `Trashed App ${n}` } })).json()) as { id: number };

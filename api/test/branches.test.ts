@@ -63,6 +63,7 @@ describe("an App's branches, read from its Checkout", () => {
         { name: 'in-a-worktree', kind: 'local', local: 'in-a-worktree', checked_out: { folder: linked, linked: true } },
         { name: 'main', kind: 'local', local: 'main', checked_out: { folder: repo, linked: false } },
       ],
+      has_commit: true,
     });
   });
 
@@ -120,14 +121,21 @@ describe("an App's branches, read from its Checkout", () => {
     expect(((await gone.json()) as { hint: string }).hint).toBe(`the Checkout ${repo} is not there`);
   });
 
-  test('a repository with no commit yet still answers', async () => {
+  test('a repository with no commit yet still answers, and says there is nothing to cut a branch from', async () => {
     const empty = join(scratch, 'empty');
     mkdirSync(empty);
     git(empty, 'init', '-q', '-b', 'main');
     const app = await appWith({ checkout: empty });
     const res = await branchesOf(app.id);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ default: 'HEAD', worktrees_in: join(worktrees, 'empty'), branches: [] });
+    expect(await res.json()).toEqual({ default: 'HEAD', worktrees_in: join(worktrees, 'empty'), branches: [], has_commit: false });
+  });
+
+  test('a commit with no branch on it is still something to cut from', async () => {
+    git(repo, 'switch', '-q', '--detach');
+    git(repo, 'branch', '-q', '-D', 'main');
+    const app = await appWith({ checkout: repo });
+    expect(await (await branchesOf(app.id)).json()).toEqual({ default: 'HEAD', worktrees_in: join(worktrees, 'subway-reader'), branches: [], has_commit: true });
   });
 
   test('an App nobody has is a 404', async () => {

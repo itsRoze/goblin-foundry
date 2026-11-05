@@ -96,7 +96,9 @@ export function StartModal({
           ? `${app.data.name} has no Checkout, so ${ticket.key} cannot be given a Worktree`
           : read.isError
             ? refusalLine(read.error)
-            : null;
+            : checkout !== null && read.data?.has_commit === false
+              ? `the Checkout ${checkout} has no commit yet, so ${ticket.key} cannot be given a Worktree`
+              : null;
 
   return (
     <dialog
@@ -289,13 +291,14 @@ function Fields({
         </p>
       )}
       <span className="gf-form-actions">
-        <button type="button" className="gf-btn is-primary" data-testid="start-go" aria-busy={busy} onClick={accept}>
+        {/* a tabindex, or WebKit's Tab skips a button and leaves the dialog for `body` (DESIGN.md Refusal and confirm) */}
+        <button type="button" tabIndex={0} className="gf-btn is-primary" data-testid="start-go" aria-busy={busy} onClick={accept}>
           {verb === 'start' ? (busy ? 'starting…' : 'start') : busy ? 'opening…' : 'open terminal'} <Kbd>⏎</Kbd>
         </button>
-        <button type="button" className="gf-btn" data-testid="start-cancel" aria-disabled={busy} onClick={onCancel}>
+        <button type="button" tabIndex={0} className="gf-btn" data-testid="start-cancel" aria-disabled={busy} onClick={onCancel}>
           cancel <Kbd>esc</Kbd>
         </button>
-        {read && !showing && (
+        {read && read.branches.length > 0 && !showing && (
           <span className="gf-start-hint">
             <ForPointer fine={<><Kbd>↓</Kbd> list</>} coarse="tap a field for its list" />
           </span>
@@ -375,7 +378,7 @@ function NoWorktree({
       )}
       <span className="gf-form-actions">
         {app && (
-          <Link className="gf-btn" data-testid="start-app-link" to={slugPath('apps', app)} onClick={onLeave}>
+          <Link tabIndex={0} className="gf-btn" data-testid="start-app-link" to={slugPath('apps', app)} onClick={onLeave}>
             go to {app.name}
           </Link>
         )}

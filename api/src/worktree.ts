@@ -58,6 +58,12 @@ async function checkoutDefaultBranch(checkout: string): Promise<string> {
   return 'HEAD';
 }
 
+/** False for a Checkout `git init` left as it was: no commit anywhere, so nothing a new branch could be cut from. */
+async function hasCommit(checkout: string): Promise<boolean> {
+  const first = await git(checkout, ['rev-list', '-n', '1', '--all']);
+  return !(first.ran && first.ok && first.out === '');
+}
+
 /** The name git can cut from, for a base that may exist only on a remote. */
 async function resolveBase(checkout: string, base: string): Promise<string | undefined> {
   const commit = await git(checkout, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${base}^{commit}`]);
@@ -112,7 +118,8 @@ export async function readBranches(checkout: string, root: string): Promise<{ ok
         return { name: `${from}/${short}`, kind: 'remote' as const, local: short, checked_out: null };
       }),
   );
-  return { ok: true, branches: { default: await checkoutDefaultBranch(checkout), worktrees_in: worktreesIn(checkout, root), branches: [...local, ...remote] } };
+  const branches = [...local, ...remote];
+  return { ok: true, branches: { default: await checkoutDefaultBranch(checkout), worktrees_in: worktreesIn(checkout, root), branches, has_commit: branches.length > 0 || (await hasCommit(checkout)) } };
 }
 
 /**
@@ -148,7 +155,7 @@ export async function makeWorktree({ checkout, branch: asked, base, root }: Work
     else {
       const wanted = base ?? (await checkoutDefaultBranch(checkout));
       const from = await resolveBase(checkout, wanted);
-      if (from === undefined) return refuse(`no branch or commit named ${wanted} in ${checkout}`);
+      if (from === undefined) return refuse((await hasCommit(checkout)) ? `no branch or commit named ${wanted} in ${checkout}` : `${checkout} has no commit yet, so there is nothing to cut ${branch} from`);
       // tracking the base would point a later `git push` at the branch it was cut from
       how = ['--no-track', '-b', branch, folder, from];
     }
