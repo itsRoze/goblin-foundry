@@ -98,7 +98,6 @@ const WIDTHS = [390, 768, 1366];
 const TAP_GAPS = [80, 350];
 
 test.describe('double tap', () => {
-  test.skip(({ browserName }) => browserName === 'chromium', 'WebKit touch draws the same offsets and the same element under the second press, and CI has a 15-minute limit');
 
   for (const width of WIDTHS)
     for (const [surface, arm] of Object.entries(SURFACES))
