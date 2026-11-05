@@ -76,7 +76,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv { margin: 0; display: flex; flex-direction: column; gap: var(--gf-s2); }
 .gf-kv-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--gf-s3); align-items: baseline; }
 .gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
-.gf-kv dd { margin: 0; overflow-wrap: anywhere; }
+/* `min-width`: a select's longest option must not push a row past its tile (GF-112) */
+.gf-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 /* a git remote or a Checkout is a path, and a path is mono (DESIGN.md Typography): the
    face is what tells the value from the ink ones above and below it, not the hue */
 .gf-path { display: block; width: fit-content; max-width: 100%; font: var(--gf-t-meta); }
@@ -668,6 +669,8 @@ a.gf-path { text-decoration: underline; }
   border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 3px 8px;
 }
 /* the title is the only thing a ticket must have, so it takes the room (GLOSSARY.md) */
+/* a select is as wide as its longest option, and a phone zooms out to fit a page wider than itself (GF-112) */
+.gf-new-row select { max-width: 100%; }
 .gf-new-row input.gf-new-row-title { border-color: var(--gf-system); flex: 0 1 420px; min-width: 160px; }
 .gf-new-row-refusal { flex-basis: 100%; }
 
@@ -688,39 +691,6 @@ a.gf-path { text-decoration: underline; }
 /* help in two versions (`ForPointer`), a coarse pointer swapping them in the rule below; `contents`, so the version on show lays out as if nothing wrapped it */
 .gf-on-fine { display: contents; }
 .gf-on-coarse { display: none; }
-
-/*
- * A coarse pointer (issue 11): every control a finger is meant for is at least 32px tall — the box grows,
- * the drawn mark does not, so the house's 4px by 10px button reads as before and simply catches more —
- * and a hint that is not also a control folds away, because a key a finger cannot press is not information
- * (Voice). `j k ⏎` and `⌘n` go with them; they come back the moment the pointer is fine.
- */
-@media (pointer: coarse) {
-  .gf-on-fine { display: none; }
-  .gf-on-coarse { display: contents; }
-  /* said before the tap: with the caret in the field it asks for what was just done */
-  .gf-md.is-engaged .gf-md-placeholder .gf-on-coarse { display: none; }
-  /* the trace it names is drawn by a hover or Tab, and a tap goes straight to the ticket */
-  .gf-graph-trace-key { display: none; }
-  .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
-  /* the bar's own one height, above, would otherwise outrank this: it is under a thumb more than anything is */
-  .gf-selection .gf-btn { min-height: 32px; }
-  /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
-  .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
-  .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }
-  /* the label's `×` is inside the chip's border, so its box spills past it rather than stretching the chip */
-  .gf-label-drop { margin-block: -8px; }
-  button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
-  /* the `board` link in a tile header is inline, so its padding grows what a finger hits and moves nothing */
-  .gf-tile-link { padding: 11px 4px; margin: 0 -4px; }
-  span.gf-hint, .gf-tile-move, .gf-tile-keys > .gf-kbd { display: none; }
-  /* the Cursor's hints go with their seats: a finger gets a Cursor only from a move notice's `show`, its card's checkbox and `⋯` carry the same verbs, and a seat above the cards would only push the first card down */
-  .gf-tile-keys > .is-seated { display: none; }
-  /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */
-  .gf-btn .gf-kbd, .gf-mode-done .gf-kbd { display: none; }
-  .gf-toggle, .gf-check { min-height: 32px; }
-  .gf-mode-btn { min-width: 32px; }
-}
 
 /* a link among a tile's keys is chrome, not prose: mute until you point at it */
 .gf-tile-link { color: var(--gf-mute); }
@@ -831,3 +801,61 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 
 /* `leave it` takes the focus on its own, after a click or a tap as much as a key, so the ring that says where `⏎` lands must not wait for focus-visible (GF-44) */
 .gf-confirm .gf-btn:focus, .gf-selection-question ~ .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
+
+/*
+ * A coarse pointer (issue 11): every control a finger is meant for is at least 32px on a side — the box grows,
+ * the drawn mark does not, so the house's 4px by 10px button reads as before and simply catches more —
+ * and a hint that is not also a control folds away, because a key a finger cannot press is not information
+ * (Voice). `j k ⏎` and `⌘n` go with them; they come back the moment the pointer is fine.
+ * It is last in the file because most of it weighs the same as the rule it overrides, and the later rule wins (GF-112).
+ */
+@media (pointer: coarse) {
+  .gf-on-fine { display: none; }
+  .gf-on-coarse { display: contents; }
+  /* said before the tap: with the caret in the field it asks for what was just done */
+  .gf-md.is-engaged .gf-md-placeholder .gf-on-coarse { display: none; }
+  /* the trace it names is drawn by a hover or Tab, and a tap goes straight to the ticket */
+  .gf-graph-trace-key { display: none; }
+  .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-filter-text, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
+  /* a one-glyph button (`−`, `+`, `×`) is narrower than a finger on its own padding; the glyph stays in the middle of what it grew to */
+  .gf-btn, .gf-filter-clear, .gf-mode-btn { min-width: 32px; justify-content: center; }
+  /* an input is content-box unless it says otherwise, and the 32px is the whole box */
+  .gf-inline-title, .gf-inline-title-input, .gf-field input, .gf-new-row input[type='text'], .gf-mode-input, .gf-label-input, .gf-picker input, .gf-palette input, .gf-new-ticket input { box-sizing: border-box; min-height: 32px; }
+  /* WebKit overwrites a select's `min-height` with its own, and honours `height` */
+  .gf-kv select, .gf-field select, .gf-new-row select { box-sizing: border-box; height: 32px; }
+  /* the bar's own one height, above, would otherwise outrank this: it is under a thumb more than anything is */
+  .gf-selection .gf-btn { min-height: 32px; }
+  /* a title's links are inline, so padding grows what a finger hits and moves nothing (`Go` is still a finger wide; `relative` keeps the ` / ` after it from taking the padding back; to the right only, since WebKit hits nothing left of the title's box), and lines 32px apart keep a link from covering the one above */
+  .gf-title { line-height: 32px; }
+  .gf-title-parent { position: relative; padding: var(--gf-s1) var(--gf-s2) var(--gf-s1) 0; margin-right: calc(-1 * var(--gf-s2)); }
+  /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
+  .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
+  /* DESIGN.md excuses their height, not their width */
+  .gf-ws a, .gf-bar-key { min-width: 32px; justify-content: center; }
+  .gf-plus { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; }
+  .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }
+  /* a one-line link is shorter than a finger: its padding reaches out and its margin takes back the room, so a row stays the height it was */
+  .gf-kv dd a, .gf-dep-row .gf-row-title { padding-block: 8px; margin-block: -8px; }
+  /* `Go` is still a finger wide; `inline-block` would get there too, but in WebKit it lifts a wrapped name over the row above */
+  .gf-kv dd a:not(.gf-path) { padding-inline: 8px; margin-inline: -8px; }
+  /* the label's `×` is inside the chip's border, so its box spills past it rather than stretching the chip */
+  .gf-label-drop { margin-block: -8px; }
+  button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
+  /* a strip that wraps keeps its hints a finger apart (17px of hint and 15px of gap), or a lower hint's padding covers the one above it */
+  .gf-tile-keys { row-gap: 15px; }
+  /* the `board` link in a tile header is inline, so its padding grows what a finger hits and moves nothing */
+  .gf-tile-link { padding: 11px 4px; margin: 0 -4px; }
+  span.gf-hint, .gf-tile-move, .gf-tile-keys > .gf-kbd { display: none; }
+  /* the Cursor's hints go with their seats: a finger gets a Cursor only from a move notice's `show`, its card's checkbox and `⋯` carry the same verbs, and a seat above the cards would only push the first card down */
+  .gf-tile-keys > .is-seated { display: none; }
+  /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */
+  .gf-btn .gf-kbd, .gf-mode-done .gf-kbd { display: none; }
+  .gf-toggle, .gf-check { min-height: 32px; }
+}
+
+/* the bar's links, a finger wide, leave no room under the width that fits two-digit counts, so its gaps pay for them; a 320px screen still overflows by the 7px it always did */
+@media (pointer: coarse) and (max-width: 389px) {
+  .gf-ws { gap: 0; }
+  .gf-bar, .gf-counts { gap: var(--gf-s2); }
+  .gf-counts a { padding-inline: 3px; }
+}
