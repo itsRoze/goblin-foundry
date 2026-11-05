@@ -588,3 +588,98 @@ test('a card’s own blocked-start question cannot write to a ticket a bulk acti
   release();
   await expect(page.getByTestId('bulk-done')).toHaveText('Unapproved 1 Ticket');
 });
+
+/**
+ * GF-117: `x` and `⏎` stay live under the bar, so the card they would hit has to be on screen. What
+ * answers is the page's own hit test, not arithmetic over rectangles: the card's centre and its two
+ * bottom corners, the first thing the bar would take. The sizes are the two the bug was measured at.
+ */
+const CURSOR_SIZES = [
+  { width: 390, height: 844 },
+  { width: 1366, height: 620 },
+];
+
+/** What is drawn over the Cursor's card, by point: empty when the eye can read the whole of it. */
+const coveringCursor = (page: Page) =>
+  page.evaluate(() => {
+    const mark = document.querySelector('.gf-card.is-cursor');
+    if (mark === null) return ['no Cursor'];
+    const { left, right, bottom, top } = mark.getBoundingClientRect();
+    const points = [[(left + right) / 2, (top + bottom) / 2], [left + 2, bottom - 2], [right - 2, bottom - 2]] as const;
+    return points.flatMap(([x, y]) => {
+      const hit = document.elementFromPoint(x, y);
+      return mark.contains(hit) ? [] : [`${mark.getAttribute('data-key')} at ${x},${y} is under ${hit === null ? 'the fold' : hit.className}`];
+    });
+  });
+
+/** A column of fourteen tickets, on a board the size of `size`, narrowed to them. */
+const tallColumn = async (page: Page, word: string, status: string, size: { width: number; height: number }) => {
+  const seeded: Seeded[] = [];
+  for (let n = 0; n < 14; n++) seeded.push(await seed(page, `${word} ${n}`, { status }));
+  await page.setViewportSize(size);
+  await board(page, `${word} `);
+  return seeded;
+};
+
+/** With no bar yet, `nearest` leaves the Cursor at the foot of the screen, where the shortest bar there is (48px) is about to land. */
+const walkToTheFold = async (page: Page, size: { height: number }) => {
+  for (let n = 0; n < 8; n++) await page.keyboard.press('j');
+  const bottom = await page.locator('.gf-card.is-cursor').evaluate((mark) => mark.getBoundingClientRect().bottom);
+  expect(bottom).toBeGreaterThan(size.height - 48);
+};
+
+for (const size of CURSOR_SIZES) {
+  test(`at ${size.width}x${size.height} j walks the Cursor down a whole column and the Selection bar never covers it (GF-117)`, async ({ page }) => {
+    await tallColumn(page, `Barwalk${size.width}`, 'planning', size);
+
+    await page.keyboard.press('j');
+    await page.keyboard.press('x');
+    await expect(count(page)).toHaveText('1 selected');
+    expect(await coveringCursor(page)).toEqual([]);
+    for (let n = 1; n < 14; n++) {
+      await page.keyboard.press('j');
+      expect(await coveringCursor(page), `after ${n} presses of j`).toEqual([]);
+    }
+  });
+
+  test(`at ${size.width}x${size.height} the x that makes the bar arrive leaves the card it ticked in sight (GF-117)`, async ({ page }) => {
+    await tallColumn(page, `Bararrive${size.width}`, 'planning', size);
+    await walkToTheFold(page, size);
+    await page.keyboard.press('x');
+    await expect(count(page)).toHaveText('1 selected');
+    expect(await coveringCursor(page)).toEqual([]);
+  });
+
+  test(`at ${size.width}x${size.height} a question asked by key grows the bar and the Cursor stays clear of it (GF-117)`, async ({ page }) => {
+    const seeded = await tallColumn(page, `Bargrow${size.width}`, 'ready', size);
+    const blocker = await seed(page, `Holdup${size.width} blocker`);
+    await page.request.post(`/api/tickets/${seeded[7]!.key}/dependencies`, { data: { blocker: blocker.key } });
+    await board(page, `Bargrow${size.width} `);
+    await walkToTheFold(page, size);
+    await page.keyboard.press('x');
+    await expect(count(page)).toHaveText('1 selected');
+    const before = await bar(page).evaluate((el) => el.getBoundingClientRect().height);
+
+    await page.keyboard.press('s');
+    await page.keyboard.type('start');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('bulk-confirm-lines')).toBeVisible();
+    expect(await bar(page).evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(before);
+    expect(await coveringCursor(page)).toEqual([]);
+  });
+
+  test(`at ${size.width}x${size.height} a tick by mouse leaves the page where it is, and the x that follows shows the card it hits (GF-117)`, async ({ page }) => {
+    const seeded = await tallColumn(page, `Barmouse${size.width}`, 'planning', size);
+    await walkToTheFold(page, size);
+    const scrolled = await page.evaluate(() => window.scrollY);
+
+    await box(page, seeded[6]!.key).check();
+    await expect(count(page)).toHaveText('1 selected');
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+    expect(await coveringCursor(page)).not.toEqual([]);
+
+    await page.keyboard.press('x');
+    await expect(count(page)).toHaveText('2 selected');
+    expect(await coveringCursor(page)).toEqual([]);
+  });
+}

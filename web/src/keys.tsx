@@ -41,7 +41,7 @@ const focusedOnce = new WeakSet<object>();
  */
 export const byPointer = (e: Event | undefined) => e instanceof DragEvent || (e instanceof MouseEvent && (e.detail > 0 || e.type === 'pointerup'));
 
-const byKey = (e: Event | undefined) => e instanceof KeyboardEvent || (e instanceof MouseEvent && !byPointer(e));
+export const byKey = (e: Event | undefined) => e instanceof KeyboardEvent || (e instanceof MouseEvent && !byPointer(e));
 
 /**
  * The safe answer takes the focus once per question, for the press that asked it, so `⏎` dismisses

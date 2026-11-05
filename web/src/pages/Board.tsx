@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { dropTargetForElements, monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import {
@@ -22,9 +22,9 @@ import { ProblemError } from '../api';
 import { useBranchCopy } from '../copy';
 import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
-import { useCursor, useEscape } from '../desk';
+import { cursorMark, revealCursor, useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
-import { ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
+import { byKey, ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
 import { usePatchTicket, useStart, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
@@ -419,7 +419,8 @@ export function BoardPage() {
     const landed = cards?.find((t) => t.id === target);
     if (landed) cursor.takeKeysTo(landed.key);
   };
-  useKey('x', under === undefined ? undefined : () => select(under, false));
+  // the page may have left the Cursor under the bar or off screen, and the tick has to show on the card it hit (GF-117)
+  useKey('x', under === undefined ? undefined : () => { revealCursor(); select(under, false); });
   useKeyMap({ ArrowDown: () => extend(1), ArrowUp: () => extend(-1) }, { shift: true });
   // a shifted letter is its own key, so `J K` need no flag: the same aliases the Cursor's arrows have
   useKeyMap({ J: () => extend(1), K: () => extend(-1) });
@@ -697,6 +698,28 @@ export function BoardPage() {
 }
 
 /**
+ * Keeps the Cursor out from under the Selection bar (GF-117): `scrollIntoView` counts the viewport, and
+ * the bar is stuck over its foot. Measured on every render, in the layout phase, because a press that
+ * moves the Cursor renders the bar too and the Cursor's own scroll follows this; the height is what the
+ * cards' `scroll-margin-bottom` reads. A bar that grows over the Cursor gives it back, the same way, but
+ * only for a key: a pointer may be about to press what it aimed at (the reason the bar is at the foot),
+ * and what arrives after a round trip moves nothing (DESIGN.md Components, Refusal and confirm).
+ */
+function useCursorClearOf(bar: RefObject<HTMLElement | null>) {
+  const height = useRef(0);
+  useLayoutEffect(() => {
+    const drawn = bar.current?.getBoundingClientRect();
+    const now = drawn?.height ?? 0;
+    const grew = now > height.current;
+    height.current = now;
+    document.documentElement.style.setProperty('--gf-selection-bar', `${now}px`);
+    const mark = cursorMark()?.getBoundingClientRect();
+    if (drawn === undefined || mark === undefined || !grew || !byKey(window.event)) return;
+    if (mark.bottom > drawn.top && mark.top < drawn.bottom) revealCursor();
+  });
+}
+
+/**
  * The Selection's bar (issue 03b): how many, the two ways to change that
  * without a keyboard, and the three things a Selection can have done to it —
  * every one a button, because a finger has no `a` and no `⌘A`. It is only
@@ -713,9 +736,11 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
   const line = useRef<HTMLSpanElement>(null);
   useFocusOnAsk(asked, dismiss, line);
   const sentence = useId();
+  const bar = useRef<HTMLDivElement>(null);
+  useCursorClearOf(bar);
   if (count === 0 && pending === null && outcome === null) return null;
   return (
-    <div className="gf-selection" role="region" aria-label="selection" data-testid="selection-bar">
+    <div ref={bar} className="gf-selection" role="region" aria-label="selection" data-testid="selection-bar">
       {count > 0 && (
         <div className="gf-selection-row">
           {/* announced, because `x` and a shifted arrow change it with nothing else on screen to say so */}
