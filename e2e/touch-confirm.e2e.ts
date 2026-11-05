@@ -1,9 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
-// this file runs first in its project, so its first test also pays for the browser's start: up to 11 s on CI
-test.describe.configure({ timeout: 30_000 });
-
 /**
  * The one question the tracker asks, answered by finger: the control whose tap asked it is never
  * where the answer is drawn, so a second tap on the same spot, however fast, writes nothing (GF-44).

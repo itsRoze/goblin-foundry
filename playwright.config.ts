@@ -7,6 +7,8 @@ import { join } from 'node:path';
 // the exit criterion made executable, not where behaviour is enumerated.
 // One worker: every spec writes to that one database, so they must not
 // interleave (a spec that counts apps cannot share the file with one creating them).
+// CI splits the suite with `--shard`, and each shard is its own process over its own empty
+// database: a spec may count on an earlier spec not having run, never on it having run.
 // Worktrees run their suites concurrently, and a second run on the same port either fails
 // outright or — worse — silently drives the *other* worktree's build. `GF_E2E_PORT` gives a
 // run its own.
@@ -20,8 +22,13 @@ const dbPath = join(mkdtempSync(join(tmpdir(), 'gf-e2e-')), 'foundry.db');
  * mouse in a phone-sized window is not a finger, so they are their own
  * projects rather than a viewport change inside the desktop one. Emulation is
  * not a device: what it shows is reported as such (docs/tickets/s1/11).
+ *
+ * The first test of a process pays for the browser's start inside its own timeout, and in
+ * WebKit on CI that alone can pass 15 s. Shards move which touch spec comes first, so the
+ * longer timeout belongs to the projects and not to one file.
  */
 const TOUCH_SPECS = '**/touch-*.e2e.ts';
+const TOUCH_TIMEOUT = 30_000;
 
 export default defineConfig({
   testDir: './e2e',
@@ -40,7 +47,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: TOUCH_SPECS },
-    { name: 'chromium-touch', use: { ...devices['Pixel 5'] }, testMatch: TOUCH_SPECS },
-    { name: 'webkit-touch', use: { ...devices['iPhone 13'] }, testMatch: TOUCH_SPECS },
+    { name: 'chromium-touch', use: { ...devices['Pixel 5'] }, testMatch: TOUCH_SPECS, timeout: TOUCH_TIMEOUT },
+    { name: 'webkit-touch', use: { ...devices['iPhone 13'] }, testMatch: TOUCH_SPECS, timeout: TOUCH_TIMEOUT },
   ],
 });

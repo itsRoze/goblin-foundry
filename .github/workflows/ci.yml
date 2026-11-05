@@ -23,14 +23,45 @@ jobs:
       - run: bun run lint
       - run: bun run build
 
-  e2e:
+  # Playwright's --shard deals whole spec files out in file order, and each job gets its own
+  # server over its own empty database, so a spec may never need an earlier spec to have run
+  # (docs/LESSONS.md). The total comes from the matrix: a number written here beside it could
+  # disagree, and the tests of a shard no job runs would pass by never running.
+  e2e-shard:
+    name: e2e shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.9
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium webkit
-      - run: bun run test:e2e
+      # Healthy takes 35 s to 50 s, and a slow mirror has taken 2m18s and finished. A mirror that
+      # crawls would use the whole job limit and read as a test failure, so it fails here instead.
+      # No retry inside the step: `timeout` kills bunx and leaves apt-get holding its lock.
+      - name: Install Playwright browsers
+        timeout-minutes: 4
+        run: bunx playwright install --with-deps chromium webkit
+      - name: Run this shard of the suite
+        run: bun run test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # The one check that says the whole suite passed. `always()` because a job skipped by a
+  # failed `needs` reads as passing to anything that requires it.
+  e2e:
+    needs: e2e-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - env:
+          SHARDS: ${{ needs.e2e-shard.result }}
+        run: |
+          if [ "$SHARDS" != success ]; then
+            echo "::error::The e2e shards ended in '$SHARDS'. The red 'e2e shard' job says which step failed: the browser install or the tests."
+            exit 1
+          fi
