@@ -643,7 +643,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* wide enough that the key strip at its foot stays one line, as a tile header's does; at phone width the
    popover hangs from its chip's right edge and the room is not there, so the strip wraps as before */
 @media (min-width: 900px) { .gf-checks { min-width: 272px; } }
-/* the highlighted row takes the Attention row's selected treatment, as the picker's does */
+/* the highlighted row takes `--gf-raised` and the 2px `--gf-system` inset, as the picker's does */
 .gf-check {
   display: flex; align-items: center; gap: var(--gf-s2); cursor: pointer;
   font: var(--gf-t-meta); color: var(--gf-ink);

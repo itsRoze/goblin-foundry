@@ -10,13 +10,13 @@ web
 
 ## Users
 
-One person: the solo developer who builds Goblin and runs it. Keyboard first, at a laptop or a wide monitor for planning and building, and at phone width for triage (spec story 44). In S1 they operate the tracker entirely by hand, often with a Claude Code planning session in a terminal beside the browser (story 45).
+One person: the solo developer who builds Goblin and runs it. Keyboard first, at a laptop or a wide monitor for planning and building, and at phone width for triage (spec story 44). They move Tickets themselves and agents move them too (ADR-0012), often from a Claude Code session in a terminal beside the browser (story 45).
 
 Developers who build their own tracker from Goblin's Pieces are an audience for the Pieces (ADR-0011, 2026-10-16). Goblin Foundry's own screens still serve only the operator, who knows the system's language and is owed no onboarding.
 
 ## Product Purpose
 
-Goblin Foundry is a ticket tracker: a durable place for Apps, Projects, Designs and Tickets that the human operates by hand. Capture an idea, plan it into vertical-slice tickets with a planning agent, declare what blocks what, approve plans, and see at a glance which tickets are actually ready to build (the Ready Frontier).
+Goblin Foundry is a ticket tracker: a durable place for Apps, Projects, Designs and Tickets that the human and their agents operate. Capture an idea, plan it into vertical-slice tickets with a planning agent, declare what blocks what, approve plans, and see at a glance which tickets are actually ready to build (the Ready Frontier).
 
 S1 is done when a fresh project is created in the GUI, an agent-assisted planning conversation produces approved tickets with dependencies through the API, tickets drag between statuses, and the ready frontier is correct on screen (the spec's exit criterion). Beyond S1, Goblin is built as Pieces that other developers assemble into their own trackers, and Goblin Foundry is one Assembly of them (ADR-0011).
 
@@ -26,7 +26,7 @@ A control surface and a memory, not a Linear clone. Status is a code-owned state
 
 ## Operating Context
 
-One Bun process on localhost: a typed HTTP API over one SQLite file, serving a thin web GUI; a `goblin` CLI wraps the API for the planning skill. No auth, no multi-user, no sync, no deployment. Screens: the kanban is home; Ticket, Project, App, the Apps and Projects lists, Settings, Trash. Every long text field is a Linear-style markdown editor that is also the read view (ADR-0005). Tickets are planned by hand or by a planning agent over the `goblin` CLI, and built by hand until the controller arrives (S5). Changes made from the terminal are meant to show up on the board within seconds, without a reload (story 45).
+One Bun process on localhost: a typed HTTP API over one SQLite file, serving a thin web GUI; a `goblin` CLI wraps the API for the planning skill. No auth, no multi-user, no sync, no deployment. Screens: the kanban is home; Ticket, Project, App, the Apps and Projects lists, Settings, Trash. Every long text field is a Linear-style markdown editor that is also the read view (ADR-0005). Tickets are planned and built by the human, or by an agent over the `goblin` CLI (ADR-0012). Changes made from the terminal are meant to show up on the board within seconds, without a reload (story 45).
 
 The first real project tracked in Goblin is Subway Reader, an offline-first e-ink RSS reader for Android (`research/subway-reader/`); it enters as a freshly planned project created through the tracker (ticket 12).
 
@@ -40,12 +40,12 @@ One line each; the spec carries the user stories.
 - Trash is the undo; archive is navigation; cancel is the workflow decision. Nothing is lost by a workflow action.
 - Designs are markdown columns in the tracker, edited in place, always live; there is no draft and no save step (ADR-0005). Editing text never changes status.
 - Labels are free-form names on a ticket, several per ticket, plain text chips and a Filter set, never a status or a colour (ADR-0013).
-- Not in S1 (ADR-0006): runs, evidence, leases, costs, `needs_human`, milestones, priority, claim order, light mode, deployment, an in-tracker planning feature.
+- Not in S1 (ADR-0006): milestones, priority, claim order, light mode, deployment, an in-tracker planning feature.
 - Terminology is fixed by `GLOSSARY.md`: App, Project, Ticket, Ticket Key, Design, Transition, Ready Frontier, Approve Guard, Label, Edit session, View option, Filter. Use those words.
 
 ## Brand Commitments
 
-Name: Goblin Foundry. Voice (DESIGN.md Voice): short, plain, sentence case; kinds and states are single words; hints are a verb with a key; numbers are honest and never a pie chart; no exclamation marks.
+Name: Goblin Foundry. Voice (DESIGN.md Voice): short, plain, sentence case; transitions and states are single words; hints are a verb with a key; numbers are honest and never a pie chart; no exclamation marks.
 
 The look is the house style in `design/DESIGN.md`, and it is binding. This file does not restate it.
 
@@ -61,7 +61,7 @@ The look is the house style in `design/DESIGN.md`, and it is binding. This file 
 ## Product Principles
 
 1. Agents produce candidates; deterministic code enforces boundaries; evidence informs trust; the human owns intent and irreversible decisions (BLUEPRINT-v1 §1).
-2. The transition table is the only authority over status; nothing else encodes the lifecycle, and a refusal says who owns the move.
+2. The transition table is the only authority over status; nothing else encodes the lifecycle, and a refusal says why.
 3. Nothing is lost by a decision: cancel has `reopen`, archive has unarchive, trash has restore. Only cancel is a workflow action; archive is navigation and trash is the undo.
 4. Keyboard first: every tile header shows its keys, and a drag always has a key that does the same thing.
 5. Numbers you read, not numbers you admire.
@@ -72,5 +72,5 @@ Four standing commitments, and no external standard named (decided 2026-09-03):
 
 - Every text colour clears 4.5:1 on the tile surface; the palette was adjusted for it (DESIGN.md Colors). The dim token is for handles and dividers only and fails contrast deliberately.
 - Blocked is never a colour: an outline glyph plus strikethrough. No status is carried by colour alone; the word is always there.
-- `prefers-reduced-motion` collapses transitions and switches the one ambient animation off.
+- `prefers-reduced-motion` collapses transitions; there is no ambient animation.
 - The keyboard reaches everything, and focus is always visible: a 1px `--gf-system` outline on anything focusable, the caret inside an editor. The browser's own rounding of that outline is let be.

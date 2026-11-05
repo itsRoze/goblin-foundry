@@ -11,7 +11,7 @@ import { join } from 'node:path';
 
 export type Rgb = readonly [number, number, number];
 
-const TEXT = ['ink', 'mute', 'system', 'human', 'live', 'draft', 'review', 'link'] as const;
+const TEXT = ['ink', 'mute', 'system', 'human', 'draft', 'review', 'link'] as const;
 const SURFACES = ['page', 'tile', 'raised', 'rule', 'rule-2'] as const;
 
 /**

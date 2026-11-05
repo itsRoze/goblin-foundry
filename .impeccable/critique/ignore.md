@@ -13,4 +13,3 @@ Findings that match one of these are the house style, not a defect; drop them. E
 - **Blocked shown as an outline glyph and strikethrough, with no colour**: Colors. Blocked is never a colour.
 - **Refusals as an inline mono sentence rather than a toast or modal**: Components.
 - **No light mode, no theme switch**: Deliberately not specified, dropped for now.
-- **One ambient animation, 120ms hover and 200ms moves, nothing else**: Motion.
