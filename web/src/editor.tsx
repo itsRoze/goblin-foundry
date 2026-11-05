@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import type { JSONContent, TiptapEditorHTMLElement } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
-import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
+import { INLINE_MARKS, canonical, extensionsFor, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
+import { chooseToPaste } from './paste';
 import { judgement } from '@goblin/shared';
 import { unreached } from './api';
 import { ForPointer, refusalLine } from './ui';
@@ -104,6 +105,25 @@ function isBareUrl(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** The document an insert at the selection would make, with nothing dispatched, or `null` if the schema refuses it. `preventDispatch` is how TipTap's command manager is told to keep the transaction to itself. */
+function docAfterInsert(editor: Editor, content: JSONContent[]): JSONContent | null {
+  let doc: JSONContent | null = null;
+  try {
+    editor
+      .chain()
+      .setMeta('preventDispatch', true)
+      .insertContent(content)
+      .command(({ tr }) => {
+        doc = tr.doc.toJSON() as JSONContent;
+        return true;
+      })
+      .run();
+  } catch {
+    return null;
+  }
+  return doc;
 }
 
 /** Where the code block around the caret starts, or `null` when the caret is not in one. */
@@ -465,8 +485,12 @@ export function MarkdownField({
           if (!text || data?.getData('text/html').includes(OWN_SLICE)) return false;
           // a URL dropped on a selection is a link, not a replacement — that is the link extension's job, not ours
           if (!view.state.selection.empty && isBareUrl(text)) return false;
+          const editor = editorRef.current;
+          const blocks = editor && chooseToPaste(view.state.schema, shape, text, (content) => docAfterInsert(editor, content));
+          // no reading keeps every word: ProseMirror's own paste of the plain text is better than none
+          if (!editor || !blocks) return false;
           event.preventDefault();
-          editorRef.current?.commands.insertContent(toBlocks(shape, text));
+          editor.commands.insertContent(blocks);
           return true;
         },
         handleDOMEvents: {

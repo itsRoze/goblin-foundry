@@ -196,7 +196,7 @@ function readListsAsLexed(instance: MarkdownManager['instance']): void {
 const managers = new Map<EditorShape, MarkdownManager>();
 
 /** The parser/serialiser pair for a shape. Extensions never change, so one manager each is enough. */
-function managerFor(shape: EditorShape): MarkdownManager {
+export function managerFor(shape: EditorShape): MarkdownManager {
   let manager = managers.get(shape);
   if (!manager) {
     manager = new MarkdownManager({ extensions: extensionsFor(shape) });
