@@ -743,6 +743,29 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  */
 .gf-palette .gf-picker-hit.is-on { background: none; }
 
+/*
+ * The Start modal wears the palette's clothes in the palette's place. Its own padding is on
+ * the panel inside, so a press on the dialog itself can only be a press on the backdrop.
+ */
+.gf-start {
+  position: fixed; inset: calc(32px + var(--gf-gap)) 0 auto; margin: 0 auto;
+  box-sizing: border-box; width: 520px; max-width: calc(100vw - 2 * var(--gf-gap)); max-height: calc(100dvh - 32px - 2 * var(--gf-gap));
+  overflow: hidden auto; padding: 0; color: var(--gf-ink);
+  background: var(--gf-raised); border: 1px solid var(--gf-rule); border-radius: var(--gf-radius);
+}
+.gf-start::backdrop { background: none; }
+.gf-start:focus { outline: none; }
+.gf-start-panel { display: flex; flex-direction: column; gap: var(--gf-s2); padding: var(--gf-s3); }
+.gf-start-title { margin: 0 0 var(--gf-s1); font: var(--gf-t-h); overflow-wrap: anywhere; }
+.gf-start-said { margin: 0; font: var(--gf-t-body); }
+/* under its field's input, past `.gf-field`'s 100px label and its gap */
+.gf-start-note { margin: 0 0 0 calc(100px + var(--gf-s3)); font: var(--gf-t-meta); color: var(--gf-mute); }
+/* git's reasons carry whole folders, which have no place to break on a phone */
+.gf-start .gf-refusal { overflow-wrap: anywhere; }
+.gf-start-choices { max-height: 190px; overflow: hidden auto; }
+/* a fill would cost every accent on these rows its contrast, as it does in the palette */
+.gf-start .gf-picker-hit.is-on { background: none; }
+
 /* the key is the control: `⌘K` in the bar opens the panel the key opens (DESIGN.md Voice: hints are verbs with a key) */
 .gf-bar-key { display: inline-flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; }
 .gf-bar-key:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute); }

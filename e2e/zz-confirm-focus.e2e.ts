@@ -65,6 +65,9 @@ test('s ⏎ on a blocked Ticket puts the question on screen with the focus on le
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Enter');
+  // the answer is not the Start: the modal comes next, and its first button takes the next press
+  await expect(page.getByTestId('start-plain')).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');
   await expect(page.getByTestId('confirm-start')).toHaveCount(0);
   await page.keyboard.press('Enter');
@@ -494,6 +497,7 @@ for (const by of [3, 29, 40]) {
   test(`with start ${by}px above the top at 1366, a click on start anyway leaves the page where it is and writes`, async ({ page }) => {
     const { blocked, rest } = await askedWithStartClipped(page, 'StayYes');
     await press(page, page.getByTestId('confirm-start-yes'));
+    await page.getByTestId('start-plain').click();
     await expect(page.getByTestId('state-tile')).toContainText('building');
     expect((await read(page, blocked.key)).status).toBe('building');
     expect(await scrollY(page)).toBe(rest);

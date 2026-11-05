@@ -12,6 +12,30 @@ export const StartWorktreeBodySchema = z.strictObject({
 });
 export type StartWorktreeBody = z.infer<typeof StartWorktreeBodySchema>;
 
+/**
+ * One branch of a Checkout: its own name, or `origin/x` for a remote-tracking
+ * one. `local` is the local branch it is, or would become. `checked_out` is
+ * where it is checked out, and `linked: false` means the Checkout itself, which
+ * a Ticket is never worked in.
+ */
+export const CheckoutBranchSchema = z.object({
+  name: z.string(),
+  kind: z.enum(['local', 'remote']),
+  local: z.string(),
+  checked_out: z.object({ folder: z.string(), linked: z.boolean() }).nullable(),
+});
+export type CheckoutBranch = z.infer<typeof CheckoutBranchSchema>;
+
+/** `GET /api/apps/:id/branches`, read from the Checkout live: local branches first, then remote-tracking ones with `origin` leading. */
+export const AppBranchesSchema = z.object({
+  /** The Checkout's own default branch. */
+  default: z.string(),
+  /** The folder a new Worktree of this Checkout is made in, under the Worktree root. */
+  worktrees_in: z.string(),
+  branches: z.array(CheckoutBranchSchema),
+});
+export type AppBranches = z.infer<typeof AppBranchesSchema>;
+
 /** Herdr's rule, so a Worktree root pointed at Herdr's folder produces Herdr's paths. */
 export const worktreeSlug = (branch: string): string => branch.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
 

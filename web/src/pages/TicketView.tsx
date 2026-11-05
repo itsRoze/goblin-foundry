@@ -17,9 +17,10 @@ import { useOffersTicket } from '../current';
 import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { byPointer, formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '../keys';
-import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
+import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useStart, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
+import { StartModal } from '../start-modal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
@@ -53,6 +54,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const patch = usePatchTicket();
   const intent = useTicketIntent();
   const transition = useTransition();
+  const start = useStart();
+  const [starting, setStarting] = useState(false);
   const about = useSaving();
   const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
@@ -116,9 +119,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   );
   useKey('Backspace', trash, { meta: true });
 
-  /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot. */
+  /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot, and then `start` asks where. */
   const runEdge = useCallback(
-    (edge: Transition) => void inState(() => guard(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))),
+    (edge: Transition) => {
+      if (edge.name === 'start') return setStarting(true);
+      void inState(() => guard(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to })));
+    },
     [inState, guard, transition, ticket.key],
   );
   const press = useCallback(
@@ -333,6 +339,15 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
         <History events={events.data} describe={(e) => describeTicketEvent(e, names)} quietActor />
       </Tile>
+
+      {starting && (
+        <StartModal
+          ticket={ticket}
+          run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree }))}
+          onClose={() => setStarting(false)}
+          focusAfter={() => document.querySelector<HTMLElement>('[data-testid="move-start"]')}
+        />
+      )}
     </>
   );
 }

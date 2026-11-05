@@ -73,7 +73,9 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   // ship the blocker: the edge stays — it is a durable fact — and goes solid (ADR-0009)
   await page.getByTestId('ticket-rows').getByRole('link', { name: /The wiring/ }).click();
   await makeSimple(page);
-  for (const name of ['pick', 'approve', 'start', 'submit', 'ship']) await page.getByTestId(`move-${name}`).click();
+  for (const name of ['pick', 'approve', 'start']) await page.getByTestId(`move-${name}`).click();
+  await page.getByTestId('start-plain').click();
+  for (const name of ['submit', 'ship']) await page.getByTestId(`move-${name}`).click();
   await expect(page.getByTestId('state-tile')).toContainText('done');
 
   await page.goto(project);

@@ -13,6 +13,7 @@ import {
   type TicketFilter,
   type TicketStatus,
   type Found,
+  type StartWorktreeBody,
   type Transition,
   type TransitionName,
 } from '@goblin/shared';
@@ -23,11 +24,12 @@ import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
 import { ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
-import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
+import { usePatchTicket, useStart, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
 import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
 import { useCrumb, useOpenPalette } from '../shell';
+import { StartModal } from '../start-modal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
 import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
@@ -183,6 +185,8 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
   const [pending, setPending] = useState<Pending | null>(null);
+  /** The card the Start modal is open on, as it was when it opened: a poll must not change what is being decided about. */
+  const [starting, setStarting] = useState<TicketSummary | null>(null);
   const moved = useRef(onMoved);
   /** Whether a bulk action holds this card *now* — asked when the move goes, not when it was first pressed: a question may have stood open meanwhile. */
   const held = useRef(heldLine);
@@ -196,18 +200,20 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
       setPending(null);
       if (!found.ok) return setRefusal({ ...slot, text: found.refusal });
       const { edge } = found;
+      const ticket = lookup(card.key);
       const go = () => {
         setPending(null);
         const line = held.current(card.key);
         // after this click has finished bubbling: a refusal clears itself on the next click it hears (`useRefusal`),
         // and said inside the click that caused it, that would be this one
         if (line !== null) return void setTimeout(() => setRefusal({ ...slot, text: line }));
+        // one way to start a single Ticket, whichever gesture asked (a bulk start on a Selection never comes through here)
+        if (edge.name === 'start' && ticket) return setStarting(ticket);
         move.mutate(
           { key: card.key, name: edge.name, to: edge.to },
           { onError: (error) => setRefusal({ ...slot, text: refusalLine(error) }), onSuccess: () => moved.current(card, edge.to) },
         );
       };
-      const ticket = lookup(card.key);
       if (ticket && asksBeforeBlocked(edge.name, ticket)) return setPending({ ...slot, text: blockedWarning(ticket.blocked_by), go });
       go();
     },
@@ -255,7 +261,14 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
     [setRefusal],
   );
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []) };
+  const start = useStart();
+  const startRun = useCallback((key: string, worktree?: StartWorktreeBody) => start.mutateAsync({ key, worktree }), [start]);
+  const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
+    setStarting(null);
+    if (started) moved.current(ticket, 'building');
+  }, []);
+
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []), starting, startRun, startClosed };
 }
 
 /**
@@ -353,7 +366,7 @@ export function BoardPage() {
     },
     [lookup, sending],
   );
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss } = useBoardMoves(lookup, onMoved, heldLine);
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed } = useBoardMoves(lookup, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -645,6 +658,14 @@ export function BoardPage() {
         </div>
       )}
       {tickets.data?.length === 0 && !create.form && <Empty>{filtered ? 'nothing matches this filter' : 'no tickets yet — press c'}</Empty>}
+      {starting && (
+        <StartModal
+          ticket={starting}
+          run={(worktree) => startRun(starting.key, worktree)}
+          onClose={(started) => startClosed(starting, started)}
+          focusAfter={() => document.querySelector<HTMLElement>(`.gf-card[data-key="${starting.key}"]`)}
+        />
+      )}
     </Tile>
   );
 }

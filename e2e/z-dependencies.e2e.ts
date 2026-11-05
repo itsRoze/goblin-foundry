@@ -59,12 +59,15 @@ test('a declared blocker strikes the card through, and shipping the blocker clea
   await page.getByTestId('move-start').click();
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
   await page.getByTestId('confirm-start-yes').click();
+  await page.getByTestId('start-plain').click();
   await expect(page.getByTestId('state-tile')).toContainText('building');
 
   // ship the blocker and the strike goes: nothing is in the way any more
   await page.goto('/');
   await makeReady(page, 'The groundwork', 'Dependencies');
-  for (const name of ['pick', 'approve', 'start', 'submit', 'ship']) await page.getByTestId(`move-${name}`).click();
+  for (const name of ['pick', 'approve', 'start']) await page.getByTestId(`move-${name}`).click();
+  await page.getByTestId('start-plain').click();
+  for (const name of ['submit', 'ship']) await page.getByTestId(`move-${name}`).click();
   await expect(page.getByTestId('state-tile')).toContainText('done');
 
   await page.goto('/');

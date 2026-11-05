@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
+  AppBranchesSchema,
   AppSchema,
   ImplementationLinkSchema,
   EventSchema,
@@ -20,6 +21,7 @@ import {
   type PatchSettingsBody,
   type PatchTicketBody,
   type Project,
+  type StartWorktreeBody,
   type App,
   type Ticket,
   type TicketFilter,
@@ -180,6 +182,21 @@ export const useTicketIntent = () =>
   useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>
     intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`),
   );
+
+/**
+ * What is in an App's Checkout right now. `gcTime: 0` because it is read live: a
+ * list kept from the last time the modal was open would say a branch exists, or
+ * does not, on what git said then.
+ */
+export const useAppBranches = (id: number | null) =>
+  useQuery({ queryKey: ['app-branches', id], queryFn: () => api.get(`/api/apps/${id}/branches`, AppBranchesSchema), enabled: id !== null, retry: false, gcTime: 0 });
+
+/**
+ * `start` with its optional body: a Worktree when one is asked for, the plain
+ * Transition when not. Not optimistic, unlike `useTransition`: the Start modal is
+ * still open over the card, and a refusal has to leave the Ticket where it was.
+ */
+export const useStart = () => useWrite(({ key, worktree }: { key: string; worktree?: StartWorktreeBody | undefined }) => api.post(`/api/tickets/${key}/start`, worktree));
 
 /** One move: which ticket, which verb, and where it lands so the cache can be patched before the answer. */
 export interface Move {

@@ -16,8 +16,10 @@ import type { Db } from './db';
 import { eventWrite, now } from './events';
 import { parseBody } from './http';
 import { lifecycleRoutes, wantsArchived } from './lifecycle';
-import { unprocessable } from './problems';
+import { conflict, unprocessable } from './problems';
 import { app as appTable } from './schema';
+import { readSettings } from './settings';
+import { readBranches } from './worktree';
 
 type AppRow = typeof appTable.$inferSelect;
 export const toApp = ({ trashed_via: _, ...row }: AppRow): App => row;
@@ -80,6 +82,15 @@ export function appsRoutes(db: Db) {
   r.get('/:id', async (c) => {
     const row = await findLive(c);
     return row ? c.json(toApp(row)) : missing(c);
+  });
+
+  r.get('/:id/branches', async (c) => {
+    const row = await findLive(c);
+    if (!row) return missing(c);
+    if (!row.checkout) return conflict(c, `${row.name} has no Checkout, so it has no branches to read`);
+    const { worktree_root } = await readSettings(db);
+    const read = await readBranches(row.checkout, worktree_root);
+    return read.ok ? c.json(read.branches) : conflict(c, read.reason);
   });
 
   r.patch('/:id', async (c) => {

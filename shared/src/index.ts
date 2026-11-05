@@ -124,4 +124,4 @@ export {
 } from './filters';
 
 export { ImplementationLinkSchema, AddImplementationLinkBodySchema, ticketBranchName, type ImplementationLink } from './implementation';
-export { StartWorktreeBodySchema, type StartWorktreeBody, worktreeSlug, defaultWorktreeBranch, worktreeBase } from './worktree';
+export { StartWorktreeBodySchema, type StartWorktreeBody, CheckoutBranchSchema, type CheckoutBranch, AppBranchesSchema, type AppBranches, worktreeSlug, defaultWorktreeBranch, worktreeBase } from './worktree';
