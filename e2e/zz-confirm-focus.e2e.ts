@@ -242,7 +242,7 @@ test('esc and cancel hand the focus back to `start`, and ⏎ there asks again ra
 
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
-  await page.getByTestId('confirm-start').getByRole('button', { name: 'cancel' }).click();
+  await page.getByTestId('confirm-start').getByRole('button', { name: 'leave it' }).click();
   await expect(page.getByTestId('confirm-start')).toHaveCount(0);
   await expect(page.getByTestId('move-start')).toBeFocused();
 });
