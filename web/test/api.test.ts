@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { ProblemError, fieldLabel, issuePath } from '../src/api';
 import { appBody, appFormFields } from '../src/pages/Apps';
-import { submittedValues } from '../src/ui';
+import type { Event } from '@goblin/shared';
+import { describeEvent, submittedValues } from '../src/ui';
 
 /**
  * A refusal names a field the way the screen does. The API keeps
@@ -82,5 +83,30 @@ describe('an inert field', () => {
 
   test('a form with no inert field sends everything it holds', () => {
     expect(submittedValues([{ name: 'a', label: 'a' }], { a: '1' })).toEqual({ a: '1' });
+  });
+});
+
+/** An edit session folds what a sitting changed into one event (ADR-0008), so the Checkout's line cannot assume it is alone. */
+describe('an App history line about its Checkout', () => {
+  const line = (prior: Record<string, unknown>, next: Record<string, unknown>) =>
+    describeEvent({ id: 1, entity_kind: 'app', entity_id: 1, kind: 'updated', actor: 'human', prior, new: next, at: '2026-11-05T00:00:00.000Z' } satisfies Event, () => 'an app');
+
+  test('says where it was pointed, and from where', () => {
+    expect(line({ checkout: null }, { checkout: '/a' })).toBe('checkout set to /a');
+    expect(line({ checkout: '/a' }, { checkout: '/b' })).toBe('checkout /a → /b');
+  });
+
+  test('a cleared Checkout keeps its folder on the screen, since it is said nowhere else', () => {
+    expect(line({ checkout: '/a' }, { checkout: null })).toBe('checkout cleared · was /a');
+  });
+
+  test('a sitting that ended where it began says so, rather than that it cleared one', () => {
+    expect(line({ checkout: null }, { checkout: null })).toBe('checkout set and cleared');
+    expect(line({ checkout: '/a' }, { checkout: '/a' })).toBe('checkout changed back to /a');
+  });
+
+  test('is still said when the sitting changed something else too', () => {
+    expect(line({ checkout: null, description: 'old' }, { checkout: '/a', description: 'new' })).toBe('checkout set to /a · description edited');
+    expect(line({ checkout: '/a', name: 'A' }, { checkout: null, name: 'B' })).toBe('checkout cleared · was /a · renamed A → B');
   });
 });

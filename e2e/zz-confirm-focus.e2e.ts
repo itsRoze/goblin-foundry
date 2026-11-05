@@ -65,7 +65,9 @@ test('s ⏎ on a blocked Ticket puts the question on screen with the focus on le
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Enter');
-  // the answer is not the Start: the modal comes next, and its first button takes the next press
+  // the answer is not the Start: the modal comes next, with its own safe answer holding the focus and the way past one ⇧Tab away
+  await expect(page.getByTestId('start-cancel')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('start-plain')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');

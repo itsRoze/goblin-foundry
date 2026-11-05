@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useRef } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { parseSlugId, slugPath, type App } from '@goblin/shared';
 import { MarkdownField, Saving, focusEditor, type SaveState, type Saver } from '../editor';
-import { useKey } from '../keys';
+import { useKey, useFocusOnClose } from '../keys';
 import { useApps, useIntent } from '../queries';
 import { Chip, Empty, InlineForm, Tile, refusalLine, type Field } from '../ui';
 
@@ -56,6 +56,8 @@ export function AboutTile<Body>({
   saving?: SaveState;
 }) {
   const [editing, setEditing] = useState(false);
+  const opensEditing = useRef<HTMLButtonElement>(null);
+  useFocusOnClose(editing, opensEditing);
   const [refusal, setRefusal] = useState<string | null>(null);
   const intent = useIntent(kind, entity.id);
   const nav = useNavigate();
@@ -78,7 +80,7 @@ export function AboutTile<Body>({
       keys={
         <>
           {saving && <Saving state={saving} />}
-          <button type="button" className="gf-plus" aria-label={`edit ${kind}`} onClick={() => setEditing(true)}>
+          <button ref={opensEditing} type="button" className="gf-plus" aria-label={`edit ${kind}`} onClick={() => setEditing(true)}>
             edit
           </button>
         </>

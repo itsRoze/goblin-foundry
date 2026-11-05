@@ -145,6 +145,8 @@ test('a tap on start or trash opens the question on leave it, ⇧Tab reaches the
   await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
+  await expect(page.getByTestId('start-cancel')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('start-plain')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');

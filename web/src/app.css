@@ -80,6 +80,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 /* a git remote or a Checkout is a path, and a path is mono (DESIGN.md Typography): the
    face is what tells the value from the ink ones above and below it, not the hue */
 .gf-path { display: block; width: fit-content; max-width: 100%; font: var(--gf-t-meta); }
+/* underlined, because a Checkout two rows away is mono too and the hue alone is 1.29:1 against it */
+a.gf-path { text-decoration: underline; }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
@@ -172,6 +174,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv select { font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; max-width: 100%; }
 /* `anywhere`: git's reasons and a gone folder carry whole paths, which have no place to break on a phone */
 .gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; scroll-margin-block: var(--gf-s3); }
+/* under its field's input, past `.gf-field`'s 100px label and its gap */
+.gf-field-refusal { margin-left: calc(100px + var(--gf-s3)); }
 /* the same line as a refusal, with a way through it */
 .gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
 .gf-toggle { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }

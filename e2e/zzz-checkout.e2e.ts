@@ -41,6 +41,13 @@ test.describe("an App's Checkout", () => {
     await page.keyboard.type(typo);
     await page.keyboard.press('ControlOrMeta+Enter');
     await expect(form.getByRole('alert')).toHaveText(`checkout: no folder at ${typo}`);
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+
+    // `save` keeps the focus through a refusal, so `esc` is still the form's and the typed words are not walked off with
+    const save = form.getByRole('button', { name: /save/ });
+    await save.click();
+    await expect(form.getByRole('alert')).toHaveText(`checkout: no folder at ${typo}`);
+    await expect(save).toBeFocused();
 
     // a folder inside the repository comes back as the repository
     await field.fill(join(repo, 'src'));
@@ -48,6 +55,7 @@ test.describe("an App's Checkout", () => {
     await expect(form).toBeHidden();
     await expect(shown).toHaveText(repo);
     await expect(page.getByTestId('history').locator('li').first()).toContainText(`checkout set to ${repo}`);
+    await expect(page.getByRole('button', { name: 'edit app' })).toBeFocused();
 
     // the edit opens on what is recorded, and emptying it clears it
     await page.getByRole('button', { name: 'edit app' }).click();
@@ -56,7 +64,7 @@ test.describe("an App's Checkout", () => {
     await page.keyboard.press('ControlOrMeta+Enter');
     await expect(form).toBeHidden();
     await expect(shown).toHaveText('—');
-    await expect(page.getByTestId('history').locator('li').first()).toContainText('checkout cleared');
+    await expect(page.getByTestId('history').locator('li').first()).toContainText('checkout set and cleared');
 
     // and the edit left the remote and branch where they were
     await expect(fact('repository')).toHaveText('https://example.com/r');
