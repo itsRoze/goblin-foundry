@@ -7,7 +7,7 @@ const json = (method: string, body?: unknown) => ({ method, headers: { 'content-
 
 /**
  * Issue 06: the board's Filter, on the wire. `/api/tickets` and `/api/frontier`
- * read the same five parameters through the shared parser.
+ * read the same parameters through the shared parser.
  */
 describe('the filter parameters', () => {
   let h: Harness;
@@ -148,6 +148,69 @@ describe('the filter parameters', () => {
       await labelled();
       await req('/api/tickets/GF-1', { method: 'DELETE' });
       expect(await titles('/api/tickets?label=needs-info')).toEqual(['a research decision']);
+    });
+  });
+
+  describe('exclude_label: a queue with a kind of ticket kept out of it', () => {
+    const LIST_READS = ['/api/tickets', '/api/frontier'];
+
+    /** Four ready tickets: the frontier and the list can both show every one. */
+    async function queue() {
+      const app = await newApp('Subway Reader');
+      const project = await newProject('MVP', app.id);
+      const ready = (title: string, labels: string[], placed: Record<string, unknown> = { app_id: app.id }) => newTicket({ title, ...placed, simple: true, status: 'ready', labels });
+      await ready('build it', ['backend']);
+      await ready('grill the human', ['wayfinder:grilling', 'backend']);
+      await ready('prototype it', ['wayfinder:prototype'], { project_id: project.id });
+      await ready('unlabelled', []);
+      return { app, project };
+    }
+
+    test.each(LIST_READS)('%s leaves out a ticket carrying any named label', async (path) => {
+      await queue();
+      expect(await titles(`${path}?exclude_label=wayfinder:grilling`)).toEqual(['build it', 'prototype it', 'unlabelled']);
+      expect(await titles(`${path}?exclude_label=wayfinder:grilling,wayfinder:prototype`)).toEqual(['build it', 'unlabelled']);
+    });
+
+    test.each(LIST_READS)('%s ANDs it with label, app, project and q', async (path) => {
+      const { app, project } = await queue();
+      expect(await titles(`${path}?label=backend&exclude_label=wayfinder:grilling`)).toEqual(['build it']);
+      expect(await titles(`${path}?app_id=${app.id}&exclude_label=wayfinder:grilling,backend`)).toEqual(['prototype it', 'unlabelled']);
+      expect(await titles(`${path}?project_id=${project.id}&exclude_label=wayfinder:grilling`)).toEqual(['prototype it']);
+      expect(await titles(`${path}?project_id=${project.id}&exclude_label=wayfinder:prototype`)).toEqual([]);
+      expect(await titles(`${path}?q=it&exclude_label=backend`)).toEqual(['prototype it']);
+    });
+
+    test.each(LIST_READS)('%s: a name no ticket carries changes nothing, and neither does an empty set', async (path) => {
+      await queue();
+      const everything = ['build it', 'grill the human', 'prototype it', 'unlabelled'];
+      expect(await titles(`${path}?exclude_label=ready-for-human`)).toEqual(everything);
+      expect(await titles(`${path}?exclude_label=`)).toEqual(everything);
+    });
+
+    test('names are normalised as a ticket\'s are', async () => {
+      await queue();
+      expect(await titles('/api/frontier?exclude_label=%20WAYFINDER:Grilling%20,BACKEND')).toEqual(['prototype it', 'unlabelled']);
+    });
+
+    test('the same name on both sides leaves nothing: excluded wins', async () => {
+      await queue();
+      expect(await titles('/api/frontier?label=backend&exclude_label=backend')).toEqual([]);
+    });
+
+    test('a name the Piece refuses is a 422 on exclude_label, reported beside any other mistake', async () => {
+      const refusal = { path: ['exclude_label'], message: 'needs info is not one word: a label has no spaces or commas' };
+      expect(await issues('/api/frontier?exclude_label=needs%20info')).toEqual([refusal]);
+      expect(await issues('/api/tickets?status=nope&exclude_label=needs%20info')).toEqual([{ path: ['status'], message: 'nope is not a status' }, refusal]);
+    });
+
+    test('the frontier still answers only what is ready and unblocked: leaving a blocker out does not free what it blocks', async () => {
+      const { app } = await queue();
+      const blocker = await newTicket({ title: 'blocker', app_id: app.id, simple: true, status: 'ready', labels: ['wayfinder:grilling'] });
+      const blocked = await newTicket({ title: 'blocked', app_id: app.id, simple: true, status: 'ready' });
+      await newTicket({ title: 'not ready', app_id: app.id });
+      await post(`/api/tickets/${blocked.key}/dependencies`, { blocker: blocker.key });
+      expect(await titles('/api/frontier?exclude_label=wayfinder:grilling')).toEqual(['build it', 'prototype it', 'unlabelled']);
     });
   });
 

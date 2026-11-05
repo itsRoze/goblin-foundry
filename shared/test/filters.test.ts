@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_BOARD_STATUSES, parseTicketFilter, serialiseTicketFilter, type TicketFilter } from '../src/filters';
+import { DEFAULT_BOARD_STATUSES, FILTER_PARAMS, parseTicketFilter, parseTicketQuery, serialiseTicketFilter, serialiseTicketQuery, type TicketFilter, type TicketQuery } from '../src/filters';
 
 /** The one parser the API, the web and `goblin` share (issue 06). */
 describe('parseTicketFilter', () => {
@@ -94,6 +94,41 @@ describe('serialiseTicketFilter', () => {
     const written = serialiseTicketFilter(filter);
     expect(parseTicketFilter(new URLSearchParams(written))).toEqual({ ok: true, filter });
   });
+});
+
+describe('parseTicketQuery: the Filter and exclude_label', () => {
+  test('it reads the whole Filter, and exclude_label deduped and sorted', () => {
+    expect(parseTicketQuery({ app_id: '3', label: 'a', exclude_label: 'Z, y,z,' })).toEqual({ ok: true, query: { app_id: 3, label: ['a'], exclude_label: ['y', 'z'] } });
+  });
+
+  test('an empty value is unset', () => {
+    expect(parseTicketQuery({ exclude_label: ' , ' })).toEqual({ ok: true, query: {} });
+  });
+
+  test('it refuses once and names every mistake', () => {
+    expect(parseTicketQuery({ app_id: 'x', exclude_label: 'needs info' })).toEqual({
+      ok: false,
+      issues: [
+        { path: ['app_id'], message: 'expected an id or null' },
+        { path: ['exclude_label'], message: 'needs info is not one word: a label has no spaces or commas' },
+      ],
+    });
+  });
+
+  test('it serialises after the Filter, and a round trip is a fixed point', () => {
+    const query: TicketQuery = { app_id: 1, label: ['a'], q: 'rss', exclude_label: ['wayfinder:grilling', 'ready-for-human'] };
+    const written = serialiseTicketQuery(query);
+    expect(written).toBe('app_id=1&label=a&q=rss&exclude_label=ready-for-human,wayfinder:grilling');
+    expect(parseTicketQuery(new URLSearchParams(written))).toEqual({ ok: true, query: { ...query, exclude_label: ['ready-for-human', 'wayfinder:grilling'] } });
+    expect(serialiseTicketQuery({ exclude_label: [] })).toBe('');
+  });
+});
+
+test("the board's Filter does not take exclude_label: an address naming it is unfiltered, even with a name the Piece would refuse", () => {
+  // FILTER_PARAMS is what the board forwards raw when the address has a mistake in it
+  expect(FILTER_PARAMS).not.toContain('exclude_label');
+  expect(parseTicketFilter({ exclude_label: 'wayfinder:grilling' }, { slugs: true })).toEqual({ ok: true, filter: {} });
+  expect(parseTicketFilter({ exclude_label: 'needs info' }, { slugs: true })).toEqual({ ok: true, filter: {} });
 });
 
 test('the board default is the seven live statuses', () => {

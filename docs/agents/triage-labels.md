@@ -20,8 +20,13 @@ with `goblin ticket label remove <key> needs-info` once the question is answered
 or the human has taken the ticket. `goblin ticket list --label needs-info` is
 the queue for a role, and so is the board at `?label=needs-info`.
 
-The frontier still lists a `ready-for-human` ticket. When you work the
-frontier, pass over any ticket carrying it.
+The plain frontier still lists a `ready-for-human` ticket, so an agent working
+the frontier asks for it without them:
+
+    goblin frontier --exclude-label ready-for-human
+
+An unattended run names Wayfinder's human-only decisions as well; see "When a
+skill asks what to work on next" in `issue-tracker.md`.
 
 Two rules follow from the model rather than from taste:
 

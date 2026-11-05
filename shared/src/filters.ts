@@ -1,12 +1,13 @@
 /**
- * The board's Filter (GLOSSARY.md), as one parser and one serialiser: which
+ * The board's Filter (GLOSSARY.md), parsed and serialised in one place: which
  * Tickets are on the board, written in the address so a bookmarked URL is a
  * saved view. `GET /api/tickets`, `GET /api/frontier`, the web and `goblin`
  * all read and write it here, so a parameter cannot mean one thing in the
  * address bar and another on the wire.
  *
  * Wire names are the API's own — `app_id`, `project_id`, `status`, `label`,
- * `q` — and the browser uses them unchanged.
+ * `q` — and the browser uses them unchanged. The two endpoints and `goblin`
+ * read a little more than the Filter; see `TicketQuery`.
  */
 import { splitLabels, ticketLabels } from './labels';
 import { TICKET_STATUSES, TicketStatusSchema, type TicketStatus } from './tickets';
@@ -28,6 +29,21 @@ export interface FilterIssue {
 }
 
 export type ParsedFilter = { ok: true; filter: TicketFilter } | { ok: false; issues: FilterIssue[] };
+
+/**
+ * What the two list endpoints read: the board's Filter, and what a queue needs
+ * beyond it. The board does not take `exclude_label`, so it is not on
+ * `TicketFilter` or in `FILTER_PARAMS`: `parseTicketFilter` never sees it, and
+ * a bookmarked address that names it means nothing.
+ */
+export interface TicketQuery extends TicketFilter {
+  /** None of these Labels: a Ticket carrying any of them is left out. */
+  exclude_label?: string[];
+}
+
+export type ParsedQuery = { ok: true; query: TicketQuery } | { ok: false; issues: FilterIssue[] };
+
+export type QueryParam = FilterParam | 'exclude_label';
 
 /** Canonical parameter order: empties are omitted, so equal filters make equal bookmarks. */
 export const FILTER_PARAMS = ['app_id', 'project_id', 'status', 'label', 'q'] as const;
@@ -85,18 +101,35 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
     else if (written.length > 0) filter.status = canonicalStatuses(written as TicketStatus[]);
   }
 
-  const label = read(source, 'label');
-  if (label !== undefined) {
-    // the Piece's own judgement, so a name the board refuses is one a Ticket could never carry
-    const judged = ticketLabels.judge(splitLabels(label));
-    if (!judged.ok) issues.push({ path: ['label'], message: judged.refusal });
-    else if (judged.labels.length > 0) filter.label = canonicalLabels(judged.labels);
-  }
+  const label = readLabels(source, 'label', issues);
+  if (label) filter.label = label;
 
   const q = read(source, 'q')?.trim();
   if (q !== undefined && q !== '') filter.q = q;
 
   return issues.length > 0 ? { ok: false, issues } : { ok: true, filter };
+}
+
+/** The Filter's parser and the one parameter it does not read, refused together as the Filter's own are. */
+export function parseTicketQuery(source: FilterSource): ParsedQuery {
+  const parsed = parseTicketFilter(source);
+  const issues = parsed.ok ? [] : [...parsed.issues];
+  const exclude_label = readLabels(source, 'exclude_label', issues);
+  if (!parsed.ok || issues.length > 0) return { ok: false, issues };
+  return { ok: true, query: exclude_label ? { ...parsed.filter, exclude_label } : parsed.filter };
+}
+
+/** A set of names, or nothing when it is unset or refused; a refusal goes on `issues`. */
+function readLabels(source: FilterSource, name: Extract<QueryParam, 'label' | 'exclude_label'>, issues: FilterIssue[]): string[] | undefined {
+  const written = read(source, name);
+  if (written === undefined) return undefined;
+  // the Piece's own judgement, so a name refused here is one a Ticket could never carry
+  const judged = ticketLabels.judge(splitLabels(written));
+  if (!judged.ok) {
+    issues.push({ path: [name], message: judged.refusal });
+    return undefined;
+  }
+  return judged.labels.length > 0 ? canonicalLabels(judged.labels) : undefined;
 }
 
 /** Deduped and in lifecycle order, so the set is one string however it was typed. */
@@ -111,7 +144,16 @@ export const canonicalStatuses = (statuses: readonly TicketStatus[]): TicketStat
 export const canonicalLabels = (labels: readonly string[]): string[] => [...new Set(labels)].sort();
 
 /** The query string, without the `?`; empty when nothing is filtered. */
-export function serialiseTicketFilter(filter: TicketFilter): string {
+export const serialiseTicketFilter = (filter: TicketFilter): string => queryString(filterParams(filter));
+
+/** The same for a `TicketQuery`; `exclude_label` comes last, after the Filter's own order. */
+export function serialiseTicketQuery({ exclude_label, ...filter }: TicketQuery): string {
+  const params = filterParams(filter);
+  if (exclude_label && exclude_label.length > 0) params.set('exclude_label', canonicalLabels(exclude_label).join(','));
+  return queryString(params);
+}
+
+function filterParams(filter: TicketFilter): URLSearchParams {
   const params = new URLSearchParams();
   for (const name of ['app_id', 'project_id'] as const) {
     const value = filter[name];
@@ -120,6 +162,8 @@ export function serialiseTicketFilter(filter: TicketFilter): string {
   if (filter.status && filter.status.length > 0) params.set('status', canonicalStatuses(filter.status).join(','));
   if (filter.label && filter.label.length > 0) params.set('label', canonicalLabels(filter.label).join(','));
   if (filter.q !== undefined && filter.q.trim() !== '') params.set('q', filter.q.trim());
-  // a comma and a colon are legal unescaped in a query value, and `label=needs-info,wayfinder:research` is meant to be read
-  return params.toString().replaceAll('%2C', ',').replaceAll('%3A', ':');
+  return params;
 }
+
+// a comma and a colon are legal unescaped in a query value, and `label=needs-info,wayfinder:research` is meant to be read
+const queryString = (params: URLSearchParams): string => params.toString().replaceAll('%2C', ',').replaceAll('%3A', ':');

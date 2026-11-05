@@ -53,9 +53,11 @@ Each one moves tickets differently. Find the one you are in.
   spec's project, with its blockers (see "publish to the issue tracker"). If the
   approve guard refuses a create, the 422 names what is missing: create in
   `todo`, add it, then `approve`.
-- **implement-spec** works the ready frontier: for each ticket, `start` it
-  (`ready → building`), build it, open the PR, then follow "When you open a PR
-  for a ticket". Its implementers each work in a worktree; see below.
+- **implement-spec** works the ready frontier, without its human-only tickets
+  when unattended (see "When a skill asks what to work on next"): for each
+  ticket, `start` it (`ready → building`), build it, open the PR, then follow
+  "When you open a PR for a ticket". Its implementers each work in a worktree;
+  see below.
 
 A bare `goblin ticket start` is still the agent's move, in every workflow here:
 the workflow brings its own worktrees, and a bare `start` only changes the
@@ -205,6 +207,17 @@ new ticket reuses one rather than inventing a near-twin.
 
 `goblin frontier` — the ready tickets with nothing in their way, stalest first,
 as the same summary rows. That is the queue, and it is the only queue.
+
+An unattended run keeps human-only tickets out of it by naming their labels:
+
+    goblin frontier --exclude-label wayfinder:grilling,wayfinder:prototype,ready-for-human
+
+A `ready-for-human` ticket waits for the human by definition, and a
+`wayfinder:grilling` or `wayfinder:prototype` decision only resolves in a live
+exchange with them. `--exclude-label` leaves out a ticket carrying any of the
+names, combines with the other filters, and works on `goblin ticket list` too.
+A name no ticket carries changes nothing, so a misspelt one lets those tickets
+through without a word: copy the names from here.
 
 ## Specs and designs
 

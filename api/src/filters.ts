@@ -1,19 +1,20 @@
 /**
- * The board's Filter, turned into a `where` (issue 06). The parsing and the
- * canonical shape belong to `@goblin/shared` — one grammar for the address
- * bar, the wire and `goblin` — and what is here is only the SQL half.
+ * A list read's query, the board's Filter among it, turned into a `where`
+ * (issue 06). The parsing and the canonical shape belong to `@goblin/shared` —
+ * one grammar for the address bar, the wire and `goblin` — and what is here is
+ * only the SQL half.
  */
-import { eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
-import { parseTicketFilter, type TicketFilter } from '@goblin/shared';
+import { eq, inArray, isNull, not, or, sql, type SQL } from 'drizzle-orm';
+import { parseTicketQuery, type TicketQuery } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { unprocessable } from './problems';
 import { ticket as ticketTable, ticketLabel } from './schema';
 
-/** The filter these parameters describe, or the 422 the handler returns instead. */
-export function readFilter(c: Context): TicketFilter | Response {
-  const parsed = parseTicketFilter(c.req.query());
-  return parsed.ok ? parsed.filter : unprocessable(c, parsed.issues);
+/** The query these parameters describe, or the 422 the handler returns instead. */
+export function readQuery(c: Context): TicketQuery | Response {
+  const parsed = parseTicketQuery(c.req.query());
+  return parsed.ok ? parsed.query : unprocessable(c, parsed.issues);
 }
 
 /**
@@ -27,21 +28,25 @@ const contains = (column: SQLiteColumn, text: string): SQL => {
   return sql`${column} LIKE ${pattern} ESCAPE '\\'`;
 };
 
+/** A Ticket carrying any of these names. They arrive normalised, which is how they are stored. */
+const carrying = (names: string[]): SQL => sql`${ticketTable.id} IN (SELECT ${ticketLabel.ticket_id} FROM ${ticketLabel} WHERE ${inArray(ticketLabel.name, names)})`;
+
 /** Every parameter ANDs with the others; a project outside the chosen app simply yields nothing. */
-export function ticketWhere(filter: TicketFilter): SQL[] {
+export function ticketWhere(query: TicketQuery): SQL[] {
   const conditions: SQL[] = [];
   for (const [name, column] of [
     ['app_id', ticketTable.app_id],
     ['project_id', ticketTable.project_id],
   ] as const) {
-    const value = filter[name];
+    const value = query[name];
     if (value === undefined) continue;
     conditions.push(value === null ? isNull(column) : eq(column, value));
   }
-  if (filter.status) conditions.push(inArray(ticketTable.status, filter.status));
-  // any of them, as a status set is: the names arrive normalised, which is how they are stored
-  if (filter.label) conditions.push(sql`${ticketTable.id} IN (SELECT ${ticketLabel.ticket_id} FROM ${ticketLabel} WHERE ${inArray(ticketLabel.name, filter.label)})`);
+  if (query.status) conditions.push(inArray(ticketTable.status, query.status));
+  // any of them, as a status set is
+  if (query.label) conditions.push(carrying(query.label));
+  if (query.exclude_label) conditions.push(not(carrying(query.exclude_label)));
   // one condition, so a `q` beside an `app_id` reads as "in this app *and* matching", never as an alternative
-  if (filter.q !== undefined) conditions.push(or(contains(ticketTable.title, filter.q), contains(ticketTable.description, filter.q)) as SQL);
+  if (query.q !== undefined) conditions.push(or(contains(ticketTable.title, query.q), contains(ticketTable.description, query.q)) as SQL);
   return conditions;
 }

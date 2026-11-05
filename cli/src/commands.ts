@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { FILTER_PARAMS, lifecycle, parseTicketFilter, serialiseTicketFilter, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type Ticket } from '@goblin/shared';
+import { lifecycle, parseTicketQuery, serialiseTicketQuery, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type QueryParam, type Ticket } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
@@ -55,27 +55,28 @@ const query = (path: string, params: Record<string, string | undefined>) => {
   return pairs.length === 0 ? path : `${path}?${new URLSearchParams(pairs)}`;
 };
 
-/** A filter value on the wire: an id, or the literal `null` the list endpoints read as "has none". */
+/** A filter value on the wire: as written, or the literal `null` the list endpoints read as "has none". */
 const filter = (value: Value | undefined) => (value === undefined ? undefined : value === null ? 'null' : String(value));
 
 /** Which flag a filter parameter arrived on, so a refusal names what was typed rather than a wire name. */
-const FILTER_FLAG: Record<(typeof FILTER_PARAMS)[number], string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', q: 'q' };
+const FILTER_FLAG: Record<QueryParam, string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', exclude_label: 'exclude-label', q: 'q' };
 
 /**
- * The board's Filter (issue 06), read and written by the one parser in
+ * What a list read narrows by (issue 06), read and written by the parser in
  * `shared`. The CLI checks it before sending because nothing has left yet: a
  * mistyped status is a usage error here, not a round trip.
  */
 function filterQuery(args: Args): string {
-  const parsed = parseTicketFilter({
+  const parsed = parseTicketQuery({
     app_id: filter(args.values.app_id),
     project_id: filter(args.values.project_id),
-    status: args.values.status === undefined ? undefined : String(args.values.status),
-    label: args.values.label === undefined ? undefined : String(args.values.label),
-    q: args.values.q === undefined ? undefined : String(args.values.q),
+    status: filter(args.values.status),
+    label: filter(args.values.label),
+    exclude_label: filter(args.values.exclude_label),
+    q: filter(args.values.q),
   });
   if (!parsed.ok) throw new UsageError(parsed.issues.map((i) => `--${FILTER_FLAG[i.path[0] as keyof typeof FILTER_FLAG]}: ${i.message}`).join(' · '));
-  const qs = serialiseTicketFilter(parsed.filter);
+  const qs = serialiseTicketQuery(parsed.query);
   return qs === '' ? '' : `?${qs}`;
 }
 
@@ -86,6 +87,7 @@ const PROJECT_FILTER: Flag = { name: 'project', kind: 'id', field: 'project_id',
 const TEXT_FILTER: Flag = { name: 'q', kind: 'string', value: '<text>', summary: 'only the ones whose title or description contains this' };
 const STATUS_FILTER: Flag = { name: 'status', kind: 'string', value: '<a,b>', summary: 'only these statuses, comma-separated (default: every one)' };
 const LABEL_FILTER: Flag = { name: 'label', kind: 'string', value: '<a,b>', summary: 'only the ones carrying any of these labels, comma-separated' };
+const EXCLUDE_LABEL_FILTER: Flag = { name: 'exclude-label', kind: 'string', value: '<a,b>', summary: 'leave out the ones carrying any of these labels, comma-separated' };
 
 /** A long field: written inline, read from a file, or piped in. Descriptions and designs are pasted, not typed. */
 const TEXT = '<text|@path|->';
@@ -338,7 +340,7 @@ export const NOUNS: Noun[] = [
       {
         verb: 'list',
         summary: 'every live ticket, without its description or design (`ticket show` has them)',
-        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, TEXT_FILTER],
+        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, EXCLUDE_LABEL_FILTER, TEXT_FILTER],
         run: ({ args, api }) => api.get(`/api/tickets${filterQuery(args)}`),
       },
       {
@@ -384,7 +386,7 @@ export const NOUNS: Noun[] = [
     summary: 'the ready tickets with nothing in their way, stalest first',
     fallback: 'show',
     // no `--status`: the frontier is `ready` by definition, and the endpoint says so
-    commands: [{ verb: 'show', summary: 'the ready frontier, as `ticket list` rows', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
+    commands: [{ verb: 'show', summary: 'the ready frontier, as `ticket list` rows', flags: [APP_FILTER, PROJECT_FILTER, LABEL_FILTER, EXCLUDE_LABEL_FILTER, TEXT_FILTER], run: ({ args, api }) => api.get(`/api/frontier${filterQuery(args)}`) }],
   },
   {
     name: 'trash',
