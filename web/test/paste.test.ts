@@ -42,9 +42,10 @@ describe('a paste keeps every word', () => {
     expect(stored('inline', '```a```2) b')).toBe('`a 2) b`');
   });
 
-  test('when even a code run reads back without its words, the bare words go in', () => {
+  test('when even a code run reads back without its words, that block goes in as its bare words, and only that block', () => {
     expect(canonical('inline', '`- [ ] # a`')).toBe('\\`');
-    expect(stored('inline', '- [ ] # a\n\n```b```')).toBe('a b');
+    expect(stored('inline', '**one**\n\n`- [ ] a` | b |\n|---|---|')).toBe('**one**\n\na b');
+    expect(stored('inline', '- [ ] # a\n\n```b```')).toBe('a\n\n`b`');
   });
 
   test('a paste with no words in it, in the middle of a word, inserts nothing', () => {
@@ -93,9 +94,37 @@ describe('a paste keeps every word', () => {
     expect(stored('block', '| &secret; |\n|---|')).toContain('&secret;');
   });
 
+  test('a word the same as a list number, a box or a URL is a word, and does not cost the paste its marks', () => {
+    expect(stored('block', 'Version 2 notes\n\n1. one\n2. two')).toBe('Version 2 notes\n\n1. one\n2. two');
+    expect(stored('block', 'Go to https://x.y/?x=1\n\n- [x] checked it')).toBe('Go to [https://x.y/?x=1](https://x.y/?x=1)\n\n- [x] checked it');
+    expect(stored('inline', 'Go to https://x.y/?x=1\n\n- [x] checked it')).toBe('Go to [https://x.y/?x=1](https://x.y/?x=1)\n\nchecked it');
+    expect(stored('block', 'https://a.b/c is it\n\n[https://a.b/c](https://a.b/c)')).toBe('[https://a.b/c](https://a.b/c) is it\n\n[https://a.b/c](https://a.b/c)');
+    expect(stored('block', '1 more\n\n1. a\n2. b\n\n| 1 |\n|---|')).toContain('```\n| 1 |\n|---|\n```');
+  });
+
+  test('a link holds its URL after all of its words, however they are marked', () => {
+    expect(stored('block', 'See [the **new** guide](http://x.y/guide).')).toBe('See [the **new** guide](http://x.y/guide).');
+    expect(stored('inline', 'See [the **new** guide](http://x.y/guide).')).toBe('See [the **new** guide](http://x.y/guide).');
+  });
+
+  test('a list that starts again from 1 is a list in order, where a number out of order is a word', () => {
+    expect(stored('block', '3. a\n4. b\n\n1. c\n2. d')).toBe('3. a\n4. b\n5. c\n6. d');
+    expect(stored('block', '2024. a\n\n1. b')).toBe('2024. a\n2025. b');
+    expect(stored('block', '3. a\n1776. b')).toBe('```\n3. a\n1776. b\n```');
+  });
+
+  test('a heading an inline field reads and cannot hold does not count as holding its words', () => {
+    expect(canonical('inline', '`a` b\n===')).toBe('');
+    expect(stored('inline', '> ```a``` b\n===')).toBe('`>  a  b`\n\n`===`');
+  });
+
+  test('a flag and a symbol past ASCII are words', () => {
+    expect(stored('block', '| 🇺🇸 | → | ✓ | ★ | € |\n|---|---|---|---|---|')).toBe('```\n| 🇺🇸 | → | ✓ | ★ | € |\n|---|---|---|---|---|\n```');
+  });
+
   test('an emoji is a word', () => {
     expect(stored('block', '| 😀 | 🎉 |\n|---|---|')).toContain('😀');
-    expect(stored('inline', '- [ ] # a 😀\n\n```b 🎉```')).toBe('a 😀 b 🎉');
+    expect(stored('inline', '- [ ] # a 😀\n\n```b 🎉```')).toBe('a 😀\n\n`b 🎉`');
   });
 
   test('a word held in a URL does not vouch for the same word lost in a table', () => {

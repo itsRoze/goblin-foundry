@@ -95,11 +95,14 @@ const OWN_SLICE = 'data-pm-slice';
 /**
  * Text that is nothing but a URL. Pasted over a selection it means "make this a
  * link", which the link extension already does — so this field's own paste
- * handling has to get out of the way rather than swallow it as markdown.
+ * handling has to get out of the way rather than swallow it as markdown. The
+ * extension takes the text only if it is the URL to the last character, so text
+ * with a space or a tab around it is not one: left to ProseMirror, `\tw11. ` went
+ * in as an indented block of code and was gone on the next read (GF-106).
  */
 function isBareUrl(text: string): boolean {
   const value = text.trim();
-  if (value === '' || /\s/.test(value)) return false;
+  if (value === '' || value !== text || /\s/.test(value)) return false;
   try {
     return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`).hostname.includes('.');
   } catch {

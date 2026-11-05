@@ -26,6 +26,8 @@ const ROWS: [Surface, string, Exclude<Place, 'over all'>, string][] = [
   ['app', '', 'start', '```\n<secret>\n1. beta\n```\n[secret]: #'],
   ['app', 'hello world', 'over part', '> - # one\n\ntwo  \nthree'],
   ['ticket', '', 'start', '1. a\n2. b\n\n| 1 | 2 |\n|---|---|'],
+  ['app', '', 'start', '| 🇺🇸 | → | ✓ | ★ | € |\n|---|---|---|---|---|'],
+  ['app', 'hello world', 'over part', '\tone. '],
 ];
 
 async function surfaceHolding(page: Page, surface: Surface, body: string) {

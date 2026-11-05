@@ -1,6 +1,6 @@
-import type { JSONContent } from '@tiptap/core';
+import { getSchema, type JSONContent } from '@tiptap/core';
 import type { Schema } from '@tiptap/pm/model';
-import { flattenBlocks, managerFor, toBlocks, toDoc, toMarkdown, type EditorShape } from './markdown';
+import { extensionsFor, flattenBlocks, managerFor, toBlocks, toDoc, toMarkdown, type EditorShape } from './markdown';
 
 /**
  * What a paste inserts, which is the one place markdown comes in that must keep every word of
@@ -55,7 +55,8 @@ const asCodeRuns = (text: string): JSONContent[] =>
 
 const asWritten = (shape: EditorShape, text: string): JSONContent[] => (shape === 'block' && asCodeBlock(text)) || asCodeRuns(text);
 
-const wordsIn = (text: string | null | undefined): string[] => text?.match(/[\p{L}\p{M}\p{N}\p{Extended_Pictographic}]+/gu) ?? [];
+/** A word is a run of letters, numbers, pictures, flags and any symbol past ASCII, so `→`, `✓` and `€` are words where `|` and `*` are markup. */
+const wordsIn = (text: string | null | undefined): string[] => text?.match(/(?:[\p{L}\p{M}\p{N}\p{Extended_Pictographic}\p{RI}]|(?![\0-\x7f])\p{S})+/gu) ?? [];
 
 const counted = (words: string[]): Map<string, number> => {
   const counts = new Map<string, number>();
@@ -75,12 +76,12 @@ const isAutolink = (text: string | undefined, href: string): boolean => {
 
 const linkOf = (node?: JSONContent) => node?.marks?.find(({ type }) => type === 'link')?.attrs;
 
-/** Where a document holds a word: its text, a link's URL and title once however many runs the link has, a fence's language, and the numbers of a list. A list from 1 shows only its order, which the pasted side leaves out too (see `wordsOfTheWriting`). */
+/** Where a document holds a word: its text, a link's URL and title once however many runs the link has and after the last of them, as it is written, a fence's language, and the numbers of a list. A list from 1 shows only its order, which the pasted side leaves out too (see `markerSpans`). */
 const wordsHeld = (nodes: JSONContent[]): string[] =>
   nodes.flatMap((node, at) => {
     const link = linkOf(node);
-    const before = linkOf(nodes[at - 1]);
-    const sameLink = link && before && link.href === before.href && link.title === before.title;
+    const next = linkOf(nodes[at + 1]);
+    const sameLink = link && next && link.href === next.href && link.title === next.title;
     const ofLink = link && !sameLink ? [isAutolink(node.text, link.href) ? null : link.href, link.title] : [];
     const start = (node.attrs?.start as number | undefined) ?? 1;
     const inside = node.type === 'orderedList' && start !== 1 ? (node.content ?? []).flatMap((item, number) => [String(start + number), ...wordsHeld([item])]) : wordsHeld(node.content ?? []);
@@ -89,20 +90,81 @@ const wordsHeld = (nodes: JSONContent[]): string[] =>
 
 type Token = { type: string; raw?: string; text?: string; href?: string; start?: number | ''; ordered?: boolean; checked?: boolean; items?: Token[]; tokens?: Token[]; nestedTokens?: Token[] };
 
-/** Read from what the parser found and not from how a line looks, so a `1.` in a fence or in a paragraph stays a word: the order of a list from 1, a task's box, and the second writing of an autolink's URL. */
-const wordsOfTheWriting = (tokens: Token[], inItem = false): string[] =>
-  tokens.flatMap((token, at) => {
-    const own: string[] = [];
-    // a list that opens a list item is one the schema has no place for, and it comes back as text, number and all
-    if (token.type === 'list' && token.ordered && token.start === 1 && !(inItem && at === 0))
-      token.items?.forEach((item, index) => {
-        const number = /^\s*(\d+)/.exec(item.raw ?? '')?.[1];
-        if (number && (Number(number) === 1 || Number(number) === index + 1)) own.push(number);
-      });
-    if (token.type === 'taskItem' && token.checked) own.push('x');
-    if (token.type === 'link' && token.raw?.startsWith('[') && isAutolink(token.text, token.href ?? '')) own.push(...wordsIn(token.href));
-    return [...own, ...wordsOfTheWriting(token.items ?? []), ...wordsOfTheWriting(token.tokens ?? [], token.type === 'list_item'), ...wordsOfTheWriting(token.nestedTokens ?? [])];
-  });
+let lastLexed: { markdown: string; tokens: Token[] } | null = null;
+
+/** marked's tokens for `markdown`, lexed once for the three questions a paste asks of the same text. The tokenizers are global, so every shape lexes alike. */
+function lexed(markdown: string): Token[] {
+  if (lastLexed?.markdown !== markdown) lastLexed = { markdown, tokens: managerFor('block').instance.lexer(markdown) as Token[] };
+  return lastLexed.tokens;
+}
+
+/** Where a token's raw is in the paste, from `from` on. A nested token's lines have lost their indent and quote markers, so a line may have them back. Matched by hand: a raw is as long as the paste, and a pattern that long is one V8 will not compile. */
+function locate(written: string, raw: string, from: number): [number, number] | null {
+  const [first = '', ...rest] = raw.split('\n').map((line) => line.replace(/^[ \t>]+/, ''));
+  // `indexOf('')` never gives -1, so the bound is what ends an empty first line's search
+  for (let start = written.indexOf(first, from); start !== -1; start = start < written.length ? written.indexOf(first, start + 1) : -1) {
+    let end = start + first.length;
+    const matches = rest.every((line) => {
+      if (written[end] !== '\n') return false;
+      end += 1;
+      while (written[end] === ' ' || written[end] === '\t' || written[end] === '>') end += 1;
+      if (!written.startsWith(line, end)) return false;
+      end += line.length;
+      return true;
+    });
+    if (matches) return [start, end];
+  }
+  return null;
+}
+
+/**
+ * Where the paste writes what a document leaves out: the order of a list, a task's box, and the second writing of an
+ * autolink's URL. Read from what the parser found and found at its own place, not from how a line looks or from the
+ * first word that matches, so a `1.` in a fence and the `2` of `Version 2` above a list both stay words.
+ */
+function markerSpans(written: string, tokens: Token[]): [number, number][] {
+  const spans: [number, number][] = [];
+  let cursor = 0;
+  const walk = (tokens: Token[], inItem: boolean) =>
+    tokens.forEach((token, at) => {
+      if (token.type === 'taskItem') {
+        // its raw is empty: the box is the next one written
+        const box = /[-*+][ \t]+\[([ x])\]/g;
+        box.lastIndex = cursor;
+        const found = box.exec(written);
+        if (found) {
+          cursor = found.index + found[0].length;
+          if (found[1] === 'x') spans.push([cursor - 2, cursor - 1]);
+        }
+      }
+      const place = token.raw ? locate(written, token.raw, cursor) : null;
+      if (place) cursor = place[0];
+      // a list that opens a list item is one the schema has no place for, and it comes back as text, number and all
+      if (place && token.type === 'list' && token.ordered && !(inItem && at === 0)) {
+        let previous = Number.NaN;
+        for (const item of token.items ?? []) {
+          const where = item.raw && locate(written, item.raw, cursor);
+          const number = where && /^\d+/.exec(written.slice(where[0]));
+          if (!where || !number) break;
+          // a number in order says only that, where `1776` after `1984` says more
+          if (Number(number[0]) === 1 || Number(number[0]) === previous + 1) spans.push([where[0], where[0] + number[0].length]);
+          previous = Number(number[0]);
+          cursor = where[0] + number[0].length;
+          walk(item.tokens ?? [], true);
+          cursor = Math.max(cursor, where[1]);
+        }
+      } else if (place && token.type === 'checkbox') {
+        // marked's own box, in a list it read before a task list could
+        if (token.checked) spans.push([place[0] + 1, place[0] + 2]);
+      } else if (place && token.type === 'link' && token.raw?.startsWith('[') && isAutolink(token.text, token.href ?? '')) {
+        const target = written.indexOf('](', place[0]);
+        if (target !== -1 && target < place[1]) spans.push([target, /[\s)]|$/.exec(written.slice(target + 2))!.index + target + 2]);
+      } else walk([...(token.items ?? []), ...(token.tokens ?? []), ...(token.nestedTokens ?? [])], token.type === 'list_item' || token.type === 'taskItem');
+      if (place) cursor = Math.max(cursor, place[1]);
+    });
+  walk(tokens, false);
+  return spans;
+}
 
 /** A link through a definition, `[a][g]` or `[a]`, holds the definition's URL once for every use where the paste wrote it once, and its label nowhere. */
 const throughADefinition = (tokens: Token[]): boolean =>
@@ -112,17 +174,27 @@ const throughADefinition = (tokens: Token[]): boolean =>
 const withTheBoxLowered = (text: string) => text.replace(/^([ \t>]*[-*+][ \t]+)\[X\]/gm, '$1[x]');
 
 /** The words in a document as the next read of it finds them, since that is all a save keeps: the parser drops a table or a definition it reads back, whatever the document held. */
-const wordsReadBack = (shape: EditorShape, doc: JSONContent): string[] => wordsHeld(toDoc(shape, toMarkdown(shape, doc)).content ?? []);
+const wordsReadBack = (shape: EditorShape, doc: JSONContent): string[] => wordsHeld(onlyWhatTheFieldHolds(shape, toDoc(shape, toMarkdown(shape, doc)).content ?? []));
+
+const nodeNames = new Map<EditorShape, Set<string>>();
+
+/** The parser reads `a\n===` as a heading in an inline field too, which has no heading, and the next save writes nothing of it. */
+function onlyWhatTheFieldHolds(shape: EditorShape, nodes: JSONContent[]): JSONContent[] {
+  if (!nodeNames.has(shape)) nodeNames.set(shape, new Set(Object.keys(getSchema(extensionsFor(shape)).nodes)));
+  const names = nodeNames.get(shape)!;
+  return nodes.filter(({ type }) => type && names.has(type)).map((node) => (node.content ? { ...node, content: onlyWhatTheFieldHolds(shape, node.content) } : node));
+}
 
 /** The words of a paste a reader would call its words, in the order it wrote them. */
 function wordsPasted(shape: EditorShape, pasted: string): string[] {
-  const written = withTheBoxLowered(pasted);
-  const spare = counted(wordsOfTheWriting(managerFor(shape).instance.lexer(written) as Token[]));
-  return wordsIn(written).filter((word) => {
-    const left = spare.get(word) ?? 0;
-    spare.set(word, left - 1);
-    return left <= 0;
-  });
+  const written = withTheBoxLowered(pasted.replace(/\r\n?/g, '\n'));
+  let words = '';
+  let from = 0;
+  for (const [start, end] of markerSpans(written, lexed(written)).sort(([a], [b]) => a - b)) {
+    words += `${written.slice(from, start)} `;
+    from = Math.max(from, end);
+  }
+  return wordsIn(words + written.slice(from));
 }
 
 function holdsInOrder(held: string[], words: string[]): boolean {
@@ -132,59 +204,66 @@ function holdsInOrder(held: string[], words: string[]): boolean {
 }
 
 /**
- * Whether `after` holds, read back, every word of `before` and of the paste. Counted, not looked up, and the paste's
- * in the order it wrote them: a word in a URL or in a fence does not vouch for the same word lost in a table, and a
- * link used twice holds its definition's URL twice where it was pasted once.
+ * Whether `held`, a document's words read back, holds every word of `host` and of `pasted`. Counted, not looked up,
+ * and the paste's in the order it wrote them: a word in a URL or in a fence does not vouch for the same word lost in
+ * a table, and a link used twice holds its definition's URL twice where it was pasted once.
  */
-export function keepsEveryWord(shape: EditorShape, before: JSONContent, after: JSONContent, pasted: string): boolean {
-  const heldAfter = wordsReadBack(shape, after);
-  const words = wordsPasted(shape, pasted);
-  const held = counted(heldAfter);
-  const enough = [...wordsReadBack(shape, before), ...words].every((word) => {
-    const left = held.get(word) ?? 0;
-    held.set(word, left - 1);
-    return left > 0;
+function holdsTheWords(held: string[], host: string[], pasted: string[]): boolean {
+  const left = counted(held);
+  const enough = [...host, ...pasted].every((word) => {
+    const times = left.get(word) ?? 0;
+    left.set(word, times - 1);
+    return times > 0;
   });
-  return enough && holdsInOrder(heldAfter, words);
+  return enough && holdsInOrder(held, pasted);
+}
+
+/** Whether `after` holds, read back, every word of `before` and of the paste. */
+export function keepsEveryWord(shape: EditorShape, before: JSONContent, after: JSONContent, pasted: string): boolean {
+  return holdsTheWords(wordsReadBack(shape, after), wordsReadBack(shape, before), wordsPasted(shape, pasted));
 }
 
 const docOf = (content: JSONContent[]): JSONContent => ({ type: 'doc', content });
+
+/** The words and nothing else, which no parser can misread. */
+const asBareWords = (text: string): JSONContent[] => (wordsIn(text).length > 0 ? [{ type: 'paragraph', content: [{ type: 'text', text: wordsIn(text).join(' ') }] }] : []);
 
 /**
  * What a paste could insert, the richest first. Each gives up a little of the markdown to keep
  * the words: the parse as a stored body gets it, then an inline field's markers all taken off,
  * then a top-level block at a time, with only the blocks that lose words going in as written
- * (a table, a definition), then all of it as written, and last the bare words, which no parser
- * can misread.
+ * (a table, a definition) and only a block that loses them even so going in as its bare words,
+ * then all of it as written.
  */
 function pasteReadings(schema: Schema, shape: EditorShape, text: string): (() => JSONContent[])[] {
   const flat = shape === 'inline' ? flattenedFully(text.replace(/\r\n?/g, '\n')) : text;
   const parse = (markdown: string) => {
     // read apart, a use and its definition are text and a block of code, which keep every word
-    if (throughADefinition(managerFor(shape).instance.lexer(markdown) as Token[])) throw new Error('a link through a definition');
+    if (throughADefinition(lexed(markdown))) throw new Error('a link through a definition');
     return toBlocks(shape, markdown).flatMap((block) => nodesTheSchemaHolds(schema, block));
   };
   const readBlock = (raw: string): JSONContent[] => {
-    try {
-      const blocks = parse(raw);
-      if (keepsEveryWord(shape, docOf([]), docOf(blocks), raw)) return blocks;
-    } catch {
-      // the parser or the serialiser could not read it, which is one more way to lose it
+    const words = wordsPasted(shape, raw);
+    for (const reading of [() => parse(shape === 'inline' ? flattenedFully(raw) : raw), () => asWritten(shape, raw)]) {
+      try {
+        const blocks = reading();
+        if (holdsTheWords(wordsReadBack(shape, docOf(blocks)), [], words)) return blocks;
+      } catch {
+        // the parser or the serialiser could not read it, which is one more way to lose it
+      }
     }
-    return asWritten(shape, raw);
+    // the parser can misread even a code run: `` `- [ ] a` `` in an inline field reads back as a lone backtick
+    return asBareWords(raw);
   };
   return [
     () => parse(text),
     ...(flat === text ? [] : [() => parse(flat)]),
     () =>
-      managerFor(shape)
-        .instance.lexer(flat)
+      lexed(text.replace(/\r\n?/g, '\n'))
         .filter(({ type }) => type !== 'space')
-        .flatMap(({ raw }) => readBlock(raw.trimEnd())),
+        .flatMap(({ raw = '' }) => readBlock(raw.trimEnd())),
     () => asWritten(shape, text),
     () => asCodeRuns(text),
-    // the parser can misread even a code run: `` `- [ ] a` `` in an inline field reads back as a lone backtick
-    () => (wordsIn(text).length > 0 ? [{ type: 'paragraph', content: [{ type: 'text', text: wordsIn(text).join(' ') }] }] : []),
   ];
 }
 
@@ -192,18 +271,29 @@ function pasteReadings(schema: Schema, shape: EditorShape, text: string): (() =>
  * What to insert for a paste: the first reading of it that keeps every word once it is in the document and read
  * back, or `null` if none does. `tryInsert` says what the document would be, and `null` if the insert refuses.
  * The check is on that document, not the parse: where the caret is decides what fits, and the host's own words
- * count too, since a pasted `<!--` can swallow what follows it.
+ * count too, since a pasted `<!--` can swallow what follows it. The read is what costs, so each reading is read
+ * once, in place, and the host's words are read once.
  */
 export function chooseToPaste(schema: Schema, shape: EditorShape, text: string, tryInsert: (blocks: JSONContent[]) => JSONContent | null): JSONContent[] | null {
   // marked's tokenizers are global and a block field's change how an inline field reads, so judge by the read a later view will make
   managerFor('block');
+  const words = wordsPasted(shape, text);
+  const hosts = new Map<boolean, string[] | null>();
+  // the same insert with nothing in it, so a caret in the middle of a word splits that word on both sides of the comparison
+  const hostWords = (pastesAny: boolean) => {
+    if (!hosts.has(pastesAny)) {
+      const before = tryInsert(pastesAny ? [{ type: 'paragraph' }] : []);
+      hosts.set(pastesAny, before && wordsReadBack(shape, before));
+    }
+    return hosts.get(pastesAny)!;
+  };
   for (const reading of pasteReadings(schema, shape, text)) {
     try {
       const blocks = reading();
-      // the same insert with nothing in it, so a caret in the middle of a word splits that word on both sides of the comparison
-      const before = tryInsert(blocks.length > 0 ? [{ type: 'paragraph' }] : []);
+      if (blocks.length === 0 && words.length > 0) continue;
       const after = tryInsert(blocks);
-      if (before !== null && after !== null && keepsEveryWord(shape, before, after, text)) return blocks;
+      const host = hostWords(blocks.length > 0);
+      if (after !== null && host !== null && holdsTheWords(wordsReadBack(shape, after), host, words)) return blocks;
     } catch {
       // a reading the parser or the serialiser dies on is a reading that loses the words: on to the next
     }

@@ -31,7 +31,11 @@ const FRAGMENTS = [
   // numbers that say more than a list's order
   '2024. $', '3. $\n4. $', '1984. $\n1776. $', '1. $\n3. $', '1. $\n1. $\n1. $',
   // words that are not letters
-  '😀', '| 😀 | 🎉 |\n|---|---|', '# 😀\n\n| 🎉 |\n|---|',
+  '😀', '| 😀 | 🎉 |\n|---|---|', '# 😀\n\n| 🎉 |\n|---|', '| 🇺🇸 | → | ✓ | ★ | € |\n|---|---|---|---|---|', '$ → $ ✓',
+  // real words the same as a list number, a box or a URL's words, which a check that takes off the first such word takes off in the wrong place
+  '$ 1 $\n\n1. $\n2. $', '$ 2\n\n1. $\n2. $', 'x $\n\n- [x] $', '$ x\n- [x] $', 'http://$.y $\n\n[http://$.y](http://$.y)', '$ 1\n1. $', '3. $\n4. $\n\n1. $\n2. $',
+  // a link whose words are marked differently
+  '[$ **$** $](http://$.y)', '[*$* $ `$`](http://$.y)',
 ] as const;
 
 /** Where a word is held twice or a line reads differently once flattened: each row here is how a word has been lost before. */
@@ -63,6 +67,14 @@ const LOST_BEFORE = [
   '- 1.\n\n| 1 |\n|---|',
   '&lt;a href="http://w1.y"&gt;w2&lt;/a&gt;\n\n| w2 |\n|---|',
   '&lt;a href="http://w1.y"&gt;w2&lt;/a&gt;\n\n| lt |\n|---|',
+  // words that repeat a marker's, where the paste's words are real ones
+  'Version 2 notes\n\n1. one\n2. two',
+  'Go to https://example.com/?x=1\n\n- [x] checked it',
+  'See [the **new** guide](https://example.com/guide).',
+  '1 more\n\n1. a\n2. b\n\n| 1 |\n|---|',
+  'x\n\n- [x] a\n\n| x |\n|---|',
+  'https://a.b/c\n\n[https://a.b/c](https://a.b/c)\n\n| a | b | c |\n|---|---|---|',
+  '### Describe the bug\n\nAfter 2 days the cursor jumps to row 1.\n\n1. Go to https://example.com/board?x=1\n2. Press `j`\n\n- [x] I searched the issues\n- [ ] I can reproduce it on `main`\n\nSee [the **new** guide](https://example.com/guide) and https://example.com/docs.',
 ];
 
 const SEPARATORS = ['', '\n', '\n\n', ' '];
@@ -82,11 +94,11 @@ const POSITIONS: Position[] = (['block', 'inline'] as const).flatMap((shape) =>
   HOSTS[shape].flatMap((host) => PLACES.map((place) => ({ shape, host, place }))),
 );
 
-/** A generator of its own, so a run is the same matrix every time and in both engines. */
+/** A generator of its own, so a run is the same matrix every time and in both engines. It picks by the high bits: the low bits of this generator repeat with a short period, which made most of the pairs the same few. */
 function random(seed: number) {
   return (below: number) => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed % below;
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return Math.floor((seed / 2 ** 32) * below);
   };
 }
 
@@ -101,6 +113,12 @@ const withTwoWords = (shape: string): string => {
   return shape.replace(/\$/g, () => `w${(word += 1) % 2}`);
 };
 
+/** Words a list number, a box or a URL also writes, so a check that takes a marker off by its word takes off the wrong one. */
+const withMarkerWords = (shape: string): string => {
+  let word = 0;
+  return shape.replace(/\$/g, () => ['1', 'x', 'y', '2', 'http'][(word += 1) % 5]!);
+};
+
 export type Row = Position & { paste: string };
 
 const PAIRS = 4000;
@@ -112,14 +130,15 @@ export function matrix(): Row[] {
   const singles = [...FRAGMENTS.map(withWords), ...LOST_BEFORE];
   const rows: Row[] = singles.flatMap((paste) => POSITIONS.map((position) => ({ ...position, paste })));
   for (let i = 0; i < PAIRS; i += 1) {
-    const fill = i % 2 === 0 ? withWords : withTwoWords;
+    const fill = [withWords, withTwoWords, withWords, withMarkerWords][i % 4]!;
     const paste = fill(FRAGMENTS[pick(FRAGMENTS.length)]! + SEPARATORS[pick(SEPARATORS.length)]! + FRAGMENTS[pick(FRAGMENTS.length)]!);
     for (let j = 0; j < POSITIONS_PER_PAIR; j += 1) rows.push({ ...POSITIONS[pick(POSITIONS.length)]!, paste });
   }
   return rows;
 }
 
-const wordsIn = (text: string) => text.match(/[\p{L}\p{M}\p{N}\p{Extended_Pictographic}]+/gu) ?? [];
+/** Letters, numbers, pictures, flags and any symbol past ASCII: `→` and `€` are words, `|` is markup. */
+const wordsIn = (text: string) => text.match(/(?:[\p{L}\p{M}\p{N}\p{Extended_Pictographic}\p{RI}]|(?![\0-\x7f])\p{S})+/gu) ?? [];
 
 const counted = (text: string) => {
   const counts = new Map<string, number>();
@@ -131,7 +150,7 @@ const counted = (text: string) => {
 const oneAutolink = (markdown: string) => markdown.replace(/\[([^\]\n]*)\]\((?:https?:\/\/|mailto:)?\1\)/g, ' $1 ');
 
 /**
- * A list's order and a task's box are how text is written, not its words: `1. a` in an inline field is `a`. Taken
+ * A list's order and a task's box are how text is written, not its words: `1. a` in an inline field is `a`. A box has a space after it, so `- [x](url)` is a link. Taken
  * off both sides, line by line and outside fences, with no help from the parser, so a list number in what is stored
  * does not stand in for the same number lost elsewhere. A number that is not 1 or the next in a run from 1 stays.
  */
@@ -156,7 +175,7 @@ export function withoutMarkers(text: string, side: 'pasted' | 'stored' = 'stored
       const indent = number?.[1]?.length ?? 0;
       const inOrder = number && (Number(number[2]) === 1 || Number(number[2]) === (last.get(indent) ?? 0) + 1);
       last.set(indent, inOrder ? Number(number[2]) : 0);
-      return (inOrder ? number[1]! + line.slice(number[0].length) : line).replace(/^((?:[^`]*>)?[ \t]*[-*+][ \t]+)\[[xX]\]/, '$1');
+      return (inOrder ? number[1]! + line.slice(number[0].length) : line).replace(/^((?:[^`]*>)?[ \t]*[-*+][ \t]+)\[[xX]\](?=[ \t]|$)/, '$1');
     })
     .join('\n');
 }
