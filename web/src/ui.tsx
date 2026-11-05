@@ -117,6 +117,18 @@ export function Tile({
   );
 }
 
+/**
+ * Help in two versions (GF-114): the key or mouse gesture for a fine pointer, what a finger
+ * does for a coarse one, or nothing where it has nothing to do with it. CSS folds the other,
+ * as it folds `span.gf-hint`, so read a rendered sentence by `innerText`: `textContent` has both.
+ */
+export const ForPointer = ({ fine, coarse }: { fine: ReactNode; coarse?: ReactNode }) => (
+  <>
+    <span className="gf-on-fine">{fine}</span>
+    {coarse && <span className="gf-on-coarse">{coarse}</span>}
+  </>
+);
+
 /** One accent, one meaning (DESIGN.md Colors); no tone is the mute default. */
 export type Tone = 'draft' | 'system' | 'review' | 'mute';
 

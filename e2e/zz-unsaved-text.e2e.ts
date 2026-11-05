@@ -177,7 +177,7 @@ test('a 409 on the blur save keeps the words, and once the other writer’s body
   await leave(page);
   await refetched;
   await expect(doc(page, surface.testId)).toHaveText('Conflicted origin words mine');
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
 
   await typeAtEnd(page, surface.testId, ' more');
   await leave(page);
@@ -364,7 +364,7 @@ test('a save judged on words another writer has since replaced is still refused,
   await typeAtEnd(page, surface.testId, ' mine');
   await leave(page);
   expect((await answered).status()).toBe(409);
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
   await expect(doc(page, surface.testId)).toHaveText('Overtakenfield origin words mine');
   expect(await stored(page, surface)).toBe('An agent rewrote this.');
 });
@@ -386,7 +386,7 @@ async function keptThenMoved(page: Page, name: string) {
   await page.request.patch(first.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
   await page.goBack();
   await expectTitle(page, first.title);
-  await expect(refusal(page, first.testId)).toHaveText(MOVED);
+  await expect(refusal(page, first.testId)).toHaveText(MOVED, { useInnerText: true });
   await expect(doc(page, first.testId)).toHaveText(`${name} origin words kept`);
   return { first, second, sent };
 }
@@ -404,7 +404,7 @@ test('a kept record whose field moved on the server sends nothing until you act,
   await hideTab(page, false);
   expect(sent.slice(before)).toEqual([]);
   expect(await stored(page, first)).toBe('An agent rewrote this.');
-  await expect(refusal(page, first.testId)).toHaveText(MOVED);
+  await expect(refusal(page, first.testId)).toHaveText(MOVED, { useInnerText: true });
   await expect(doc(page, first.testId)).toHaveText('Moved origin words kept');
 
   await typeAtEnd(page, first.testId, ' more');
@@ -457,7 +457,7 @@ test('undo is not the act: undone back to the words the kept ones were based on,
   await expect(doc(page, surface.testId)).toHaveText('Undone origin words kept');
   await page.waitForTimeout(BEAT_MS);
   expect(sent.slice(before)).toEqual([]);
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
   await page.keyboard.press('ControlOrMeta+z');
   await expect(doc(page, surface.testId)).toHaveText('Undone origin words');
   await leave(page);
@@ -1054,7 +1054,7 @@ test('letters typed under a real rewrite, held until the caret leaves, are never
   expect(await stored(page, surface)).toBe('An agent rewrote this.');
 
   await clickAway(page);
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
   await expect(aboutSaving(page)).toHaveCount(0);
   await expect(doc(page, surface.testId)).toHaveText('hello world one two');
 
@@ -1077,7 +1077,7 @@ async function typedUnderARewrite(page: Page, name: string) {
 
 test('letters typed under a rewrite are told so with the caret still in the field, and ⌘⏎ saves them (GF-105)', async ({ page }) => {
   const surface = await typedUnderARewrite(page, 'Told keep');
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
   await page.waitForTimeout(BEAT_MS);
   expect(await stored(page, surface)).toBe('An agent rewrote this.');
 
@@ -1089,7 +1089,7 @@ test('letters typed under a rewrite are told so with the caret still in the fiel
 
 test('letters typed under a rewrite are told so, and esc takes the rewrite (GF-105)', async ({ page }) => {
   const surface = await typedUnderARewrite(page, 'Told take');
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
 
   await page.keyboard.press('Escape');
   await expect(doc(page, surface.testId)).toHaveText('An agent rewrote this.');
@@ -1105,7 +1105,7 @@ test('letters typed under a rewrite are told so, and esc takes the rewrite (GF-1
 
 test('letters typed under a rewrite and undone say nothing, and letting go takes the rewrite (GF-105)', async ({ page }) => {
   const surface = await typedUnderARewrite(page, 'Told undone');
-  await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+  await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
 
   await page.keyboard.press('ControlOrMeta+z');
   await expect(doc(page, surface.testId)).toHaveText('hello world one');
@@ -1212,7 +1212,7 @@ for (const [kind, named] of [['app', 'an app'], ['project', 'a project']] as con
     await expect(aboutSaving(page)).toHaveCount(0);
 
     await page.getByTestId('edit-form').getByRole('button', { name: 'cancel' }).click();
-    await expect(refusal(page, surface.testId)).toHaveText(MOVED);
+    await expect(refusal(page, surface.testId)).toHaveText(MOVED, { useInnerText: true });
     await expect(aboutSaving(page)).toHaveCount(0);
     expect(await stored(page, surface)).toBe('An agent rewrote this.');
   });

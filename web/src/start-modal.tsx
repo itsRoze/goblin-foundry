@@ -4,7 +4,7 @@ import { defaultWorktreeBranch, slugPath, worktreeBase, type App, type AppBranch
 import { ignoreHeldEnter } from './keys';
 import { useApp, useAppBranches } from './queries';
 import { baseChoices, branchChoices, branchNote, matching, planBranch, planLine } from './start-plan';
-import { Empty, Kbd, refusalLine } from './ui';
+import { Empty, ForPointer, Kbd, refusalLine } from './ui';
 
 type Starting = Pick<Ticket, 'key' | 'title' | 'app_id' | 'worktree_branch'>;
 
@@ -238,7 +238,7 @@ function Fields({
         setList({ field: name, narrowed: true, at: -1 });
       },
       onClick: () => {
-        if (!here) setList({ field: name, narrowed: false, at: -1 });
+        if (!here || !showing) setList({ field: name, narrowed: false, at: -1 });
       },
       onBlur: () => setList(null),
       onKeyDown: (e: React.KeyboardEvent) => {
@@ -297,7 +297,7 @@ function Fields({
         </button>
         {read && !showing && (
           <span className="gf-start-hint">
-            <Kbd>↓</Kbd> list
+            <ForPointer fine={<><Kbd>↓</Kbd> list</>} coarse="tap a field for its list" />
           </span>
         )}
       </span>
@@ -307,7 +307,7 @@ function Fields({
         <div className="gf-start-choices-head">
           <span>{list.field}</span>
           <span className="gf-start-hint">
-            <Kbd>↑↓</Kbd> <Kbd>⏎</Kbd> <Kbd>esc</Kbd>
+            <ForPointer fine={<><Kbd>↑↓</Kbd> <Kbd>⏎</Kbd> <Kbd>esc</Kbd></>} />
           </span>
         </div>
         <div ref={rows} id={listId} className="gf-rows gf-start-choices" role="listbox" aria-label="choices">

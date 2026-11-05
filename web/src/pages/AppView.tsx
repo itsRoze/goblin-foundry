@@ -7,7 +7,7 @@ import { useSaving } from '../editor';
 import { useApp, useCreateProject, useEvents, usePatchApp, useProjects, useTickets } from '../queries';
 import { useCrumb } from '../shell';
 import { TicketRows, useNewTicket } from '../tickets';
-import { Empty, Hint, History, InlineForm, Kv, Plus, Tile, describeEvent } from '../ui';
+import { Empty, ForPointer, Hint, History, InlineForm, Kv, Plus, Tile, describeEvent } from '../ui';
 import { appBody, appFormFields } from './Apps';
 import { AboutTile, DescriptionField, NotFound, useAppNamer, useSlugParam } from './Entity';
 import { ProjectRows, projectBody, projectFormFields } from './Projects';
@@ -63,7 +63,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
             }}
           />
         )}
-        {projects.data?.length === 0 && !creating && <Empty>no projects — click +</Empty>}
+        {projects.data?.length === 0 && !creating && <Empty><ForPointer fine="no projects — click +" coarse="no projects — tap +" /></Empty>}
         {projects.data && <ProjectRows projects={projects.data} cursor={cursor.isAt} />}
         <label className="gf-toggle">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> show archived

@@ -36,7 +36,8 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   const project = page.url();
 
   // nothing to draw yet: the tile says so rather than showing an empty box
-  await expect(graph(page)).toContainText('no tickets');
+  await expect(graph(page).getByText('no tickets — press c')).toBeVisible();
+  await expect(graph(page).getByText('no tickets', { exact: true })).toBeHidden();
 
   await expect(page.getByTestId('tickets-tile')).toBeVisible();
   for (const title of ['The wiring', 'The lamp']) {
@@ -48,6 +49,10 @@ test('a project graphs its tickets: a dashed edge goes solid when the blocker sh
   }
   // tickets but no edges is still a rank of diamonds, and the legend says what is missing
   await expect(graph(page)).toContainText('2 tickets · 0 edges');
+  // a mouse reads the mouse's help, and a finger's stays folded (GF-114)
+  await expect(graph(page).getByText('Hover a ticket to trace its paths. Tab explores; click opens the ticket.')).toBeVisible();
+  await expect(graph(page).getByText('drag or scroll to pan · pinch or ctrl-scroll to zoom')).toBeVisible();
+  await expect(graph(page).getByText('Tap a ticket to open it.')).toBeHidden();
   await expect(page.getByTestId('graph-legend')).toHaveText('no dependencies yet — declare one from a ticket');
   await expect(nodes(page)).toHaveCount(2);
 

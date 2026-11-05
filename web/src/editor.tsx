@@ -5,7 +5,7 @@ import { closeHistory } from '@tiptap/pm/history';
 import { INLINE_MARKS, canonical, extensionsFor, toBlocks, toDoc, toMarkdown, toggleWholeMark, type EditorShape } from './markdown';
 import { judgement } from '@goblin/shared';
 import { unreached } from './api';
-import { refusalLine } from './ui';
+import { ForPointer, refusalLine } from './ui';
 
 /**
  * The Linear-style editor (spec §Editor). It is also the read view: there is
@@ -202,7 +202,8 @@ export type FieldId = `${'ticket' | 'project' | 'app'}/${number}/${'description'
 
 const columnOf = (id: FieldId) => id.slice(id.lastIndexOf('/') + 1);
 
-const MOVED = 'changed elsewhere while unsaved; in the field, ⌘⏎ saves yours, esc takes theirs';
+/** A finger has no `esc`, so taking theirs is not offered (DESIGN.md Touch targets). */
+const MOVED = <ForPointer fine="changed elsewhere while unsaved; in the field, ⌘⏎ saves yours, esc takes theirs" coarse="changed elsewhere while unsaved; in the field, done saves yours" />;
 
 const records = new Map<FieldId, FieldRecord>();
 
@@ -360,7 +361,7 @@ export function MarkdownField({
   /** What the server holds; `null` and `''` are both "nothing written yet". */
   value: string | null;
   label: string;
-  placeholder: string;
+  placeholder: ReactNode;
   /** Resolves when the write landed and rejects when it was refused — the field will not call it agreed until it resolves. `judged` is the header value naming what it was judged on. */
   onSave: (markdown: string, judged: string) => Promise<unknown>;
   /** Told the state of the field's words, so the tile says `saved` only of words that have landed. `null` once the field has gone, as `edit` swaps it for a form, and can no longer hear its write land: the tile goes by its writes alone. */
@@ -595,7 +596,6 @@ export function MarkdownField({
     <div
       className={`gf-md is-${shape}${empty ? ' is-empty' : ''}${fill ? ' is-fill' : ''}${engaged ? ' is-engaged' : ''}`}
       data-testid={testId}
-      data-placeholder={placeholder}
       onFocus={() => {
         engagedRef.current = true;
         setEngaged(true);
@@ -604,6 +604,7 @@ export function MarkdownField({
         if (!e.currentTarget.contains(e.relatedTarget)) release();
       }}
     >
+      {empty && <p className="gf-md-placeholder">{placeholder}</p>}
       <EditorContent editor={editor} className="gf-md-content" />
       {editor && engaged && (
         <ModeLine editor={editor} shape={shape} linking={linking} setLinking={setLinking} openLink={openLink} range={linkRange} status={status} done={() => keepYours(record)} />

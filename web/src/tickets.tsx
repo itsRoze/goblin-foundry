@@ -7,7 +7,7 @@ import { useCursor } from './desk';
 import { formKeys, useKey } from './keys';
 import { rankedMoves } from './palette';
 import { useCreateTicket, useApps, useProjects } from './queries';
-import { Chip, Empty, Kbd, Since, refusalLine, useCloseOnOutside, type Namer, type Tone } from './ui';
+import { Chip, Empty, ForPointer, Kbd, Since, refusalLine, useCloseOnOutside, type Namer, type Tone } from './ui';
 
 /**
  * Status → meaning (DESIGN.md Colors). `backlog/todo/planning` are all "not yet
@@ -576,7 +576,7 @@ export function NewTicket({ onCreate, onCancel, testId }: { onCreate: (title: st
 export function TicketRows({ tickets, tile = 'tickets' }: { tickets: TicketSummary[] | undefined; tile?: string }) {
   const cursor = useCursor({ tile, columns: [(tickets ?? []).map((t) => t.key)], pathOf: (key) => ticketPath({ key }) });
   if (!tickets) return <Empty>loading…</Empty>;
-  if (tickets.length === 0) return <Empty>no tickets — press c</Empty>;
+  if (tickets.length === 0) return <Empty><ForPointer fine="no tickets — press c" coarse="no tickets — tap new" /></Empty>;
   return (
     <div className="gf-rows" data-testid="ticket-rows">
       {tickets.map((t) => (

@@ -24,7 +24,7 @@ import { useCrumb } from '../shell';
 import { StartModal } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, ForPointer, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
 import { LabelsField } from '../labels';
@@ -251,7 +251,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           id={`ticket/${ticket.id}/description`}
           shape="block"
           label="description"
-          placeholder="no description — press e"
+          placeholder={<ForPointer fine="no description — press e" coarse="no description — tap to write" />}
           value={ticket.description}
           onSave={(description, judged) => about.run(() => edit({ description }, judged))}
           onSaveState={about.setFieldState}
