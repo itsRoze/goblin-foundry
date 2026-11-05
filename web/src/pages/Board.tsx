@@ -182,6 +182,12 @@ interface Notice {
 }
 
 const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
+/** `body` is where `⏎` and `a s d` are the Cursor's (`letGoOfEnter`), and the Cursor is a readout they need on screen. */
+const keysToCursor = () => {
+  const held = document.activeElement;
+  if (held instanceof HTMLElement && held !== document.body) held.blur();
+  revealCursor();
+};
 
 /**
  * Every way the board moves a card, in one place, because they must agree:
@@ -310,15 +316,10 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
     (key) => (terminal.said?.key === key ? document.querySelector<HTMLElement>('.gf-terminal-said button') : null) ?? cardOf(key),
     (key) => lookup(key)?.status !== 'ready',
   );
-  const startClosed = useCallback(
-    (ticket: TicketSummary, started: boolean) => {
-      setStarting(null);
-      if (!started) return;
-      moved.current(ticket, 'building');
-      focusOnceStarted(ticket.key);
-    },
-    [focusOnceStarted],
-  );
+  const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
+    setStarting(null);
+    if (started) moved.current(ticket, 'building');
+  }, []);
   /** The same hold a move is under: a bulk action that has this card has it for everything. */
   const pressTerminal = (ticket: TicketSummary) => {
     const line = held.current(ticket.key);
@@ -327,7 +328,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
     terminal.press(ticket);
   };
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, terminal, pressTerminal };
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal };
 }
 
 /**
@@ -426,7 +427,7 @@ export function BoardPage() {
     [lookup, sending],
   );
   const boardRead = cards !== undefined;
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -735,8 +736,15 @@ export function BoardPage() {
         <StartModal
           ticket={starting}
           run={(worktree) => startRun(starting, worktree)}
-          onClose={(started) => startClosed(starting, started)}
-          home={() => cardOf(starting.key)}
+          // the card has the focus back only if it is the Cursor's: a menu and a drag leave the Cursor where it was
+          // (DESIGN.md Card menu), and a ring on another card would have `⏎` open that one while `s` acts on the
+          // Cursor's. Otherwise the focus goes where the Cursor's keys are, on `body`, and the Cursor is kept on screen
+          home={() => (starting.key === cursor.at ? cardOf(starting.key) : null)}
+          onClose={(started, keyed) => {
+            startClosed(starting, started);
+            if (starting.key !== cursor.at) return keysToCursor();
+            if (started) focusOnceStarted(starting.key, keyed);
+          }}
         />
       )}
       <ChooseWorktree terminal={terminal} />

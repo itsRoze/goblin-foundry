@@ -365,9 +365,9 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         <StartModal
           ticket={ticket}
           run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree })).then(terminal.reporting(ticket))}
-          onClose={(started) => {
+          onClose={(started, keyed) => {
             setStarting(false);
-            if (started) focusOnceStarted(ticket.key);
+            if (started) focusOnceStarted(ticket.key, keyed);
           }}
           home={startHome}
         />

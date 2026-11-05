@@ -33,11 +33,13 @@ export function StartModal({
   ticket: Starting;
   verb?: 'start' | 'terminal';
   run: (worktree?: StartWorktreeBody) => Promise<unknown>;
-  onClose: (started: boolean) => void;
+  /** `keyed` when a key closed it, as that press is known before a Start's write, and not after it. */
+  onClose: (started: boolean, keyed: boolean) => void;
   /**
    * The control the operator came from, as the screen finds it now: the state tile's `start` or `open terminal`, or
    * the card. Named by the screen and not read off the page, because a key, a menu's row, a drag and the palette
-   * leave the focus in four places, and in WebKit a click on a button leaves it on `body`.
+   * leave the focus in four places, and in WebKit a click on a button leaves it on `body`. `null` leaves it to
+   * `onClose`.
    */
   home: () => HTMLElement | null;
 }) {
@@ -60,13 +62,13 @@ export function StartModal({
   }, []);
 
   const leave = useCallback(
-    (started: boolean) => {
+    (started: boolean, keyed = byKey(window.event)) => {
       dialog.current?.close();
       // a key's close brings the control back by what it is clipped, as a picker's close does (`useFocusOnClose`)
       const back = home();
       back?.focus({ preventScroll: true });
-      if (byKey(window.event)) back?.scrollIntoView({ block: 'nearest' });
-      onClose(started);
+      if (keyed) back?.scrollIntoView({ block: 'nearest' });
+      onClose(started, keyed);
     },
     [home, onClose],
   );
@@ -76,13 +78,15 @@ export function StartModal({
   const accept = useCallback(
     async (worktree?: StartWorktreeBody) => {
       if (sending.current) return;
+      // the press that asked, read before the write: once it is back there is no press in flight
+      const keyed = byKey(window.event);
       sending.current = true;
       setBusy(true);
       setRefusal(null);
       try {
         await run(worktree);
         sending.current = false;
-        leave(true);
+        leave(true, keyed);
       } catch (e) {
         sending.current = false;
         setBusy(false);
@@ -175,17 +179,22 @@ export function StartModal({
  * has closed. So the focus is owed until the screen shows the Ticket `moved`, and then lands on `home` as it is
  * found again: `open terminal` where `start` was, as the focus that fell with a question's answers lands on its
  * line, and the card in its new column, as the Cursor follows a Transition (DESIGN.md Interaction). Only from
- * `body`: a terminal that did not open has given it to its `copy folder`. Returns what to call with the Ticket's key.
+ * `body`: a terminal that did not open has given it to its `copy folder`. A key's Start brings it into view by what
+ * it is clipped, as a key's close does: on a phone the state tile starts below the fold. Returns what to call with
+ * the Ticket's key and whether a key started it.
  */
 export function useFocusAfterStart(home: (key: string) => HTMLElement | null, moved: (key: string) => boolean) {
-  const [owed, setOwed] = useState<string | null>(null);
-  const landed = owed !== null && moved(owed);
+  const [owed, setOwed] = useState<{ key: string; keyed: boolean } | null>(null);
+  const landed = owed !== null && moved(owed.key);
   useEffect(() => {
     if (owed === null || !landed) return;
     setOwed(null);
-    if (document.activeElement === document.body) home(owed)?.focus({ preventScroll: true });
+    if (document.activeElement !== document.body) return;
+    const back = home(owed.key);
+    back?.focus({ preventScroll: true });
+    if (owed.keyed) back?.scrollIntoView({ block: 'nearest' });
   }, [owed, landed, home]);
-  return setOwed;
+  return useCallback((key: string, keyed: boolean) => setOwed({ key, keyed }), []);
 }
 
 /** Refused in the panel, and not only by the API: a blank field has nothing to ask it. */
