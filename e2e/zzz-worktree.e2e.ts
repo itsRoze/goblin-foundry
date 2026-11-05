@@ -67,7 +67,7 @@ test.describe("a Ticket's Worktree", () => {
     await expect(panel.getByTestId('worktree-folder')).toHaveText(folder);
     await expect(panel.getByTestId('branch-name')).toHaveText(branch);
 
-    const copy = panel.getByRole('button', { name: 'copy worktree folder' });
+    const copy = panel.getByRole('button', { name: 'copy folder of this worktree' });
     await expect(copy).toHaveText('copy folder');
     await copy.click();
     await expect(copy).toHaveText('copied');
@@ -84,7 +84,7 @@ test.describe("a Ticket's Worktree", () => {
     await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('blocked')) } }));
     await page.goto(`/tickets/${ticket.key}`);
     const panel = page.getByTestId('implementation-tile');
-    const copy = panel.getByRole('button', { name: 'copy worktree folder' });
+    const copy = panel.getByRole('button', { name: 'copy folder of this worktree' });
     await copy.click();
     await expect(panel.getByRole('alert')).toContainText('Select the folder above');
     await expect(copy).toHaveText('copy folder');

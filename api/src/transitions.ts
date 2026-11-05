@@ -116,7 +116,7 @@ export function terminalRoute(r: Hono<ActorEnv>, { db, find, missing, toWire, te
     if (row.worktree_folder !== null) {
       // a Ticket has at most one Worktree, and a script told otherwise would `cd` somewhere it did not ask for
       if (body.branch !== undefined && body.branch !== row.worktree_branch) return conflict(c, `nothing changed — ${key} already has its Worktree, on ${row.worktree_branch}`);
-      if (!existsSync(row.worktree_folder)) return conflict(c, `nothing opened — the Worktree folder of ${key} no longer exists: ${row.worktree_folder}`);
+      if (!existsSync(row.worktree_folder)) return conflict(c, `nothing opened — the Worktree folder of ${key} no longer exists: ${row.worktree_folder}; git worktree prune, then git worktree add with that folder and ${row.worktree_branch}, brings it back`);
       return c.json({ ...(await toWire(row)), terminal: await openTerminal(db, terminals, row, row.worktree_folder) });
     }
 

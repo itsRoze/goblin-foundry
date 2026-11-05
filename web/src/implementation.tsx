@@ -17,7 +17,8 @@ function WorktreeFacts({ branch, folder }: { branch: string; folder: string }) {
             'folder',
             <div className="gf-branch">
               <code className="gf-branch-name" data-testid="worktree-folder">{folder}</code>
-              <button type="button" className="gf-btn" aria-label="copy worktree folder" onClick={() => void copy()}>{copied ? 'copied' : 'copy folder'}</button>
+              {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on, as a question's answers carry it */}
+              <button type="button" tabIndex={0} className="gf-btn" aria-label="copy folder of this worktree" onClick={() => void copy()}>{copied ? 'copied' : 'copy folder'}</button>
             </div>,
           ],
         ]}
@@ -65,13 +66,19 @@ export function ImplementationTile({ ticket, branchCopy, input }: {
     } catch (error) { setRefusal(refusalLine(error)); }
   };
 
+  const hasWorktree = ticket.worktree_branch !== null && ticket.worktree_folder !== null;
+  // beside a Worktree's real branch it has to say it is only a suggestion, or it reads as a third fact about that Worktree
+  const suggestion = (
+    <div className="gf-branch">
+      <code className="gf-branch-name" data-testid="branch-name">{branch}</code>
+      <button type="button" className="gf-btn" aria-label="copy git branch name" onClick={() => void copy()}>{copied ? 'copied' : 'copy branch'}</button>
+    </div>
+  );
+
   return (
     <Tile label="implementation" testId="implementation-tile">
-      {ticket.worktree_branch !== null && ticket.worktree_folder !== null && <WorktreeFacts branch={ticket.worktree_branch} folder={ticket.worktree_folder} />}
-      <div className="gf-branch">
-        <code className="gf-branch-name" data-testid="branch-name">{branch}</code>
-        <button type="button" className="gf-btn" aria-label="copy git branch name" onClick={() => void copy()}>{copied ? 'copied' : 'copy branch'}</button>
-      </div>
+      {hasWorktree && <WorktreeFacts branch={ticket.worktree_branch ?? ''} folder={ticket.worktree_folder ?? ''} />}
+      {hasWorktree ? <Kv rows={[['suggested', suggestion]]} /> : suggestion}
       <span className="gf-implementation-notice" role="status">{copied ? 'branch name copied' : ''}</span>
       {copyError && <p className="gf-refusal" role="alert">Couldn’t copy. Select the branch name above and copy it manually.</p>}
       {links.isError ? <div className="gf-actions"><p className="gf-refusal" role="alert">Couldn’t load implementation links.</p><button className="gf-btn" type="button" onClick={() => void links.refetch()}>retry</button></div> : !links.data ? <Empty>loading links…</Empty> : links.data.length === 0 ? <Empty>no PR or commit linked yet</Empty> : (

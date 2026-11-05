@@ -83,7 +83,7 @@ test.describe('Open terminal', () => {
     expect((await read(page, key)).status).toBe('building');
 
     // the keyboard is already there: the copy took the focus once the modal had gone, and `⏎` copies
-    const copy = said(page).getByRole('button', { name: 'copy terminal folder' });
+    const copy = said(page).getByRole('button', { name: 'copy folder of this terminal' });
     await expect(copy).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(copy).toHaveText('copied');
@@ -198,7 +198,7 @@ test.describe('Open terminal', () => {
     rmSync(folder, { recursive: true, force: true });
     await page.goto(`/tickets/${key}`);
     await page.getByTestId('open-terminal').click();
-    await expect(page.getByTestId('state-tile').getByRole('alert')).toHaveText(`nothing opened — the Worktree folder of ${key} no longer exists: ${folder}`);
+    await expect(page.getByTestId('state-tile').getByRole('alert')).toContainText(`nothing opened — the Worktree folder of ${key} no longer exists: ${folder}; git worktree prune`);
     await expect(said(page)).toHaveCount(0);
   });
 
@@ -231,7 +231,7 @@ test.describe('Open terminal', () => {
     await expect(card).toHaveAttribute('aria-current', /.+/);
     await page.keyboard.press('t');
     await expect(under.getByTestId('terminal-said')).toContainText(NONE);
-    await expect(said(page).getByRole('button', { name: 'copy terminal folder' })).toBeFocused();
+    await expect(said(page).getByRole('button', { name: 'copy folder of this terminal' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(said(page)).toHaveCount(0);
     await expect(card).toBeFocused();
@@ -280,7 +280,7 @@ test.describe('Open terminal', () => {
     await expect(modal(page)).toHaveCount(0);
     const under = page.getByTestId('col-building').getByTestId(`card-${key}`).locator('..');
     await expect(under.getByTestId('terminal-said')).toContainText(NONE);
-    await expect(said(page).getByRole('button', { name: 'copy terminal folder' })).toBeFocused();
+    await expect(said(page).getByRole('button', { name: 'copy folder of this terminal' })).toBeFocused();
     expect((await read(page, key)).status).toBe('building');
   });
 

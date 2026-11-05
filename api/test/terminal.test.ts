@@ -208,7 +208,7 @@ describe('Start and Open terminal ask the terminal step, against real git', () =
       rmSync(ticket.worktree_folder, { recursive: true, force: true });
       const res = await terminal(key);
       expect(res.status).toBe(409);
-      expect((await res.json()).hint).toBe(`nothing opened — the Worktree folder of ${key} no longer exists: ${ticket.worktree_folder}`);
+      expect((await res.json()).hint).toBe(`nothing opened — the Worktree folder of ${key} no longer exists: ${ticket.worktree_folder}; git worktree prune, then git worktree add with that folder and ${ticket.worktree_branch}, brings it back`);
       expect(recorder.asked).toEqual([]);
     });
 

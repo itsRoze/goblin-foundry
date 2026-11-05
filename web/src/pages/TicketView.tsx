@@ -750,7 +750,7 @@ function StateTile({
       <div className="gf-actions">
         {/* where a `ready` Ticket has `start`: the way back into the work comes before the ways of moving it on */}
         {opensTerminal(ticket.status) && (
-          <button className="gf-btn" data-testid="open-terminal" onKeyDown={ignoreHeldEnter} onClick={onTerminal}>
+          <button tabIndex={0} className="gf-btn" data-testid="open-terminal" onKeyDown={ignoreHeldEnter} onClick={onTerminal}>
             open terminal
           </button>
         )}

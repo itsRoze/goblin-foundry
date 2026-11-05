@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { noTerminalAt, opensTerminal, type StartWorktreeBody, type TerminalOutcome, type Ticket, type TicketStatus } from '@goblin/shared';
 import { useCopy } from './branch-copy';
 import { byPointer, ignoreHeldEnter, useFocusOnAsk } from './keys';
@@ -62,7 +62,7 @@ export function useTerminal({
 
 /**
  * Said in place, with no timer because it carries a button, and it goes the way a
- * board's move notice goes: `esc`, which the screen answers, or a press anywhere
+ * board's move notice goes: `esc`, which the screen answers, or a click anywhere
  * else. The folder is the way forward, so the copy takes the focus, once, as a
  * question's answer does (DESIGN.md Refusal and confirm); behind a Start modal the
  * page is inert, so that waits for the modal to have closed.
@@ -71,6 +71,7 @@ export function TerminalNotOpened({ said, onDismiss }: { said: TerminalSaid; onD
   const { copied, failed, copy } = useCopy(said.folder);
   const line = useRef<HTMLDivElement>(null);
   const answer = useRef<HTMLButtonElement>(null);
+  const reason = useId();
   const [behindModal, setBehindModal] = useState(() => document.querySelector('dialog:modal') !== null);
   useEffect(() => {
     const modal = document.querySelector('dialog:modal');
@@ -81,24 +82,28 @@ export function TerminalNotOpened({ said, onDismiss }: { said: TerminalSaid; onD
   }, []);
   useFocusOnAsk(behindModal ? null : said, answer, line, said);
   useEffect(() => {
-    const onDown = (e: MouseEvent) => {
+    // on the click and not the press: the line taking its height away between the two would move what the press was aimed at
+    const onClick = (e: MouseEvent) => {
       if (!line.current?.contains(e.target as Node)) onDismiss();
     };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
   }, [onDismiss]);
   return (
     <div ref={line} className="gf-terminal-said" role="status" data-testid="terminal-said">
-      <span>{said.reason}</span>
+      <span id={reason}>{said.reason}</span>
       <div className="gf-branch">
         <code className="gf-branch-name" data-testid="terminal-folder">
           {said.folder}
         </code>
         {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on, as a question's answers carry it */}
-        <button ref={answer} type="button" tabIndex={0} className="gf-btn" aria-label="copy terminal folder" onKeyDown={ignoreHeldEnter} onClick={() => void copy()}>
+        <button ref={answer} type="button" tabIndex={0} className="gf-btn" aria-label="copy folder of this terminal" aria-describedby={reason} onKeyDown={ignoreHeldEnter} onClick={() => void copy()}>
           {copied ? 'copied' : 'copy folder'}
         </button>
       </div>
+      <span className="gf-implementation-notice" role="status">
+        {copied ? 'terminal folder copied' : ''}
+      </span>
       {failed && (
         <p className="gf-refusal" role="alert">
           Couldn’t copy. Select the folder above and copy it manually.

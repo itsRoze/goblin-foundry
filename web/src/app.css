@@ -79,7 +79,7 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
 /* a git remote or a Checkout is a path, and a path is mono (DESIGN.md Typography): the
    face is what tells the value from the ink ones above and below it, not the hue */
-.gf-path { font: var(--gf-t-meta); }
+.gf-path { display: block; width: fit-content; max-width: 100%; font: var(--gf-t-meta); }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
@@ -170,7 +170,8 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-field textarea { resize: vertical; }
 /* a select in a kv row (the Ticket view's app and project) wears the input's clothes too, or it renders in the UA's Arial and white */
 .gf-kv select { font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; max-width: 100%; }
-.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); scroll-margin-block: var(--gf-s3); }
+/* `anywhere`: git's reasons and a gone folder carry whole paths, which have no place to break on a phone */
+.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; scroll-margin-block: var(--gf-s3); }
 /* the same line as a refusal, with a way through it */
 .gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
 .gf-toggle { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
@@ -760,8 +761,6 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-start-said { margin: 0; font: var(--gf-t-body); }
 /* under its field's input, past `.gf-field`'s 100px label and its gap */
 .gf-start-note { margin: 0 0 0 calc(100px + var(--gf-s3)); font: var(--gf-t-meta); color: var(--gf-mute); }
-/* git's reasons carry whole folders, which have no place to break on a phone */
-.gf-start .gf-refusal { overflow-wrap: anywhere; }
 .gf-start-hint { display: inline-flex; align-items: center; gap: var(--gf-s1); font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-start .gf-form-actions .gf-start-hint { margin-left: auto; }
 .gf-start-choices-head { display: flex; justify-content: space-between; align-items: center; padding-top: var(--gf-s1); border-top: 1px solid var(--gf-rule); }
@@ -792,9 +791,10 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-branch-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--gf-t-meta); user-select: all; }
 .gf-branch .gf-btn { flex-shrink: 0; }
 .gf-terminal-said { display: flex; flex-direction: column; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
-/* under a card the column is 180px, so the path takes the line and the button goes under it */
-.gf-terminal-said .gf-branch { flex-direction: column; gap: var(--gf-s2); }
-.gf-terminal-said .gf-branch-name { flex: none; color: var(--gf-ink); }
+/* a column can be 106px on a phone or 180px under a card, so a path takes the line and its button goes under it */
+.gf-terminal-said .gf-branch, .gf-kv .gf-branch { flex-direction: column; gap: var(--gf-s2); }
+.gf-terminal-said .gf-branch-name, .gf-kv .gf-branch-name { flex: none; }
+.gf-terminal-said .gf-branch-name { color: var(--gf-ink); }
 .gf-implementation-links { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0; padding: 0; list-style: none; }
 .gf-implementation-row { display: flex; align-items: baseline; gap: var(--gf-s2); }
 .gf-implementation-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
