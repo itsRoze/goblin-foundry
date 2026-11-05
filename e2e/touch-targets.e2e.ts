@@ -196,19 +196,35 @@ test('the inputs, tile `+` and one-line links are 32px on a side, and their neig
   expect({ ...onApps, ...onProjects, ...onApp, ...onProject, ...newTicket, ...onTicket, ...labelInput, ...picker, ...palette, ...onShortName }).toEqual({});
 });
 
+/** The bar's rules before GF-112 made its links a finger wide: what those links are measured against. */
+const BAR_BEFORE_GF_112 = `
+  .gf-ws a, .gf-bar-key { min-width: 0 !important; }
+  .gf-ws { gap: 2px !important; }
+  .gf-bar, .gf-counts { gap: var(--gf-s3) !important; }
+  .gf-counts a { padding-inline: 6px !important; }
+`;
+
 test('the bar\'s links are a finger wide, and that does not widen the bar', async ({ page }) => {
-  // one-digit counts, as the widths below are measured with: this database has more of both by now
-  await page.route(/\/api\/(apps|projects)(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  // two-digit counts, the most the bar promises to fit at 360, whatever this database has by now
+  const rows = Array.from({ length: 12 }, (_, n) => ({
+    id: n + 1, name: `n${n}`, app_id: null, repository_url: null, default_branch: null, checkout: null, description: '', design: null, archived_at: null, trashed_at: null,
+    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+  }));
+  await page.route(/\/api\/(apps|projects)(\?.*)?$/, (route) => route.fulfill({ json: rows }));
   await page.goto('/');
-  await expect(page.locator('.gf-ws a').first()).toBeVisible();
+  await expect(page.locator('.gf-counts b')).toHaveText(['12', '12']);
   const barLinks = await shortfalls(await each(page.locator('.gf-ws a, .gf-bar-key')), BAR_LINK);
   expect(barLinks).toEqual({});
   const barWidth = () => page.evaluate(() => document.querySelector('.gf-bar')!.scrollWidth);
   await page.setViewportSize({ width: 360, height: 640 });
   expect(await barWidth()).toBe(360);
   await page.setViewportSize({ width: 320, height: 640 });
-  // 7px over at 320 is known, and older than these links: what is held here is that they add nothing to it
-  expect(await barWidth()).toBeLessThanOrEqual(327);
+  const withWideLinks = await barWidth();
+  // a width in pixels would only hold on one renderer: Linux's Chromium hints `trash` and `settings` 5px wider than macOS draws them
+  await page.addStyleTag({ content: BAR_BEFORE_GF_112 });
+  expect((await page.locator('.gf-ws a').first().boundingBox())!.width).toBeLessThan(FINGER);
+  // 320 overflows, and did before these links: what is held here is that they add nothing to it
+  expect(withWideLinks).toBeLessThanOrEqual(await barWidth());
 });
 
 test('a long name in the create row leaves the page a phone wide on a fine pointer too', async ({ browser, baseURL }) => {
