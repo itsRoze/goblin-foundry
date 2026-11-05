@@ -233,6 +233,41 @@ describe('goblin', () => {
       expect((await json(['ticket', 'start', a, b])).tickets.map((t: { status: string; worktree_branch: string | null }) => [t.status, t.worktree_branch])).toEqual([['building', null], ['building', null]]);
     });
 
+    test('`--worktree` output carries the terminal outcome, with exit 0 when no terminal opened', async () => {
+      const key = await ready();
+      const branch = `${key.toLowerCase()}-parse-the-feed`;
+      const started = await json(['ticket', 'start', key, '--worktree']);
+      expect(started.terminal).toEqual({ opened: false, reason: 'the terminal step is none, so no terminal was opened', folder: join(root, 'worktrees', 'subway-reader', branch) });
+    });
+
+    test('`ticket terminal` returns to the Worktree, changing no Status and writing no history', async () => {
+      const key = await ready();
+      const started = await json(['ticket', 'start', key, '--worktree']);
+      const before = await json(['ticket', 'history', key]);
+      const answered = await json(['ticket', 'terminal', key, '--actor', 'agent']);
+      expect(answered).toMatchObject({ key, status: 'building', worktree_folder: started.worktree_folder, terminal: { opened: false, folder: started.worktree_folder } });
+      expect(await json(['ticket', 'history', key])).toEqual(before);
+    });
+
+    test('`ticket terminal` gives a plainly started Ticket its Worktree, with `--branch` and `--base` choosing', async () => {
+      git(repo, 'branch', 'develop');
+      const key = await ready();
+      await json(['ticket', 'start', key]);
+      const answered = await json(['ticket', 'terminal', key, '--branch', 'feature/two', '--base', 'develop', '--actor', 'agent']);
+      expect(answered).toMatchObject({ status: 'building', worktree_branch: 'feature/two', worktree_folder: join(root, 'worktrees', 'subway-reader', 'feature-two') });
+      const [recorded] = await json(['ticket', 'history', key]);
+      expect(recorded).toMatchObject({ actor: 'agent', kind: 'worktree_recorded', new: { worktree_branch: 'feature/two' } });
+    });
+
+    test('`ticket terminal` on a Ticket not in flight exits 1 with the sentence, and its help names the flags', async () => {
+      const key = await ready();
+      const refused = await run(['ticket', 'terminal', key]);
+      expect([refused.code, refused.out]).toEqual([1, '']);
+      expect(JSON.parse(refused.err).hint).toBe(`nothing opened — ${key} is ready, and only a building or review Ticket opens a terminal`);
+      const help = (await run(['ticket', 'terminal', '--help'])).out;
+      for (const flag of ['--branch', '--base']) expect(help).toContain(flag);
+    });
+
     test('only `start` takes the flags, and its help names them', async () => {
       const help = (await run(['ticket', 'start', '--help'])).out;
       for (const flag of ['--worktree', '--branch', '--base']) expect(help).toContain(flag);
@@ -348,13 +383,17 @@ describe('goblin', () => {
     await json(['project', 'design', 'set', 'mvp-1', '# Subway Reader']);
     expect((await run(['project', 'design', 'get', '1'])).out).toBe('# Subway Reader');
 
-    expect(await json(['settings'])).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees' });
-    expect(await json(['settings', 'set', '--ticket-prefix', 'sr'])).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees' });
-    expect(await json(['settings', 'set', '--worktree-root', '/srv/worktrees', '--actor', 'agent'])).toEqual({ ticket_prefix: 'SR', worktree_root: '/srv/worktrees' });
+    expect(await json(['settings'])).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
+    expect(await json(['settings', 'set', '--ticket-prefix', 'sr'])).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
+    expect(await json(['settings', 'set', '--worktree-root', '/srv/worktrees', '--actor', 'agent'])).toEqual({ ticket_prefix: 'SR', worktree_root: '/srv/worktrees', terminal_step: 'none' });
     expect((await run(['settings', 'set', '--worktree-root', 'relative'])).code).toBe(1);
     const unnamed = await run(['settings', 'set']);
     expect(unnamed.code).toBe(2);
-    expect(JSON.parse(unnamed.err).detail).toBe('say what to change: --ticket-prefix or --worktree-root');
+    expect(JSON.parse(unnamed.err).detail).toBe('say what to change: --ticket-prefix, --worktree-root or --terminal-step');
+    expect(await json(['settings', 'set', '--terminal-step', 'none'])).toMatchObject({ terminal_step: 'none' });
+    const unbuilt = await run(['settings', 'set', '--terminal-step', 'herdr']);
+    expect(unbuilt.code).toBe(1);
+    expect(JSON.parse(unbuilt.err).issues).toEqual([{ path: ['terminal_step'], message: 'herdr is not built yet: only none can be chosen' }]);
     await json(['ticket', 'create', '--title', 'renumbered nothing']);
     expect((await json(['ticket', 'show', '1'])).key).toBe('SR-1');
   });

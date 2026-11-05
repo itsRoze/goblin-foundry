@@ -85,7 +85,7 @@ test('a tile header lays out the same whichever tile has the focus', async ({ pa
  * and `d deps` were offered with no Cursor for them to act on.
  */
 
-const CURSOR_HINTS = ['x select', 's status', 'd deps', 'a approve'];
+const CURSOR_HINTS = ['x select', 's status', 'd deps', 't terminal', 'a approve'];
 const hint = (page: Page, text: string) => page.getByTestId('board-tile').locator('.gf-tile-keys .gf-hint', { hasText: text });
 
 /** The header's height, every hint's box relative to the header (seated or not), and where the first card starts. */
@@ -131,18 +131,22 @@ test('the board header offers the Cursor’s keys only while there is a Cursor f
 
   await page.keyboard.press('j');
   await expect(page.locator('.gf-card.is-cursor')).toContainText(' one');
-  for (const text of CURSOR_HINTS) await expect(hint(page, text)).toBeVisible();
-  // `building` has no `approve` arrow
+  for (const text of CURSOR_HINTS.filter((text) => text !== 't terminal')) await expect(hint(page, text)).toBeVisible();
+  // a terminal opens on a Ticket in flight, and this one is not
+  await expect(hint(page, 't terminal')).toBeHidden();
+  // `building` has no `approve` arrow, and does have a terminal
   await page.keyboard.press('l');
   await expect(page.locator('.gf-card.is-cursor')).toContainText(' two');
   await expect(hint(page, 'a approve')).toBeHidden();
   await expect(hint(page, 's status')).toBeVisible();
+  await expect(hint(page, 't terminal')).toBeVisible();
   // with a Selection the verbs are the selection bar's; the Cursor still selects
   await page.keyboard.press('x');
   await expect(page.getByTestId('selection-bar')).toBeVisible();
   await expect(hint(page, 'x select')).toBeVisible();
   await expect(hint(page, 's status')).toBeHidden();
   await expect(hint(page, 'd deps')).toBeHidden();
+  await expect(hint(page, 't terminal')).toBeHidden();
 });
 
 test('the board header lays out the same with and without a Cursor or a Selection, so the first card never moves', async ({ browser, baseURL }) => {

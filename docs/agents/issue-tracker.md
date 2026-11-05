@@ -64,7 +64,16 @@ wants the tracker to give a Ticket its place: it makes or adopts a git worktree
 of the App's Checkout, then starts the Ticket, and prints the Ticket with its
 `worktree_branch` and `worktree_folder`. `--branch` and `--base` choose, and
 either implies `--worktree`. It is refused when the App has no Checkout, and a
-failed worktree leaves the Ticket `ready` with git's reason.
+failed worktree leaves the Ticket `ready` with git's reason. Its last step asks
+the installation's terminal step (`goblin settings set --terminal-step`) to open
+a terminal, and the output's `terminal` says how that went: `opened`, or not with
+a `reason` and the `folder`. A terminal that did not open is not a failure, and
+the exit code is 0.
+
+`goblin ticket terminal GF-n` returns to the Worktree of a `building` or `review`
+Ticket. It changes no Status and writes no history. A Ticket with no Worktree
+gets one, with `--branch` and `--base` choosing as they do for `start`, recorded
+with one history event.
 
 #### An implementer in a worktree
 

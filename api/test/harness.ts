@@ -4,16 +4,16 @@ import { join } from 'node:path';
 import { sql } from 'drizzle-orm';
 import type { EntityKind } from '@goblin/shared';
 import { openDb } from '../src/db';
-import { createApp } from '../src/app';
+import { createApp, type AppDeps } from '../src/app';
 
 /**
  * In-process API harness: a fresh temp SQLite file per test, the Hono app
  * called through `app.request` — no socket. Every later API test uses this.
  */
-export async function makeTestApp() {
+export async function makeTestApp(deps: AppDeps = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'gf-test-'));
   const handle = await openDb(join(dir, 'foundry.db'));
-  const app = createApp(handle.db);
+  const app = createApp(handle.db, deps);
   return {
     app,
     /** The database file, for the one thing that is not a client: `goblin backup` copies the file itself. */

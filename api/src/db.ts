@@ -10,7 +10,7 @@ import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { sql } from 'drizzle-orm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { DEFAULT_TICKET_PREFIX, DEFAULT_WORKTREE_ROOT, TICKET_PREFIX_KEY, WORKTREE_ROOT_KEY } from '@goblin/shared';
+import { DEFAULT_TERMINAL_STEP, DEFAULT_TICKET_PREFIX, DEFAULT_WORKTREE_ROOT, TERMINAL_STEP_KEY, TICKET_PREFIX_KEY, WORKTREE_ROOT_KEY } from '@goblin/shared';
 import * as schema from './schema';
 import { defaultDbPath } from './db-path';
 
@@ -230,6 +230,7 @@ async function ensureSchema(db: Db): Promise<void> {
     .values([
       { key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX },
       { key: WORKTREE_ROOT_KEY, value: DEFAULT_WORKTREE_ROOT },
+      { key: TERMINAL_STEP_KEY, value: DEFAULT_TERMINAL_STEP },
     ])
     .onConflictDoNothing();
 }

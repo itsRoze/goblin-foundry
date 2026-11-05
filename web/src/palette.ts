@@ -39,6 +39,8 @@ export type PaletteAction =
   /** `d`: the dependencies tile's `blocked by` picker, wherever you pressed it from. */
   | { kind: 'blocked-by' }
   | { kind: 'copy-branch' }
+  /** Open terminal, which is no Transition, so it has no row among them. */
+  | { kind: 'terminal' }
   | { kind: 'add-implementation-link' }
   | { kind: 'add-label' }
   /** One step of a nested pick: the palette re-opens listing the live apps or projects. */

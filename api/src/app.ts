@@ -9,20 +9,26 @@ import { frontierRoutes } from './dependencies';
 import { labelNamesRoutes } from './labels';
 import { projectsRoutes } from './projects';
 import { settingsRoutes } from './settings';
+import { BUILT_TERMINAL_STEPS, type TerminalSteps } from './terminal';
 import { ticketsRoutes, toSummary } from './tickets';
 import { trashRoutes } from './trash';
 
 const WEB_DIST = join(import.meta.dir, '..', '..', 'web', 'dist');
 
+/** What a test puts in place of the real thing; a running tracker passes nothing. */
+export interface AppDeps {
+  terminals?: TerminalSteps;
+}
+
 /** The single Hono app; the API under `/api`, the built GUI at everything else. */
-export function createApp(db: Db) {
+export function createApp(db: Db, { terminals = BUILT_TERMINAL_STEPS }: AppDeps = {}) {
   const app = new Hono();
 
   app.use('/api/*', actorMiddleware);
-  app.route('/api/settings', settingsRoutes(db));
+  app.route('/api/settings', settingsRoutes(db, terminals));
   app.route('/api/apps', appsRoutes(db));
   app.route('/api/projects', projectsRoutes(db));
-  app.route('/api/tickets', ticketsRoutes(db));
+  app.route('/api/tickets', ticketsRoutes(db, terminals));
   app.route('/api/frontier', frontierRoutes(db, toSummary));
   app.route('/api/trash', trashRoutes(db));
   app.route('/api/labels', labelNamesRoutes(db));

@@ -43,7 +43,7 @@ test.describe("a Ticket's Worktree", () => {
     await expect(form).toBeHidden();
     await expect(tile.getByTestId('worktree-root')).toHaveText(chosen);
     await expect(tile.getByTestId('ticket-prefix')).toHaveText('GF');
-    expect(await (await page.request.get('/api/settings')).json()).toEqual({ ticket_prefix: 'GF', worktree_root: chosen });
+    expect(await (await page.request.get('/api/settings')).json()).toEqual({ ticket_prefix: 'GF', worktree_root: chosen, terminal_step: 'none' });
   });
 
   test('a started Ticket shows its branch and folder, copies the folder, and the history says so', async ({ page, context }) => {

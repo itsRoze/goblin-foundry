@@ -10,6 +10,7 @@ import {
   SettingsSchema,
   TicketDetailSchema,
   TicketSchema,
+  TerminalAnswerSchema,
   TicketSummarySchema,
   serialiseTicketFilter,
   type CreateAppBody,
@@ -196,7 +197,10 @@ export const useAppBranches = (id: number | null) =>
  * Transition when not. Not optimistic, unlike `useTransition`: the Start modal is
  * still open over the card, and a refusal has to leave the Ticket where it was.
  */
-export const useStart = () => useWrite(({ key, worktree }: { key: string; worktree?: StartWorktreeBody | undefined }) => api.post(`/api/tickets/${key}/start`, worktree));
+export const useStart = () => useWrite(({ key, worktree }: { key: string; worktree?: StartWorktreeBody | undefined }) => api.post(`/api/tickets/${key}/start`, worktree).then((r) => TerminalAnswerSchema.parse(r)));
+
+/** Open terminal, which is no Transition: the body is for a Ticket with no Worktree yet, and nothing moves. */
+export const useOpenTerminal = () => useWrite(({ key, worktree }: { key: string; worktree?: StartWorktreeBody | undefined }) => api.post(`/api/tickets/${key}/terminal`, worktree).then((r) => TerminalAnswerSchema.parse(r)));
 
 /** One move: which ticket, which verb, and where it lands so the cache can be patched before the answer. */
 export interface Move {
