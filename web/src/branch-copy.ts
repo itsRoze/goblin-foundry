@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ticketBranchName, type Ticket } from '@goblin/shared';
 
-/** Buttons and palette commands share clipboard behavior and truthful feedback. */
-export function useBranchCopy(ticket?: Pick<Ticket, 'key' | 'title'>) {
-  const branch = ticket ? ticketBranchName(ticket) : '';
+/** Clipboard behavior and truthful feedback, for whatever a button copies. */
+export function useCopy(text: string) {
   const [copied, setCopied] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   useEffect(() => {
@@ -12,15 +11,21 @@ export function useBranchCopy(ticket?: Pick<Ticket, 'key' | 'title'>) {
     return () => clearTimeout(timer);
   }, [copied]);
   const copy = async () => {
-    if (!branch) return;
+    if (!text) return;
     setFailed(null);
     setCopied(null);
     try {
-      await navigator.clipboard.writeText(branch);
-      setCopied(branch);
+      await navigator.clipboard.writeText(text);
+      setCopied(text);
     } catch {
-      setFailed(branch);
+      setFailed(text);
     }
   };
-  return { branch, copied: copied === branch, failed: failed === branch, copy };
+  return { copied: copied === text, failed: failed === text, copy };
+}
+
+/** Buttons and palette commands share one branch suggestion. */
+export function useBranchCopy(ticket?: Pick<Ticket, 'key' | 'title'>) {
+  const branch = ticket ? ticketBranchName(ticket) : '';
+  return { branch, ...useCopy(branch) };
 }

@@ -1,24 +1,10 @@
 import { statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
+import { git } from './git';
 
 /** What a folder named as a Checkout comes to: the folder to record, or the sentence saying why not. */
 export type ResolvedCheckout = { ok: true; folder: string } | { ok: false; reason: string };
-
-type GitAnswer = { ran: true; ok: true; out: string } | { ran: true; ok: false; reason: string } | { ran: false };
-
-/** `LC_ALL` because the one reason this module reads back has to be in the words it expects. */
-async function git(cwd: string, args: string[]): Promise<GitAnswer> {
-  let child;
-  try {
-    child = Bun.spawn(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, LC_ALL: 'C' } });
-  } catch {
-    return { ran: false };
-  }
-  const [out, err, exit] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
-  if (exit === 0) return { ran: true, ok: true, out: out.replace(/\n$/, '') };
-  return { ran: true, ok: false, reason: (err.split('\n')[0] ?? '').replace(/^fatal: /, '') };
-}
 
 function kindOf(folder: string): 'folder' | 'file' | null {
   try {
@@ -32,7 +18,7 @@ function kindOf(folder: string): 'folder' | 'file' | null {
 }
 
 /** `~` the way a person types it; a shell would have expanded it for the CLI, and nothing does for the GUI's field. */
-const expandHome = (folder: string) => (folder === '~' ? homedir() : folder.startsWith('~/') ? join(homedir(), folder.slice(2)) : folder);
+export const expandHome = (folder: string) => (folder === '~' ? homedir() : folder.startsWith('~/') ? join(homedir(), folder.slice(2)) : folder);
 
 /**
  * The main working tree of the repository `top` belongs to. A linked worktree
