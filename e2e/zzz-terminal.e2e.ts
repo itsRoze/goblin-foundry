@@ -278,20 +278,22 @@ test.describe('Open terminal', () => {
     expect((await read(page, key)).status).toBe('building');
   });
 
-  test('the terminal step is edited where the prefix is, and a step not built yet is refused where it was chosen', async ({ page }) => {
+  // This server has the built `herdr`, so nothing starts a Ticket while it is chosen.
+  test('the terminal step is edited where the prefix is, and can be switched to herdr and back', async ({ page }) => {
     await page.goto('/settings');
     const tile = page.getByTestId('settings-tile');
-    await expect(tile.getByTestId('terminal-step')).toHaveText('none');
-    await page.keyboard.press('e');
-    const form = page.getByTestId('settings-form');
-    const field = form.getByLabel('terminal step');
-    await expect(field).toHaveValue('none');
-    await field.selectOption('herdr');
-    await form.getByRole('button', { name: /save/ }).click();
-    await expect(form.getByRole('alert')).toHaveText('terminal_step: herdr is not built yet: only none can be chosen');
-    await field.selectOption('none');
-    await form.getByRole('button', { name: /save/ }).click();
-    await expect(form).toBeHidden();
-    await expect(tile.getByTestId('terminal-step')).toHaveText('none');
+    const choose = async (from: string, to: string) => {
+      await expect(tile.getByTestId('terminal-step')).toHaveText(from);
+      await page.keyboard.press('e');
+      const form = page.getByTestId('settings-form');
+      const field = form.getByLabel('terminal step');
+      await expect(field).toHaveValue(from);
+      await field.selectOption(to);
+      await form.getByRole('button', { name: /save/ }).click();
+      await expect(form).toBeHidden();
+      await expect(tile.getByTestId('terminal-step')).toHaveText(to);
+    };
+    await choose('none', 'herdr');
+    await choose('herdr', 'none');
   });
 });

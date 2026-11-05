@@ -39,12 +39,8 @@ describe('the terminal step setting', () => {
   const patch = (body: unknown) => Promise.resolve(h.app.request('/api/settings', { ...json('PATCH', body), headers: { 'content-type': 'application/json', 'x-goblin-actor': 'agent' } }));
   const settings = async () => (await h.app.request('/api/settings')).json();
 
-  test('defaults to none, and choosing a step with no implementation is refused with a sentence', async () => {
+  test('defaults to none', async () => {
     h = await makeTestApp();
-    expect((await settings()).terminal_step).toBe('none');
-    const res = await patch({ terminal_step: 'herdr' });
-    expect(res.status).toBe(422);
-    expect((await res.json()).issues).toEqual([{ path: ['terminal_step'], message: 'herdr is not built yet: only none can be chosen' }]);
     expect((await settings()).terminal_step).toBe('none');
   });
 
@@ -53,8 +49,8 @@ describe('the terminal step setting', () => {
     expect((await patch({ terminal_step: 'iterm' })).status).toBe(422);
   });
 
-  test('a step with an implementation can be chosen, and the choice is in the history with its Actor', async () => {
-    h = await makeTestApp({ terminals: { none: noTerminal, herdr: recordingStep().step } });
+  test('`herdr` can be chosen, and the choice is in the history with its Actor', async () => {
+    h = await makeTestApp();
     const res = await patch({ terminal_step: 'herdr' });
     expect(res.status).toBe(200);
     expect((await res.json()).terminal_step).toBe('herdr');
@@ -84,7 +80,7 @@ describe('Start and Open terminal ask the terminal step, against real git', () =
   };
   const folderOf = (slug: string) => join(worktrees, 'subway-reader', slug);
 
-  const useSteps = async (steps: TerminalSteps) => {
+  const useSteps = async (steps: Partial<TerminalSteps>) => {
     h?.close();
     h = await makeTestApp({ terminals: steps });
     expect((await req('/api/settings', json('PATCH', { worktree_root: worktrees }))).status).toBe(200);

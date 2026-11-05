@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { TicketStatus } from './tickets';
 
-/** The implementations the installation can choose between. Which of them this build has is the API's to say. */
+/** The implementations the installation can choose between. */
 export const TERMINAL_STEPS = ['none', 'herdr'] as const;
 export const TERMINAL_STEP_SHAPE = 'none or herdr';
 export const TerminalStepSchema = z.enum(TERMINAL_STEPS, { error: TERMINAL_STEP_SHAPE });
