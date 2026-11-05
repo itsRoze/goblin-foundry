@@ -102,6 +102,7 @@ a.gf-path { text-decoration: underline; }
   color: var(--gf-ink); transition: border-color var(--gf-fast) var(--gf-ease);
   cursor: grab; /* the whole card is the drag handle — no grip (DESIGN.md Components) */
   -webkit-touch-callout: none; /* the drag handle for a finger too (issue 11): a long-press lifts it, not the browser's menu */
+  scroll-margin-bottom: calc(var(--gf-selection-bar) + var(--gf-s2)); /* `scrollIntoView` counts the viewport, not the sticky Selection bar over its foot: the bar measures itself (Board.tsx). The gap keeps the card's edge off the bar's rule */
 }
 /* and nothing selects while it is held; a coarse pointer has no use for selecting a card's words */
 @media (pointer: coarse) { .gf-card { user-select: none; } }
@@ -692,6 +693,8 @@ a.gf-path { text-decoration: underline; }
  */
 @media (pointer: coarse) {
   .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
+  /* the bar's own one height, above, would otherwise outrank this: it is under a thumb more than anything is */
+  .gf-selection .gf-btn { min-height: 32px; }
   /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
   .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
   .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }

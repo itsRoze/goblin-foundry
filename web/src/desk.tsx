@@ -170,6 +170,10 @@ function remember(scope: string, at: string | null) {
   }
 }
 
+/** The Cursor as drawn: it shows only in the Focused tile (GLOSSARY.md). */
+export const cursorMark = () => document.querySelector('.gf-tile.is-focus .is-cursor');
+export const revealCursor = () => cursorMark()?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
 /**
  * The Cursor in one tile. The caller hands over its rows as columns of ids —
  * a list tile is a board with one column — and what comes back is the id the
@@ -212,7 +216,7 @@ export function useCursor({ tile, columns, pathOf }: { tile: string; columns: Co
    */
   useEffect(() => {
     if (at === null || !focused) return;
-    document.querySelector('.gf-tile.is-focus .is-cursor')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    revealCursor();
   }, [at, focused]);
 
   useKeyMap(

@@ -165,3 +165,19 @@ test('starting a blocked ticket asks once, by name; leave it holds the batch and
   expect((await read(page, held)).status).toBe('building');
   expect((await read(page, free)).status).toBe('building');
 });
+
+test('every button in the Selection bar is a finger tall, the verbs and the question’s answers alike (DESIGN.md Touch targets)', async ({ page }) => {
+  const one = await seed(page, mine('Fingerbar one'), { status: 'planning' });
+  await seed(page, mine('Fingerbar two'), { status: 'planning' });
+  await board(page, mine('Fingerbar'));
+  await box(page, one).tap();
+  await expect(count(page)).toHaveText('1 selected');
+  const buttons = page.getByTestId('selection-bar').locator('.gf-btn');
+  const shortest = () => buttons.evaluateAll((all) => Math.min(...all.map((b) => b.getBoundingClientRect().height)));
+
+  await expect(buttons.first()).toBeVisible();
+  expect(await shortest()).toBeGreaterThanOrEqual(32);
+  await page.getByTestId('bulk-trash').tap();
+  await expect(page.getByTestId('bulk-confirm')).toBeVisible();
+  expect(await shortest()).toBeGreaterThanOrEqual(32);
+});
