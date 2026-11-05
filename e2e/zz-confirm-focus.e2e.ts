@@ -41,12 +41,12 @@ async function twice(page: Page, key: string, gapMs: number) {
 
 const GAPS = [30, 100, 400];
 
-test('s ⏎ on a blocked Ticket puts the question on screen with the focus on cancel, so ⏎ dismisses it and ⇧Tab ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
+test('s ⏎ on a blocked Ticket puts the question on screen with the focus on leave it, so ⏎ dismisses it and ⇧Tab ⏎ answers it (GF-44, GF-84)', async ({ page }) => {
   await page.setViewportSize(BELOW_THE_FOLD);
   const blocked = await blockedTicket(page, 'Askfocus');
   await askByKey(page);
-  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
-  await expect(page.getByTestId('confirm-start-cancel')).toBeInViewport();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeInViewport();
   await expect(page.getByTestId('state-tile')).toHaveClass(/is-focus/);
 
   await page.keyboard.press('Enter');
@@ -99,7 +99,7 @@ test('j s ⏎ ⏎ on a board column writes nothing, at 30, 100 and 400 ms', asyn
   await page.keyboard.press('s');
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-ready-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-ready-yes')).toBeFocused();
   await page.keyboard.press('Escape');
@@ -124,7 +124,7 @@ test('s ⏎ ⏎ on a Selection and ⏎ ⏎ on its trash write nothing, at 30, 10
     await page.keyboard.press('s');
     await expect(page.getByTestId('run-move-start')).toBeVisible();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+    await expect(page.getByTestId('bulk-confirm-dismiss')).toBeFocused();
     await expect(page.getByTestId('bulk-confirm-yes')).toHaveAttribute('aria-describedby', /./);
     await page.keyboard.press('Shift+Tab');
     await expect(page.getByTestId('bulk-confirm-yes')).toBeFocused();
@@ -143,12 +143,12 @@ test('a held ⏎ asks the question once: its repeats neither answer it nor ask i
   const blocked = await blockedTicket(page, 'Heldrepeat');
   await page.getByTestId('move-start').focus();
   await page.keyboard.down('Enter');
-  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
   // a second `down` with the key still held is what the browser sends as a repeat
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
   await expect(page.getByTestId('confirm-start')).toContainText('still blocks this');
-  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
 
   await page.keyboard.down('Enter');
   await expect(page.getByTestId('confirm-start')).toHaveCount(0);
@@ -164,7 +164,7 @@ test('a held ⏎ asks the question once: its repeats neither answer it nor ask i
   await page.keyboard.press('s');
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-ready-dismiss')).toBeFocused();
   await page.keyboard.down('Enter');
   await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
   await page.keyboard.down('Enter');
@@ -184,7 +184,7 @@ test('a question never takes the caret out of the filter: not as it stands, not 
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-ready')).toBeVisible();
-  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-ready-dismiss')).toBeFocused();
 
   const filter = page.getByLabel('filter by text');
   await filter.click();
@@ -232,7 +232,7 @@ test('a late refusal shows in place: the page does not move and the caret keeps 
   await expect(editor).toContainText('abc');
 });
 
-test('esc and cancel hand the focus back to `start`, and ⏎ there asks again rather than opening something else', async ({ page }) => {
+test('esc and leave it hand the focus back to `start`, and ⏎ there asks again rather than opening something else', async ({ page }) => {
   await page.setViewportSize(BELOW_THE_FOLD);
   await blockedTicket(page, 'Askback');
   await askByKey(page);
@@ -411,7 +411,7 @@ test('an OS double click on the bar’s trash asks with its first click and dism
   const keys = await selectedPair(page, 'Dblclick');
   await page.getByTestId('bulk-trash').click();
   await expect(page.getByTestId('bulk-confirm-yes')).toBeVisible();
-  await page.getByTestId('bulk-confirm-cancel').click();
+  await page.getByTestId('bulk-confirm-dismiss').click();
   await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
   await page.getByTestId('bulk-trash').dblclick();
   await page.waitForTimeout(400);
@@ -479,13 +479,13 @@ for (const by of [3, 29, 40]) {
     await page.setViewportSize(WIDE);
     const blocked = await blockedTicket(page, `${name}${by}`, { description: LONG_DESCRIPTION });
     await page.getByTestId('move-start').click();
-    await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+    await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
     return { blocked, rest: await clipTop(page.getByTestId('move-start'), by) };
   }
 
-  test(`with start ${by}px above the top at 1366, a click on cancel leaves the page where it is and the focus on start`, async ({ page }) => {
-    const { rest } = await askedWithStartClipped(page, 'StayCancel');
-    await press(page, page.getByTestId('confirm-start-cancel'));
+  test(`with start ${by}px above the top at 1366, a click on leave it leaves the page where it is and the focus on start`, async ({ page }) => {
+    const { rest } = await askedWithStartClipped(page, 'StayDismiss');
+    await press(page, page.getByTestId('confirm-start-dismiss'));
     await expect(page.getByTestId('confirm-start')).toHaveCount(0);
     await expect(page.getByTestId('move-start')).toBeFocused();
     expect(await scrollY(page)).toBe(rest);
@@ -501,7 +501,7 @@ for (const by of [3, 29, 40]) {
 
   for (const [how, close] of [
     ['esc', (page: Page) => page.keyboard.press('Escape')],
-    ['⏎ on cancel', (page: Page) => page.keyboard.press('Enter')],
+    ['⏎ on leave it', (page: Page) => page.keyboard.press('Enter')],
   ] as const)
     test(`with start ${by}px above the top at 1366, ${how} brings start back by the ${by}px it was clipped, no further`, async ({ page }) => {
       const { rest } = await askedWithStartClipped(page, 'KeyBack');

@@ -123,7 +123,7 @@ export interface BulkAsk {
   /** The press the question came from, one object per ask, while `question` is redrawn from the members as they stand (`useFocusOnAsk`). */
   asked: object | null;
   confirm: () => void;
-  cancel: () => void;
+  dismiss: () => void;
 }
 
 /**
@@ -173,9 +173,9 @@ export function useBulkAction(members: readonly Member[]): BulkAsk {
     setAsking(null);
     submit(asking.action, members);
   }, [asking, members, submit]);
-  const cancel = useCallback(() => setAsking(null), []);
+  const dismiss = useCallback(() => setAsking(null), []);
 
-  return { act, question: asking === null ? null : questionFor(asking.action, members), asked: asking, confirm, cancel };
+  return { act, question: asking === null ? null : questionFor(asking.action, members), asked: asking, confirm, dismiss };
 }
 
 /**

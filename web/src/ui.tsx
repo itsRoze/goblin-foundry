@@ -369,11 +369,11 @@ export function useRefusal<T>() {
  * on the action; `leave it` takes the focus, so `⏎` on a question not yet read
  * dismisses it, and ⇧Tab reaches the action.
  */
-export function Confirm({ asked, text, verb, onConfirm, onCancel, testId }: { asked: object; text: string; verb: string; onConfirm: () => void; onCancel: () => void; testId?: string }) {
+export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string }) {
   const question = useId();
-  const cancel = useRef<HTMLButtonElement>(null);
+  const dismiss = useRef<HTMLButtonElement>(null);
   const line = useRef<HTMLParagraphElement>(null);
-  useFocusOnAsk(asked, cancel, line);
+  useFocusOnAsk(asked, dismiss, line);
   const id = testId ?? 'confirm';
   return (
     <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
@@ -382,7 +382,7 @@ export function Confirm({ asked, text, verb, onConfirm, onCancel, testId }: { as
       <button type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
         {verb} anyway
       </button>
-      <button ref={cancel} type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-cancel`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
+      <button ref={dismiss} type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-dismiss`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onDismiss}>
         leave it
       </button>
     </p>

@@ -215,7 +215,7 @@ test('esc answers the blocked-start question before it clears the Cursor (GF-77)
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-ready')).toContainText(blocker.key);
-  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-ready-dismiss')).toBeFocused();
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
@@ -362,7 +362,7 @@ test('s and d know about the Selection, and a card’s own menu still means that
   await expect(count(page)).toHaveText('1 selected');
 });
 
-test('trash asks once with the whole count; cancel sends nothing; a changed set withdraws the question', async ({ page }) => {
+test('trash asks once with the whole count; leave it sends nothing; a changed set withdraws the question', async ({ page }) => {
   const a = await seed(page, 'Bulkbinned alpha');
   const b = await seed(page, 'Bulkbinned bravo');
   await board(page, 'Bulkbinned ');
@@ -379,7 +379,7 @@ test('trash asks once with the whole count; cancel sends nothing; a changed set 
   await expect(page.getByTestId('bulk-confirm-lines')).toContainText(`${a.key} ${b.key}`);
   await expect(page.getByTestId('bulk-confirm-lines')).toContainText('restored from the trash');
   await expect(page.getByTestId('bulk-trash')).toHaveCount(0);
-  await page.getByTestId('bulk-confirm-cancel').click();
+  await page.getByTestId('bulk-confirm-dismiss').click();
   await expect(confirm).toHaveCount(0);
   await expect(count(page)).toHaveText('2 selected');
 
@@ -443,7 +443,7 @@ test('start asks once about blockers, keeps the question current, ignores a reti
 
   const confirm = page.getByTestId('bulk-confirm');
   await expect(confirm).toContainText('1 Ticket of 2 still has open blockers');
-  await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+  await expect(page.getByTestId('bulk-confirm-dismiss')).toBeFocused();
   const lines = page.getByTestId('bulk-confirm-lines');
   await expect(lines).toContainText(`${held.key} is blocked by ${blocker.key}`);
   expect((await read(page, free.key)).status).toBe('ready');

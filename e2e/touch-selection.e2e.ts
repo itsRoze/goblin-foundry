@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 /**
  * Issue 03b by finger alone, on the stacked phone board in both engines:
  * selecting, clearing, selecting all, every bulk action and both questions —
- * and their cancels — reached by a visible control. Nothing here presses a
+ * and their ways out — reached by a visible control. Nothing here presses a
  * key. A tap on a card still opens it; a tap on its checkbox never does.
  */
 
@@ -63,7 +63,7 @@ test('a checkbox selects by tap, select all and clear are controls, and tapping 
   await expect(page.getByTestId('about-tile')).toBeVisible();
 });
 
-test('a folded section’s tickets are selected, counted and acted on; trash asks with the whole count and cancel sends nothing', async ({ page }) => {
+test('a folded section’s tickets are selected, counted and acted on; trash asks with the whole count and leave it sends nothing', async ({ page }) => {
   const open = await seed(page, mine('Folded set open'), { status: 'planning' });
   const folded = await seed(page, mine('Folded set hidden'), { status: 'todo' });
   await board(page, mine('Folded set'));
@@ -80,7 +80,7 @@ test('a folded section’s tickets are selected, counted and acted on; trash ask
 
   await page.getByTestId('bulk-trash').tap();
   await expect(page.getByTestId('bulk-confirm')).toContainText('Trash 2 Tickets?');
-  await page.getByTestId('bulk-confirm-cancel').tap();
+  await page.getByTestId('bulk-confirm-dismiss').tap();
   await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
   await expect(count(page)).toHaveText('2 selected');
   expect((await page.request.get(`/api/tickets/${folded}`)).status()).toBe(200);
@@ -141,7 +141,7 @@ test('status, move and trash are all reached from the bar by tapping', async ({ 
   expect((await page.request.get(`/api/tickets/${b}`)).status()).toBe(404);
 });
 
-test('starting a blocked ticket asks once, by name; cancel holds the batch and yes sends it', async ({ page }) => {
+test('starting a blocked ticket asks once, by name; leave it holds the batch and yes sends it', async ({ page }) => {
   const blocker = await seed(page, mine('Finger blocker'));
   const held = await seed(page, mine('Finger start held'), { status: 'ready' });
   const free = await seed(page, mine('Finger start free'), { status: 'ready' });
@@ -154,7 +154,7 @@ test('starting a blocked ticket asks once, by name; cancel holds the batch and y
   await page.getByTestId('bulk-status').tap();
   await page.getByTestId('palette').getByTestId('run-move-start').tap();
   await expect(page.getByTestId('bulk-confirm-lines')).toContainText(`${held} is blocked by ${blocker}`);
-  await page.getByTestId('bulk-confirm-cancel').tap();
+  await page.getByTestId('bulk-confirm-dismiss').tap();
   expect((await read(page, free)).status).toBe('ready');
   await expect(count(page)).toHaveText('2 selected');
 
