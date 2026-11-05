@@ -131,18 +131,18 @@ test.describe('double tap', () => {
       });
 });
 
-test('a tap on start or trash opens the question on cancel, ⇧Tab reaches the answer in this engine too and ⏎ there writes, Tab comes back to cancel', async ({ page }) => {
+test('a tap on start or trash opens the question on leave it, ⇧Tab reaches the answer in this engine too and ⏎ there writes, Tab comes back to leave it', async ({ page }) => {
   const key = await blocked(page, mine('Tabbed start'));
   await page.goto(`/tickets/${key}`);
   await page.getByTestId('move-start').tap();
-  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('confirm-start-yes')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('confirm-start')).toHaveCount(0);
   expect((await read(page, key)).status).toBe('ready');
   await page.getByTestId('move-start').tap();
-  await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');
@@ -150,11 +150,11 @@ test('a tap on start or trash opens the question on cancel, ⇧Tab reaches the a
 
   const keys = await selectedPair(page, mine('Tabbed trash'));
   await page.getByTestId('bulk-trash').tap();
-  await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+  await expect(page.getByTestId('bulk-confirm-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('bulk-confirm-yes')).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+  await expect(page.getByTestId('bulk-confirm-dismiss')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('bulk-confirm')).toHaveCount(0);
   expect(await wrote(page, keys)()).toBe(false);
@@ -227,13 +227,13 @@ for (const by of [3, 29, 40]) {
   async function askedWithStartClipped(page: Page, name: string) {
     const key = await longBlocked(page, `${name}${by}`);
     await page.getByTestId('move-start').tap();
-    await expect(page.getByTestId('confirm-start-cancel')).toBeFocused();
+    await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
     return { key, rest: await clipTop(page.getByTestId('move-start'), by) };
   }
 
-  test(`with start ${by}px above the top at 1366, a tap on cancel leaves the page where it is and the focus on start`, async ({ page }) => {
-    const { rest } = await askedWithStartClipped(page, 'StayCancel');
-    await tap(page, page.getByTestId('confirm-start-cancel'));
+  test(`with start ${by}px above the top at 1366, a tap on leave it leaves the page where it is and the focus on start`, async ({ page }) => {
+    const { rest } = await askedWithStartClipped(page, 'StayDismiss');
+    await tap(page, page.getByTestId('confirm-start-dismiss'));
     await expect(page.getByTestId('confirm-start')).toHaveCount(0);
     await expect(page.getByTestId('move-start')).toBeFocused();
     expect(await scrollY(page)).toBe(rest);

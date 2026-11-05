@@ -317,7 +317,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onTrash={() => void trash()}
         onBlockedBy={openBlockedBy}
         asking={asking}
-        onCancelConfirm={() => setAsking(null)}
+        onDismissConfirm={() => setAsking(null)}
         onConfirm={() => {
           if (asking === null) return;
           setAsking(null);
@@ -640,7 +640,7 @@ function StateTile({
   onBlockedBy,
   asking,
   onConfirm,
-  onCancelConfirm,
+  onDismissConfirm,
   refusal,
   said,
 }: {
@@ -653,7 +653,7 @@ function StateTile({
   onTrash: () => void;
   asking: { verb: TransitionName } | null;
   onConfirm: () => void;
-  onCancelConfirm: () => void;
+  onDismissConfirm: () => void;
   refusal: string | null;
   said: number;
 }) {
@@ -706,7 +706,7 @@ function StateTile({
             </button>
           ))}
       </div>
-      {asking && <Confirm asked={asking} text={blockedWarning(ticket.blocked_by)} verb={asking.verb} testId="confirm-start" onCancel={onCancelConfirm} onConfirm={onConfirm} />}
+      {asking && <Confirm asked={asking} text={blockedWarning(ticket.blocked_by)} verb={asking.verb} testId="confirm-start" onDismiss={onDismissConfirm} onConfirm={onConfirm} />}
       {/* next to what it gates (approve, among the arrows above), not under the ways of stopping */}
       <label className="gf-toggle">
         <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all

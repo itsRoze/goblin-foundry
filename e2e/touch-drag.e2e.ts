@@ -146,7 +146,7 @@ test.describe('the horizontal board by finger', () => {
     await expect(page.getByTestId('col-building')).toHaveClass(/is-over/);
     await finger.up();
 
-    await expect(page.getByTestId('confirm-building-cancel')).toBeFocused();
+    await expect(page.getByTestId('confirm-building-dismiss')).toBeFocused();
     expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   });
 

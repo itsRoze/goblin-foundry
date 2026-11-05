@@ -255,7 +255,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
     [setRefusal],
   );
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, cancel: useCallback(() => setPending(null), []) };
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []) };
 }
 
 /**
@@ -353,7 +353,7 @@ export function BoardPage() {
     },
     [lookup, sending],
   );
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, cancel } = useBoardMoves(lookup, onMoved, heldLine);
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss } = useBoardMoves(lookup, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -466,11 +466,11 @@ export function BoardPage() {
       return true;
     }
     if (bulk.question !== null) {
-      bulk.cancel();
+      bulk.dismiss();
       return true;
     }
     if (pending !== null) {
-      cancel();
+      dismiss();
       return true;
     }
     if (selecting.outcome?.kind === 'refused' || selecting.outcome?.kind === 'unknown') {
@@ -521,7 +521,7 @@ export function BoardPage() {
   const lift = useTouchDrag(scroller, !vertical, {
     onLift: (card) => {
       refuse(null);
-      cancel();
+      dismiss();
       setDragging(card.status);
     },
     onOver: setTouchOver,
@@ -550,7 +550,7 @@ export function BoardPage() {
     refusal: refusal?.status === column.status ? refusal : null,
     pending: pending?.status === column.status ? pending : null,
     notice: notice?.from === column.status ? notice : null,
-    onCancel: cancel,
+    onDismiss: dismiss,
     onShow: show,
   });
 
@@ -660,11 +660,11 @@ export function BoardPage() {
 function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: { count: number; total: number; approvable: boolean; bulk: BulkAsk; onSelectAll: () => void; onClear: () => void }) {
   const { pending, outcome, report } = useSelecting();
   const openPalette = useOpenPalette();
-  const { question, asked, act: onAct, confirm: onConfirm, cancel: onCancel } = bulk;
+  const { question, asked, act: onAct, confirm: onConfirm, dismiss: onDismiss } = bulk;
   const busy = pending !== null;
-  const cancel = useRef<HTMLButtonElement>(null);
+  const dismiss = useRef<HTMLButtonElement>(null);
   const line = useRef<HTMLSpanElement>(null);
-  useFocusOnAsk(asked, cancel, line);
+  useFocusOnAsk(asked, dismiss, line);
   const sentence = useId();
   if (count === 0 && pending === null && outcome === null) return null;
   return (
@@ -704,8 +704,8 @@ function SelectionBar({ count, total, approvable, bulk, onSelectAll, onClear }: 
               <button type="button" tabIndex={0} className={`gf-btn${question.danger ? ' is-danger' : ''}`} data-testid="bulk-confirm-yes" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
                 {question.verb}
               </button>
-              <button ref={cancel} type="button" tabIndex={0} className="gf-btn" data-testid="bulk-confirm-cancel" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
-                cancel <Kbd>esc</Kbd>
+              <button ref={dismiss} type="button" tabIndex={0} className="gf-btn" data-testid="bulk-confirm-dismiss" aria-describedby={sentence} onKeyDown={ignoreHeldEnter} onClick={onDismiss}>
+                leave it <Kbd>esc</Kbd>
               </button>
             </span>
           )}
@@ -744,12 +744,12 @@ interface CardsProps {
   pending: Pending | null;
   /** A card that left this status for somewhere out of sight. */
   notice: Notice | null;
-  onCancel: () => void;
+  onDismiss: () => void;
   onShow: (notice: Notice) => void;
 }
 
 /** What the board has to say under a card, or at the foot of its column. */
-function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<CardsProps, 'status' | 'refusal' | 'pending' | 'notice' | 'onCancel' | 'onShow'>) {
+function Said({ status, refusal, pending, notice, onDismiss, onShow }: Pick<CardsProps, 'status' | 'refusal' | 'pending' | 'notice' | 'onDismiss' | 'onShow'>) {
   return (
     <>
       {refusal && (
@@ -757,7 +757,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
           {refusal.text}
         </p>
       )}
-      {pending && <Confirm asked={pending} text={pending.text} verb="start" onConfirm={pending.go} onCancel={onCancel} testId={`confirm-${status}`} />}
+      {pending && <Confirm asked={pending} text={pending.text} verb="start" onConfirm={pending.go} onDismiss={onDismiss} testId={`confirm-${status}`} />}
       {notice && (
         <p className="gf-confirm gf-notice" role="status" data-testid={`notice-${status}`}>
           <span>
@@ -774,7 +774,7 @@ function Said({ status, refusal, pending, notice, onCancel, onShow }: Pick<Cards
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onCancel, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onDismiss, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
@@ -786,10 +786,10 @@ function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor
     <>
       {tickets.map((t) => (
         <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} showLabels={showLabels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
-          <Said status={status} {...under(t.key)} notice={null} onCancel={onCancel} onShow={onShow} />
+          <Said status={status} {...under(t.key)} notice={null} onDismiss={onDismiss} onShow={onShow} />
         </TicketCard>
       ))}
-      <Said status={status} refusal={atFoot(refusal) ? refusal : null} pending={atFoot(pending) ? pending : null} notice={notice} onCancel={onCancel} onShow={onShow} />
+      <Said status={status} refusal={atFoot(refusal) ? refusal : null} pending={atFoot(pending) ? pending : null} notice={notice} onDismiss={onDismiss} onShow={onShow} />
     </>
   );
 }
@@ -841,7 +841,7 @@ function Column({
  * the card it is about.
  */
 function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: boolean; onToggle: () => void }) {
-  const { status, count, refusal, pending, notice, onCancel, onShow } = cards;
+  const { status, count, refusal, pending, notice, onDismiss, onShow } = cards;
   return (
     <section className={`gf-section${expanded ? ' is-open' : ''}`} data-testid={`section-${status}`} data-status={status} aria-label={status}>
       <button type="button" className="gf-col-head gf-section-head" aria-expanded={expanded} data-testid={`section-head-${status}`} onClick={onToggle}>
@@ -853,7 +853,7 @@ function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: bool
         </span>
         {count !== null && <b>{count}</b>}
       </button>
-      {expanded ? <Cards {...cards} /> : <Said status={status} refusal={refusal} pending={pending} notice={notice} onCancel={onCancel} onShow={onShow} />}
+      {expanded ? <Cards {...cards} /> : <Said status={status} refusal={refusal} pending={pending} notice={notice} onDismiss={onDismiss} onShow={onShow} />}
     </section>
   );
 }

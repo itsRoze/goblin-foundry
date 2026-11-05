@@ -215,7 +215,7 @@ test('esc answers the blocked-start question before it clears the Cursor (GF-77)
   await expect(page.getByTestId('run-move-start')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('confirm-ready')).toContainText(blocker.key);
-  await expect(page.getByTestId('confirm-ready-cancel')).toBeFocused();
+  await expect(page.getByTestId('confirm-ready-dismiss')).toBeFocused();
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
@@ -362,7 +362,7 @@ test('s and d know about the Selection, and a card’s own menu still means that
   await expect(count(page)).toHaveText('1 selected');
 });
 
-test('trash asks once with the whole count; cancel sends nothing; a changed set withdraws the question', async ({ page }) => {
+test('trash asks once with the whole count; leave it sends nothing; a changed set withdraws the question', async ({ page }) => {
   const a = await seed(page, 'Bulkbinned alpha');
   const b = await seed(page, 'Bulkbinned bravo');
   await board(page, 'Bulkbinned ');
@@ -379,7 +379,7 @@ test('trash asks once with the whole count; cancel sends nothing; a changed set 
   await expect(page.getByTestId('bulk-confirm-lines')).toContainText(`${a.key} ${b.key}`);
   await expect(page.getByTestId('bulk-confirm-lines')).toContainText('restored from the trash');
   await expect(page.getByTestId('bulk-trash')).toHaveCount(0);
-  await page.getByTestId('bulk-confirm-cancel').click();
+  await page.getByTestId('bulk-confirm-dismiss').click();
   await expect(confirm).toHaveCount(0);
   await expect(count(page)).toHaveText('2 selected');
 
@@ -400,6 +400,35 @@ test('trash asks once with the whole count; cancel sends nothing; a changed set 
   expect((await page.request.get(`/api/tickets/${b.key}`)).status()).toBe(404);
 });
 
+test('the way out of both the bar\'s questions is `leave it esc`, and pressing it leaves every status as it was (GF-45)', async ({ page }) => {
+  const blocker = await seed(page, 'Staybar blocker');
+  const free = await seed(page, 'Leavebar free', { status: 'ready' });
+  const held = await seed(page, 'Leavebar held', { status: 'ready' });
+  await page.request.post(`/api/tickets/${held.key}/dependencies`, { data: { blocker: blocker.key } });
+  await board(page, 'Leavebar ');
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(count(page)).toHaveText('2 selected');
+  const confirm = page.getByTestId('bulk-confirm');
+  const wayOut = confirm.getByRole('button', { name: 'leave it esc', exact: true });
+
+  await page.keyboard.press('s');
+  await page.getByTestId('palette').getByTestId('run-move-start').click();
+  await expect(confirm).toContainText('1 Ticket of 2 still has open blockers');
+  await wayOut.click();
+  await expect(confirm).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, free.key)).status).toBe('ready');
+  expect((await read(page, held.key)).status).toBe('ready');
+
+  await page.getByTestId('bulk-trash').click();
+  await expect(confirm).toContainText('Trash 2 Tickets?');
+  await wayOut.click();
+  await expect(confirm).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, free.key)).status).toBe('ready');
+  expect((await read(page, held.key)).status).toBe('ready');
+});
+
 test('start asks once about blockers, keeps the question current, ignores a retitle, and holds the whole batch until yes', async ({ page }) => {
   const blocker = await seed(page, 'Holdup blocker');
   const second = await seed(page, 'Holdup second blocker');
@@ -414,7 +443,7 @@ test('start asks once about blockers, keeps the question current, ignores a reti
 
   const confirm = page.getByTestId('bulk-confirm');
   await expect(confirm).toContainText('1 Ticket of 2 still has open blockers');
-  await expect(page.getByTestId('bulk-confirm-cancel')).toBeFocused();
+  await expect(page.getByTestId('bulk-confirm-dismiss')).toBeFocused();
   const lines = page.getByTestId('bulk-confirm-lines');
   await expect(lines).toContainText(`${held.key} is blocked by ${blocker.key}`);
   expect((await read(page, free.key)).status).toBe('ready');
