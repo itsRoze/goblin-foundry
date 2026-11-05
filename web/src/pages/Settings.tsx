@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { TERMINAL_STEPS, TerminalStepSchema } from '@goblin/shared';
 import { useSettings, usePatchSettings } from '../queries';
 import { useCrumb } from '../shell';
 import { useKey } from '../keys';
@@ -8,6 +9,7 @@ import { Empty, Hint, InlineForm, Kv, Tile } from '../ui';
  * The installation itself. Changing the prefix changes every displayed key at
  * once and no ticket number — the number is the identity (ADR-0002). The
  * Worktree root is where a Start makes new folders; one already made stays put.
+ * The terminal step is what opens a terminal in a Worktree.
  */
 export function SettingsPage() {
   useCrumb('settings');
@@ -36,12 +38,13 @@ export function SettingsPage() {
           fields={[
             { name: 'ticket_prefix', label: 'ticket prefix', placeholder: 'GF' },
             { name: 'worktree_root', label: 'worktree root', placeholder: '~/.goblin/worktrees' },
+            { name: 'terminal_step', label: 'terminal step', kind: 'select', options: TERMINAL_STEPS.map((step) => ({ value: step, label: step })) },
           ]}
-          initial={{ ticket_prefix: settings.data.ticket_prefix, worktree_root: settings.data.worktree_root }}
+          initial={{ ticket_prefix: settings.data.ticket_prefix, worktree_root: settings.data.worktree_root, terminal_step: settings.data.terminal_step }}
           submitLabel="save"
           onCancel={() => setEditing(false)}
           onSubmit={async (v) => {
-            await patch.mutateAsync({ ticket_prefix: v.ticket_prefix ?? '', worktree_root: v.worktree_root ?? '' });
+            await patch.mutateAsync({ ticket_prefix: v.ticket_prefix ?? '', worktree_root: v.worktree_root ?? '', terminal_step: TerminalStepSchema.parse(v.terminal_step) });
             setEditing(false);
           }}
         />
@@ -50,6 +53,7 @@ export function SettingsPage() {
           rows={[
             ['ticket prefix', <span data-testid="ticket-prefix">{settings.data.ticket_prefix}</span>],
             ['worktree root', <span className="gf-path" data-testid="worktree-root">{settings.data.worktree_root}</span>],
+            ['terminal step', <span className="gf-path" data-testid="terminal-step">{settings.data.terminal_step}</span>],
           ]}
         />
       ) : (

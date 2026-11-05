@@ -9,8 +9,11 @@ export {
   TICKET_PREFIX_KEY,
   DEFAULT_WORKTREE_ROOT,
   WORKTREE_ROOT_KEY,
+  DEFAULT_TERMINAL_STEP,
+  TERMINAL_STEP_KEY,
   DEFAULT_PORT,
 } from './settings';
+export { TERMINAL_STEPS, TerminalStepSchema, type TerminalStepName, TerminalOutcomeSchema, type TerminalOutcome, TerminalAnswerSchema, opensTerminal, noTerminalAt } from './terminal';
 export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
 export { JUDGED_HEADER, judgedField, judgement } from './judged';
 export { eventHistory, EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';

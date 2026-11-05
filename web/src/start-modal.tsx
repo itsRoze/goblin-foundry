@@ -11,7 +11,9 @@ type Starting = Pick<Ticket, 'key' | 'title' | 'app_id' | 'worktree_branch'>;
  * Starting one `ready` Ticket (GLOSSARY.md "Worktree"): where the work will
  * happen is decided here, before anything is made. It is the screen's own write
  * that runs, so a bulk action's hold and the board's notice go on working, and
- * `run` with no body is the plain Transition.
+ * `run` with no body is the plain Transition. Open terminal on a Ticket already in
+ * flight with no Worktree asks the same fields without the Transition, so there is
+ * no plain way past them: with nothing to make, there is nothing to do.
  *
  * A native modal dialog, so the page behind is inert and Tab stays inside. No
  * backdrop is drawn, as the palette draws none (DESIGN.md Components); a press
@@ -22,11 +24,13 @@ type Starting = Pick<Ticket, 'key' | 'title' | 'app_id' | 'worktree_branch'>;
  */
 export function StartModal({
   ticket,
+  verb = 'start',
   run,
   onClose,
   focusAfter,
 }: {
   ticket: Starting;
+  verb?: 'start' | 'terminal';
   run: (worktree?: StartWorktreeBody) => Promise<unknown>;
   onClose: (started: boolean) => void;
   /** Where the focus goes back to when what had it is gone, as a menu's row and an answered question are. */
@@ -135,13 +139,15 @@ export function StartModal({
     >
       <div className="gf-start-panel">
         <h2 id={title} className="gf-start-title">
-          <span className="gf-key">start {ticket.key}</span>
+          <span className="gf-key">
+            {verb} {ticket.key}
+          </span>
           {ticket.title}
         </h2>
         {missing !== null ? (
-          <NoWorktree said={missing} app={app.data} busy={busy} refusal={refusal} onPlain={() => void accept()} onCancel={cancel} onLeave={() => leave(false)} />
+          <NoWorktree said={missing} app={app.data} busy={busy} refusal={refusal} onPlain={verb === 'start' ? () => void accept() : undefined} onCancel={cancel} onLeave={() => leave(false)} />
         ) : app.data ? (
-          <Fields ticket={ticket} app={app.data} read={read.data} busy={busy} refusal={refusal} onAccept={(worktree) => void accept(worktree)} onCancel={cancel} onRefuse={setRefusal} />
+          <Fields ticket={ticket} verb={verb} app={app.data} read={read.data} busy={busy} refusal={refusal} onAccept={(worktree) => void accept(worktree)} onCancel={cancel} onRefuse={setRefusal} />
         ) : (
           <Empty>loading…</Empty>
         )}
@@ -155,6 +161,7 @@ const NO_BRANCH = 'a Worktree needs a branch: name one';
 
 function Fields({
   ticket,
+  verb,
   app,
   read,
   busy,
@@ -164,6 +171,7 @@ function Fields({
   onRefuse,
 }: {
   ticket: Starting;
+  verb: 'start' | 'terminal';
   app: App;
   /** `undefined` while the Checkout is being read: `⏎` still starts, because the API's defaults are what the fields would have said. */
   read: AppBranches | undefined;
@@ -277,7 +285,7 @@ function Fields({
       )}
       <span className="gf-form-actions">
         <button type="button" className="gf-btn is-primary" data-testid="start-go" aria-busy={busy} onClick={accept}>
-          {busy ? 'starting…' : 'start'} <Kbd>⏎</Kbd>
+          {verb === 'start' ? (busy ? 'starting…' : 'start') : busy ? 'opening…' : 'open terminal'} <Kbd>⏎</Kbd>
         </button>
         <button type="button" className="gf-btn" data-testid="start-cancel" onClick={onCancel}>
           cancel <Kbd>esc</Kbd>
@@ -326,12 +334,13 @@ function NoWorktree({
   app: App | undefined;
   busy: boolean;
   refusal: string | null;
-  onPlain: () => void;
+  /** Absent where a Worktree was all that was asked for. */
+  onPlain: (() => void) | undefined;
   onCancel: () => void;
   onLeave: () => void;
 }) {
-  const plain = useRef<HTMLButtonElement>(null);
-  useEffect(() => plain.current?.focus({ preventScroll: true }), []);
+  const answer = useRef<HTMLButtonElement>(null);
+  useEffect(() => answer.current?.focus({ preventScroll: true }), []);
   return (
     <>
       <p className="gf-start-said">{said}</p>
@@ -341,15 +350,17 @@ function NoWorktree({
         </p>
       )}
       <span className="gf-form-actions">
-        <button ref={plain} type="button" className="gf-btn is-primary" data-testid="start-plain" aria-busy={busy} onClick={onPlain}>
-          {busy ? 'starting…' : 'start without a Worktree'} <Kbd>⏎</Kbd>
-        </button>
+        {onPlain && (
+          <button ref={answer} type="button" className="gf-btn is-primary" data-testid="start-plain" aria-busy={busy} onClick={onPlain}>
+            {busy ? 'starting…' : 'start without a Worktree'} <Kbd>⏎</Kbd>
+          </button>
+        )}
         {app && (
           <Link className="gf-btn" data-testid="start-app-link" to={slugPath('apps', app)} onClick={onLeave}>
             go to {app.name}
           </Link>
         )}
-        <button type="button" className="gf-btn" data-testid="start-cancel" onClick={onCancel}>
+        <button ref={onPlain ? undefined : answer} type="button" className="gf-btn" data-testid="start-cancel" onClick={onCancel}>
           cancel <Kbd>esc</Kbd>
         </button>
       </span>

@@ -91,7 +91,7 @@ function ShellBody() {
   };
 
   /**
-   * `a s d` act on the current Ticket, and do nothing at all where there is
+   * `a s d t` act on the current Ticket, and do nothing at all where there is
    * not one. They ask the *ref* rather than the key in state: the screen puts
    * its verbs there in the same commit that draws the Cursor, so a key pressed
    * straight after `j` acts on the card you can already see rather than on the
@@ -102,6 +102,7 @@ function ShellBody() {
     a: () => (current.selectionActions.current ? current.selectionActions.current.act({ kind: 'transition', name: 'approve' }) : current.actions.current?.move('approve')),
     s: () => (current.selectionActions.current ?? current.actions.current) !== null && setPalette('status'),
     d: () => (current.selectionActions.current ? current.selectionActions.current.explainDependencies() : current.actions.current?.blockedBy()),
+    t: () => (current.selectionActions.current ? current.selectionActions.current.explainTerminal() : current.actions.current?.terminal()),
     Escape: escape,
   });
 

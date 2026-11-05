@@ -787,6 +787,8 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-branch { display: flex; align-items: flex-start; gap: var(--gf-s3); }
 .gf-branch-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--gf-t-meta); user-select: all; }
 .gf-branch .gf-btn { flex-shrink: 0; }
+.gf-terminal-said { display: flex; flex-direction: column; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
+.gf-terminal-said .gf-branch-name { color: var(--gf-ink); }
 .gf-implementation-links { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0; padding: 0; list-style: none; }
 .gf-implementation-row { display: flex; align-items: baseline; gap: var(--gf-s2); }
 .gf-implementation-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }

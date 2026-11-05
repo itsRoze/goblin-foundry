@@ -14,7 +14,7 @@ describe('GET /api/settings', () => {
     const res = await harness.app.request('/api/settings');
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('application/json');
-    expect(await res.json()).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees' });
+    expect(await res.json()).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
   });
 });
 
@@ -29,14 +29,14 @@ describe('PATCH /api/settings changes the Worktree root', () => {
 
   test('on its own, leaving the prefix alone, and the history holds only what changed', async () => {
     const res = await patch({ worktree_root: '/srv/worktrees' });
-    expect([res.status, await res.json()]).toEqual([200, { ticket_prefix: 'GF', worktree_root: '/srv/worktrees' }]);
-    expect(await read()).toEqual({ ticket_prefix: 'GF', worktree_root: '/srv/worktrees' });
+    expect([res.status, await res.json()]).toEqual([200, { ticket_prefix: 'GF', worktree_root: '/srv/worktrees', terminal_step: 'none' }]);
+    expect(await read()).toEqual({ ticket_prefix: 'GF', worktree_root: '/srv/worktrees', terminal_step: 'none' });
     expect(await history()).toEqual([{ actor: 'agent', kind: 'updated', prior: { worktree_root: '~/.goblin/worktrees' }, new: { worktree_root: '/srv/worktrees' } }]);
   });
 
   test('together with the prefix, as one event', async () => {
     expect((await patch({ ticket_prefix: 'sr', worktree_root: '~/elsewhere' })).status).toBe(200);
-    expect(await read()).toEqual({ ticket_prefix: 'SR', worktree_root: '~/elsewhere' });
+    expect(await read()).toEqual({ ticket_prefix: 'SR', worktree_root: '~/elsewhere', terminal_step: 'none' });
     expect(await history()).toEqual([
       { actor: 'agent', kind: 'updated', prior: { ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees' }, new: { ticket_prefix: 'SR', worktree_root: '~/elsewhere' } },
     ]);
@@ -63,7 +63,7 @@ describe('PATCH /api/settings changes the Worktree root', () => {
   test('one failed row of a two-setting save keeps neither', async () => {
     h.failWrites('setting event', 0);
     expect((await patch({ ticket_prefix: 'SR', worktree_root: '/srv/worktrees' })).status).toBe(500);
-    expect(await read()).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees' });
+    expect(await read()).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
   });
 });
 

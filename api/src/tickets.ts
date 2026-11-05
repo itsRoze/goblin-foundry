@@ -31,7 +31,8 @@ import { resolvePlacement, wouldBreakGuard } from './placement';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
 import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
-import { transitionRoute } from './transitions';
+import type { TerminalSteps } from './terminal';
+import { terminalRoute, transitionRoute } from './transitions';
 
 type Parent = typeof appTable | typeof projectTable;
 
@@ -68,7 +69,7 @@ function creationRefusal(status: TicketStatus, fields: GuardFields): Issue | nul
   return lacks.length === 0 ? null : { path: ['status'], message: guardHold(status, lacks) };
 }
 
-export function ticketsRoutes(db: Db) {
+export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
   const r = new Hono<ActorEnv>();
   const prefix = async () => (await readSettings(db)).ticket_prefix;
   const missing = (c: Context) => notFound(c, `ticket ${c.req.param('key')} not found`);
@@ -250,8 +251,10 @@ export function ticketsRoutes(db: Db) {
 
   dependencyRoutes(r, { db, find: (c) => find(c, false), missing, toDetail: (row) => detail(row) });
 
-  // last: `:name` would otherwise swallow `/:key/restore` and `/:key/dependencies` (ADR-0004)
-  transitionRoute(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
+  const transitionDeps = { db, find: (c: Context) => find(c, false), missing, toWire: (row: TicketRow) => one(row), terminals };
+  terminalRoute(r, transitionDeps);
+  // last: `:name` would otherwise swallow `/:key/restore`, `/:key/dependencies` and `/:key/terminal` (ADR-0004)
+  transitionRoute(r, transitionDeps);
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {
     if (id === null) return false;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TerminalStepSchema, type TerminalStepName } from './terminal';
 
 /** The ticket-key prefix (`GF` in `GF-12`). */
 export const DEFAULT_TICKET_PREFIX = 'GF';
@@ -8,12 +9,17 @@ export const TICKET_PREFIX_KEY = 'ticket_prefix';
 export const DEFAULT_WORKTREE_ROOT = '~/.goblin/worktrees';
 export const WORKTREE_ROOT_KEY = 'worktree_root';
 
+/** Who opens a terminal in a Worktree. Nobody, until the installation says who. */
+export const DEFAULT_TERMINAL_STEP: TerminalStepName = 'none';
+export const TERMINAL_STEP_KEY = 'terminal_step';
+
 /** Where the API listens by default; the API binds it, the CLI calls it. */
 export const DEFAULT_PORT = 4747;
 
 export const SettingsSchema = z.object({
   ticket_prefix: z.string().min(1).max(8),
   worktree_root: z.string().min(1),
+  terminal_step: TerminalStepSchema,
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -29,6 +35,7 @@ export const PatchSettingsBodySchema = z
   .strictObject({
     ticket_prefix: z.string().trim().toUpperCase().regex(TICKET_PREFIX_PATTERN, TICKET_PREFIX_SHAPE).optional(),
     worktree_root: z.string().trim().regex(WORKTREE_ROOT_PATTERN, WORKTREE_ROOT_SHAPE).optional(),
+    terminal_step: TerminalStepSchema.optional(),
   })
-  .refine((body) => body.ticket_prefix !== undefined || body.worktree_root !== undefined, 'name at least one setting');
+  .refine((body) => body.ticket_prefix !== undefined || body.worktree_root !== undefined || body.terminal_step !== undefined, 'name at least one setting');
 export type PatchSettingsBody = z.infer<typeof PatchSettingsBodySchema>;

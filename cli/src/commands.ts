@@ -244,9 +244,14 @@ const bulk = (ctx: Ctx, action: BulkAction) => ctx.api.post('/api/tickets/bulk',
 const oneOrAll = (one: (ctx: Ctx) => Promise<Response>, action: BulkAction) => (ctx: Ctx) => (ctx.args.operands.length === 1 ? one(ctx) : bulk(ctx, action));
 
 const START_FLAGS: Flag[] = [
-  { name: 'worktree', kind: 'boolean', summary: "make or adopt the Ticket's Worktree first, then start it; without this, start only changes the Status" },
+  { name: 'worktree', kind: 'boolean', summary: "make or adopt the Ticket's Worktree first, then start it and ask for a terminal; without this, start only changes the Status" },
   { name: 'branch', kind: 'string', value: '<branch>', summary: 'the branch to work on, existing or new (default: its recorded Worktree branch, else its Branch Suggestion); implies --worktree' },
   { name: 'base', kind: 'string', value: '<branch>', summary: "what a new branch is cut from (default: the App's default branch, else the Checkout's); implies --worktree" },
+];
+
+const TERMINAL_FLAGS: Flag[] = [
+  { name: 'branch', kind: 'string', value: '<branch>', summary: 'for a Ticket with no Worktree: the branch to work on, existing or new (default: its Branch Suggestion)' },
+  { name: 'base', kind: 'string', value: '<branch>', summary: "for a Ticket with no Worktree: what a new branch is cut from (default: the App's default branch, else the Checkout's)" },
 ];
 
 /**
@@ -359,6 +364,7 @@ export const NOUNS: Noun[] = [
       { verb: 'link remove', summary: 'remove a saved reference, leaving the PR or commit untouched', operands: [...ticketOperand, { name: 'link-id', summary: 'the id from link list' }], run: (ctx) => ctx.api.del(`${ticketAt(ctx)}/implementation-links/${encodeURIComponent(ctx.args.operands[1] as string)}`) },
       ...LABEL_COMMANDS,
       ...designCommands('ticket', ticketAt, ticketOperand),
+      { verb: 'terminal', summary: "open a terminal in a building or review Ticket's Worktree, making one if it has none; changes no Status", operands: ticketOperand, flags: TERMINAL_FLAGS, run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/terminal`, ctx.args.values) },
       ...transitionCommands(),
     ],
   },
@@ -401,9 +407,10 @@ export const NOUNS: Noun[] = [
         flags: [
           { name: 'ticket-prefix', kind: 'string', value: '<prefix>', summary: 'the prefix in every ticket key (GF in GF-12)' },
           { name: 'worktree-root', kind: 'string', value: '<folder>', summary: 'where Worktrees are made: an absolute folder, or one under ~' },
+          { name: 'terminal-step', kind: 'string', value: '<step>', summary: 'what opens a terminal in a Worktree: none, or herdr' },
         ],
         run: ({ args, api }) => {
-          if (Object.keys(args.values).length === 0) throw new UsageError('say what to change: --ticket-prefix or --worktree-root');
+          if (Object.keys(args.values).length === 0) throw new UsageError('say what to change: --ticket-prefix, --worktree-root or --terminal-step');
           return api.patch('/api/settings', args.values);
         },
       },

@@ -427,6 +427,7 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
   if (e.kind === 'implementation_link_added') return `linked implementation · ${str(e.new.url)}`;
   if (e.kind === 'implementation_link_removed') return `removed implementation link · ${str(e.prior?.url)}`;
   if (e.kind === 'labelled') return describeLabels(e);
+  if (e.kind === 'worktree_recorded') return `worktree ${str(e.new.worktree_branch)}`;
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];

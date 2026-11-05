@@ -70,6 +70,7 @@ describe('a database from before a Ticket had a Worktree', () => {
     older.db.run(sql`ALTER TABLE ticket DROP COLUMN worktree_branch`);
     older.db.run(sql`ALTER TABLE ticket DROP COLUMN worktree_folder`);
     older.db.run(sql`DELETE FROM setting WHERE key = 'worktree_root'`);
+    older.db.run(sql`DELETE FROM setting WHERE key = 'terminal_step'`);
     older.close();
 
     for (let open = 0; open < 2; open++) {
@@ -77,7 +78,7 @@ describe('a database from before a Ticket had a Worktree', () => {
       try {
         const app = createApp(handle.db);
         expect(await (await app.request('/api/tickets')).json()).toMatchObject([{ key: 'SR-1', title: 'Parse the feed', worktree_branch: null, worktree_folder: null }]);
-        expect(await (await app.request('/api/settings')).json()).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees' });
+        expect(await (await app.request('/api/settings')).json()).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
       } finally {
         handle.close();
       }

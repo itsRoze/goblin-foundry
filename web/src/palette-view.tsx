@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { isTerminal, slugPath, type TicketDetail } from '@goblin/shared';
+import { isTerminal, opensTerminal, slugPath, type TicketDetail } from '@goblin/shared';
 import { useCurrentTicket } from './current';
 import { useCreate } from './creating';
 import { commonMoves, countOf } from './bulk';
@@ -141,6 +141,7 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
     else if (action.kind === 'simple') act?.simple(action.simple);
     else if (action.kind === 'blocked-by') act?.blockedBy();
     else if (action.kind === 'copy-branch') act?.copyBranch();
+    else if (action.kind === 'terminal') act?.terminal();
     else if (action.kind === 'add-implementation-link') act?.addImplementationLink();
     else if (action.kind === 'add-label') act?.addLabel();
     else act?.place(action.field, action.id);
@@ -288,6 +289,7 @@ function CommandRow({
 function ticketActions(ticket: TicketDetail): Candidate[] {
   return [
     ...transitionRows(ticket.status),
+    ...(opensTerminal(ticket.status) ? [{ id: 'act-terminal', group: 'actions', label: 'open terminal', aliases: ['worktree', 'shell'], action: { kind: 'terminal' } } satisfies Candidate] : []),
     { id: 'act-copy-branch', group: 'actions', label: 'copy branch name', aliases: ['copy git branch'], action: { kind: 'copy-branch' } },
     { id: 'act-add-implementation-link', group: 'actions', label: 'add implementation link', aliases: ['add link', 'add PR', 'add commit', 'pull request'], action: { kind: 'add-implementation-link' } },
     { id: 'act-add-label', group: 'actions', label: 'add label…', aliases: ['label', 'tag'], action: { kind: 'add-label' } },
