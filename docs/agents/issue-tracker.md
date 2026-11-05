@@ -46,7 +46,8 @@ Each one moves tickets differently. Find the one you are in.
 ### Spec first: to-spec → to-tickets → implement-spec
 
 - **to-spec** writes the spec as a project's design (`goblin project create`,
-  then `goblin project design set`). It moves no ticket.
+  then `goblin project design set`; after a Wayfinder map, the map's project
+  rather than a new one). It moves no ticket.
 - **to-tickets** shows the breakdown and waits for the human's OK. That OK is
   the approval, so it then creates each ticket straight in `ready`, inside the
   spec's project, with its blockers (see "publish to the issue tracker"). If the
@@ -112,23 +113,41 @@ Wayfinder's vocabulary maps onto Goblin like this:
 
 | Wayfinder    | Goblin                                                                    |
 | ------------ | ------------------------------------------------------------------------- |
-| the map      | a Project; its design is the map's index (`goblin project design set`)    |
+| the effort   | a Project, holding the map, its decisions and whatever they lead to       |
+| the map      | a ticket in that project, labelled `wayfinder:map`, in `building`         |
+| its body     | the map ticket's design (`goblin ticket design set`)                      |
 | a decision   | a ticket in that project, created in `ready` so it is on the frontier     |
 | its type     | one Label: `wayfinder:` + `research`, `prototype`, `grilling` or `task`   |
 | claim it     | `goblin ticket start` (`ready → building`)                                |
 | answer it    | the ticket's design (`goblin ticket design set`)                          |
 | resolve it   | `goblin ticket close` (`→ done` from any status before `review`)          |
-| the frontier | `goblin frontier --project <map>`; add `--label wayfinder:<type>` for one |
+| rule it out  | `goblin ticket cancel`, with one line in the map's Out of scope           |
+| the frontier | `goblin frontier --project <project>`; `--label wayfinder:<type>` for one |
+| every map    | `goblin ticket list --label wayfinder:map`                                |
+
+Create the Project, then the map inside it:
+
+    goblin ticket create --actor agent --status building --project <project> \
+      --title "<destination>" --description @<path> --labels wayfinder:map
+    goblin ticket design set --actor agent <map> @<path>
+
+The map stays in `building` for as long as it is being worked, so it is on the
+board and never on the frontier. A Project holds one map, since nothing but the
+Project ties a decision to its map. Close the map when the way is clear.
+
+The Project's design stays free for what the map finds its way to. When the
+destination is a spec, `to-spec` writes it there and the spec-first workflow
+carries on in the same Project: never a second Project for the same effort.
 
 Create a decision with its type:
 
-    goblin ticket create --actor agent --status ready --project <map> \
+    goblin ticket create --actor agent --status ready --project <project> \
       --title "Which feed parser" --description @<path> \
       --labels wayfinder:research
 
 The title is the question alone; the Label carries the type, and the
 description is enough for the approve guard. Every decision of a type, open or
-not: `goblin ticket list --project <map> --label wayfinder:research`.
+not: `goblin ticket list --project <project> --label wayfinder:research`.
 
 Declare one decision's reliance on another as a dependency, so the frontier
 shows only the decisions that are open to take.
