@@ -247,6 +247,39 @@ test('esc and cancel hand the focus back to `start`, and ⏎ there asks again ra
   await expect(page.getByTestId('move-start')).toBeFocused();
 });
 
+test('on a Ticket view the question\'s way out is `leave it`, and pressing it leaves the status as it was (GF-45)', async ({ page }) => {
+  const blocked = await blockedTicket(page, 'Leaveview');
+  await askByKey(page);
+  await page.getByTestId('confirm-start').getByRole('button', { name: 'leave it', exact: true }).click();
+  await expect(page.getByTestId('confirm-start')).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, blocked.key)).status).toBe('ready');
+  await expect(page.getByTestId('state-tile')).toContainText('ready');
+});
+
+test('with the question open on a Ticket view, one state-tile button is named `cancel`, and it is the lifecycle one (GF-45)', async ({ page }) => {
+  await blockedTicket(page, 'Onecancel');
+  await askByKey(page);
+  const named = page.getByTestId('state-tile').getByRole('button', { name: 'cancel', exact: true });
+  await expect(named).toHaveCount(1);
+  await expect(named).toHaveAttribute('data-testid', 'move-cancel');
+});
+
+test('on the board the question\'s way out is `leave it`, and pressing it leaves the status as it was (GF-45)', async ({ page }) => {
+  const blocked = await blockedTicket(page, 'Leaveboard');
+  await page.goto(`/?q=${encodeURIComponent('Leaveboard blocked')}`);
+  await expect(page.getByTestId(`card-${blocked.key}`)).toBeVisible();
+  await page.keyboard.press('j');
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('run-move-start')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('confirm-ready')).toContainText('still blocks this');
+  await page.getByTestId('confirm-ready').getByRole('button', { name: 'leave it', exact: true }).click();
+  await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, blocked.key)).status).toBe('ready');
+});
+
 test('a refused key brings the refusal on screen, and again when it is repeated', async ({ page }) => {
   await page.setViewportSize(BELOW_THE_FOLD);
   await blockedTicket(page, 'Refuse', { status: 'building' });

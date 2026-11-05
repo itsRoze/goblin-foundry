@@ -400,6 +400,35 @@ test('trash asks once with the whole count; cancel sends nothing; a changed set 
   expect((await page.request.get(`/api/tickets/${b.key}`)).status()).toBe(404);
 });
 
+test('the way out of both the bar\'s questions is `leave it esc`, and pressing it leaves every status as it was (GF-45)', async ({ page }) => {
+  const blocker = await seed(page, 'Staybar blocker');
+  const free = await seed(page, 'Leavebar free', { status: 'ready' });
+  const held = await seed(page, 'Leavebar held', { status: 'ready' });
+  await page.request.post(`/api/tickets/${held.key}/dependencies`, { data: { blocker: blocker.key } });
+  await board(page, 'Leavebar ');
+  await page.keyboard.press('ControlOrMeta+a');
+  await expect(count(page)).toHaveText('2 selected');
+  const confirm = page.getByTestId('bulk-confirm');
+  const wayOut = confirm.getByRole('button', { name: 'leave it esc', exact: true });
+
+  await page.keyboard.press('s');
+  await page.getByTestId('palette').getByTestId('run-move-start').click();
+  await expect(confirm).toContainText('1 Ticket of 2 still has open blockers');
+  await wayOut.click();
+  await expect(confirm).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, free.key)).status).toBe('ready');
+  expect((await read(page, held.key)).status).toBe('ready');
+
+  await page.getByTestId('bulk-trash').click();
+  await expect(confirm).toContainText('Trash 2 Tickets?');
+  await wayOut.click();
+  await expect(confirm).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect((await read(page, free.key)).status).toBe('ready');
+  expect((await read(page, held.key)).status).toBe('ready');
+});
+
 test('start asks once about blockers, keeps the question current, ignores a retitle, and holds the whole batch until yes', async ({ page }) => {
   const blocker = await seed(page, 'Holdup blocker');
   const second = await seed(page, 'Holdup second blocker');
