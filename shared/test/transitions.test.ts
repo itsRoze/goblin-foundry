@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { TICKET_STATUSES } from '../src/tickets';
-import { approveGuard, guardHold, lifecycle, type GuardFields } from '../src/transitions';
+import { TICKET_STATUSES, blockedWarning } from '../src/tickets';
+import { approveGuard, asksBeforeBlocked, guardHold, lifecycle, whyStartNoLongerAsked, type GuardFields } from '../src/transitions';
 
 /**
  * ADR-0003's table, transcribed by hand as one flat arrow per line — a
@@ -147,5 +147,33 @@ describe('a named move', () => {
     expect(lifecycle.named('ready', 'approve')).toEqual({ ok: false, refusal: 'a ticket in ready is already in ready' });
     expect(lifecycle.named('building', 'approve')).toEqual({ ok: false, refusal: 'a ticket in building does not go back to ready' });
     expect(lifecycle.named('backlog', 'approve')).toEqual({ ok: false, refusal: 'a ticket in backlog does not go to ready' });
+  });
+});
+
+describe('the blocked `start` question', () => {
+  test('is asked of a ready Ticket with an open blocker, and of no other verb', () => {
+    expect(asksBeforeBlocked('start', { status: 'ready', blocked_by: ['GF-3'] })).toBe(true);
+    expect(asksBeforeBlocked('approve', { status: 'planning', blocked_by: ['GF-3'] })).toBe(false);
+  });
+
+  test('stops being asked once nothing blocks the Ticket', () => {
+    expect(asksBeforeBlocked('start', { status: 'ready', blocked_by: [] })).toBe(false);
+  });
+
+  test('stops being asked once `start` has no arrow from where the Ticket is, whatever still blocks it', () => {
+    for (const status of TICKET_STATUSES.filter((s) => s !== 'ready')) expect(asksBeforeBlocked('start', { status, blocked_by: ['GF-3'] })).toBe(false);
+  });
+
+  test('says why it is no longer asked, and nothing while it still is', () => {
+    expect(whyStartNoLongerAsked({ key: 'GF-9', status: 'ready', blocked_by: ['GF-3'] })).toBeNull();
+    expect(whyStartNoLongerAsked({ key: 'GF-9', status: 'ready', blocked_by: [] })).toBe('nothing blocks this now');
+    expect(whyStartNoLongerAsked({ key: 'GF-9', status: 'building', blocked_by: ['GF-3'] })).toBe('GF-9 moved to building');
+  });
+
+  test('names every blocker, and has a sentence for none', () => {
+    expect(blockedWarning(['GF-3'])).toBe('GF-3 still blocks this');
+    expect(blockedWarning(['GF-3', 'GF-7'])).toBe('GF-3 and GF-7 still block this');
+    expect(blockedWarning(['GF-3', 'GF-7', 'GF-9'])).toBe('GF-3, GF-7 and GF-9 still block this');
+    expect(blockedWarning([])).toBe('nothing blocks this now');
   });
 });

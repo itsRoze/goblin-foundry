@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import {
   asksBeforeBlocked,
   blockedWarning,
+  whyStartNoLongerAsked,
   isBlocked,
   isTerminal,
   lifecycle,
@@ -24,7 +25,7 @@ import { useCrumb } from '../shell';
 import { StartModal } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
-import { Confirm, Empty, ForPointer, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, ForPointer, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useQuestion, useRefusal, type LeftByQuestion } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
 import { LabelsField } from '../labels';
@@ -70,7 +71,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const { setRefusal: setStateRefusal } = state;
   /** One picker at a time, and `d` is another way to open one, so which is open lives up here. */
   const [picking, setPicking] = useState<Direction | null>(null);
-  const [asking, setAsking] = useState<{ verb: TransitionName } | null>(null);
+  const { question, left, ask } = useQuestion<{ edge: Transition }>(() => whyStartNoLongerAsked(ticket));
   const focusTile = useFocusTile();
   const branchCopy = useBranchCopy(ticket);
   const implementationInput = useRef<HTMLInputElement>(null);
@@ -133,15 +134,17 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   );
   const press = useCallback(
     (name: TransitionName) => {
+      // any press here answers whatever stood: what it then does to the Ticket is not news to the one who pressed
+      ask(null);
       const asked = lifecycle.named(ticket.status, name);
       if (!asked.ok) return raiseInState(asked.refusal);
       if (asksBeforeBlocked(name, ticket)) {
         focusTile('state');
-        return setAsking({ verb: name });
+        return ask({ edge: asked.edge });
       }
       runEdge(asked.edge);
     },
-    [ticket, runEdge, raiseInState, focusTile],
+    [ticket, runEdge, raiseInState, focusTile, ask],
   );
   /** `d` here is the dependencies tile's `+ add` on the `blocked by` side, pressed for you. */
   const openBlockedBy = useCallback(() => {
@@ -195,8 +198,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
 
   // `esc` closes what this screen holds open before the shell walks back
   useEscape(() => {
-    if (asking !== null) {
-      setAsking(null);
+    if (question !== null || left !== null) {
+      ask(null);
       return true;
     }
     if (terminalSaid !== null) {
@@ -334,13 +337,13 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onSimple={(simple) => inState(() => edit({ simple }))}
         onTrash={() => void trash()}
         onBlockedBy={openBlockedBy}
-        asking={asking}
-        onDismissConfirm={() => setAsking(null)}
+        asking={question}
+        left={left}
+        onDismissConfirm={() => ask(null)}
         onConfirm={() => {
-          if (asking === null) return;
-          setAsking(null);
-          const asked = lifecycle.named(ticket.status, asking.verb);
-          if (asked.ok) runEdge(asked.edge);
+          if (question === null) return;
+          ask(null);
+          runEdge(question.edge);
         }}
         refusal={state.refusal}
         said={said}
@@ -670,6 +673,7 @@ function StateTile({
   onTrash,
   onBlockedBy,
   asking,
+  left,
   onConfirm,
   onDismissConfirm,
   refusal,
@@ -685,7 +689,9 @@ function StateTile({
   onBlockedBy: () => void;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
-  asking: { verb: TransitionName } | null;
+  asking: { edge: Transition } | null;
+  /** What is left where the question stood, for a refusal's lifetime. */
+  left: LeftByQuestion | null;
   onConfirm: () => void;
   onDismissConfirm: () => void;
   refusal: string | null;
@@ -696,7 +702,8 @@ function StateTile({
 }) {
   const edges = lifecycle.from(ticket.status);
   const start = useRef<HTMLButtonElement>(null);
-  useFocusOnClose(asking !== null, start);
+  const standing = asking ?? left?.asked;
+  useFocusOnClose(standing !== undefined, start);
   const line = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     line.current?.scrollIntoView({ block: 'nearest' });
@@ -755,7 +762,7 @@ function StateTile({
           ))}
       </div>
       {terminalSaid && <TerminalNotOpened said={terminalSaid} onDismiss={onDismissTerminal} />}
-      {asking && <Confirm asked={asking} text={blockedWarning(ticket.blocked_by)} verb={asking.verb} testId="confirm-start" onDismiss={onDismissConfirm} onConfirm={onConfirm} />}
+      {standing && <Confirm asked={standing} text={left?.text ?? blockedWarning(ticket.blocked_by)} verb="start" gone={left !== null} testId="confirm-start" onDismiss={onDismissConfirm} onConfirm={onConfirm} />}
       {/* next to what it gates (approve, among the arrows above), not under the ways of stopping */}
       <label className="gf-toggle">
         <input type="checkbox" data-testid="simple-toggle" checked={ticket.simple} onChange={(e) => void onSimple(e.target.checked)} /> simple — the title says it all

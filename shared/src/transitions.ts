@@ -1,7 +1,7 @@
 import { defineWorkflow, type EdgeOf, type NameOf } from '@goblin/workflow';
 import { ActorSchema, type Actor } from './actor';
 import { hasDesign } from './design';
-import { TICKET_STATUSES, isBlocked, type Ticket, type TicketStatus, type TicketSummary } from './tickets';
+import { TICKET_STATUSES, blockedWarning, isBlocked, type Ticket, type TicketStatus, type TicketSummary } from './tickets';
 
 /** Where the intent is read from: the two bodies themselves, or a list row's word on them. */
 type IntentFields = Pick<Ticket, 'simple' | 'design' | 'description'> | Pick<TicketSummary, 'simple' | 'intent_written'>;
@@ -76,9 +76,17 @@ export type { Found } from '@goblin/workflow';
  * (ADR-0009): `start` is the verb that means "proceeding despite the blocker",
  * so the GUI puts the question to the human. Every other verb goes through
  * without a word, whichever surface triggers it — the board's drop and the
- * state tile's button read this same rule.
+ * state tile's button read this same rule. It is also how long a question
+ * stands: read again as the Ticket changes under it, it stops holding when the
+ * blockers clear or `start` has no arrow from where the Ticket has gone (GF-116).
  */
-export const asksBeforeBlocked = (name: TransitionName, ticket: Pick<Ticket, 'status' | 'blocked_by'>): boolean => name === 'start' && isBlocked(ticket);
+export const asksBeforeBlocked = (name: TransitionName, ticket: Pick<Ticket, 'status' | 'blocked_by'>): boolean => name === 'start' && isBlocked(ticket) && lifecycle.named(ticket.status, name).ok;
+
+/** What is left where the `start` question stood once the Ticket stops warranting it, and `null` while it still does. */
+export const whyStartNoLongerAsked = (ticket: Pick<Ticket, 'key' | 'status' | 'blocked_by'>): string | null => {
+  if (asksBeforeBlocked('start', ticket)) return null;
+  return lifecycle.named(ticket.status, 'start').ok ? blockedWarning(ticket.blocked_by) : `${ticket.key} moved to ${ticket.status}`;
+};
 
 export const guardHold = (status: TicketStatus, missing: readonly ApproveRequirement[]): string => `a ticket in ${status} needs ${missing.map((m) => REQUIREMENT_LABEL[m]).join(' and ')}`;
 

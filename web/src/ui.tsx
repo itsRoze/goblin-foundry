@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode, Fragment } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, Fragment } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError, fieldLabel } from './api';
@@ -360,13 +360,32 @@ export const Since = ({ iso, at }: { iso: string; at: number }) => (
 );
 
 const REFUSAL_MS = 4_000;
+/** How long a closed question's line takes a `⏎` for a press aimed at the answers it replaced (GF-116). */
+const LINE_REFLEX_MS = 1_000;
 
 /** What a refused write says: a `409`'s hint, a `422`'s issues, the sentence for no answer at all, or whatever else went wrong. */
 export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.sentence : String(e));
 
 /**
+ * A line's clock runs while it can be read: from now, or from the window's next `focus` when something else is in
+ * front, because a poll says things to a window nobody is looking at (GF-116). Gives back the cancel.
+ */
+function afterInFront(ms: number, then: () => void) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const begin = () => {
+    timer = setTimeout(then, ms);
+  };
+  if (document.hasFocus()) begin();
+  else window.addEventListener('focus', begin, { once: true });
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener('focus', begin);
+  };
+}
+
+/**
  * A refusal message is one sentence that clears itself: on the next click, or
- * after four seconds (DESIGN.md Components). Every surface that refuses — the board's
+ * four seconds after it can be read (DESIGN.md Components). Every surface that refuses — the board's
  * drop, the state tile's buttons — holds one of these, so the sentence never
  * outlives the situation that produced it.
  */
@@ -375,14 +394,45 @@ export function useRefusal<T>() {
   useEffect(() => {
     if (refusal === null) return;
     const clear = () => setRefusal(null);
-    const timer = setTimeout(clear, REFUSAL_MS);
+    const cancel = afterInFront(REFUSAL_MS, clear);
     window.addEventListener('click', clear);
     return () => {
-      clearTimeout(timer);
+      cancel();
       window.removeEventListener('click', clear);
     };
   }, [refusal]);
   return { refusal, setRefusal };
+}
+
+/** The line a question leaves where it stood, and the press that asked it. */
+export interface LeftByQuestion<A extends object = object> {
+  asked: A;
+  text: string;
+}
+
+/**
+ * One question, for as long as what it asks about warrants it (GF-116). `whyGone` reads the Ticket as
+ * it stands; the moment it has a reason, the question is closed for good and that reason stays in its
+ * place for a refusal's lifetime. `left` holds it from the same render, so the line arrives in the
+ * commit the answers leave, and what falls to `body` lands on the line.
+ */
+export function useQuestion<A extends object>(whyGone: (asked: A) => string | null) {
+  const [asking, setAsking] = useState<A | null>(null);
+  const { refusal: said, setRefusal: setSaid } = useRefusal<LeftByQuestion<A>>();
+  const why = asking === null ? null : whyGone(asking);
+  useEffect(() => {
+    if (asking === null || why === null) return;
+    setAsking(null);
+    setSaid({ asked: asking, text: why });
+  }, [asking, why, setSaid]);
+  const ask = useCallback(
+    (asked: A | null) => {
+      setSaid(null);
+      setAsking(asked);
+    },
+    [setSaid],
+  );
+  return { question: why === null ? asking : null, left: asking !== null && why !== null ? { asked: asking, text: why } : said, ask };
 }
 
 /**
@@ -394,15 +444,73 @@ export function useRefusal<T>() {
  * action then `leave it`, so a second press on the spot that asked never lands
  * on the action; `leave it` takes the focus, so `⏎` on a question not yet read
  * dismisses it, and ⇧Tab reaches the action.
+ *
+ * `gone` is the same line once the Ticket changed under it (`useQuestion`): the reason and no answers,
+ * reaching down to where the question ended, whatever left above it, so what lies below does not come
+ * up under a pointer aimed at an answer, and a press on it does not take it, since a press there was aimed at an answer too.
+ * While either stands the desk holds its tiles where they are (`useTileLayout`), so the line stays under that pointer.
+ * The focus that fell with the answers lands here, where `⏎` writes nothing and opens nothing, and lets the line go only
+ * after its first second in front: one sooner was meant for an answer that has just gone, and would take the reason with it.
  */
-export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string }) {
+export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone = false }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string; gone?: boolean }) {
   const question = useId();
   const dismiss = useRef<HTMLButtonElement>(null);
   const line = useRef<HTMLParagraphElement>(null);
+  const said = useRef<HTMLSpanElement>(null);
+  const end = useRef<number | null>(null);
+  const pastReflex = useRef(false);
   useFocusOnAsk(asked, dismiss, line);
+  // both against the parent, because a tile packed or a page scrolled moves the line without changing what is below it
+  const topInParent = (at: HTMLElement) => at.getBoundingClientRect().top - (at.parentElement?.getBoundingClientRect().top ?? 0);
+  useLayoutEffect(() => {
+    if (!gone && line.current) end.current = topInParent(line.current) + line.current.getBoundingClientRect().height;
+  });
+  useLayoutEffect(() => {
+    const at = line.current;
+    if (!at) return;
+    at.style.minHeight = gone && end.current !== null ? `${Math.max(0, end.current - topInParent(at))}px` : '';
+  }, [gone]);
+  useEffect(() => {
+    if (gone && document.activeElement === document.body) said.current?.focus({ preventScroll: true });
+  }, [gone]);
+  useEffect(() => {
+    if (!gone) return;
+    pastReflex.current = false;
+    return afterInFront(LINE_REFLEX_MS, () => {
+      pastReflex.current = true;
+    });
+  }, [gone]);
   const id = testId ?? 'confirm';
+  if (gone)
+    return (
+      <p
+        ref={line}
+        className="gf-confirm"
+        role="alert"
+        data-holds-desk
+        onClick={(e) => {
+          // kept from `useRefusal`'s listener; and the press dropped the focus to `body`, where `⏎` is the Cursor's
+          e.stopPropagation();
+          said.current?.focus({ preventScroll: true });
+        }}
+      >
+        <span
+          ref={said}
+          tabIndex={-1}
+          data-testid={`${id}-gone`}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            // claimed, so the Cursor does not hear it
+            e.preventDefault();
+            if (!e.repeat && pastReflex.current) onDismiss();
+          }}
+        >
+          {text}
+        </span>
+      </p>
+    );
   return (
-    <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
+    <p ref={line} className="gf-confirm" role="alert" data-holds-desk data-testid={testId}>
       <span id={question}>{text}</span>
       {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on; the bar's answers carry it too */}
       <button type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
