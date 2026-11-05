@@ -55,10 +55,10 @@ jobs:
         run: |
           mkdir -p ~/apt-archives/partial
           echo "Dir::Cache::Archives \"$HOME/apt-archives/\";" | sudo tee /etc/apt/apt.conf.d/99-gf-archives
-      # Healthy takes 35 s to 70 s. On a slow mirror, installs have finished at 3m31s and at 7m52s,
-      # which this limit fails. A mirror that crawls would use the whole job limit and read as a
-      # test failure, so it fails here instead. No retry inside the step: `timeout` kills bunx and
-      # leaves apt-get holding its lock.
+      # Measured on a healthy mirror: 26 s to 43 s warm, 35 s to 89 s cold. On a slow mirror, cold
+      # installs have finished at 3m31s and at 7m52s, and this limit fails the second. A mirror
+      # that crawls would use the whole job limit and read as a test failure, so it fails here
+      # instead. No retry inside the step: `timeout` kills bunx and leaves apt-get holding its lock.
       - name: Install Playwright browsers
         timeout-minutes: 4
         run: bunx playwright install --with-deps chromium webkit
@@ -91,6 +91,6 @@ jobs:
           SHARDS: ${{ needs.e2e-shard.result }}
         run: |
           if [ "$SHARDS" != success ]; then
-            echo "::error::The e2e shards ended in '$SHARDS'. The red 'e2e shard' job says which step failed: the browser install or the tests."
+            echo "::error::The e2e shards ended in '$SHARDS'. The 'e2e shard' job that did not pass says where it stopped: the browser install, the tests, or the job limit ('cancelled')."
             exit 1
           fi
