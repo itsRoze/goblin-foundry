@@ -25,7 +25,7 @@ export function createApp(db: Db, { terminals = BUILT_TERMINAL_STEPS }: AppDeps 
   const app = new Hono();
 
   app.use('/api/*', actorMiddleware);
-  app.route('/api/settings', settingsRoutes(db, terminals));
+  app.route('/api/settings', settingsRoutes(db));
   app.route('/api/apps', appsRoutes(db));
   app.route('/api/projects', projectsRoutes(db));
   app.route('/api/tickets', ticketsRoutes(db, terminals));

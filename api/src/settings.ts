@@ -7,9 +7,8 @@ import { commit } from './commit';
 import type { Db } from './db';
 import { eventWrite, now } from './events';
 import { parseBody } from './http';
-import { conflict, unprocessable } from './problems';
+import { conflict } from './problems';
 import { setting } from './schema';
-import type { TerminalSteps } from './terminal';
 
 export async function readSettings(db: Db): Promise<Settings> {
   const rows = await db.select().from(setting);
@@ -26,10 +25,9 @@ export async function readSettings(db: Db): Promise<Settings> {
  * key at once and no ticket number (ADR-0002). A save is one write per setting
  * it changes and one event against the settings pseudo-entity (`setting`, id
  * 0), committed together and pinned to the values the save read (ADR-0010).
- * The rows are seeded at open (`db.ts`), so the save is an update. A terminal
- * step this build has no implementation of is not a choice it can honour.
+ * The rows are seeded at open (`db.ts`), so the save is an update.
  */
-export function settingsRoutes(db: Db, terminals: TerminalSteps) {
+export function settingsRoutes(db: Db) {
   const r = new Hono<ActorEnv>();
 
   r.get('/', async (c) => c.json(await readSettings(db)));
@@ -37,8 +35,6 @@ export function settingsRoutes(db: Db, terminals: TerminalSteps) {
   r.patch('/', async (c) => {
     const body = await parseBody(c, PatchSettingsBodySchema);
     if (!body.ok) return body.response;
-    const step = body.data.terminal_step;
-    if (step !== undefined && !terminals[step]) return unprocessable(c, [{ path: ['terminal_step'], message: `${step} is not built yet: only ${Object.keys(terminals).join(' or ')} can be chosen` }]);
     const prior = await readSettings(db);
     const change = diff(prior, body.data);
     if (!change.changed) return c.json(prior);

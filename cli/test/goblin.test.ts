@@ -391,9 +391,7 @@ describe('goblin', () => {
     expect(unnamed.code).toBe(2);
     expect(JSON.parse(unnamed.err).detail).toBe('say what to change: --ticket-prefix, --worktree-root or --terminal-step');
     expect(await json(['settings', 'set', '--terminal-step', 'none'])).toMatchObject({ terminal_step: 'none' });
-    const unbuilt = await run(['settings', 'set', '--terminal-step', 'herdr']);
-    expect(unbuilt.code).toBe(1);
-    expect(JSON.parse(unbuilt.err).issues).toEqual([{ path: ['terminal_step'], message: 'herdr is not built yet: only none can be chosen' }]);
+    expect(await json(['settings', 'set', '--terminal-step', 'herdr'])).toMatchObject({ terminal_step: 'herdr' });
     await json(['ticket', 'create', '--title', 'renumbered nothing']);
     expect((await json(['ticket', 'show', '1'])).key).toBe('SR-1');
   });

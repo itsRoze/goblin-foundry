@@ -68,7 +68,9 @@ failed worktree leaves the Ticket `ready` with git's reason. Its last step asks
 the installation's terminal step (`goblin settings set --terminal-step`) to open
 a terminal, and the output's `terminal` says how that went: `opened`, or not with
 a `reason` and the `folder`. A terminal that did not open is not a failure, and
-the exit code is 0.
+the exit code is 0. With the step set to `herdr`, the terminal is a plain shell in
+Herdr 2, and opening it brings that Ticket's tab to the front of the operator's
+window, so an agent that only wants the folder leaves `--worktree` off.
 
 `goblin ticket terminal GF-n` returns to the Worktree of a `building` or `review`
 Ticket. It changes no Status and writes no history. A Ticket with no Worktree
