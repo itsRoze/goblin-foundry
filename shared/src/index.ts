@@ -115,15 +115,20 @@ export {
   FILTER_PARAMS,
   type FilterParam,
   type TicketFilter,
+  type TicketQuery,
+  type QueryParam,
   type FilterIssue,
   type ParsedFilter,
+  type ParsedQuery,
   type FilterSource,
   type ParseOptions,
   DEFAULT_BOARD_STATUSES,
   canonicalStatuses,
   canonicalLabels,
   parseTicketFilter,
+  parseTicketQuery,
   serialiseTicketFilter,
+  serialiseTicketQuery,
 } from './filters';
 
 export { ImplementationLinkSchema, AddImplementationLinkBodySchema, ticketBranchName, type ImplementationLink } from './implementation';

@@ -25,7 +25,7 @@ import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { changedUnderneath, commit, judgedRefusal, newestId, pinnedTicketWrite } from './commit';
 import { eventWrite, listEvents, now } from './events';
-import { readFilter, ticketWhere } from './filters';
+import { readQuery, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
@@ -97,14 +97,14 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
     return { ...(await one(row)), dependencies: await dependenciesOf(db, row.id, p) };
   }
 
-  /** The board's Filter, in full (issue 06); with none of it given, every live ticket. */
+  /** The board's Filter, in full (issue 06), and `exclude_label`; with none of it given, every live ticket. */
   r.get('/', async (c) => {
-    const filter = readFilter(c);
-    if (filter instanceof Response) return filter;
+    const query = readQuery(c);
+    if (query instanceof Response) return query;
     const rows = await db
       .select()
       .from(ticketTable)
-      .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(filter)))
+      .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(query)))
       .orderBy(asc(ticketTable.id));
     const p = await prefix();
     // one joined query for the whole list, never one per row

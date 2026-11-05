@@ -619,6 +619,52 @@ describe('goblin', () => {
       expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--label: needs info is not one word: a label has no spaces or commas' });
     });
 
+    describe('`--exclude-label`', () => {
+      const LIST_READS = [[['frontier']], [['ticket', 'list']]];
+      const queue = async () => {
+        await json(['app', 'create', '--name', 'Subway Reader']);
+        await json(['project', 'create', '--name', 'MVP', '--app', '1']);
+        await json(['ticket', 'create', '--title', 'build it', '--app', '1', '--simple', '--status', 'ready', '--labels', 'backend']);
+        await json(['ticket', 'create', '--title', 'grill the human', '--app', '1', '--simple', '--status', 'ready', '--labels', 'wayfinder:grilling,backend']);
+        await json(['ticket', 'create', '--title', 'prototype it', '--project', '1', '--simple', '--status', 'ready', '--labels', 'wayfinder:prototype']);
+        await json(['ticket', 'create', '--title', 'wait for the human', '--app', '1', '--simple', '--status', 'ready', '--labels', 'ready-for-human']);
+      };
+
+      test.each(LIST_READS)('%j leaves out a ticket carrying any of the names', async (read) => {
+        await queue();
+        expect(await titles([...read, '--exclude-label', 'Wayfinder:Grilling,wayfinder:prototype,ready-for-human'])).toEqual(['build it']);
+        expect(await titles([...read, '--exclude-label=nobody-has-this'])).toEqual(await titles(read));
+      });
+
+      test.each(LIST_READS)('%j combines it with --label, --project, --app and --q', async (read) => {
+        await queue();
+        expect(await titles([...read, '--label', 'backend', '--exclude-label', 'wayfinder:grilling'])).toEqual(['build it']);
+        expect(await titles([...read, '--project', '1', '--exclude-label', 'backend'])).toEqual(['prototype it']);
+        expect(await titles([...read, '--project', '1', '--exclude-label', 'wayfinder:prototype'])).toEqual([]);
+        expect(await titles([...read, '--app', '1', '--exclude-label', 'backend,ready-for-human'])).toEqual(['prototype it']);
+        expect(await titles([...read, '--q', 'human', '--exclude-label', 'backend'])).toEqual(['wait for the human']);
+      });
+
+      test('a malformed name is a usage error that names the flag as typed', async () => {
+        const refused = await run(['frontier', '--exclude-label', 'needs info']);
+        expect(refused.code).toBe(2);
+        expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--exclude-label: needs info is not one word: a label has no spaces or commas' });
+      });
+
+      test.each(LIST_READS)('%j refuses the flag written twice rather than dropping a name', async (read) => {
+        for (const twice of [['--exclude-label', 'ready-for-human', '--exclude-label', 'backend'], ['--exclude-label=ready-for-human', '--exclude-label=backend']]) {
+          const refused = await run([...read, ...twice], { fetch: () => Promise.reject(new Error('nothing should be sent')) });
+          expect(refused.code).toBe(2);
+          expect(refused.out).toBe('');
+          expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--exclude-label was given twice', hint: 'name every value in one, comma-separated if it takes a list' });
+        }
+      });
+
+      test.each([[['frontier', 'show']], [['ticket', 'list']]])('%j --help documents it', async (read) => {
+        expect((await run([...read, '--help'])).out).toMatch(/--exclude-label <a,b>\s+leave out/);
+      });
+    });
+
     test('a mistyped status is a usage error: nothing was sent, so the exit code says so', async () => {
       const refused = await run(['ticket', 'list', '--status', 'shipped']);
       expect(refused.code).toBe(2);

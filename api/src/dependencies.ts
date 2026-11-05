@@ -22,7 +22,7 @@ import type { ActorEnv } from './actor';
 import { changedWhile, commit, livePin } from './commit';
 import type { AtomicWrite, Db } from './db';
 import { eventWrite, now } from './events';
-import { readFilter, ticketWhere } from './filters';
+import { readQuery, ticketWhere } from './filters';
 import { labelsByTicket } from './labels';
 import { parseBody } from './http';
 import { conflict, notFound, unprocessable } from './problems';
@@ -234,20 +234,21 @@ export function dependencyRoutes(r: HonoType<ActorEnv>, { db, find, missing, toD
 /**
  * The ready frontier: what is ready to build (GLOSSARY.md). `ready`, no open
  * blocker, stalest first.
- * It narrows by app, project and text through the board's own parser (issue
- * 06), so every endpoint stays reachable from `goblin`.
+ * It narrows by app, project, labels and text through the board's own parser
+ * (issue 06), so every endpoint stays reachable from `goblin`, and leaves out
+ * the Labels a queue names in `exclude_label`.
  */
 export function frontierRoutes(db: Db, toWire: (row: TicketRow, prefix: string, labels: string[]) => TicketSummary) {
   const r = new Hono<ActorEnv>();
   r.get('/', async (c) => {
-    const filter = readFilter(c);
-    if (filter instanceof Response) return filter;
+    const query = readQuery(c);
+    if (query instanceof Response) return query;
     // the same parser as the board, minus the one parameter this endpoint has already answered
-    if (filter.status) return unprocessable(c, [{ path: ['status'], message: 'the frontier is ready by definition' }]);
+    if (query.status) return unprocessable(c, [{ path: ['status'], message: 'the frontier is ready by definition' }]);
     const rows = await db
       .select()
       .from(ticketTable)
-      .where(and(isNull(ticketTable.trashed_at), eq(ticketTable.status, 'ready'), ...ticketWhere(filter)))
+      .where(and(isNull(ticketTable.trashed_at), eq(ticketTable.status, 'ready'), ...ticketWhere(query)))
       .orderBy(asc(ticketTable.updated_at), asc(ticketTable.id));
     const { ticket_prefix } = await readSettings(db);
     const blockers = await openBlockers(db, ticket_prefix);

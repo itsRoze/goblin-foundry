@@ -124,6 +124,8 @@ export async function parseArgs(tokens: string[], spec: { operands?: Operand[]; 
     const next = tokens[i + 1];
     const value = inline ?? (next === undefined || next.startsWith('--') ? undefined : tokens[++i]);
     if (value === undefined) throw new UsageError(`--${flag.name} needs a value`, `write --${flag.name}=<value> if the value itself begins with --`);
+    // keeping the last would quietly drop a value: a name left off `--exclude-label` lets its tickets back into a queue
+    if (raw.has(flag)) throw new UsageError(`--${flag.name} was given twice`, 'name every value in one, comma-separated if it takes a list');
     raw.set(flag, value);
   }
 
