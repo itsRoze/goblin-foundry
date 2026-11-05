@@ -61,3 +61,33 @@ test('a graph fits a phone, zooms by tapping, and a dragged link stays on the gr
   await node.tap();
   await expect(page).toHaveURL(/\/tickets\//);
 });
+
+/** A finger is never quite still: a tap that wobbles a few pixels is still a tap (GF-125). */
+test('a tap that wobbles opens the Ticket, where a drag would pan', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'only Chromium takes raw touch points');
+  const response = await page.request.post('/api/projects', { data: { name: 'Wobbly graph' } });
+  const project = await response.json() as { id: number };
+  const created = await page.request.post('/api/tickets', { data: { title: 'Wobble', project_id: project.id } });
+  const ticket = await created.json() as { key: string };
+  await page.goto(`/projects/wobbly-graph-${project.id}`);
+  const node = page.getByTestId('graph-tile').locator('[data-testid^="node-"]');
+  await expect(node).toHaveCount(1);
+  const box = (await node.boundingBox())!;
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const cdp = await page.context().newCDPSession(page);
+  const press = async (stray: number) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    await page.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x + stray, y: start.y }] });
+    await page.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  };
+  const url = page.url();
+  await press(12);
+  // past a finger's slop it is the start of a drag, which never opens a ticket
+  await page.waitForTimeout(300);
+  await expect(page).toHaveURL(url);
+  await press(6);
+  await cdp.detach();
+  await expect(page).toHaveURL(new RegExp(`/tickets/${ticket.key}$`));
+});

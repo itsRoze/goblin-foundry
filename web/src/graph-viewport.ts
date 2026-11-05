@@ -4,6 +4,13 @@ import { NODE_H, type LaidNode } from './graph';
 type Camera = { x: number; y: number; scale: number };
 type Point = { x: number; y: number };
 
+/**
+ * How far a press may stray and still be a click on what it pressed, not a pan: a finger is never as still as a mouse.
+ * Touch stays at Android's own touch slop (8dp), past which Chrome sends no click: any wider, and a press that strayed
+ * between the two would neither open nor pan.
+ */
+const slop = (pointerType: string) => (pointerType === 'touch' ? 8 : 5);
+
 /** A bounded camera: open fitted, then zoom around the pointer or focus a readable ticket. */
 export function useGraphViewport(width: number, height: number, entry: Point, expanded: boolean) {
   const ref = useRef<HTMLDivElement>(null);
@@ -131,7 +138,7 @@ export function useGraphViewport(width: number, height: number, entry: Point, ex
     const centre = b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : a;
     const dx = centre.x - start.centre.x;
     const dy = centre.y - start.centre.y;
-    if (!b && !start.moved && Math.hypot(dx, dy) < 5) return;
+    if (!b && !start.moved && Math.hypot(dx, dy) < slop(event.pointerType)) return;
     start.moved = true;
     suppressClick.current = true;
     setPanning(true);
