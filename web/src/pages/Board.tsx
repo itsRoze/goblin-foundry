@@ -31,7 +31,7 @@ import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
 import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
 import { useCrumb, useOpenPalette } from '../shell';
-import { StartModal } from '../start-modal';
+import { StartModal, useFocusAfterStart } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
@@ -182,6 +182,12 @@ interface Notice {
 }
 
 const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
+/** `body` is where `⏎` and `a s d` are the Cursor's (`letGoOfEnter`), and the Cursor is a readout they need on screen. */
+const keysToCursor = () => {
+  const held = document.activeElement;
+  if (held instanceof HTMLElement && held !== document.body) held.blur();
+  revealCursor();
+};
 
 /**
  * Every way the board moves a card, in one place, because they must agree:
@@ -304,6 +310,12 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
   const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
   const { reporting } = terminal;
   const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
+  // a card that has left the board has moved too, and takes the focus with it, as it takes the Cursor; a terminal
+  // line that took the focus moves with its card and is drawn again, so it is where the focus goes back to
+  const focusOnceStarted = useFocusAfterStart(
+    (key) => (terminal.said?.key === key ? document.querySelector<HTMLElement>('.gf-terminal-said button') : null) ?? cardOf(key),
+    (key) => lookup(key)?.status !== 'ready',
+  );
   const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
     setStarting(null);
     if (started) moved.current(ticket, 'building');
@@ -316,7 +328,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
     terminal.press(ticket);
   };
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, terminal, pressTerminal };
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal };
 }
 
 /**
@@ -415,7 +427,7 @@ export function BoardPage() {
     [lookup, sending],
   );
   const boardRead = cards !== undefined;
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -724,8 +736,15 @@ export function BoardPage() {
         <StartModal
           ticket={starting}
           run={(worktree) => startRun(starting, worktree)}
-          onClose={(started) => startClosed(starting, started)}
-          focusAfter={() => cardOf(starting.key)}
+          // the card has the focus back only if it is the Cursor's: a menu and a drag leave the Cursor where it was
+          // (DESIGN.md Card menu), and a ring on another card would have `⏎` open that one while `s` acts on the
+          // Cursor's. Otherwise the focus goes where the Cursor's keys are, on `body`, and the Cursor is kept on screen
+          home={() => (starting.key === cursor.at ? cardOf(starting.key) : null)}
+          onClose={(started, keyed) => {
+            startClosed(starting, started);
+            if (starting.key !== cursor.at) return keysToCursor();
+            if (started) focusOnceStarted(starting.key, keyed);
+          }}
         />
       )}
       <ChooseWorktree terminal={terminal} />

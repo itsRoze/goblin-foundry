@@ -329,6 +329,134 @@ test.describe('the Start modal', () => {
     expect(await read(page, key)).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });
   });
 
+  // GF-131: a Start with a Worktree hands the focus to the terminal line's `copy folder` (the `none` step this server runs), so a plain one shows where it goes
+  test('after a Start the focus goes to what stands where start was, and on the board to the card in its new column', async ({ page }) => {
+    const home = await page.request.post('/api/apps', { data: { name: `Plain App ${n}` } });
+    const app = ((await home.json()) as { id: number }).id;
+    const startPlain = async () => {
+      await modal(page).getByTestId('start-plain').click();
+      await expect(modal(page)).toHaveCount(0);
+    };
+
+    const key = await ready(page, `Startfocal view ${n}`, app);
+    // `s` and the palette's row come back to `start` as the button does
+    await page.goto(`/tickets/${key}`);
+    await expect(page.getByTestId('move-start')).toBeVisible();
+    await page.keyboard.press('s');
+    await page.getByTestId('run-move-start').waitFor();
+    await page.keyboard.press('Enter');
+    await expect(modal(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('move-start')).toBeFocused();
+    await page.getByTestId('move-start').click();
+    await startPlain();
+    await expect(page.getByTestId('move-start')).toHaveCount(0);
+    await expect(page.getByTestId('open-terminal')).toBeFocused();
+
+    // on the board every way in comes back to the card, a cancel where it stands and a Start in `building`
+    const title = `Startfocal board ${n}`;
+    const onBoard = await ready(page, title, app);
+    await page.goto('/?q=' + encodeURIComponent(title));
+    const card = page.getByTestId(`card-${onBoard}`);
+    await expect(card).toBeVisible();
+    await page.keyboard.press('j');
+    await expect(card).toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('s');
+    await page.getByTestId('run-move-start').waitFor();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    await expect(card).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByTestId('run-move-start').click();
+    await page.keyboard.press('Escape');
+    await expect(card).toBeFocused();
+    await card.dragTo(page.getByTestId('col-building'));
+    // a press outside the panel is a cancel, and its own focus change does not undo the hand back
+    await expect(modal(page)).toBeVisible();
+    await page.mouse.click(8, page.viewportSize()!.height - 8);
+    await expect(modal(page)).toHaveCount(0);
+    await expect(card).toBeFocused();
+    await page.getByTestId(`menu-${onBoard}`).click();
+    await page.getByTestId(`menu-${onBoard}-start`).click();
+    await expect(modal(page).getByTestId('start-cancel')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    // a held `⏎`: the press starts, and its repeats on the card that took the focus do not open it (GF-82)
+    await page.keyboard.down('Enter');
+    await expect(modal(page)).toHaveCount(0);
+    await expect(page.getByTestId('col-building').getByTestId(`card-${onBoard}`)).toBeFocused();
+    await page.keyboard.down('Enter');
+    await page.keyboard.up('Enter');
+    await expect(page.getByTestId('col-building').getByTestId(`card-${onBoard}`)).toBeFocused();
+    expect(new URL(page.url()).pathname).toBe('/');
+  });
+
+  // GF-131 review: a card's menu and a drag leave the Cursor where it was (DESIGN.md Card menu), so a Start from a card
+  // that is not the Cursor's leaves the focus where the Cursor's keys are, or `⏎` would open that card while `s` acts on
+  // the Cursor's
+  test('a Start from a card the Cursor is not on leaves the focus with the Cursor, by menu and by drag, on every close', async ({ page }) => {
+    const home = await page.request.post('/api/apps', { data: { name: `Elsewhere App ${n}` } });
+    const plain = ((await home.json()) as { id: number }).id;
+    const word = `Cursorfocal ${n}`;
+    const res = await page.request.post('/api/tickets', { data: { title: `${word} cursor`, status: 'planning', simple: true } });
+    const cursorKey = ((await res.json()) as { key: string }).key;
+    const cursorCard = page.getByTestId(`card-${cursorKey}`);
+    const withCursor = async (close: string) => {
+      await expect(modal(page), close).toHaveCount(0);
+      await expect(page.locator('body'), close).toBeFocused();
+      await expect(cursorCard, close).toHaveAttribute('aria-current', 'true');
+      await expect(cursorCard, close).toBeInViewport();
+    };
+    const ways = {
+      menu: async (key: string) => {
+        await page.getByTestId(`menu-${key}`).click();
+        await page.getByTestId(`menu-${key}-start`).click();
+      },
+      drag: async (key: string) => {
+        await page.getByTestId(`card-${key}`).dragTo(page.getByTestId('col-building'));
+      },
+    };
+
+    for (const [way, open] of Object.entries(ways)) {
+      const key = await ready(page, `${word} ${way}`, plain);
+      const refused = await ready(page, `${word} ${way} refused`);
+      await page.goto('/?q=' + encodeURIComponent(word));
+      await expect(cursorCard).toBeVisible();
+      await page.keyboard.press('j');
+      await expect(cursorCard).toHaveAttribute('aria-current', 'true');
+      const opened = async (on: string) => {
+        await open(on);
+        await expect(modal(page)).toBeVisible();
+      };
+
+      await opened(key);
+      await modal(page).getByTestId('start-cancel').click();
+      await withCursor(`${way}: cancel`);
+      await opened(key);
+      await page.keyboard.press('Escape');
+      await withCursor(`${way}: esc`);
+      await opened(key);
+      await page.mouse.click(8, page.viewportSize()!.height - 8);
+      await withCursor(`${way}: a press outside`);
+      // the Checkout itself is on `main`, so git refuses it, and the refusal stays until `esc`
+      await opened(refused);
+      await modal(page).getByLabel('branch').fill('main');
+      await page.keyboard.press('Enter');
+      await expect(modal(page).getByRole('alert')).toBeVisible();
+      // the typing opened the branch list, and the first `esc` shuts that
+      await page.keyboard.press('Escape');
+      await expect(modal(page).getByRole('listbox')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await withCursor(`${way}: a refusal, then esc`);
+      await opened(key);
+      await modal(page).getByTestId('start-plain').click();
+      await expect(page.getByTestId('col-building').getByTestId(`card-${key}`)).toBeVisible();
+      await withCursor(`${way}: a Start that lands`);
+      // the Cursor's `⏎` opens the Cursor's Ticket
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(new RegExp(`/tickets/${cursorKey}$`));
+    }
+  });
+
   test('a Checkout with no commit yet says so, rather than forecasting a branch git cannot cut', async ({ page }) => {
     const empty = join(root, `fresh-${n}`);
     mkdirSync(empty);

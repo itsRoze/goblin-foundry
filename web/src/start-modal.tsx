@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { defaultWorktreeBranch, slugPath, worktreeBase, type App, type AppBranches, type CheckoutBranch, type StartWorktreeBody, type Ticket } from '@goblin/shared';
-import { ignoreHeldEnter } from './keys';
+import { byKey, ignoreHeldEnter } from './keys';
 import { useApp, useAppBranches } from './queries';
 import { baseChoices, branchChoices, branchNote, matching, planBranch, planLine } from './start-plan';
 import { Empty, ForPointer, Kbd, refusalLine } from './ui';
@@ -28,17 +28,22 @@ export function StartModal({
   verb = 'start',
   run,
   onClose,
-  focusAfter,
+  home,
 }: {
   ticket: Starting;
   verb?: 'start' | 'terminal';
   run: (worktree?: StartWorktreeBody) => Promise<unknown>;
-  onClose: (started: boolean) => void;
-  /** Where the focus goes back to when what had it is gone, as a menu's row and an answered question are. */
-  focusAfter: () => HTMLElement | null;
+  /** `keyed` when a key closed it, as that press is known before a Start's write, and not after it. */
+  onClose: (started: boolean, keyed: boolean) => void;
+  /**
+   * The control the operator came from, as the screen finds it now: the state tile's `start` or `open terminal`, or
+   * the card. Named by the screen and not read off the page, because a key, a menu's row, a drag and the palette
+   * leave the focus in four places, and in WebKit a click on a button leaves it on `body`. `null` leaves it to
+   * `onClose`.
+   */
+  home: () => HTMLElement | null;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const opener = useRef(document.activeElement);
   const title = useId();
   const said = useId();
   const app = useApp(ticket.app_id);
@@ -57,13 +62,15 @@ export function StartModal({
   }, []);
 
   const leave = useCallback(
-    (started: boolean) => {
-      // closing gives the focus back to what had it; only if that has gone is there anything left to do
+    (started: boolean, keyed = byKey(window.event)) => {
       dialog.current?.close();
-      if (!opener.current?.isConnected) focusAfter()?.focus({ preventScroll: true });
-      onClose(started);
+      // a key's close brings the control back by what it is clipped, as a picker's close does (`useFocusOnClose`)
+      const back = home();
+      back?.focus({ preventScroll: true });
+      if (keyed) back?.scrollIntoView({ block: 'nearest' });
+      onClose(started, keyed);
     },
-    [focusAfter, onClose],
+    [home, onClose],
   );
   const cancel = useCallback(() => {
     if (!sending.current) leave(false);
@@ -71,13 +78,15 @@ export function StartModal({
   const accept = useCallback(
     async (worktree?: StartWorktreeBody) => {
       if (sending.current) return;
+      // the press that asked, read before the write: once it is back there is no press in flight
+      const keyed = byKey(window.event);
       sending.current = true;
       setBusy(true);
       setRefusal(null);
       try {
         await run(worktree);
         sending.current = false;
-        leave(true);
+        leave(true, keyed);
       } catch (e) {
         sending.current = false;
         setBusy(false);
@@ -134,7 +143,10 @@ export function StartModal({
         }
       }}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) cancel();
+        if (e.target !== e.currentTarget) return;
+        // the press's own focus change comes after this handler, and would take the focus back off `home` to `body`
+        e.preventDefault();
+        cancel();
       }}
       // what asks a dialog to close without a key, such as a phone's back gesture
       onCancel={(e) => {
@@ -159,6 +171,30 @@ export function StartModal({
       </div>
     </dialog>
   );
+}
+
+/**
+ * A Start that landed takes the control it came from away with the Ticket's old status (the state tile's `start`,
+ * the card in `ready`), and the focus with it, once the screen draws the Ticket where it went, after the modal
+ * has closed. So the focus is owed until the screen shows the Ticket `moved`, and then lands on `home` as it is
+ * found again: `open terminal` where `start` was, as the focus that fell with a question's answers lands on its
+ * line, and the card in its new column, as the Cursor follows a Transition (DESIGN.md Interaction). Only from
+ * `body`: a terminal that did not open has given it to its `copy folder`. A key's Start brings it into view by what
+ * it is clipped, as a key's close does: on a phone the state tile starts below the fold. Returns what to call with
+ * the Ticket's key and whether a key started it.
+ */
+export function useFocusAfterStart(home: (key: string) => HTMLElement | null, moved: (key: string) => boolean) {
+  const [owed, setOwed] = useState<{ key: string; keyed: boolean } | null>(null);
+  const landed = owed !== null && moved(owed.key);
+  useEffect(() => {
+    if (owed === null || !landed) return;
+    setOwed(null);
+    if (document.activeElement !== document.body) return;
+    const back = home(owed.key);
+    back?.focus({ preventScroll: true });
+    if (owed.keyed) back?.scrollIntoView({ block: 'nearest' });
+  }, [owed, landed, home]);
+  return useCallback((key: string, keyed: boolean) => setOwed({ key, keyed }), []);
 }
 
 /** Refused in the panel, and not only by the API: a blank field has nothing to ask it. */
