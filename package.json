@@ -5,6 +5,7 @@
   "workspaces": [
     "workflow",
     "labels",
+    "history",
     "shared",
     "api",
     "web",
