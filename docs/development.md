@@ -69,9 +69,13 @@ bun run db:push    # drizzle-kit push against the dev database
 CI runs the browser suite as four `e2e shard n/4` jobs, and the `e2e` job passes only when all
 of them did: `e2e` is the check to read. Each shard takes whole spec files in file order, over
 its own server and empty database, so a red shard reproduces with `bun run test:e2e --shard=2/4`.
-The shard total is the length of the matrix in `.github/workflows/ci.yml`. The browser install
-has its own 4 minute limit, so a stalled apt mirror fails on that step and says so, not at the
-job's 15 minutes. No test ran in that shard: `gh run rerun --failed` reruns only the red one.
+The shard total is the length of the matrix in `.github/workflows/ci.yml`. The `.deb`s the
+browser install needs come from the Actions cache (`apt-debs-…`), so a warm shard asks the
+Ubuntu mirror only for `apt-get update`'s lists, and a shard saves the cache again only when the
+set of packages changed. The install has its own 4 minute limit, so a stalled apt mirror fails
+on that step and says so, not at the job's 15 minutes. No test ran in that shard:
+`gh run rerun --failed` reruns only the red one. A shard that reaches its job limit ends
+`cancelled`, and `e2e` is red for that too.
 
 `bun run lint` is where the house style stops depending on review. stylelint holds the parts
 of DESIGN.md a machine can hold — colour comes from a token, radius is `0`, no gradients,

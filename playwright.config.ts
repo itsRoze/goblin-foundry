@@ -25,10 +25,11 @@ const dbPath = join(mkdtempSync(join(tmpdir(), 'gf-e2e-')), 'foundry.db');
  *
  * The first test of a process pays for the browser's start inside its own timeout, and in
  * WebKit on CI that alone can pass 15 s. Shards move which touch spec comes first, so the
- * longer timeout belongs to the projects and not to one file.
+ * longer timeout belongs to the project and not to one file. Chromium's start does not need
+ * it: each touch spec run alone on CI had no test over 2.7 s (GF-129).
  */
 const TOUCH_SPECS = '**/touch-*.e2e.ts';
-const TOUCH_TIMEOUT = 30_000;
+const WEBKIT_START_TIMEOUT = 30_000;
 
 export default defineConfig({
   testDir: './e2e',
@@ -47,7 +48,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: TOUCH_SPECS },
-    { name: 'chromium-touch', use: { ...devices['Pixel 5'] }, testMatch: TOUCH_SPECS, timeout: TOUCH_TIMEOUT },
-    { name: 'webkit-touch', use: { ...devices['iPhone 13'] }, testMatch: TOUCH_SPECS, timeout: TOUCH_TIMEOUT },
+    { name: 'chromium-touch', use: { ...devices['Pixel 5'] }, testMatch: TOUCH_SPECS },
+    { name: 'webkit-touch', use: { ...devices['iPhone 13'] }, testMatch: TOUCH_SPECS, timeout: WEBKIT_START_TIMEOUT },
   ],
 });
