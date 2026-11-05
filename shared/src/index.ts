@@ -7,6 +7,8 @@ export {
   TICKET_PREFIX_SHAPE,
   DEFAULT_TICKET_PREFIX,
   TICKET_PREFIX_KEY,
+  DEFAULT_WORKTREE_ROOT,
+  WORKTREE_ROOT_KEY,
   DEFAULT_PORT,
 } from './settings';
 export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
@@ -122,3 +124,4 @@ export {
 } from './filters';
 
 export { ImplementationLinkSchema, AddImplementationLinkBodySchema, ticketBranchName, type ImplementationLink } from './implementation';
+export { StartWorktreeBodySchema, type StartWorktreeBody, worktreeSlug, defaultWorktreeBranch, worktreeBase } from './worktree';

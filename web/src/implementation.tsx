@@ -2,8 +2,31 @@ import { useState, type FormEvent, type RefObject } from 'react';
 import { AddImplementationLinkBodySchema, type Ticket } from '@goblin/shared';
 import { useImplementationLinks, useImplementationLinkWrites } from './queries';
 import { useBulkLock } from './selecting';
-import { Empty, Tile, refusalLine } from './ui';
-import type { useBranchCopy } from './branch-copy';
+import { Empty, Kv, Tile, refusalLine } from './ui';
+import { useCopy, type useBranchCopy } from './branch-copy';
+
+/** Where the Ticket is being worked, once it has a place. Unlike the suggestion beside it, this records something that exists. */
+function WorktreeFacts({ branch, folder }: { branch: string; folder: string }) {
+  const { copied, failed, copy } = useCopy(folder);
+  return (
+    <>
+      <Kv
+        rows={[
+          ['worktree', <code className="gf-path" data-testid="worktree-branch">{branch}</code>],
+          [
+            'folder',
+            <div className="gf-branch">
+              <code className="gf-branch-name" data-testid="worktree-folder">{folder}</code>
+              <button type="button" className="gf-btn" aria-label="copy worktree folder" onClick={() => void copy()}>{copied ? 'copied' : 'copy folder'}</button>
+            </div>,
+          ],
+        ]}
+      />
+      <span className="gf-implementation-notice" role="status">{copied ? 'worktree folder copied' : ''}</span>
+      {failed && <p className="gf-refusal" role="alert">Couldn’t copy. Select the folder above and copy it manually.</p>}
+    </>
+  );
+}
 
 export function ImplementationTile({ ticket, branchCopy, input }: {
   ticket: Ticket;
@@ -44,6 +67,7 @@ export function ImplementationTile({ ticket, branchCopy, input }: {
 
   return (
     <Tile label="implementation" testId="implementation-tile">
+      {ticket.worktree_branch !== null && ticket.worktree_folder !== null && <WorktreeFacts branch={ticket.worktree_branch} folder={ticket.worktree_folder} />}
       <div className="gf-branch">
         <code className="gf-branch-name" data-testid="branch-name">{branch}</code>
         <button type="button" className="gf-btn" aria-label="copy git branch name" onClick={() => void copy()}>{copied ? 'copied' : 'copy branch'}</button>

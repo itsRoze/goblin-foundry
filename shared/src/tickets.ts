@@ -23,6 +23,9 @@ export const TicketSchema = z.object({
   project_id: z.number().int().nullable(),
   /** Normalised, in the order they were set (ADR-0013). */
   labels: z.array(z.string()),
+  /** Its Worktree: both or neither, and kept whatever Status it moves to. */
+  worktree_branch: z.string().nullable(),
+  worktree_folder: z.string().nullable(),
   trashed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),

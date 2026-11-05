@@ -10,7 +10,7 @@ import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { sql } from 'drizzle-orm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY } from '@goblin/shared';
+import { DEFAULT_TICKET_PREFIX, DEFAULT_WORKTREE_ROOT, TICKET_PREFIX_KEY, WORKTREE_ROOT_KEY } from '@goblin/shared';
 import * as schema from './schema';
 import { defaultDbPath } from './db-path';
 
@@ -133,7 +133,7 @@ export function backupTo(source: string, destination: string): void {
  * column's name. Names are this file's own literals. Only for what
  * `ADD COLUMN` can do: nullable, with no constraint a table rebuild would need.
  */
-function addColumn(db: Db, table: 'app', column: string, type: 'text'): void {
+function addColumn(db: Db, table: 'app' | 'ticket', column: string, type: 'text'): void {
   const columns = db.all<{ name: string }>(sql`SELECT name FROM pragma_table_info(${table})`);
   if (columns.some((c) => c.name === column)) return;
   db.run(sql`ALTER TABLE ${sql.identifier(table)} ADD COLUMN ${sql.identifier(column)} ${sql.raw(type)}`);
@@ -185,11 +185,15 @@ async function ensureSchema(db: Db): Promise<void> {
     design text,
     app_id integer REFERENCES app(id),
     project_id integer REFERENCES project(id),
+    worktree_branch text,
+    worktree_folder text,
     trashed_at text,
     trashed_via text,
     created_at text NOT NULL,
     updated_at text NOT NULL
   )`);
+  addColumn(db, 'ticket', 'worktree_branch', 'text');
+  addColumn(db, 'ticket', 'worktree_folder', 'text');
   db.run(sql`CREATE TABLE IF NOT EXISTS dependency (
     blocker_id integer NOT NULL REFERENCES ticket(id),
     blocked_id integer NOT NULL REFERENCES ticket(id),
@@ -223,6 +227,9 @@ async function ensureSchema(db: Db): Promise<void> {
   db.run(sql`CREATE INDEX IF NOT EXISTS event_entity ON event (entity_kind, entity_id, id)`);
   await db
     .insert(schema.setting)
-    .values({ key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX })
+    .values([
+      { key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX },
+      { key: WORKTREE_ROOT_KEY, value: DEFAULT_WORKTREE_ROOT },
+    ])
     .onConflictDoNothing();
 }

@@ -418,7 +418,7 @@ const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_
  */
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
   // `approved · planning → ready`: the decision first, the state pair after it
-  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}`;
+  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}${'worktree_branch' in e.new ? ` · worktree ${str(e.new.worktree_branch)}` : ''}`;
   // one edge, written on both its ends: each side's history says which end this ticket is (ADR-0009)
   if (e.kind === 'dependency_added' || e.kind === 'dependency_removed') {
     const undone = e.kind === 'dependency_removed' ? 'no longer ' : '';

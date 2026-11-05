@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeTestApp } from '@goblin/api/test/harness';
@@ -161,6 +161,85 @@ describe('goblin', () => {
     expect(JSON.parse(refused.err).issues).toEqual([{ path: ['repository_url'], message: REPOSITORY_WANTS }]);
   });
 
+  describe('`ticket start` with a Worktree, against real git', () => {
+    let root: string;
+    let repo: string;
+    const git = (cwd: string, ...args: string[]) => {
+      const done = Bun.spawnSync(['git', ...args], { cwd, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+      if (done.exitCode !== 0) throw new Error(`git ${args.join(' ')}: ${done.stderr.toString()}`);
+      return done.stdout.toString().trim();
+    };
+    const ready = async (app = '1') => (await json(['ticket', 'create', '--title', 'Parse the feed', '--status', 'ready', '--simple', '--app', app])).key as string;
+
+    beforeEach(async () => {
+      root = realpathSync(mkdtempSync(join(tmpdir(), 'gf-cli-worktree-')));
+      repo = join(root, 'subway-reader');
+      mkdirSync(repo);
+      git(repo, 'init', '-q', '-b', 'main');
+      git(repo, 'commit', '-q', '--allow-empty', '-m', 'first');
+      await json(['settings', 'set', '--worktree-root', join(root, 'worktrees')]);
+      await json(['app', 'create', '--name', 'Subway Reader', '--checkout', repo]);
+    });
+    afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+    test('bare, it stays the plain Transition', async () => {
+      const key = await ready();
+      expect(await json(['ticket', 'start', key, '--actor', 'agent'])).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });
+      expect(existsSync(join(root, 'worktrees'))).toBe(false);
+    });
+
+    test('`--worktree` takes every default, prints the Ticket and its Worktree, and `ticket show` has them too', async () => {
+      const key = await ready();
+      const branch = `${key.toLowerCase()}-parse-the-feed`;
+      const folder = join(root, 'worktrees', 'subway-reader', branch);
+      const started = await json(['ticket', 'start', key, '--worktree', '--actor', 'agent']);
+      expect(started).toMatchObject({ key, status: 'building', worktree_branch: branch, worktree_folder: folder });
+      expect(git(folder, 'symbolic-ref', '--short', 'HEAD')).toBe(branch);
+      expect(await json(['ticket', 'show', key])).toMatchObject({ worktree_branch: branch, worktree_folder: folder });
+      const [recorded] = await json(['ticket', 'history', key]);
+      expect(recorded).toMatchObject({ actor: 'agent', kind: 'transitioned', new: { worktree_branch: branch, worktree_folder: folder } });
+    });
+
+    test('`--branch` implies it, and so does `--base`', async () => {
+      git(repo, 'branch', 'develop');
+      const named = await ready();
+      expect(await json(['ticket', 'start', named, '--branch', 'feature/one'])).toMatchObject({ worktree_branch: 'feature/one', worktree_folder: join(root, 'worktrees', 'subway-reader', 'feature-one') });
+      const based = await ready();
+      const started = await json(['ticket', 'start', based, '--base', 'develop']);
+      expect(started.worktree_branch).toBe(`${based.toLowerCase()}-parse-the-feed`);
+      expect(existsSync(started.worktree_folder)).toBe(true);
+    });
+
+    test('`--no-worktree` is the bare Transition', async () => {
+      const key = await ready();
+      expect(await json(['ticket', 'start', key, '--no-worktree'])).toMatchObject({ status: 'building', worktree_branch: null });
+    });
+
+    test("a refusal exits 1 with the API's sentence on stderr and nothing on stdout", async () => {
+      await json(['app', 'create', '--name', 'No Repo']);
+      const key = await ready('2');
+      const refused = await run(['ticket', 'start', key, '--worktree']);
+      expect([refused.code, refused.out]).toEqual([1, '']);
+      expect(JSON.parse(refused.err).hint).toContain('No Repo has no Checkout');
+      expect((await json(['ticket', 'start', key])).status).toBe('building');
+    });
+
+    test('several tickets are the all-or-none bulk action, which never makes folders, so asking for a Worktree there is a usage error', async () => {
+      const [a, b] = [await ready(), await ready()];
+      const refused = await run(['ticket', 'start', a, b, '--worktree']);
+      expect(refused.code).toBe(2);
+      expect(JSON.parse(refused.err).detail).toBe('a Worktree is for one Ticket: --worktree, --branch and --base take one key');
+      expect((await json(['ticket', 'show', a])).status).toBe('ready');
+      expect((await json(['ticket', 'start', a, b])).tickets.map((t: { status: string; worktree_branch: string | null }) => [t.status, t.worktree_branch])).toEqual([['building', null], ['building', null]]);
+    });
+
+    test('only `start` takes the flags, and its help names them', async () => {
+      const help = (await run(['ticket', 'start', '--help'])).out;
+      for (const flag of ['--worktree', '--branch', '--base']) expect(help).toContain(flag);
+      expect((await run(['ticket', 'stop', 'GF-1', '--worktree'])).code).toBe(2);
+    });
+  });
+
   test('`--checkout` records the repository a folder is in, `null` clears it, and a refusal says why', async () => {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'gf-cli-checkout-')));
     try {
@@ -269,8 +348,13 @@ describe('goblin', () => {
     await json(['project', 'design', 'set', 'mvp-1', '# Subway Reader']);
     expect((await run(['project', 'design', 'get', '1'])).out).toBe('# Subway Reader');
 
-    expect(await json(['settings'])).toEqual({ ticket_prefix: 'GF' });
-    expect(await json(['settings', 'set', '--ticket-prefix', 'sr'])).toEqual({ ticket_prefix: 'SR' });
+    expect(await json(['settings'])).toEqual({ ticket_prefix: 'GF', worktree_root: '~/.goblin/worktrees' });
+    expect(await json(['settings', 'set', '--ticket-prefix', 'sr'])).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees' });
+    expect(await json(['settings', 'set', '--worktree-root', '/srv/worktrees', '--actor', 'agent'])).toEqual({ ticket_prefix: 'SR', worktree_root: '/srv/worktrees' });
+    expect((await run(['settings', 'set', '--worktree-root', 'relative'])).code).toBe(1);
+    const unnamed = await run(['settings', 'set']);
+    expect(unnamed.code).toBe(2);
+    expect(JSON.parse(unnamed.err).detail).toBe('say what to change: --ticket-prefix or --worktree-root');
     await json(['ticket', 'create', '--title', 'renumbered nothing']);
     expect((await json(['ticket', 'show', '1'])).key).toBe('SR-1');
   });
