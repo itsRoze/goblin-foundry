@@ -67,8 +67,17 @@ const windowInFront = (page: Page, inFront: boolean) =>
     window.dispatchEvent(new Event(front ? 'focus' : 'blur'));
   }, inFront);
 const statusOf = async (page: Page, ticket: Ticket) => ((await (await page.request.get(`/api/tickets/${ticket.key}`)).json()) as { status: string }).status;
+/**
+ * The desk packs its tiles on a frame after a read lands (`useTileLayout`), and no hand is quicker than a frame:
+ * what Playwright presses or measures sooner is a page nobody ever sees, and a tile can leave for another column on that frame.
+ */
+const packed = (page: Page) =>
+  page.evaluate(async () => {
+    for (let frames = 0; frames < 3; frames++) await new Promise(requestAnimationFrame);
+  });
 /** The middle of the spot, measured while the question stood, to press on once the line has taken its seat. */
 const middleOf = async (at: Locator) => {
+  await packed(at.page());
   const box = await at.boundingBox();
   if (box === null) throw new Error('nothing to measure');
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -113,22 +122,47 @@ test.describe('the Ticket view', () => {
   });
 
   test('the line holds the question’s seat in its tile, so nothing below it comes up under the pointer until it goes', async ({ page }) => {
-    // within the tile: the desk packs its tiles again when the dependencies tile shrinks, which moves the whole tile a few pixels
-    const belowTop = () =>
-      page.evaluate(() => {
-        const top = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top;
-        return top('move-cancel') - top('state-tile');
-      });
+    const below = page.getByTestId('move-cancel');
     const { blocker, held } = await asked(page, 'Tvseat');
     const second = await seed(page, coin('Tvseat second'));
     await block(page, held, second);
     await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start')).toContainText(second.key, quickly));
-    const before = await belowTop();
+    const before = await middleOf(below);
 
     await unblock(page, held, blocker);
     await unblock(page, held, second);
     await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start-gone')).toBeVisible(quickly));
-    expect(Math.abs((await belowTop()) - before)).toBeLessThan(1);
+    // on the page, not within the tile: the dependencies tile shrank, and that must not carry this tile off either
+    const after = await middleOf(below);
+    expect(after.x).toBe(before.x);
+    expect(Math.abs(after.y - before.y)).toBeLessThan(1);
+  });
+
+  test('in one column, under the dependencies tile, a blocker cleared moves neither the answers nor the line from under the pointer', async ({ page }) => {
+    await page.setViewportSize({ width: 700, height: 1400 });
+    const { blocker, held } = await asked(page, 'Tvcolumn');
+    const second = await seed(page, coin('Tvcolumn second'));
+    await block(page, held, second);
+    await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start')).toContainText(second.key, quickly));
+    const spot = await middleOf(page.getByTestId('confirm-start-yes'));
+
+    await unblock(page, held, second);
+    await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start')).not.toContainText(second.key, quickly));
+    expect((await middleOf(page.getByTestId('confirm-start-yes'))).y).toBe(spot.y);
+
+    await unblock(page, held, blocker);
+    await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start-gone')).toBeVisible(quickly));
+    await packed(page);
+    await page.mouse.click(spot.x, spot.y);
+    await expect(page.getByTestId('confirm-start-gone')).toHaveText('nothing blocks this now');
+
+    // and the room it held goes with it
+    const room = async () => (await page.getByTestId('state-tile').boundingBox())!.y - (await page.getByTestId('dependencies-tile').boundingBox())!.y;
+    const heldRoom = await room();
+    await page.getByTestId('state-tile').locator('.gf-tile-head').click();
+    await expect(page.getByTestId('confirm-start-gone')).toHaveCount(0);
+    await packed(page);
+    expect(await room()).toBeLessThan(heldRoom);
   });
 
   test('a Ticket gone to building closes the question, and a ⏎ meant for leave it writes nothing and goes nowhere', async ({ page }) => {
@@ -156,6 +190,7 @@ test.describe('the Ticket view', () => {
     const before = await eventsOf(page, held);
     await unblock(page, held, blocker);
     await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start-gone')).toBeVisible(quickly));
+    await packed(page);
 
     await page.mouse.click(spot.x, spot.y);
     await expect(page.getByTestId('confirm-start-gone')).toHaveText('nothing blocks this now');
@@ -269,6 +304,7 @@ test.describe('the board', () => {
     const url = page.url();
     await unblock(page, held, blocker);
     await comeBackUntil(page, (p) => expect(cardOf(p, held)).not.toContainText('◇', quickly));
+    await packed(page);
 
     await page.mouse.click(spot.x, spot.y);
     await expect(page.getByTestId('confirm-ready-gone')).toHaveText('nothing blocks this now');

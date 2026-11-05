@@ -12,9 +12,14 @@ export function useTileLayout() {
       frame = 0;
       const gap = parseFloat(getComputedStyle(desk).columnGap);
       desk.classList.add('is-packed');
+      // A tile shrinking can send the tiles after it to another column, and one with a question standing is being aimed at (GF-116),
+      // so tracks wait to shrink until it goes, whose going resizes its tile and so packs again. A tile that grew still gets its room, or it would lie over the next.
+      const held = desk.querySelector('[data-holds-desk]') !== null;
       for (const child of children) {
         // align-items:start keeps this the content height, independent of its span.
-        child.style.gridRowEnd = `span ${Math.ceil(child.getBoundingClientRect().height + gap)}`;
+        const needs = Math.ceil(child.getBoundingClientRect().height + gap);
+        const has = Number(child.style.gridRowEnd.replace('span ', ''));
+        child.style.gridRowEnd = `span ${held ? Math.max(needs, has) : needs}`;
       }
     };
     const schedule = () => {

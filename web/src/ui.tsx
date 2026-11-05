@@ -448,6 +448,7 @@ export function useQuestion<A extends object>(whyGone: (asked: A) => string | nu
  * `gone` is the same line once the Ticket changed under it (`useQuestion`): the reason and no answers,
  * reaching down to where the question ended, whatever left above it, so what lies below does not come
  * up under a pointer aimed at an answer, and a press on it does not take it, since a press there was aimed at an answer too.
+ * While either stands the desk holds its tiles where they are (`useTileLayout`), so the line stays under that pointer.
  * The focus that fell with the answers lands here, where `⏎` writes nothing and opens nothing, and lets the line go only
  * after its first second in front: one sooner was meant for an answer that has just gone, and would take the reason with it.
  */
@@ -486,6 +487,7 @@ export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone 
         ref={line}
         className="gf-confirm"
         role="alert"
+        data-holds-desk
         onClick={(e) => {
           // kept from `useRefusal`'s listener; and the press dropped the focus to `body`, where `⏎` is the Cursor's
           e.stopPropagation();
@@ -508,7 +510,7 @@ export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone 
       </p>
     );
   return (
-    <p ref={line} className="gf-confirm" role="alert" data-testid={testId}>
+    <p ref={line} className="gf-confirm" role="alert" data-holds-desk data-testid={testId}>
       <span id={question}>{text}</span>
       {/* a `tabindex` is what puts a button in WebKit's Tab order without full keyboard access on; the bar's answers carry it too */}
       <button type="button" tabIndex={0} className="gf-btn" data-testid={`${id}-yes`} aria-describedby={question} onKeyDown={ignoreHeldEnter} onClick={onConfirm}>
