@@ -669,6 +669,8 @@ a.gf-path { text-decoration: underline; }
   border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 3px 8px;
 }
 /* the title is the only thing a ticket must have, so it takes the room (GLOSSARY.md) */
+/* a select is as wide as its longest option, and a phone zooms out to fit a page wider than itself (GF-112) */
+.gf-new-row select { max-width: 100%; }
 .gf-new-row input.gf-new-row-title { border-color: var(--gf-system); flex: 0 1 420px; min-width: 160px; }
 .gf-new-row-refusal { flex-basis: 100%; }
 
@@ -818,11 +820,9 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
   /* a one-glyph button (`−`, `+`, `×`) is narrower than a finger on its own padding; the glyph stays in the middle of what it grew to */
   .gf-btn, .gf-filter-clear, .gf-mode-btn { min-width: 32px; justify-content: center; }
   /* an input is content-box unless it says otherwise, and the 32px is the whole box */
-  .gf-inline-title, .gf-inline-title-input, .gf-field input, .gf-new-row input[type='text'], .gf-mode-input { box-sizing: border-box; min-height: 32px; }
+  .gf-inline-title, .gf-inline-title-input, .gf-field input, .gf-new-row input[type='text'], .gf-mode-input, .gf-label-input, .gf-picker input, .gf-palette input, .gf-new-ticket input { box-sizing: border-box; min-height: 32px; }
   /* WebKit overwrites a select's `min-height` with its own, and honours `height` */
   .gf-kv select, .gf-field select, .gf-new-row select { box-sizing: border-box; height: 32px; }
-  /* a select is as wide as its longest option, and a phone zooms out to fit a page wider than itself */
-  .gf-new-row select { max-width: 100%; }
   /* the bar's own one height, above, would otherwise outrank this: it is under a thumb more than anything is */
   .gf-selection .gf-btn { min-height: 32px; }
   /* a title's links are inline, so padding grows what a finger hits and moves nothing (`Go` is still a finger wide; `relative` keeps the ` / ` after it from taking the padding back; to the right only, since WebKit hits nothing left of the title's box), and lines 32px apart keep a link from covering the one above */
@@ -830,7 +830,14 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
   .gf-title-parent { position: relative; padding: var(--gf-s1) var(--gf-s2) var(--gf-s1) 0; margin-right: calc(-1 * var(--gf-s2)); }
   /* the bar is 32px tall, so its links take the whole of it rather than growing past it */
   .gf-ws a, .gf-counts a, .gf-bar-key { display: inline-flex; align-items: center; box-sizing: border-box; min-height: 30px; }
+  /* DESIGN.md excuses their height, not their width */
+  .gf-ws a, .gf-bar-key { min-width: 32px; justify-content: center; }
+  .gf-plus { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; }
   .gf-dep-drop, .gf-label-drop { min-width: 32px; min-height: 32px; }
+  /* a one-line link is shorter than a finger: its padding reaches out and its margin takes back the room, so a row stays the height it was */
+  .gf-kv dd a, .gf-dep-row .gf-row-title { padding-block: 8px; margin-block: -8px; }
+  /* `Go` is still a finger wide; `inline-block` would get there too, but in WebKit it lifts a wrapped name over the row above */
+  .gf-kv dd a:not(.gf-path) { padding-inline: 8px; margin-inline: -8px; }
   /* the label's `×` is inside the chip's border, so its box spills past it rather than stretching the chip */
   .gf-label-drop { margin-block: -8px; }
   button.gf-hint { padding: 8px 4px; margin: -8px -4px; }
@@ -844,4 +851,11 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
   /* a key drawn inside the button a finger is pressing teaches nothing that finger can use */
   .gf-btn .gf-kbd, .gf-mode-done .gf-kbd { display: none; }
   .gf-toggle, .gf-check { min-height: 32px; }
+}
+
+/* the bar's links, a finger wide, leave no room under the width that fits two-digit counts, so its gaps pay for them; a 320px screen still overflows by the 7px it always did */
+@media (pointer: coarse) and (max-width: 389px) {
+  .gf-ws { gap: 0; }
+  .gf-bar, .gf-counts { gap: var(--gf-s2); }
+  .gf-counts a { padding-inline: 3px; }
 }

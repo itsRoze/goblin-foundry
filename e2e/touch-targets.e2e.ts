@@ -7,17 +7,19 @@ import type { Locator, Page } from '@playwright/test';
  * target however it measures, so the first 32px of it, each way, has to answer as the control.
  */
 const FINGER = 32;
+/** The bar's links fill the bar, which is 32px with its border: DESIGN.md excuses their height, not their width. */
+const BAR_LINK = 30;
 
 /** `null` when the control is a finger wide and answers across it; otherwise what is short about it. */
-function shortfall(control: Locator): Promise<string | null> {
-  return control.evaluate((el, finger) => {
+function shortfall(control: Locator, tall: number): Promise<string | null> {
+  return control.evaluate((el, { finger, tall }) => {
     el.scrollIntoView({ block: 'center' });
     // a link wrapped over two lines is one finger's target per line, not the box round both
     const box = el.getClientRects()[0]!;
     const middle = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
     const reach = {
       top: [middle.x, box.top + 1],
-      bottom: [middle.x, box.top + finger - 1],
+      bottom: [middle.x, box.top + tall - 1],
       left: [box.left + 1, middle.y],
       right: [box.left + finger - 1, middle.y],
     } as const;
@@ -25,17 +27,17 @@ function shortfall(control: Locator): Promise<string | null> {
       const hit = document.elementFromPoint(x, y);
       return el === hit || el.contains(hit) ? [] : [`${edge} under ${hit?.tagName ?? 'nothing'}.${hit?.className ?? ''}`];
     });
-    const small = box.width < finger || box.height < finger;
+    const small = box.width < finger || box.height < tall;
     if (!small && !covered.length) return null;
     return [`${box.width}x${box.height}`, ...covered].join(', ');
-  }, FINGER);
+  }, { finger: FINGER, tall });
 }
 
-async function shortfalls(controls: Record<string, Locator>): Promise<Record<string, string>> {
+async function shortfalls(controls: Record<string, Locator>, tall = FINGER): Promise<Record<string, string>> {
   const found: Record<string, string> = {};
   for (const [name, control] of Object.entries(controls)) {
     await expect(control, name).toBeVisible();
-    const short = await shortfall(control);
+    const short = await shortfall(control, tall);
     if (short) found[name] = short;
   }
   return found;
@@ -55,7 +57,7 @@ async function post<T>(page: Page, path: string, data: Record<string, unknown>):
   return (await response.json()) as T;
 }
 
-test('every control a finger is meant for is 32px on a side, and all of it answers', async ({ page }) => {
+test('the board, ticket and project controls are 32px on a side, and all of it answers', async ({ page }) => {
   const engine = test.info().project.name;
   // long enough that the project's link wraps under the app's, whose hit area it must not cover
   const app = await post<{ id: number }>(page, '/api/apps', { name: `Reach ${engine}` });
@@ -135,6 +137,92 @@ test('every control a finger is meant for is 32px on a side, and all of it answe
   await form.getByRole('button', { name: /cancel/ }).tap();
 
   expect({ ...onBoard, ...creating, ...onTicket, ...titleOpen, ...designOpen, ...onProject, ...onShortName, ...onSettings }).toEqual({});
+});
+
+test('the inputs, tile `+` and one-line links are 32px on a side, and their neighbours still answer', async ({ page }) => {
+  const engine = test.info().project.name;
+  const app = await post<{ id: number }>(page, '/api/apps', { name: `Links ${engine}`, repository_url: 'https://github.com/o/r' });
+  const project = await post<{ id: number }>(page, '/api/projects', { name: `Links ${engine} stack`, app_id: app.id });
+  const blockers = await Promise.all([1, 2].map((n) => post<{ key: string }>(page, '/api/tickets', { title: `Links blocker ${n}`, app_id: app.id, project_id: project.id })));
+  const ticket = await post<{ key: string }>(page, '/api/tickets', { title: `Links ticket ${engine}`, app_id: app.id, project_id: project.id });
+  for (const { key } of blockers) await post(page, `/api/tickets/${ticket.key}/dependencies`, { blocker: key });
+
+  await page.goto('/apps');
+  const onApps = await shortfalls({ '+ on apps': page.getByRole('button', { name: 'new app' }) });
+  await page.goto('/projects');
+  const onProjects = await shortfalls({ '+ on projects': page.getByRole('button', { name: 'new project' }) });
+
+  await page.goto(`/apps/${app.id}`);
+  const onApp = await shortfalls({
+    '+ on an app': page.getByRole('button', { name: 'new project' }),
+    'edit on an app': page.getByRole('button', { name: 'edit app' }),
+    'repository link': page.locator('a.gf-path'),
+  });
+
+  // the project's kv, under the tile head's `edit`; then its one-line form
+  await page.goto(`/projects/${project.id}`);
+  const onProject = await shortfalls({ 'project app link': page.locator('.gf-kv dd a'), 'edit on a project': page.getByRole('button', { name: 'edit project' }) });
+  await page.locator('button.gf-hint:visible', { hasText: 'new' }).tap();
+  const newTicket = await shortfalls({ 'new ticket input': page.locator('.gf-new-ticket input') });
+
+  // a dependency's title pads itself into its row, past which sit the `×` and the next dependency
+  await page.goto(`/tickets/${ticket.key}`);
+  await expect(page.getByTestId('about-tile')).toBeVisible();
+  const rows = page.getByTestId('deps-depends_on').locator('.gf-dep-row');
+  await expect(rows).toHaveCount(2);
+  const onTicket = await shortfalls({
+    'app select': page.getByTestId('app-select'),
+    'project select': page.getByTestId('project-select'),
+    'first dependency title': rows.first().locator('.gf-row-title'),
+    'first dependency ×': rows.first().locator('.gf-dep-drop'),
+    'second dependency title': rows.last().locator('.gf-row-title'),
+    'second dependency ×': rows.last().locator('.gf-dep-drop'),
+  });
+  await page.getByTestId('add-label').tap();
+  const labelInput = await shortfalls({ 'label input': page.locator('.gf-label-input') });
+  await page.keyboard.press('Escape');
+  await page.getByTestId('add-depends_on').tap();
+  const picker = await shortfalls({ 'picker input': page.getByTestId('picker-depends_on').locator('input') });
+  await page.getByTestId('add-depends_on').tap();
+  await page.getByTestId('open-palette').tap();
+  const palette = await shortfalls({ 'palette input': page.getByTestId('palette').locator('input') });
+
+  // a link's name can be shorter than a finger is wide
+  const shortApp = await post<{ id: number }>(page, '/api/apps', { name: 'Go' });
+  const shortNamed = await post<{ id: number }>(page, '/api/projects', { name: `Links short ${engine}`, app_id: shortApp.id });
+  await page.goto(`/projects/${shortNamed.id}`);
+  const onShortName = await shortfalls({ 'project short app link': page.locator('.gf-kv dd a') });
+
+  expect({ ...onApps, ...onProjects, ...onApp, ...onProject, ...newTicket, ...onTicket, ...labelInput, ...picker, ...palette, ...onShortName }).toEqual({});
+});
+
+test('the bar\'s links are a finger wide, and that does not widen the bar', async ({ page }) => {
+  // one-digit counts, as the widths below are measured with: this database has more of both by now
+  await page.route(/\/api\/(apps|projects)(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.goto('/');
+  await expect(page.locator('.gf-ws a').first()).toBeVisible();
+  const barLinks = await shortfalls(await each(page.locator('.gf-ws a, .gf-bar-key')), BAR_LINK);
+  expect(barLinks).toEqual({});
+  const barWidth = () => page.evaluate(() => document.querySelector('.gf-bar')!.scrollWidth);
+  await page.setViewportSize({ width: 360, height: 640 });
+  expect(await barWidth()).toBe(360);
+  await page.setViewportSize({ width: 320, height: 640 });
+  // 7px over at 320 is known, and older than these links: what is held here is that they add nothing to it
+  expect(await barWidth()).toBeLessThanOrEqual(327);
+});
+
+test('a long name in the create row leaves the page a phone wide on a fine pointer too', async ({ browser, baseURL }) => {
+  const engine = test.info().project.name;
+  // the project's phone would otherwise be inherited: a fine pointer is what is under test
+  const context = await browser.newContext({ baseURL: baseURL!, viewport: { width: 390, height: 800 }, hasTouch: false, isMobile: false });
+  const page = await context.newPage();
+  await post(page, '/api/apps', { name: `A fine pointer's application whose name just keeps going and going, ${engine}` });
+  await page.goto('/');
+  expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches)).toBe(true);
+  await page.getByTestId('hint-new').click();
+  await expect(page.getByTestId('board-create')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await context.close();
 });
 
 test('a long name among a select\'s options leaves the page a phone wide, so 32px stays 32px', async ({ page }) => {
