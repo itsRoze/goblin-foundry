@@ -651,6 +651,15 @@ describe('goblin', () => {
         expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--exclude-label: needs info is not one word: a label has no spaces or commas' });
       });
 
+      test.each(LIST_READS)('%j refuses the flag written twice rather than dropping a name', async (read) => {
+        for (const twice of [['--exclude-label', 'ready-for-human', '--exclude-label', 'backend'], ['--exclude-label=ready-for-human', '--exclude-label=backend']]) {
+          const refused = await run([...read, ...twice], { fetch: () => Promise.reject(new Error('nothing should be sent')) });
+          expect(refused.code).toBe(2);
+          expect(refused.out).toBe('');
+          expect(JSON.parse(refused.err)).toMatchObject({ title: 'Usage', detail: '--exclude-label was given twice', hint: 'name every value in one, comma-separated if it takes a list' });
+        }
+      });
+
       test.each([[['frontier', 'show']], [['ticket', 'list']]])('%j --help documents it', async (read) => {
         expect((await run([...read, '--help'])).out).toMatch(/--exclude-label <a,b>\s+leave out/);
       });

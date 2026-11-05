@@ -13,7 +13,8 @@ import { ticket as ticketTable, ticketLabel } from './schema';
 
 /** The query these parameters describe, or the 422 the handler returns instead. */
 export function readQuery(c: Context): TicketQuery | Response {
-  const parsed = parseTicketQuery(c.req.query());
+  // `query()` keeps only the first of a repeated parameter, and a name dropped here lets its tickets back into a queue
+  const parsed = parseTicketQuery({ ...c.req.query(), exclude_label: c.req.queries('exclude_label')?.join(',') });
   return parsed.ok ? parsed.query : unprocessable(c, parsed.issues);
 }
 

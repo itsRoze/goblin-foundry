@@ -188,6 +188,13 @@ describe('the filter parameters', () => {
       expect(await titles(`${path}?exclude_label=`)).toEqual(everything);
     });
 
+    test.each(LIST_READS)('%s reads every repeat of the parameter, as if they were one comma-separated value', async (path) => {
+      await queue();
+      expect(await titles(`${path}?exclude_label=wayfinder:grilling&exclude_label=wayfinder:prototype`)).toEqual(['build it', 'unlabelled']);
+      expect(await titles(`${path}?exclude_label=&exclude_label=backend`)).toEqual(['prototype it', 'unlabelled']);
+      expect(await issues(`${path}?exclude_label=backend&exclude_label=needs%20info`)).toEqual([{ path: ['exclude_label'], message: 'needs info is not one word: a label has no spaces or commas' }]);
+    });
+
     test('names are normalised as a ticket\'s are', async () => {
       await queue();
       expect(await titles('/api/frontier?exclude_label=%20WAYFINDER:Grilling%20,BACKEND')).toEqual(['prototype it', 'unlabelled']);
