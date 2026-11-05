@@ -82,8 +82,10 @@ test.describe('Open terminal', () => {
     await expect(said(page).getByTestId('terminal-folder')).toHaveText(folder);
     expect((await read(page, key)).status).toBe('building');
 
+    // the keyboard is already there: the copy took the focus once the modal had gone, and `⏎` copies
     const copy = said(page).getByRole('button', { name: 'copy terminal folder' });
-    await copy.click();
+    await expect(copy).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(copy).toHaveText('copied');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(folder);
 
@@ -91,6 +93,7 @@ test.describe('Open terminal', () => {
     await page.keyboard.press('Escape');
     await expect(said(page)).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/tickets/${key}$`));
+    await expect(page.getByTestId('open-terminal')).toBeFocused();
   });
 
   test('a building or review Ticket offers Open terminal where a ready one offers Start, and it moves nothing', async ({ page }) => {
@@ -150,7 +153,7 @@ test.describe('Open terminal', () => {
     const before = await historyOf(page, key);
     await page.getByTestId('open-terminal').click();
     await expect(modal(page)).toBeVisible();
-    await expect(modal(page).getByRole('heading')).toContainText(`terminal ${key}`);
+    await expect(modal(page).getByRole('heading')).toContainText(`open terminal ${key}`);
     await expect(modal(page).getByLabel('branch')).toBeFocused();
     await expect(modal(page).getByLabel('branch')).toHaveValue(branch);
     await expect(modal(page).getByLabel('base')).toHaveValue('main');
@@ -228,8 +231,10 @@ test.describe('Open terminal', () => {
     await expect(card).toHaveAttribute('aria-current', /.+/);
     await page.keyboard.press('t');
     await expect(under.getByTestId('terminal-said')).toContainText(NONE);
+    await expect(said(page).getByRole('button', { name: 'copy terminal folder' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(said(page)).toHaveCount(0);
+    await expect(card).toBeFocused();
 
     await page.keyboard.press('ControlOrMeta+k');
     await page.getByRole('combobox', { name: 'command palette' }).fill('open terminal');
@@ -275,6 +280,7 @@ test.describe('Open terminal', () => {
     await expect(modal(page)).toHaveCount(0);
     const under = page.getByTestId('col-building').getByTestId(`card-${key}`).locator('..');
     await expect(under.getByTestId('terminal-said')).toContainText(NONE);
+    await expect(said(page).getByRole('button', { name: 'copy terminal folder' })).toBeFocused();
     expect((await read(page, key)).status).toBe('building');
   });
 

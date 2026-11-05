@@ -183,6 +183,7 @@ interface Notice {
  * dropped on, or the card the key or the menu was about.
  */
 const unguarded = <T,>(write: () => Promise<T>) => write();
+const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
 
 function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
   const move = useTransition();
@@ -266,9 +267,9 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
   );
 
   const start = useStart();
-  const terminal = useTerminal({ guard: unguarded, refuse: ({ key, status }, text) => setRefusal({ key, status, text }) });
-  const { report } = terminal;
-  const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then((answer) => report(ticket, answer)), [start, report]);
+  const terminal = useTerminal({ guard: unguarded, refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
+  const { reporting } = terminal;
+  const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
   const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
     setStarting(null);
     if (started) moved.current(ticket, 'building');
@@ -689,7 +690,7 @@ export function BoardPage() {
           ticket={starting}
           run={(worktree) => startRun(starting, worktree)}
           onClose={(started) => startClosed(starting, started)}
-          focusAfter={() => document.querySelector<HTMLElement>(`.gf-card[data-key="${starting.key}"]`)}
+          focusAfter={() => cardOf(starting.key)}
         />
       )}
       {choosing && (
@@ -698,7 +699,7 @@ export function BoardPage() {
           verb="terminal"
           run={(worktree) => terminal.choose(choosing, worktree)}
           onClose={terminal.done}
-          focusAfter={() => document.querySelector<HTMLElement>(`.gf-card[data-key="${choosing.key}"]`)}
+          focusAfter={() => cardOf(choosing.key)}
         />
       )}
     </Tile>

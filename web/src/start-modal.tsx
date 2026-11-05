@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { defaultWorktreeBranch, slugPath, worktreeBase, type App, type AppBranches, type CheckoutBranch, type StartWorktreeBody, type Ticket } from '@goblin/shared';
+import { ignoreHeldEnter } from './keys';
 import { useApp, useAppBranches } from './queries';
 import { baseChoices, branchChoices, branchNote, matching, planBranch, planLine } from './start-plan';
 import { Empty, Kbd, refusalLine } from './ui';
@@ -19,8 +20,8 @@ type Starting = Pick<Ticket, 'key' | 'title' | 'app_id' | 'worktree_branch'>;
  * backdrop is drawn, as the palette draws none (DESIGN.md Components); a press
  * outside it is a cancel, the same as the palette. Its keys never reach the
  * screen behind it. A refusal here stays until the next try, unlike the one that
- * clears itself on a board: it is what the operator has to act on, in the panel
- * they are still in.
+ * clears itself on a board: the fields hold the words it refused, as a field's
+ * refused save does (DESIGN.md Components, Start modal).
  */
 export function StartModal({
   ticket,
@@ -39,6 +40,7 @@ export function StartModal({
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef(document.activeElement);
   const title = useId();
+  const said = useId();
   const app = useApp(ticket.app_id);
   const checkout = app.data?.checkout ?? null;
   const read = useAppBranches(checkout === null ? null : ticket.app_id);
@@ -101,6 +103,7 @@ export function StartModal({
       ref={dialog}
       className="gf-start"
       aria-labelledby={title}
+      aria-describedby={missing !== null ? said : undefined}
       tabIndex={-1}
       data-testid="start-modal"
       // a repeat of the `⏎` that opened it has not read it (GF-82)
@@ -140,12 +143,12 @@ export function StartModal({
       <div className="gf-start-panel">
         <h2 id={title} className="gf-start-title">
           <span className="gf-key">
-            {verb} {ticket.key}
-          </span>
+            {verb === 'start' ? 'start' : 'open terminal'} {ticket.key}
+          </span>{' '}
           {ticket.title}
         </h2>
         {missing !== null ? (
-          <NoWorktree said={missing} app={app.data} busy={busy} refusal={refusal} onPlain={verb === 'start' ? () => void accept() : undefined} onCancel={cancel} onLeave={() => leave(false)} />
+          <NoWorktree said={missing} saidId={said} app={app.data} busy={busy} refusal={refusal} onPlain={verb === 'start' ? () => void accept() : undefined} onCancel={cancel} onLeave={() => leave(false)} />
         ) : app.data ? (
           <Fields ticket={ticket} verb={verb} app={app.data} read={read.data} busy={busy} refusal={refusal} onAccept={(worktree) => void accept(worktree)} onCancel={cancel} onRefuse={setRefusal} />
         ) : (
@@ -202,6 +205,7 @@ function Fields({
   /** One list at a time: the field that has it, whether what was typed narrows it, and the highlighted row, which starts on nothing so `⏎` starts the Ticket. */
   const [list, setList] = useState<{ field: 'branch' | 'base'; narrowed: boolean; at: number } | null>(null);
   const listId = useId();
+  const lineId = useId();
   const rows = useRef<HTMLDivElement>(null);
   const choices = !read || !list ? [] : list.field === 'branch' ? branchChoices(read) : baseChoices(read);
   const hits = list?.narrowed ? matching(choices, list.field === 'branch' ? branch : base) : choices;
@@ -246,7 +250,8 @@ function Fields({
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           const step = e.key === 'ArrowDown' ? 1 : -1;
-          if (!here || !showing) return setList({ field: name, narrowed: false, at: step === 1 ? 0 : -1 });
+          // `↓` opens on the row that is set, as a reopened picker does (DESIGN.md Interaction)
+          if (!here || !showing) return setList({ field: name, narrowed: false, at: step === 1 ? Math.max(0, !read ? 0 : (name === 'branch' ? branchChoices(read) : baseChoices(read)).findIndex((b) => b.name === value.trim())) : -1 });
           const count = hits.length;
           setList({ ...list, at: list.at === -1 && step === -1 ? count - 1 : (list.at + step + count) % count });
         } else if (e.key === 'Escape' && here && showing) {
@@ -261,9 +266,9 @@ function Fields({
     <>
       <label className="gf-field">
         <span>branch</span>
-        <input ref={input} type="text" {...field('branch', branch, setBranch)} />
+        <input ref={input} type="text" aria-describedby={lineId} {...field('branch', branch, setBranch)} />
       </label>
-      <p className="gf-start-note" data-testid="start-line" aria-live="polite">
+      <p id={lineId} className="gf-start-note" data-testid="start-line" aria-live="polite">
         {!read ? 'reading the Checkout…' : plan ? planLine(plan) : 'no branch named'}
       </p>
       {plan?.kind === 'new' && (
@@ -287,12 +292,24 @@ function Fields({
         <button type="button" className="gf-btn is-primary" data-testid="start-go" aria-busy={busy} onClick={accept}>
           {verb === 'start' ? (busy ? 'starting…' : 'start') : busy ? 'opening…' : 'open terminal'} <Kbd>⏎</Kbd>
         </button>
-        <button type="button" className="gf-btn" data-testid="start-cancel" onClick={onCancel}>
+        <button type="button" className="gf-btn" data-testid="start-cancel" aria-disabled={busy} onClick={onCancel}>
           cancel <Kbd>esc</Kbd>
         </button>
+        {read && !showing && (
+          <span className="gf-start-hint">
+            <Kbd>↓</Kbd> list
+          </span>
+        )}
       </span>
       {/* at the foot, so nothing above moves under a press when it comes and goes (LESSONS 2026-08-30) */}
       {showing && read && (
+        <>
+        <div className="gf-start-choices-head">
+          <span>{list.field}</span>
+          <span className="gf-start-hint">
+            <Kbd>↑↓</Kbd> <Kbd>⏎</Kbd> <Kbd>esc</Kbd>
+          </span>
+        </div>
         <div ref={rows} id={listId} className="gf-rows gf-start-choices" role="listbox" aria-label="choices">
           {hits.map((choice, at) => (
             <div
@@ -315,14 +332,20 @@ function Fields({
             </div>
           ))}
         </div>
+        </>
       )}
     </>
   );
 }
 
-/** No Worktree can be made, which is said, with a way to fix that and a way past it. */
+/**
+ * No Worktree can be made, which is said, with a way to fix that and a way past it. It is the house's
+ * question in a panel, so the safe answer takes the focus: `⏎` on a sentence not yet read writes nothing,
+ * and the way past is one ⇧Tab away (DESIGN.md Refusal and confirm).
+ */
 function NoWorktree({
   said,
+  saidId,
   app,
   busy,
   refusal,
@@ -331,6 +354,7 @@ function NoWorktree({
   onLeave,
 }: {
   said: string;
+  saidId: string;
   app: App | undefined;
   busy: boolean;
   refusal: string | null;
@@ -343,24 +367,24 @@ function NoWorktree({
   useEffect(() => answer.current?.focus({ preventScroll: true }), []);
   return (
     <>
-      <p className="gf-start-said">{said}</p>
+      <p id={saidId} className="gf-start-said">{said}</p>
       {refusal && (
         <p className="gf-refusal" role="alert">
           {refusal}
         </p>
       )}
       <span className="gf-form-actions">
-        {onPlain && (
-          <button ref={answer} type="button" className="gf-btn is-primary" data-testid="start-plain" aria-busy={busy} onClick={onPlain}>
-            {busy ? 'starting…' : 'start without a Worktree'} <Kbd>⏎</Kbd>
-          </button>
-        )}
         {app && (
           <Link className="gf-btn" data-testid="start-app-link" to={slugPath('apps', app)} onClick={onLeave}>
             go to {app.name}
           </Link>
         )}
-        <button ref={onPlain ? undefined : answer} type="button" className="gf-btn" data-testid="start-cancel" onClick={onCancel}>
+        {onPlain && (
+          <button type="button" tabIndex={0} className="gf-btn" data-testid="start-plain" aria-busy={busy} aria-describedby={saidId} onKeyDown={ignoreHeldEnter} onClick={onPlain}>
+            {busy ? 'starting…' : 'start without a Worktree'}
+          </button>
+        )}
+        <button ref={answer} type="button" tabIndex={0} className="gf-btn" data-testid="start-cancel" aria-disabled={busy} aria-describedby={saidId} onKeyDown={ignoreHeldEnter} onClick={onCancel}>
           cancel <Kbd>esc</Kbd>
         </button>
       </span>

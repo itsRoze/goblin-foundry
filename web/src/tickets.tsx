@@ -331,17 +331,18 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
           }}
         >
           <div className="gf-menu-group">
+            {/* where a `ready` card has `start`: a thumb that slips off it lands on a lateral move, not on an ending */}
+            {opensTerminal(ticket.status) && (
+              <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-terminal`} onClick={() => run(actions.terminal)}>
+                open terminal
+              </button>
+            )}
             {moves.map((name) => (
               <button key={name} type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-${name}`} onClick={() => run(() => actions.move(name))}>
                 {name}
                 <span className="gf-menu-note">{lifecycle.transitions[name].to}</span>
               </button>
             ))}
-            {opensTerminal(ticket.status) && (
-              <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-terminal`} onClick={() => run(actions.terminal)}>
-                open terminal
-              </button>
-            )}
             <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-blocked-by`} onClick={() => run(actions.blockedBy)}>
               blocked by…
             </button>

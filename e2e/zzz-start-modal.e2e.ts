@@ -314,6 +314,15 @@ test.describe('the Start modal', () => {
     expect((await read(page, key)).status).toBe('ready');
 
     await openOnTicket(page, key);
+    // the safe answer has the focus: `⏎` on a sentence not yet read writes nothing
+    await expect(modal(page).getByTestId('start-cancel')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(modal(page)).toHaveCount(0);
+    expect((await read(page, key)).status).toBe('ready');
+
+    await openOnTicket(page, key);
+    await expect(modal(page).getByTestId('start-cancel')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
     await expect(modal(page).getByTestId('start-plain')).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(modal(page)).toHaveCount(0);

@@ -30,6 +30,8 @@ import { ImplementationTile } from '../implementation';
 import { LabelsField } from '../labels';
 import { useBranchCopy } from '../branch-copy';
 
+const openTerminalButton = () => document.querySelector<HTMLElement>('[data-testid="open-terminal"]');
+
 export function TicketView() {
   const { key = '' } = useParams();
   const ticket = useTicket(key);
@@ -173,7 +175,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   };
   const trySave = (body: PatchTicketBody) => void save(body).catch(() => {});
 
-  const terminal = useTerminal({ guard, refuse: (_, text, late) => (late ? setStateRefusal(text) : raiseInState(text)) });
+  const terminal = useTerminal({ guard, refuse: (_, text, late) => (late ? setStateRefusal(text) : raiseInState(text)), home: openTerminalButton });
   const { press: pressTerminal, choosing, said: terminalSaid, dismiss: dismissTerminal } = terminal;
 
   // `a s d t` and every `⌘K` action on this screen go through the same writes its buttons do
@@ -356,7 +358,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
       {starting && (
         <StartModal
           ticket={ticket}
-          run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree })).then((answer) => terminal.report(ticket, answer))}
+          run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree })).then(terminal.reporting(ticket))}
           onClose={() => setStarting(false)}
           focusAfter={() => document.querySelector<HTMLElement>('[data-testid="move-start"]')}
         />
@@ -367,7 +369,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           verb="terminal"
           run={(worktree) => terminal.choose(choosing, worktree)}
           onClose={terminal.done}
-          focusAfter={() => document.querySelector<HTMLElement>('[data-testid="open-terminal"]')}
+          focusAfter={openTerminalButton}
         />
       )}
     </>

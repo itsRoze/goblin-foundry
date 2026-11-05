@@ -762,6 +762,10 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-start-note { margin: 0 0 0 calc(100px + var(--gf-s3)); font: var(--gf-t-meta); color: var(--gf-mute); }
 /* git's reasons carry whole folders, which have no place to break on a phone */
 .gf-start .gf-refusal { overflow-wrap: anywhere; }
+.gf-start-hint { display: inline-flex; align-items: center; gap: var(--gf-s1); font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-start .gf-form-actions .gf-start-hint { margin-left: auto; }
+.gf-start-choices-head { display: flex; justify-content: space-between; align-items: center; padding-top: var(--gf-s1); border-top: 1px solid var(--gf-rule); }
+.gf-start-choices-head > span:first-child { font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
 .gf-start-choices { max-height: 190px; overflow: hidden auto; }
 /* a fill would cost every accent on these rows its contrast, as it does in the palette */
 .gf-start .gf-picker-hit.is-on { background: none; }
@@ -788,13 +792,17 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-branch-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--gf-t-meta); user-select: all; }
 .gf-branch .gf-btn { flex-shrink: 0; }
 .gf-terminal-said { display: flex; flex-direction: column; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
-.gf-terminal-said .gf-branch-name { color: var(--gf-ink); }
+/* under a card the column is 180px, so the path takes the line and the button goes under it */
+.gf-terminal-said .gf-branch { flex-direction: column; gap: var(--gf-s2); }
+.gf-terminal-said .gf-branch-name { flex: none; color: var(--gf-ink); }
 .gf-implementation-links { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0; padding: 0; list-style: none; }
 .gf-implementation-row { display: flex; align-items: baseline; gap: var(--gf-s2); }
 .gf-implementation-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .gf-implementation-form { display: flex; flex-direction: column; align-items: stretch; gap: var(--gf-s2); }
 .gf-implementation-form .gf-field { grid-template-columns: auto minmax(0, 1fr); }
 .gf-implementation-form .gf-btn { align-self: flex-end; }
+/* the ring does not wait for :focus-visible: `cancel` and `copy folder` take the focus on a press too, and a press is what asked (DESIGN.md Refusal and confirm) */
+.gf-start .gf-btn:focus, .gf-terminal-said .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
 .gf-implementation-notice { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-implementation-notice:empty { display: none; }
 

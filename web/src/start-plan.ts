@@ -41,13 +41,16 @@ export function planLine(plan: BranchPlan): string {
   }
 }
 
+/** The default leads, because it is what is usually wanted and a long list would bury it. */
+const defaultFirst = (branches: CheckoutBranch[], fallback: string | null) => [...branches.filter((b) => b.name === fallback), ...branches.filter((b) => b.name !== fallback)];
+
 /** A remote's copy of a local branch is left out: naming it would mean the local one. */
-export function branchChoices({ branches }: AppBranches): CheckoutBranch[] {
+export function branchChoices({ branches, default: fallback }: AppBranches): CheckoutBranch[] {
   const locals = new Set(branches.filter((b) => b.kind === 'local').map((b) => b.name));
-  return branches.filter((b) => b.kind === 'local' || !locals.has(b.local));
+  return defaultFirst(branches.filter((b) => b.kind === 'local' || !locals.has(b.local)), fallback);
 }
 
-export const baseChoices = ({ branches }: AppBranches): CheckoutBranch[] => branches;
+export const baseChoices = ({ branches, default: fallback }: AppBranches): CheckoutBranch[] => defaultFirst(branches, fallback);
 
 export function matching(choices: CheckoutBranch[], query: string): CheckoutBranch[] {
   const wanted = query.trim().toLowerCase();

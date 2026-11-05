@@ -62,11 +62,11 @@ describe('the sentence the modal says about it', () => {
 
 describe('what the two fields offer', () => {
   test('the branch field leaves out a remote copy of a local branch, which would only mean the local one', () => {
-    expect(branchChoices(read).map((b) => b.name)).toEqual(['feature/two', 'in-a-worktree', 'main', 'origin/only-there', 'another/only-there']);
+    expect(branchChoices(read).map((b) => b.name)).toEqual(['main', 'feature/two', 'in-a-worktree', 'origin/only-there', 'another/only-there']);
   });
 
-  test('the base field offers every local and remote-tracking branch', () => {
-    expect(baseChoices(read).map((b) => b.name)).toEqual(['feature/two', 'in-a-worktree', 'main', 'origin/main', 'origin/only-there', 'another/only-there']);
+  test('the base field offers every local and remote-tracking branch, the default first', () => {
+    expect(baseChoices(read).map((b) => b.name)).toEqual(['main', 'feature/two', 'in-a-worktree', 'origin/main', 'origin/only-there', 'another/only-there']);
   });
 
   test('typing filters, whatever the case and wherever in the name', () => {
