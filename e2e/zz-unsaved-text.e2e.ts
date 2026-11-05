@@ -375,12 +375,20 @@ async function keptThenMoved(page: Page, name: string) {
   await onFirstWithSecondAhead(page, first, second);
   const sent = patchesSent(page);
   let unreachable = true;
-  await page.route(first.path, (route) => (isPatch(route) && unreachable ? route.abort() : route.continue()));
+  let refused = 0;
+  await page.route(first.path, (route) => {
+    if (!isPatch(route) || !unreachable) return route.continue();
+    refused += 1;
+    return route.abort();
+  });
   await typeAtEnd(page, first.testId, ' kept');
   await leave(page);
   await expect(refusal(page, first.testId)).toHaveText(UNREACHED);
+  const refusedInTheField = refused;
   await page.goForward();
   await expectTitle(page, second.title);
+  // leaving sends the words again, from an unmount that runs after the next view is on screen: the link comes back only once that is refused too, or the words land and nothing is left to move (GF-127)
+  await expect.poll(() => refused).toBe(refusedInTheField + 1);
   unreachable = false;
   // as an agent, so history keeps its edit session apart from the person's (ADR-0008)
   await page.request.patch(first.path, { data: { description: 'An agent rewrote this.' }, headers: { 'x-goblin-actor': 'agent' } });
