@@ -13,6 +13,10 @@ _Avoid_: distribution, preset, template, configuration
 ## App
 A product the factory works on. Has at most one git repository, named by a git remote in whatever form git prints it (`https://…` or `git@host:owner/repo.git`) — a reference a human reads and follows, kept as typed. A repository is not exclusive: two Apps may name the same one (a monorepo). Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
 
+## Checkout
+The folder on this machine that holds an App's repository. An App has at most one. It is a fact about this installation, not about the product: the App's git remote says where the repository lives in the world, the Checkout says where it lives here. A Ticket whose App has no Checkout cannot be given a Worktree.
+_Avoid_: repo path, clone
+
 ## Project
 A body of work (e.g. "Subway Reader MVP"), usually inside an App. May exist with no App (created before it is known where it belongs) and may be moved to another App later; its Tickets go with it. Has a Project Design and contains Tickets. Renamable; identity is an opaque id, not its name.
 
@@ -40,6 +44,9 @@ The display form of a Ticket's number: `<prefix>-<number>`, prefix configurable 
 
 ## Branch Suggestion
 A suggested git branch name for a Ticket, formed from its current Ticket Key and title. It is a naming aid, not a record of an existing branch.
+
+## Worktree
+Where a Ticket is worked: a folder and a branch of its App's Checkout, made when the Ticket is started. The branch is either new, cut from a chosen base, or one that already existed. A Ticket has at most one Worktree and remembers it, so returning to the Ticket returns to the same place. Unlike a Branch Suggestion, it records something that exists. Finishing or cancelling the Ticket leaves it alone.
 
 ## Implementation Link
 A reference from a Ticket to a pull request or commit that implements its work. A Ticket may have several Implementation Links; adding or removing one does not change its Status or assert that the work has merged.
@@ -110,7 +117,7 @@ A set of Tickets belonging to the current filtered board, gathered for one all-o
 ## Transition
 One arrow in the Lifecycle: a named move of a Ticket from one Status to another (e.g. `ready → building`, named `start`). Each Transition has a **name**. A Ticket's current Status plus a name identifies exactly one arrow. Dragging a card between kanban columns *is* a Transition; the board offers every arrow out of the card's Status.
 
-The S1 verbs: `pick`, `plan`, `shelve` (moving freely among `backlog`/`todo`/`planning`), `approve` and `unapprove`, `start` and `stop`, `submit`, `ship`, `close`, `cancel`, `reopen`. Two of them share a destination: **ship** is a PR merged out of `review`; **close** records a Ticket that turned out to be done without ever being planned. **Reopen** takes a cancelled Ticket back to `backlog` — distinct from *restoring* one, which is un-Trashing it.
+The S1 verbs: `pick`, `plan`, `shelve` (moving freely among `backlog`/`todo`/`planning`), `approve` and `unapprove`, `start` and `stop`, `submit`, `ship`, `close`, `cancel`, `reopen`. Two of them share a destination: **ship** is a PR merged out of `review`; **close** records a Ticket that turned out to be done without ever being planned. **Start** is also where the work gets a place: it makes the Ticket's Worktree first and opens a terminal in it after, so a Ticket whose Worktree cannot be made stays `ready`. A Ticket already `building` or in `review` is not started again; opening a terminal on it returns to its Worktree and changes no Status. **Reopen** takes a cancelled Ticket back to `backlog` — distinct from *restoring* one, which is un-Trashing it.
 
 ## Approve Guard
 What a Ticket must have before it may be `ready` or beyond: an **App**, and a description or a **Ticket Design** unless it is Simple. It is the single gate into the Ready Frontier — the same check whether the Ticket walks there, is created there, or is edited while there. It asks that the intent is written somewhere, not who wrote it.
