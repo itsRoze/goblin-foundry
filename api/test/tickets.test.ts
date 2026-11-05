@@ -22,6 +22,20 @@ describe('/api/tickets', () => {
   beforeEach(async () => (h = await makeTestApp()));
   afterEach(() => h.close());
 
+  test('a history write that fails leaves no ticket and no labels, and the same create goes through once the fault is gone', async () => {
+    h.failWrites('ticket event', 1);
+    const res = await post('/api/tickets', { title: 'Article list', labels: ['errand'] });
+    expect(res.status).toBe(500);
+    expect((await res.json()).detail).toBe('nothing changed — the ticket was not created (created event: injected fault)');
+    expect(await req('/api/tickets').then((r) => r.json())).toEqual([]);
+    expect((await req('/api/tickets/GF-1')).status).toBe(404);
+    h.healWrites();
+    const created = await post('/api/tickets', { title: 'Article list', labels: ['errand'] });
+    expect(created.status).toBe(201);
+    expect(await created.json()).toMatchObject({ key: 'GF-1', labels: ['errand'] });
+    expect((await events('GF-1')).map((e: { kind: string }) => e.kind)).toEqual(['created']);
+  });
+
   test('a title alone makes a ticket: key GF-1, backlog, no app or project, and a created event carrying the status', async () => {
     const res = await post('/api/tickets', { title: '  Article list screen  ' });
     expect(res.status).toBe(201);

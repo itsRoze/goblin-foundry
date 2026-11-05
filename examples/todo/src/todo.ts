@@ -53,7 +53,7 @@ export function createTodo({ now = () => new Date().toISOString() } = {}) {
   const store: HistoryStore<TaskSubject, TaskKind, TaskActor, number, TaskEvent, () => void> = {
     openSession: async (key, since) =>
       events
-        .filter((event) => event.subject_id === key.subject_id && event.actor === key.actor && event.kind === key.kind && event.at >= since)
+        .filter((event) => event.subject_kind === key.subject_kind && event.subject_id === key.subject_id && event.actor === key.actor && event.kind === key.kind && event.at >= since)
         .reduce<TaskEvent | undefined>((newest, event) => (!newest || event.at >= newest.at ? event : newest), undefined),
     append: (change) => () => {
       events.push({ id: ++lastEvent, ...change });
@@ -61,13 +61,13 @@ export function createTodo({ now = () => new Date().toISOString() } = {}) {
     amend: (open, merged) => () => {
       events[events.indexOf(open)] = { ...open, ...merged };
     },
-    list: async (_subject, id) => events.filter((event) => event.subject_id === id),
+    list: async (subject_kind, subject_id) => events.filter((event) => event.subject_kind === subject_kind && event.subject_id === subject_id),
   };
 
-  /** The change and its Event land together or not at all (ADR-0014): `judged` is the task the change was decided against, absent for a new one. */
-  const commit = async (judged: Item | undefined, next: Item, event: Pick<TaskChange, 'kind' | 'prior' | 'new'>): Promise<Changed> => {
+  /** The change and its Event land together or not at all (ADR-0014): `expected` is the task the change was decided against, absent for a new one. */
+  const commit = async (expected: Item | undefined, next: Item, event: Pick<TaskChange, 'kind' | 'prior' | 'new'>): Promise<Changed> => {
     const write = await todoHistory.record(store, { subject_kind: 'task', subject_id: next.id, actor: 'me', at: now(), ...event });
-    if (tasks.get(next.id) !== judged) return { ok: false, refusal: `task ${next.id} changed while this was being recorded` };
+    if (tasks.get(next.id) !== expected) return { ok: false, refusal: `task ${next.id} changed while this was being recorded` };
     tasks.set(next.id, next);
     write();
     return { ok: true, item: next };
@@ -94,9 +94,9 @@ export function createTodo({ now = () => new Date().toISOString() } = {}) {
     async retitle(id: number, title: string): Promise<Changed> {
       const item = tasks.get(id);
       if (!item) return noTask(id);
-      const { prior, new: changed, changed: differs } = diff(item, { title });
-      if (!differs) return { ok: true, item };
-      return commit(item, { ...item, title }, { kind: 'retitled', prior, new: changed });
+      const change = diff(item, { title });
+      if (!change.changed) return { ok: true, item };
+      return commit(item, { ...item, title }, { kind: 'retitled', prior: change.prior, new: change.new });
     },
 
     /** Sets the task's whole label set. */

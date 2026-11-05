@@ -25,10 +25,11 @@ export interface EventKey<S extends string, K extends string, A extends string, 
   readonly kind: K;
 }
 
-/** `prior` and `new` hold only the fields that changed; `prior` is null on a `created` Event. */
+/** `prior` and `new` hold only the fields that changed; `prior` is null when the subject had nothing before. */
 export interface Change<S extends string, K extends string, A extends string, Id> extends EventKey<S, K, A, Id> {
   readonly prior: Fields | null;
   readonly new: Fields;
+  /** UTC, as `toISOString` writes it: joining and reading compare it as text. */
   readonly at: string;
 }
 
@@ -48,11 +49,11 @@ export interface Stored {
  * land together is the Assembly's guarantee, not the Piece's.
  *
  * A write type must not be a thenable: `record` returns it from an async
- * function, and the promise machinery would run it. Wrap a query builder, as
- * `AtomicWrite` does in Goblin Foundry's `api/src/db.ts`.
+ * function, and the promise machinery would run it. Hold a query builder in an
+ * object.
  */
 export interface HistoryStore<S extends string, K extends string, A extends string, Id, E extends Stored, W> {
-  /** The newest Event with this key whose `at` is `since` or later. */
+  /** The newest Event matching every field of `key` whose `at` is `since` or later. Joining is only as right as this match. */
   openSession(key: EventKey<S, K, A, Id>, since: string): Promise<E | undefined>;
   append(change: Change<S, K, A, Id>): W;
   amend(open: E, merged: { readonly prior: Fields; readonly new: Fields; readonly at: string }): W;
@@ -69,7 +70,6 @@ export interface History<S extends string, K extends string, A extends string> {
   readonly subjects: readonly [S, ...S[]];
   readonly kinds: readonly [K, ...K[]];
   readonly actors: readonly [A, ...A[]];
-  readonly sessions: Sessions<K> | undefined;
   record<Id, E extends Stored, W>(store: HistoryStore<S, K, A, Id, E, W>, change: Change<S, K, A, Id>): Promise<W>;
   read<Id, E extends Stored, W>(store: HistoryStore<S, K, A, Id, E, W>, subject_kind: S, subject_id: Id): Promise<E[]>;
 }
@@ -123,11 +123,11 @@ export function defineHistory<const S extends string, const K extends string, co
     return store.amend(open, { prior: { ...change.prior, ...open.prior }, new: { ...open.new, ...change.new }, at: change.at });
   };
 
-  // by `at`, not id: a joined Event's row is older than its last change. `<` compares as SQLite orders text, which `localeCompare` would not.
+  // by `at`, not id: a joined Event's row is older than its last change. `<` compares as a database orders text, which `localeCompare` would not.
   const read = async <Id, E extends Stored, W>(store: HistoryStore<S, K, A, Id, E, W>, subject_kind: S, subject_id: Id): Promise<E[]> =>
     [...(await store.list(subject_kind, subject_id))].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : b.id - a.id));
 
-  return { subjects, kinds, actors, sessions, record, read };
+  return { subjects, kinds, actors, record, read };
 }
 
 /** The subset of `next` whose values differ from `current`, as `{prior, new}`; empty when nothing changed. */
