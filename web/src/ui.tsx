@@ -360,13 +360,32 @@ export const Since = ({ iso, at }: { iso: string; at: number }) => (
 );
 
 const REFUSAL_MS = 4_000;
+/** How long a closed question's line takes a `⏎` for a press aimed at the answers it replaced (GF-116). */
+const LINE_REFLEX_MS = 1_000;
 
 /** What a refused write says: a `409`'s hint, a `422`'s issues, the sentence for no answer at all, or whatever else went wrong. */
 export const refusalLine = (e: unknown) => (e instanceof ProblemError ? e.sentence : String(e));
 
 /**
+ * A line's clock runs while it can be read: from now, or from the window's next `focus` when something else is in
+ * front, because a poll says things to a window nobody is looking at (GF-116). Gives back the cancel.
+ */
+function afterInFront(ms: number, then: () => void) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const begin = () => {
+    timer = setTimeout(then, ms);
+  };
+  if (document.hasFocus()) begin();
+  else window.addEventListener('focus', begin, { once: true });
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener('focus', begin);
+  };
+}
+
+/**
  * A refusal message is one sentence that clears itself: on the next click, or
- * after four seconds (DESIGN.md Components). Every surface that refuses — the board's
+ * four seconds after it can be read (DESIGN.md Components). Every surface that refuses — the board's
  * drop, the state tile's buttons — holds one of these, so the sentence never
  * outlives the situation that produced it.
  */
@@ -375,10 +394,10 @@ export function useRefusal<T>() {
   useEffect(() => {
     if (refusal === null) return;
     const clear = () => setRefusal(null);
-    const timer = setTimeout(clear, REFUSAL_MS);
+    const cancel = afterInFront(REFUSAL_MS, clear);
     window.addEventListener('click', clear);
     return () => {
-      clearTimeout(timer);
+      cancel();
       window.removeEventListener('click', clear);
     };
   }, [refusal]);
@@ -428,8 +447,9 @@ export function useQuestion<A extends object>(whyGone: (asked: A) => string | nu
  *
  * `gone` is the same line once the Ticket changed under it (`useQuestion`): the reason and no answers,
  * reaching down to where the question ended, whatever left above it, so what lies below does not come
- * up under a pointer aimed at an answer. The focus that fell with the answers lands here, where a `⏎` meant for `leave it` still
- * writes nothing and opens nothing.
+ * up under a pointer aimed at an answer, and a press on it does not take it, since a press there was aimed at an answer too.
+ * The focus that fell with the answers lands here, where `⏎` writes nothing and opens nothing, and lets the line go only
+ * after its first second in front: one sooner was meant for an answer that has just gone, and would take the reason with it.
  */
 export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone = false }: { asked: object; text: string; verb: string; onConfirm: () => void; onDismiss: () => void; testId?: string; gone?: boolean }) {
   const question = useId();
@@ -437,6 +457,7 @@ export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone 
   const line = useRef<HTMLParagraphElement>(null);
   const said = useRef<HTMLSpanElement>(null);
   const end = useRef<number | null>(null);
+  const pastReflex = useRef(false);
   useFocusOnAsk(asked, dismiss, line);
   // both against the parent, because a tile packed or a page scrolled moves the line without changing what is below it
   const topInParent = (at: HTMLElement) => at.getBoundingClientRect().top - (at.parentElement?.getBoundingClientRect().top ?? 0);
@@ -451,10 +472,26 @@ export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone 
   useEffect(() => {
     if (gone && document.activeElement === document.body) said.current?.focus({ preventScroll: true });
   }, [gone]);
+  useEffect(() => {
+    if (!gone) return;
+    pastReflex.current = false;
+    return afterInFront(LINE_REFLEX_MS, () => {
+      pastReflex.current = true;
+    });
+  }, [gone]);
   const id = testId ?? 'confirm';
   if (gone)
     return (
-      <p ref={line} className="gf-confirm" role="alert">
+      <p
+        ref={line}
+        className="gf-confirm"
+        role="alert"
+        onClick={(e) => {
+          // kept from `useRefusal`'s listener; and the press dropped the focus to `body`, where `⏎` is the Cursor's
+          e.stopPropagation();
+          said.current?.focus({ preventScroll: true });
+        }}
+      >
         <span
           ref={said}
           tabIndex={-1}
@@ -463,7 +500,7 @@ export function Confirm({ asked, text, verb, onConfirm, onDismiss, testId, gone 
             if (e.key !== 'Enter') return;
             // claimed, so the Cursor does not hear it
             e.preventDefault();
-            if (!e.repeat) onDismiss();
+            if (!e.repeat && pastReflex.current) onDismiss();
           }}
         >
           {text}

@@ -57,6 +57,23 @@ async function comeBackUntil(page: Page, landed: (page: Page) => Promise<void>) 
 }
 const quickly = { timeout: 300 };
 
+/** Past the first second of a line, when a `⏎` is taken for a press aimed at the answers. */
+const pastTheReflex = (page: Page) => page.waitForTimeout(1_100);
+
+/** A terminal in front of the browser, or not. Playwright's page always has the focus, so whether it does is the one thing stood in for here. */
+const windowInFront = (page: Page, inFront: boolean) =>
+  page.evaluate((front) => {
+    document.hasFocus = () => front;
+    window.dispatchEvent(new Event(front ? 'focus' : 'blur'));
+  }, inFront);
+const statusOf = async (page: Page, ticket: Ticket) => ((await (await page.request.get(`/api/tickets/${ticket.key}`)).json()) as { status: string }).status;
+/** The middle of the spot, measured while the question stood, to press on once the line has taken its seat. */
+const middleOf = async (at: Locator) => {
+  const box = await at.boundingBox();
+  if (box === null) throw new Error('nothing to measure');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+
 const cardOf = (page: Page, ticket: Ticket) => page.getByTestId(`card-${ticket.key}`);
 
 test.describe('the Ticket view', () => {
@@ -76,6 +93,7 @@ test.describe('the Ticket view', () => {
     await expect(page.getByTestId('confirm-start')).toHaveCount(0);
     await expect(page.getByTestId('confirm-start-gone')).toHaveText('nothing blocks this now');
     await expect(page.getByTestId('confirm-start-gone')).toBeFocused();
+    await pastTheReflex(page);
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('confirm-start-gone')).toHaveCount(0);
     await expect(page.getByTestId('start-modal')).toHaveCount(0);
@@ -123,10 +141,54 @@ test.describe('the Ticket view', () => {
     await expect(page.getByTestId('confirm-start-gone')).toHaveText(`${held.key} moved to building`);
     const before = await eventsOf(page, held);
     await page.keyboard.press('Enter');
+    await pastTheReflex(page);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('confirm-start-gone')).toHaveCount(0);
     await page.waitForTimeout(200);
     expect(await eventsOf(page, held)).toBe(before);
     await expect(page).toHaveURL(`/tickets/${held.key}`);
     await expect(page.getByTestId('start-modal')).toHaveCount(0);
+  });
+
+  test('a press where start anyway was keeps the explanation, and nothing happens', async ({ page }) => {
+    const { blocker, held } = await asked(page, 'Tvpress');
+    const spot = await middleOf(page.getByTestId('confirm-start-yes'));
+    const before = await eventsOf(page, held);
+    await unblock(page, held, blocker);
+    await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start-gone')).toBeVisible(quickly));
+
+    await page.mouse.click(spot.x, spot.y);
+    await expect(page.getByTestId('confirm-start-gone')).toHaveText('nothing blocks this now');
+    await expect(page.getByTestId('confirm-start-gone')).toBeFocused();
+    await expect(page.getByTestId('start-modal')).toHaveCount(0);
+    expect(await statusOf(page, held)).toBe('ready');
+    // one for the unblock
+    expect(await eventsOf(page, held)).toBe(before + 1);
+
+    await page.getByTestId('state-tile').locator('.gf-tile-head').click();
+    await expect(page.getByTestId('confirm-start-gone')).toHaveCount(0);
+  });
+
+  test('a ⏎ aimed at start anyway keeps the explanation; a ⏎ after the first second lets it go, and neither writes', async ({ page }) => {
+    const { blocker, held } = await asked(page, 'Tvreflex');
+    await page.getByTestId('confirm-start-yes').focus();
+    await unblock(page, held, blocker);
+    await comeBackUntil(page, (p) => expect(p.getByTestId('confirm-start-gone')).toBeVisible(quickly));
+    const before = await eventsOf(page, held);
+
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(100);
+    await expect(page.getByTestId('confirm-start-gone')).toHaveText('nothing blocks this now');
+    await expect(page.getByTestId('confirm-start-gone')).toBeFocused();
+    await expect(page.getByTestId('start-modal')).toHaveCount(0);
+
+    await pastTheReflex(page);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('confirm-start-gone')).toHaveCount(0);
+    await expect(page.getByTestId('start-modal')).toHaveCount(0);
+    await expect(page).toHaveURL(`/tickets/${held.key}`);
+    expect(await eventsOf(page, held)).toBe(before);
+    expect(await statusOf(page, held)).toBe('ready');
   });
 
   test('a closed question does not come back with the blocker', async ({ page }) => {
@@ -190,6 +252,7 @@ test.describe('the board', () => {
     await expect(page.getByTestId('confirm-ready-gone')).toHaveText('nothing blocks this now');
     await expect(page.getByTestId('confirm-ready-gone')).toBeFocused();
     const url = page.url();
+    await pastTheReflex(page);
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('confirm-ready-gone')).toHaveCount(0);
     expect(page.url()).toBe(url);
@@ -198,6 +261,49 @@ test.describe('the board', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('start-modal')).toBeVisible();
     await expect(page.getByTestId('confirm-ready')).toHaveCount(0);
+  });
+
+  test('a press where start anyway was keeps the explanation, and a ⏎ after it still goes nowhere', async ({ page }) => {
+    const { blocker, held } = await asked(page, 'Bdpress');
+    const spot = await middleOf(page.getByTestId('confirm-ready-yes'));
+    const url = page.url();
+    await unblock(page, held, blocker);
+    await comeBackUntil(page, (p) => expect(cardOf(p, held)).not.toContainText('◇', quickly));
+
+    await page.mouse.click(spot.x, spot.y);
+    await expect(page.getByTestId('confirm-ready-gone')).toHaveText('nothing blocks this now');
+    await expect(page.getByTestId('start-modal')).toHaveCount(0);
+    expect(await statusOf(page, held)).toBe('ready');
+
+    // a press on a paragraph drops the focus to `body`, where `⏎` is the Cursor's and opens the Ticket
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(100);
+    expect(page.url()).toBe(url);
+    await expect(page.getByTestId('confirm-ready-gone')).toBeVisible();
+    await pastTheReflex(page);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('confirm-ready-gone')).toHaveCount(0);
+    expect(page.url()).toBe(url);
+  });
+
+  test('a line the poll leaves while a terminal is in front waits to be read, and its clock starts on coming back', async ({ page }) => {
+    test.setTimeout(30_000);
+    const { blocker, held } = await asked(page, 'Bdunread');
+    await windowInFront(page, false);
+    await unblock(page, held, blocker);
+    // nothing brings the read here but the board's own poll
+    await expect(page.getByTestId('confirm-ready-gone')).toHaveText('nothing blocks this now', { timeout: 8_000 });
+    await page.waitForTimeout(5_000);
+    await expect(page.getByTestId('confirm-ready-gone')).toBeVisible();
+
+    await windowInFront(page, true);
+    // the first second counts from here too, so a ⏎ aimed at the answers the window went away on does not take it
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(100);
+    await expect(page.getByTestId('confirm-ready-gone')).toBeFocused();
+    await page.waitForTimeout(3_000);
+    await expect(page.getByTestId('confirm-ready-gone')).toBeVisible();
+    await expect(page.getByTestId('confirm-ready-gone')).toHaveCount(0, { timeout: 2_000 });
   });
 
   test('a Ticket gone to building closes the question, and the line stays in the column it was asked in', async ({ page }) => {
