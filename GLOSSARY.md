@@ -14,7 +14,7 @@ _Avoid_: distribution, preset, template, configuration
 A product the factory works on. Has at most one git repository, named by a git remote in whatever form git prints it (`https://…` or `git@host:owner/repo.git`) — a reference a human reads and follows, kept as typed. A repository is not exclusive: two Apps may name the same one (a monorepo). Contains Projects and Tickets. Renamable; identity is an opaque id, not its name.
 
 ## Checkout
-The folder on this machine that holds an App's repository. An App has at most one. It is a fact about this installation, not about the product: the App's git remote says where the repository lives in the world, the Checkout says where it lives here. A Ticket whose App has no Checkout cannot be given a Worktree.
+The folder on this machine that holds an App's repository. An App has at most one. It is a fact about this installation, not about the product: the App's git remote says where the repository lives in the world, the Checkout says where it lives here. A Ticket whose App has no Checkout, or whose Checkout has no commit yet, cannot be given a Worktree.
 _Avoid_: repo path, clone
 
 ## Project

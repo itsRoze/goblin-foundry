@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,6 +9,7 @@ import { join } from 'node:path';
  * coarse pointer, and what it says has to work: each test does the thing it read.
  */
 
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
 const mine = (title: string) => `${title} (${test.info().project.name})`;
 
 async function create<T>(page: Page, path: string, data: Record<string, unknown>): Promise<T> {
@@ -114,10 +115,9 @@ test('a field that moved under unsaved words offers a finger `done`, and `done` 
 
 test('the Start modal says a tap lists the choices, and the tap does', async ({ page }) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'gf-e2e-help-')));
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
-  git('init', '-q', '-b', 'main');
-  git('commit', '-q', '--allow-empty', '-m', 'first');
-  git('branch', 'existing-work');
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'commit', '-q', '--allow-empty', '-m', 'first');
+  git(root, 'branch', 'existing-work');
   const app = await create<{ id: number }>(page, '/api/apps', { name: mine('Help start'), checkout: root });
   const { key } = await ticket(page, { title: mine('Started by tapping'), status: 'ready', simple: true, app_id: app.id });
   await page.goto(`/tickets/${key}`);
@@ -139,5 +139,44 @@ test('the Start modal says a tap lists the choices, and the tap does', async ({ 
   await expect(modal.getByLabel('branch')).toHaveValue('existing-work');
 
   await page.getByTestId('start-cancel').tap();
+  rmSync(root, { recursive: true, force: true });
+});
+
+/** A phone or tablet with a keyboard: WebKit's Tab skips a button with no tabindex, and here that would leave the dialog for `body`, where the keys are the page's. */
+test('Tab walks the Start modal and stays inside it, fields or no Worktree', async ({ page }) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'gf-e2e-tab-')));
+  const made = join(root, 'made');
+  const fresh = join(root, 'fresh');
+  for (const folder of [made, fresh]) {
+    mkdirSync(folder);
+    git(folder, 'init', '-q', '-b', 'main');
+  }
+  git(made, 'commit', '-q', '--allow-empty', '-m', 'first');
+  const modal = page.getByTestId('start-modal');
+  const open = async (checkout: string, name: string) => {
+    const app = await create<{ id: number }>(page, '/api/apps', { name: mine(name), checkout });
+    const { key } = await ticket(page, { title: mine(`${name} by keys`), status: 'ready', simple: true, app_id: app.id });
+    await page.goto(`/tickets/${key}`);
+    await page.getByTestId('move-start').tap();
+  };
+
+  await open(made, 'Tab fields');
+  await expect(modal.getByLabel('branch')).toBeFocused();
+  await expect(modal.getByLabel('base')).toBeVisible();
+  for (const stop of [modal.getByLabel('base'), modal.getByTestId('start-go'), modal.getByTestId('start-cancel'), modal.getByLabel('branch')]) {
+    await page.keyboard.press('Tab');
+    await expect(stop).toBeFocused();
+  }
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+
+  await open(fresh, 'Tab nothing');
+  await expect(modal.getByTestId('start-cancel')).toBeFocused();
+  for (const stop of [modal.getByTestId('start-plain'), modal.getByTestId('start-app-link'), modal.getByTestId('start-cancel')]) {
+    await page.keyboard.press('Shift+Tab');
+    await expect(stop).toBeFocused();
+  }
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
   rmSync(root, { recursive: true, force: true });
 });

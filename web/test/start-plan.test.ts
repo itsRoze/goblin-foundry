@@ -16,6 +16,7 @@ const read: AppBranches = {
     remote('origin', 'only-there'),
     remote('another', 'only-there'),
   ],
+  has_commit: true,
 };
 
 describe('what the typed branch will come to', () => {
