@@ -2,7 +2,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { worktreeSlug, type AppBranches, type CheckoutBranch } from '@goblin/shared';
 import { expandHome } from './checkout';
-import { git } from './git';
+import { git, listedWorktrees } from './git';
 
 export interface WorktreeRequest {
   checkout: string;
@@ -44,8 +44,8 @@ async function localName(checkout: string, asked: string): Promise<string> {
 }
 
 /**
- * The Checkout's default branch, from what this machine already knows: what the
- * clone recorded as the remote's, then the two names git has always defaulted
+ * The Checkout's default branch, from what this machine already knows: what it
+ * recorded as the remote's, then the two names git has always defaulted
  * to, then wherever the Checkout is.
  */
 async function checkoutDefaultBranch(checkout: string): Promise<string> {
@@ -71,9 +71,9 @@ async function resolveBase(checkout: string, base: string): Promise<string | und
  * git says where that branch is in use.
  */
 function linkedFolder(listing: string, branch: string): string | undefined {
-  const [, ...linked] = listing.split('\n\n');
-  const entry = linked.find((block) => block.split('\n').includes(`branch refs/heads/${branch}`));
-  return entry?.split('\n')[0]?.slice('worktree '.length);
+  return listedWorktrees(listing)
+    .slice(1)
+    .find((worktree) => worktree.branch === branch)?.folder;
 }
 
 /** `<root>/<repository folder name>`, which holds a Checkout's Worktrees. */
@@ -82,11 +82,8 @@ const worktreesIn = (checkout: string, root: string) => join(expandHome(root), b
 /** Where each branch is checked out, by branch; a folder deleted by hand is still listed until it is pruned, and is nowhere. */
 function checkedOut(listing: string): Map<string, CheckoutBranch['checked_out']> {
   const where = new Map<string, CheckoutBranch['checked_out']>();
-  listing.split('\n\n').forEach((block, at) => {
-    const lines = block.split('\n');
-    const branch = lines.find((line) => line.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length);
-    const folder = lines[0]?.slice('worktree '.length);
-    if (branch !== undefined && folder !== undefined && existsSync(folder)) where.set(branch, { folder, linked: at > 0 });
+  listedWorktrees(listing).forEach(({ branch, folder }, at) => {
+    if (branch !== undefined && existsSync(folder)) where.set(branch, { folder, linked: at > 0 });
   });
   return where;
 }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { noTerminalAt, opensTerminal, type StartWorktreeBody, type TerminalOutcome, type Ticket, type TicketStatus } from '@goblin/shared';
-import { useCopy } from './branch-copy';
+import { useCopy } from './copy';
 import { byPointer, ignoreHeldEnter, useFocusOnAsk } from './keys';
 import { useOpenTerminal } from './queries';
+import { StartModal } from './start-modal';
 import { refusalLine } from './ui';
 
 type Opening = Pick<Ticket, 'key' | 'title' | 'app_id' | 'status' | 'worktree_branch' | 'worktree_folder'>;
@@ -16,11 +17,12 @@ export type TerminalSaid = Extract<TerminalOutcome, { opened: false }> & { key: 
  * that did not open. Both screens hold one, so a key and a button on either agree.
  */
 export function useTerminal({
-  guard,
+  guard = (write) => write(),
   refuse,
   home,
 }: {
-  guard: <T>(write: () => Promise<T>) => Promise<T>;
+  /** What a bulk action's hold goes through, on a screen that has one. */
+  guard?: <T>(write: () => Promise<T>) => Promise<T>;
   refuse: (ticket: Pick<Ticket, 'key' | 'status'>, text: string, late: boolean) => void;
   /** Where the focus goes when the line that holds it is dismissed. */
   home: (key: string) => HTMLElement | null;
@@ -57,7 +59,13 @@ export function useTerminal({
   /** What the modal runs: a refusal stays in its panel, so this one is left to reject. */
   const choose = (ticket: Opening, worktree?: StartWorktreeBody) => guard(() => write.mutateAsync({ key: ticket.key, worktree })).then(reporting(ticket));
 
-  return { press, choosing, choose, done: useCallback(() => setChoosing(null), []), said, dismiss, reporting };
+  return { press, choosing, choose, done: useCallback(() => setChoosing(null), []), home, said, dismiss, reporting };
+}
+
+/** The Start modal's fields for a Ticket in flight with no Worktree to return to, while one is being chosen. */
+export function ChooseWorktree({ terminal: { choosing, choose, done, home } }: { terminal: ReturnType<typeof useTerminal> }) {
+  if (!choosing) return null;
+  return <StartModal ticket={choosing} verb="terminal" run={(worktree) => choose(choosing, worktree)} onClose={done} focusAfter={() => home(choosing.key)} />;
 }
 
 /**

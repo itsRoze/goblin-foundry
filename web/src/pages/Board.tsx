@@ -19,7 +19,7 @@ import {
   type TransitionName,
 } from '@goblin/shared';
 import { ProblemError } from '../api';
-import { useBranchCopy } from '../branch-copy';
+import { useBranchCopy } from '../copy';
 import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
@@ -31,7 +31,7 @@ import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../select
 import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
 import { useCrumb, useOpenPalette } from '../shell';
 import { StartModal } from '../start-modal';
-import { TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
+import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
 import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
@@ -171,6 +171,8 @@ interface Notice {
   landing: Exclude<Landing, 'shown'>;
 }
 
+const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
+
 /**
  * Every way the board moves a card, in one place, because they must agree:
  * dragging a card between columns *is* a transition (GLOSSARY.md), and so is
@@ -182,9 +184,6 @@ interface Notice {
  * They differ only in which slot the sentence lands in — the column you
  * dropped on, or the card the key or the menu was about.
  */
-const unguarded = <T,>(write: () => Promise<T>) => write();
-const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
-
 function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
   const move = useTransition();
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
@@ -267,7 +266,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
   );
 
   const start = useStart();
-  const terminal = useTerminal({ guard: unguarded, refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
+  const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
   const { reporting } = terminal;
   const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
   const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
@@ -381,7 +380,6 @@ export function BoardPage() {
     [lookup, sending],
   );
   const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, onMoved, heldLine);
-  const { choosing } = terminal;
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -693,15 +691,7 @@ export function BoardPage() {
           focusAfter={() => cardOf(starting.key)}
         />
       )}
-      {choosing && (
-        <StartModal
-          ticket={choosing}
-          verb="terminal"
-          run={(worktree) => terminal.choose(choosing, worktree)}
-          onClose={terminal.done}
-          focusAfter={() => cardOf(choosing.key)}
-        />
-      )}
+      <ChooseWorktree terminal={terminal} />
     </Tile>
   );
 }

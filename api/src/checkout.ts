@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
-import { git } from './git';
+import { git, listedWorktrees } from './git';
 
 /** What a folder named as a Checkout comes to: the folder to record, or the sentence saying why not. */
 export type ResolvedCheckout = { ok: true; folder: string } | { ok: false; reason: string };
@@ -29,8 +29,8 @@ export const expandHome = (folder: string) => (folder === '~' ? homedir() : fold
 async function mainWorkingTree(top: string): Promise<string> {
   const list = await git(top, ['worktree', 'list', '--porcelain']);
   if (!list.ran || !list.ok) return top;
-  const [first, second] = list.out.split('\n');
-  return first?.startsWith('worktree ') && second !== 'bare' ? first.slice('worktree '.length) : top;
+  const [main] = listedWorktrees(list.out);
+  return main && !main.bare ? main.folder : top;
 }
 
 /**

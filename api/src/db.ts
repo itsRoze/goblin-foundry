@@ -131,12 +131,12 @@ export function backupTo(source: string, destination: string): void {
  * `db:push` is not just a crash waiting: SQLite reads the double-quoted name of
  * a column it cannot find as a string, so every row would answer with its own
  * column's name. Names are this file's own literals. Only for what
- * `ADD COLUMN` can do: nullable, with no constraint a table rebuild would need.
+ * `ADD COLUMN` can do: nullable text, with no constraint a table rebuild would need.
  */
-function addColumn(db: Db, table: 'app' | 'ticket', column: string, type: 'text'): void {
+function addColumn(db: Db, table: 'app' | 'ticket', column: string): void {
   const columns = db.all<{ name: string }>(sql`SELECT name FROM pragma_table_info(${table})`);
   if (columns.some((c) => c.name === column)) return;
-  db.run(sql`ALTER TABLE ${sql.identifier(table)} ADD COLUMN ${sql.identifier(column)} ${sql.raw(type)}`);
+  db.run(sql`ALTER TABLE ${sql.identifier(table)} ADD COLUMN ${sql.identifier(column)} text`);
 }
 
 /**
@@ -163,7 +163,7 @@ async function ensureSchema(db: Db): Promise<void> {
     created_at text NOT NULL,
     updated_at text NOT NULL
   )`);
-  addColumn(db, 'app', 'checkout', 'text');
+  addColumn(db, 'app', 'checkout');
   db.run(sql`CREATE TABLE IF NOT EXISTS project (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     app_id integer REFERENCES app(id),
@@ -192,8 +192,8 @@ async function ensureSchema(db: Db): Promise<void> {
     created_at text NOT NULL,
     updated_at text NOT NULL
   )`);
-  addColumn(db, 'ticket', 'worktree_branch', 'text');
-  addColumn(db, 'ticket', 'worktree_folder', 'text');
+  addColumn(db, 'ticket', 'worktree_branch');
+  addColumn(db, 'ticket', 'worktree_folder');
   db.run(sql`CREATE TABLE IF NOT EXISTS dependency (
     blocker_id integer NOT NULL REFERENCES ticket(id),
     blocked_id integer NOT NULL REFERENCES ticket(id),

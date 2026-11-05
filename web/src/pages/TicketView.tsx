@@ -22,13 +22,13 @@ import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, us
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
 import { StartModal } from '../start-modal';
-import { TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
+import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
 import { LabelsField } from '../labels';
-import { useBranchCopy } from '../branch-copy';
+import { useBranchCopy } from '../copy';
 
 const openTerminalButton = () => document.querySelector<HTMLElement>('[data-testid="open-terminal"]');
 
@@ -176,7 +176,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const trySave = (body: PatchTicketBody) => void save(body).catch(() => {});
 
   const terminal = useTerminal({ guard, refuse: (_, text, late) => (late ? setStateRefusal(text) : raiseInState(text)), home: openTerminalButton });
-  const { press: pressTerminal, choosing, said: terminalSaid, dismiss: dismissTerminal } = terminal;
+  const { press: pressTerminal, said: terminalSaid, dismiss: dismissTerminal } = terminal;
 
   // `a s d t` and every `⌘K` action on this screen go through the same writes its buttons do
   useOffersTicket({
@@ -363,15 +363,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
           focusAfter={() => document.querySelector<HTMLElement>('[data-testid="move-start"]')}
         />
       )}
-      {choosing && (
-        <StartModal
-          ticket={choosing}
-          verb="terminal"
-          run={(worktree) => terminal.choose(choosing, worktree)}
-          onClose={terminal.done}
-          focusAfter={openTerminalButton}
-        />
-      )}
+      <ChooseWorktree terminal={terminal} />
     </>
   );
 }

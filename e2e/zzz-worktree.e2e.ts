@@ -35,7 +35,7 @@ test.describe("a Ticket's Worktree", () => {
     // a relative folder is refused where it was typed
     await field.fill('worktrees');
     await form.getByRole('button', { name: /save/ }).click();
-    await expect(form.getByRole('alert')).toHaveText('worktree_root: an absolute folder, or one under ~');
+    await expect(form.getByRole('alert')).toHaveText('worktree root: an absolute folder, or one under ~');
 
     const chosen = join(root, 'worktrees');
     await field.fill(chosen);
@@ -73,7 +73,7 @@ test.describe("a Ticket's Worktree", () => {
     await expect(copy).toHaveText('copied');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(folder);
 
-    await expect(page.getByTestId('history').locator('li').first()).toContainText('started · ready → building · worktree mine/here');
+    await expect(page.getByTestId('history').locator('li').first()).toContainText(`started · ready → building · worktree mine/here in ${folder}`);
   });
 
   test('a clipboard that refuses never claims the folder was copied', async ({ page }) => {

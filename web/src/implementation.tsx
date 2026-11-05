@@ -3,7 +3,7 @@ import { AddImplementationLinkBodySchema, type Ticket } from '@goblin/shared';
 import { useImplementationLinks, useImplementationLinkWrites } from './queries';
 import { useBulkLock } from './selecting';
 import { Empty, Kv, Tile, refusalLine } from './ui';
-import { useCopy, type useBranchCopy } from './branch-copy';
+import { useCopy, type useBranchCopy } from './copy';
 
 /** Where the Ticket is being worked, once it has a place. Unlike the suggestion beside it, this records something that exists. */
 function WorktreeFacts({ branch, folder }: { branch: string; folder: string }) {

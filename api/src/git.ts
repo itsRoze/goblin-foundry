@@ -14,6 +14,23 @@ function reasonIn(err: string): string {
   return lines.slice(Math.max(fault, 0)).join(' ').replace(FAULT, '');
 }
 
+/**
+ * `worktree list --porcelain`, an entry per block. The main working tree comes
+ * first, and a bare repository's first entry is not a working tree at all.
+ */
+export const listedWorktrees = (porcelain: string) =>
+  porcelain
+    .split('\n\n')
+    .filter((block) => block.startsWith('worktree '))
+    .map((block) => {
+      const lines = block.split('\n');
+      return {
+        folder: lines[0]!.slice('worktree '.length),
+        branch: lines.find((line) => line.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length),
+        bare: lines.includes('bare'),
+      };
+    });
+
 /** The `git` on `PATH`. `LC_ALL` because the reasons callers read back have to be in the words they expect. */
 export async function git(cwd: string, args: string[]): Promise<GitAnswer> {
   let child;

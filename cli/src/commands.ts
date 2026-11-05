@@ -321,7 +321,10 @@ export const NOUNS: Noun[] = [
   {
     name: 'app',
     summary: 'a product the factory works on; has at most one git repository',
-    commands: entityCommands('app', appFields, [ARCHIVED]),
+    commands: [
+      ...entityCommands('app', appFields, [ARCHIVED]),
+      { verb: 'branches', summary: 'the branches in its Checkout right now, the default, and where Worktrees are made; fetches nothing', operands: entityOperand('app'), run: (ctx) => ctx.api.get(`${entityAt('app')(ctx)}/branches`) },
+    ],
   },
   {
     name: 'project',

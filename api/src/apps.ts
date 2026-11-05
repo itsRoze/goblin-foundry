@@ -98,7 +98,8 @@ export function appsRoutes(db: Db) {
     const row = await findLive(c);
     if (!row) return missing(c);
     if (!body.ok) return body.response;
-    const data = await withResolvedCheckout(c, body.data);
+    // the GUI's form resends the Checkout on every save, and a folder moved since it was recorded must not refuse a rename
+    const data = body.data.checkout === row.checkout ? body.data : await withResolvedCheckout(c, body.data);
     if (data instanceof Response) return data;
     const change = diff(row, data);
     if (!change.changed) return c.json(toApp(row));

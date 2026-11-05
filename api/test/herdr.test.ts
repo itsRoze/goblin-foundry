@@ -96,9 +96,10 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
   const step = (over: Partial<Parameters<typeof herdrTerminal>[0]> = {}) => herdrTerminal({ env: { PATH: bin, HOME: home }, appBundle: installed, ...over });
 
   /** A Herdr with a window: whatever the test does not say answers as "nothing there yet". */
-  const herdr = (window: Answer, tagged: { ticket?: string[]; app?: string[] } = {}, over: { hc?: Record<string, Answer>; app?: Record<string, Answer> } = {}) => {
+  const herdr = (window: Answer, tagged: { ticket?: string[]; app?: string[]; worktrees?: Record<string, string[]> } = {}, over: { hc?: Record<string, Answer>; app?: Record<string, Answer> } = {}) => {
     standIn('herdr-app', { ls: window, 'do space.new*': { out: { space: 'sp-new', tab: 'tb-new', terminal: 't9' } }, 'do tab.new*': { out: { space: 'sp-there', tab: 'tb-new', terminal: 't9' } }, 'do pane.focus*': { out: { ok: true } }, ...over.app });
-    standIn('hc', { 'ls --json --label goblin.ticket=*': labelled(...(tagged.ticket ?? [])), 'ls --json --label goblin.app=*': labelled(...(tagged.app ?? [])), 'label *': { out: {} }, ...over.hc });
+    const inWorktrees = Object.fromEntries(Object.entries(tagged.worktrees ?? {}).map(([folder, terminals]) => [`ls --json --label goblin.worktree=${folder}`, labelled(...terminals)]));
+    standIn('hc', { 'ls --json --label goblin.ticket=*': labelled(...(tagged.ticket ?? [])), 'ls --json --label goblin.app=*': labelled(...(tagged.app ?? [])), ...inWorktrees, 'ls --json --label goblin.worktree=*': labelled(), 'label *': { out: {} }, ...over.hc });
   };
 
   describe('first open', () => {
@@ -109,10 +110,10 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
       expect(did('tab.new')).toBeUndefined();
     });
 
-    test('tags the terminal it made with the Ticket Key and the App', async () => {
+    test('tags the terminal it made with the Ticket Key, the App and the Worktree folder', async () => {
       herdr(windowWith());
       await step().open(SUBWAY);
-      expect(labels()).toEqual(['t9', 'goblin.ticket=GF-12', 'goblin.app=7']);
+      expect(labels()).toEqual(['t9', 'goblin.ticket=GF-12', 'goblin.app=7', 'goblin.worktree=/worktrees/subway-reader/gf-12']);
     });
 
     test('runs no program: the terminal is whatever shell Herdr starts', async () => {
@@ -150,11 +151,25 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
 
   describe('opening again', () => {
     test('a live terminal for the Ticket is shown, and nothing is made', async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t1', 't4'] }), { ticket: ['t4'] });
+      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t1', 't4'] }), { ticket: ['t4'], worktrees: { [SUBWAY.folder]: ['t4'] } });
       expect(await step().open(SUBWAY)).toEqual({ opened: true });
       expect(doneCommands()).toEqual(['pane.focus']);
       expect(did('pane.focus')).toEqual({ terminal: 't4' });
       expect(labels()).toBeUndefined();
+    });
+
+    test('a live terminal for the Ticket in its old Worktree is left alone, and a fresh one opens in the recorded folder', async () => {
+      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t4'] }), { ticket: ['t4'], app: ['t4'], worktrees: { '/worktrees/subway-reader/gf-12-old': ['t4'] } });
+      expect(await step().open(SUBWAY)).toEqual({ opened: true });
+      expect(doneCommands()).toEqual(['tab.new']);
+      expect(did('tab.new')).toEqual({ name: 'GF-12 Parse the feed', space: 'sp-subway', folder: SUBWAY.folder });
+      expect(labels()).toEqual(['t9', 'goblin.ticket=GF-12', 'goblin.app=7', `goblin.worktree=${SUBWAY.folder}`]);
+    });
+
+    test('another Ticket sharing the Worktree folder does not take its terminal', async () => {
+      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t4'] }), { ticket: [], app: ['t4'], worktrees: { [SUBWAY.folder]: ['t4'] } });
+      expect(await step().open(SUBWAY)).toEqual({ opened: true });
+      expect(doneCommands()).toEqual(['tab.new']);
     });
 
     test('after it has been closed, a fresh one is made in the same Worktree', async () => {
@@ -189,56 +204,56 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
   });
 
   describe('not opened, with a sentence saying what to start', () => {
-    const folder = SUBWAY.folder;
+    const whyNot = (over?: Parameters<typeof step>[0]) => step(over).open(SUBWAY).catch((e: Error) => e.message);
 
     test('Herdr not installed', async () => {
-      expect(await step({ appBundle: missing }).open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr is not installed, so no terminal was opened: install Herdr 2 and open it once', folder });
+      expect(await whyNot({ appBundle: missing })).toBe('Herdr is not installed, so no terminal was opened: install Herdr 2 and open it once');
     });
 
     test('Herdr installed, its tools not found', async () => {
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr is installed but hc and herdr-app were not found on PATH or in ~/.local/bin: open Herdr once so it puts them there', folder });
+      expect(await whyNot()).toBe('Herdr is installed but hc and herdr-app were not found on PATH or in ~/.local/bin: open Herdr once so it puts them there');
     });
 
     test('one tool found and the other not', async () => {
       standIn('herdr-app', {});
-      expect(await step({ appBundle: missing }).open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr is installed but hc was not found on PATH or in ~/.local/bin: open Herdr once so it puts it there', folder });
+      expect(await whyNot({ appBundle: missing })).toBe('Herdr is installed but hc was not found on PATH or in ~/.local/bin: open Herdr once so it puts it there');
       expect(calls()).toEqual([]);
     });
 
     test('its window not open', async () => {
       herdr({ code: 2, err: 'herdr-app: no Herdr window at /x/herdr-app.sock: No such file or directory (os error 2)\n' });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr is not open, so no terminal was opened: open the Herdr app and try again', folder });
+      expect(await whyNot()).toBe('Herdr is not open, so no terminal was opened: open the Herdr app and try again');
     });
 
     test('its core not running', async () => {
       herdr(windowWith(), {}, { hc: { 'ls --json --label goblin.ticket=*': { code: 1, err: 'no core running\n' } } });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: "Herdr's core is not running, so no terminal was opened: run `hc server start` and try again (no core running)", folder });
+      expect(await whyNot()).toBe("Herdr's core is not running, so no terminal was opened: run `hc server start` and try again (no core running)");
       expect(doneCommands()).toEqual([]);
     });
 
     test('Herdr refusing the new tab says what it said', async () => {
       herdr(windowWith(), {}, { app: { 'do space.new*': { code: 1, out: { error: 'folder does not exist' } } } });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr refused space.new: folder does not exist', folder });
+      expect(await whyNot()).toBe('Herdr refused space.new: folder does not exist');
     });
 
     test('a refusal that is not JSON gives what Herdr wrote to stderr', async () => {
       herdr(windowWith(), {}, { app: { 'do space.new*': { code: 2, raw: 'not json', err: 'herdr-app: no Herdr window\n' } } });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr refused space.new: herdr-app: no Herdr window', folder });
+      expect(await whyNot()).toBe('Herdr refused space.new: herdr-app: no Herdr window');
     });
 
     test('a terminal that could not be tagged says so, since it could not be found again', async () => {
       herdr(windowWith(), {}, { hc: { 'label *': { code: 1, err: 'no such terminal\n' } } });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr made terminal t9 but it could not be tagged, so it will not be found again: no such terminal', folder });
+      expect(await whyNot()).toBe('Herdr made terminal t9 but it could not be tagged, so it will not be found again: no such terminal');
     });
 
     test('a tool that answers something else is not taken for Herdr', async () => {
       herdr({ out: { nonsense: true } });
-      expect(await step().open(SUBWAY)).toEqual({ opened: false, reason: "herdr-app ls answered in a shape this Goblin does not know: is it Herdr 2's?", folder });
+      expect(await whyNot()).toBe("herdr-app ls answered in a shape this Goblin does not know: is it Herdr 2's?");
     });
 
     test('a tool that hangs is given up on', async () => {
       herdr({ hang: true });
-      expect(await step({ timeoutMs: 100 }).open(SUBWAY)).toEqual({ opened: false, reason: 'Herdr is not open, so no terminal was opened: open the Herdr app and try again', folder });
+      expect(await whyNot({ timeoutMs: 100 })).toBe('Herdr is not open, so no terminal was opened: open the Herdr app and try again');
     });
   });
 
@@ -271,11 +286,23 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
     });
 
     test('Open terminal comes back to the tagged one', async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t4'] }), { ticket: ['t4'] });
       await trackerOn(installed);
+      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t4'] }), { ticket: ['t4'], worktrees: { [worktree]: ['t4'] } });
       await post(`/api/tickets/${key}/start`, {});
       expect(await post(`/api/tickets/${key}/terminal`, {})).toMatchObject({ status: 'building', terminal: { opened: true } });
       expect(doneCommands()).toEqual(['pane.focus', 'pane.focus']);
+    });
+
+    test('after a stop and a Start on another branch, the terminal left in the old Worktree is not the one shown', async () => {
+      await trackerOn(installed);
+      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t4'] }), { ticket: ['t4'], worktrees: { [worktree]: ['t4'] } });
+      await post(`/api/tickets/${key}/start`, {});
+      await post(`/api/tickets/${key}/stop`);
+      const moved = await post(`/api/tickets/${key}/start`, { branch: 'another' });
+      expect(moved).toMatchObject({ worktree_branch: 'another', terminal: { opened: true } });
+      expect(moved.worktree_folder).not.toBe(worktree);
+      expect(doneCommands()).toEqual(['pane.focus', 'tab.new']);
+      expect(did('tab.new').folder).toBe(moved.worktree_folder);
     });
 
     test('Herdr missing leaves the Ticket building with its Worktree, and the outcome says what to start', async () => {

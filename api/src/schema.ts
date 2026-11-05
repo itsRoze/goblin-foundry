@@ -2,7 +2,7 @@ import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } fro
 import { sql } from 'drizzle-orm';
 import { TICKET_STATUSES } from '@goblin/shared';
 
-/** Installation-wide settings: `ticket_prefix` and `worktree_root`. */
+/** Installation-wide settings: `ticket_prefix`, `worktree_root` and `terminal_step`. */
 export const setting = sqliteTable('setting', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
