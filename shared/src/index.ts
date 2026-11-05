@@ -11,7 +11,7 @@ export {
 } from './settings';
 export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
 export { JUDGED_HEADER, judgedField, judgement } from './judged';
-export { EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';
+export { eventHistory, EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';
 export {
   AppSchema,
   type App,

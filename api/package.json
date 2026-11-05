@@ -9,6 +9,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@goblin/history": "workspace:*",
     "@goblin/shared": "workspace:*",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.9.6",

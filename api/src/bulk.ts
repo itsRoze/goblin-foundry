@@ -8,11 +8,12 @@
  */
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Hono } from 'hono';
+import { diff } from '@goblin/history';
 import { BulkTicketsBodySchema, lifecycle, parseTicketKey, ticketKey, type Actor, type BulkMoveTarget, type BulkRefusal, type Ticket, type TransitionName } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { commit, pinnedTicketWrite } from './commit';
 import type { AtomicWrite, Db } from './db';
-import { diff, eventWrite, now, type EventInput } from './events';
+import { eventWrite, now, type EventInput } from './events';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard, type Placement } from './placement';
 import { conflict, refusedBatch, unprocessable, type Issue } from './problems';

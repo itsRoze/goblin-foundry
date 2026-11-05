@@ -14,6 +14,7 @@
     "api": {
       "name": "@goblin/api",
       "dependencies": {
+        "@goblin/history": "workspace:*",
         "@goblin/shared": "workspace:*",
         "drizzle-orm": "^0.44.5",
         "hono": "^4.9.6",
@@ -68,6 +69,7 @@
     "shared": {
       "name": "@goblin/shared",
       "dependencies": {
+        "@goblin/history": "workspace:*",
         "@goblin/labels": "workspace:*",
         "@goblin/workflow": "workspace:*",
         "zod": "^4.1.5",

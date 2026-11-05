@@ -1,13 +1,17 @@
-import { and, desc, eq, gte } from 'drizzle-orm';
-import type { Actor, EntityKind, Event, EventKind } from '@goblin/shared';
+import { and, desc, eq, gte, type SQL } from 'drizzle-orm';
+import type { HistoryStore } from '@goblin/history';
+import { eventHistory, type Actor, type EntityKind, type Event, type EventKind } from '@goblin/shared';
 import type { AtomicWrite, Db } from './db';
 import { event } from './schema';
 
 export const now = () => new Date().toISOString();
 
+/** A number, or the SQL for the newest row when the row is written earlier in the same batch and its id is not known yet. */
+type EntityId = number | SQL<number>;
+
 export interface EventInput {
   entity_kind: EntityKind;
-  entity_id: number;
+  entity_id: EntityId;
   actor: Actor;
   kind: EventKind;
   prior: Record<string, unknown> | null;
@@ -15,77 +19,57 @@ export interface EventInput {
   at?: string;
 }
 
-/** How long a sitting stays open: a further edit within this of the last one is the same session (ADR-0008). */
-export const EDIT_SESSION_MS = 5 * 60_000;
+/** The sentence a failed batch names this write by. `api/src/bulk.ts` maps it back to the failing Ticket. */
+const what = (kind: string, entity_kind: string, entity_id: EntityId) => (typeof entity_id === 'number' ? `${kind} event for ${entity_kind} ${entity_id}` : `${kind} event`);
+
+const eventStore = (db: Db): HistoryStore<EntityKind, EventKind, Actor, EntityId, typeof event.$inferSelect, AtomicWrite> => ({
+  openSession: async (key, since) => {
+    const rows = await db
+      .select()
+      .from(event)
+      .where(
+        and(
+          eq(event.entity_kind, key.subject_kind),
+          eq(event.entity_id, key.subject_id),
+          // the actor is part of the key: a planner's rewrite never folds into yours
+          eq(event.actor, key.actor),
+          eq(event.kind, key.kind),
+          gte(event.at, since),
+        ),
+      )
+      .orderBy(desc(event.at), desc(event.id))
+      .limit(1);
+    return rows[0];
+  },
+  append: ({ subject_kind, subject_id, ...change }) => ({
+    what: what(change.kind, subject_kind, subject_id),
+    statement: db
+      .insert(event)
+      .values({ entity_kind: subject_kind, entity_id: subject_id, ...change })
+      .returning({ id: event.id }),
+  }),
+  // pins the row it read, so a session that moved on in between fails the batch instead of being overwritten
+  amend: (open, merged) => ({
+    what: what(open.kind, open.entity_kind, open.entity_id),
+    statement: db
+      .update(event)
+      .set(merged)
+      .where(and(eq(event.id, open.id), eq(event.at, open.at)))
+      .returning({ id: event.id }),
+  }),
+  list: (subject_kind, subject_id) =>
+    db
+      .select()
+      .from(event)
+      .where(and(eq(event.entity_kind, subject_kind), eq(event.entity_id, subject_id))),
+});
 
 /**
  * An event as a statement not yet run, for the batch that commits it together
- * with the write it records (ADR-0010). An `updated` event is an edit session,
- * not a write (ADR-0008): a field on a view is always live, so a two-minute
- * sitting at a design would otherwise leave dozens of rows each holding a
- * whole document. A further edit of the same entity by the same actor within
- * `EDIT_SESSION_MS` amends the open row instead: `prior` stays what the
- * sitting started from — that is what makes it the unit of recovery — while
- * `new` and `at` advance. Every other kind appends. The edit-session read
- * happens now; the amend pins the row it read, so a session that moved on in
- * between fails the batch instead of being overwritten. Coalescing lives here
- * so `goblin` and agents inherit it.
+ * with the write it records (ADR-0010). Joining an edit session happens here,
+ * in the API, so `goblin` and agents inherit it.
  */
-export async function eventWrite(db: Db, input: EventInput): Promise<AtomicWrite & { statement: PromiseLike<unknown[]> }> {
-  const at = input.at ?? now();
-  const what = `${input.kind} event for ${input.entity_kind} ${input.entity_id}`;
-  const open = input.kind === 'updated' ? await openSession(db, input, at) : undefined;
-  if (!open) return { what, statement: db.insert(event).values({ ...input, at }).returning({ id: event.id }) };
-  return {
-    what,
-    statement: db
-      .update(event)
-      .set({ prior: { ...input.prior, ...(open.prior ?? {}) }, new: { ...open.new, ...input.new }, at })
-      .where(and(eq(event.id, open.id), eq(event.at, open.at)))
-      .returning({ id: event.id }),
-  };
-}
+export const eventWrite = (db: Db, { entity_kind, entity_id, at = now(), ...change }: EventInput): Promise<AtomicWrite> =>
+  eventHistory.record(eventStore(db), { subject_kind: entity_kind, subject_id: entity_id, at, ...change });
 
-/** The sitting this write belongs to, or `undefined` when it starts a new one. */
-async function openSession(db: Db, input: EventInput, at: string) {
-  const since = new Date(new Date(at).getTime() - EDIT_SESSION_MS).toISOString();
-  const rows = await db
-    .select()
-    .from(event)
-    .where(
-      and(
-        eq(event.entity_kind, input.entity_kind),
-        eq(event.entity_id, input.entity_id),
-        // the actor is part of the key: a planner's rewrite never folds into yours
-        eq(event.actor, input.actor),
-        eq(event.kind, 'updated'),
-        gte(event.at, since),
-      ),
-    )
-    .orderBy(desc(event.at), desc(event.id))
-    .limit(1);
-  return rows[0];
-}
-
-/** Newest first — by `at`, because an amended session's row is older than its last write (ADR-0008). */
-export async function listEvents(db: Db, kind: EntityKind, id: number): Promise<Event[]> {
-  const rows = await db
-    .select()
-    .from(event)
-    .where(and(eq(event.entity_kind, kind), eq(event.entity_id, id)))
-    .orderBy(desc(event.at), desc(event.id));
-  return rows as Event[];
-}
-
-/** The subset of `next` whose values differ from `current`, as `{prior, new}`; empty when nothing changed. */
-export function diff<T extends object>(current: T, next: Partial<T>) {
-  const prior: Record<string, unknown> = {};
-  const changed: Record<string, unknown> = {};
-  for (const key of Object.keys(next) as (keyof T & string)[]) {
-    const value = next[key];
-    if (value === undefined || value === current[key]) continue;
-    prior[key] = current[key] ?? null;
-    changed[key] = value;
-  }
-  return { prior, new: changed, changed: Object.keys(changed).length > 0 };
-}
+export const listEvents = async (db: Db, kind: EntityKind, id: number): Promise<Event[]> => (await eventHistory.read(eventStore(db), kind, id)) as Event[];

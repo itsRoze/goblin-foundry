@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { and, asc, isNull } from 'drizzle-orm';
+import { diff } from '@goblin/history';
 import {
   CreateAppBodySchema,
   DEFAULT_BRANCH_NEEDS_REPOSITORY,
@@ -11,11 +12,11 @@ import type { ActorEnv } from './actor';
 import { releaseChildrenOfApp, reviveChildren } from './children';
 import { changedWhile, commit, judgedRefusal, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
-import { diff, eventWrite, now } from './events';
+import { eventWrite, now } from './events';
 import { parseBody } from './http';
 import { lifecycleRoutes, wantsArchived } from './lifecycle';
 import { unprocessable } from './problems';
-import { app as appTable, event } from './schema';
+import { app as appTable } from './schema';
 
 type AppRow = typeof appTable.$inferSelect;
 export const toApp = ({ trashed_via: _, ...row }: AppRow): App => row;
@@ -57,10 +58,7 @@ export function appsRoutes(db: Db) {
       db,
       [
         { what: 'app', statement: db.insert(appTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
-        {
-          what: 'created event',
-          statement: db.insert(event).values({ entity_kind: 'app', entity_id: newestId(appTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }).returning({ id: event.id }),
-        },
+        await eventWrite(db, { entity_kind: 'app', entity_id: newestId(appTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }),
       ],
       { rolledBack: 'the app was not created' },
     );
