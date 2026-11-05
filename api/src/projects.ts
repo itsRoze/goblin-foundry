@@ -1,16 +1,17 @@
 import { Hono } from 'hono';
 import { and, asc, eq, isNull } from 'drizzle-orm';
+import { diff } from '@goblin/history';
 import { CreateProjectBodySchema, PatchProjectBodySchema, type Project } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { ctxOf, moveTicketsOfProject, releaseTicketsOfProject, reviveChildren } from './children';
 import { changedWhile, commit, judgedRefusal, livePin, newestId, pinnedRowWrite } from './commit';
 import type { Db } from './db';
-import { diff, eventWrite, now } from './events';
+import { eventWrite, now } from './events';
 import { projectGraph } from './graph';
 import { parseBody } from './http';
 import { lifecycleRoutes, wantsArchived } from './lifecycle';
 import { unprocessable } from './problems';
-import { app as appTable, event, project as projectTable } from './schema';
+import { app as appTable, project as projectTable } from './schema';
 
 type ProjectRow = typeof projectTable.$inferSelect;
 export const toProject = ({ trashed_via: _, ...row }: ProjectRow): Project => row;
@@ -68,10 +69,7 @@ export function projectsRoutes(db: Db) {
       db,
       [
         { what: 'project', statement: db.insert(projectTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
-        {
-          what: 'created event',
-          statement: db.insert(event).values({ entity_kind: 'project', entity_id: newestId(projectTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }).returning({ id: event.id }),
-        },
+        await eventWrite(db, { entity_kind: 'project', entity_id: newestId(projectTable), actor: c.get('actor'), kind: 'created', prior: null, new: fields, at }),
         ...appStillLive(fields.app_id),
       ],
       { rolledBack: 'the project was not created', stale: (what) => changedWhile(c, what, 'create') },

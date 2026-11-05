@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { diff } from '@goblin/history';
 import {
   CreateTicketBodySchema,
   PatchTicketBodySchema,
@@ -23,12 +24,12 @@ import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from
 import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { changedUnderneath, commit, judgedRefusal, newestId, pinnedTicketWrite } from './commit';
-import { diff, eventWrite, listEvents, now } from './events';
+import { eventWrite, listEvents, now } from './events';
 import { readFilter, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
-import { app as appTable, event, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
+import { app as appTable, project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 import { transitionRoute } from './transitions';
 
@@ -137,10 +138,7 @@ export function ticketsRoutes(db: Db) {
       [
         { what: 'ticket', statement: db.insert(ticketTable).values({ ...fields, created_at: at, updated_at: at }).returning() },
         ...labelInserts(db, born, labels.labels),
-        {
-          what: 'created event',
-          statement: db.insert(event).values({ entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }).returning({ id: event.id }),
-        },
+        await eventWrite(db, { entity_kind: 'ticket', entity_id: born, actor, kind: 'created', prior: null, new: { ...fields, labels: labels.labels }, at }),
       ],
       { rolledBack: 'the ticket was not created' },
     );

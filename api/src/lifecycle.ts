@@ -8,11 +8,12 @@
  */
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
+import { diff } from '@goblin/history';
 import type { ActorEnv } from './actor';
 import { ctxOf, type Ctx } from './children';
 import { changedWhile, commit, pinnedRowWrite, type LifecycleFields, type LifecycleTable } from './commit';
 import type { AtomicWrite, Db } from './db';
-import { diff, eventWrite, listEvents, now } from './events';
+import { eventWrite, listEvents, now } from './events';
 import { idParam } from './http';
 import { conflict, notFound } from './problems';
 

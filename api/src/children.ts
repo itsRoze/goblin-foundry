@@ -7,11 +7,12 @@
  */
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Context } from 'hono';
+import { diff } from '@goblin/history';
 import { ticketKey, type Actor } from '@goblin/shared';
 import type { ActorEnv } from './actor';
 import { pinnedRowWrite, pinnedTicketWrite } from './commit';
 import type { AtomicWrite, Db } from './db';
-import { diff, eventWrite } from './events';
+import { eventWrite } from './events';
 import { project as projectTable, ticket as ticketTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 

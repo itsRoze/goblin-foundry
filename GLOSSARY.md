@@ -76,6 +76,12 @@ A flag on a Ticket meaning "its title says it all": it needs neither a descripti
 ## Actor
 Who performed a mutation, for the record: `human` (the operator) or `agent` (an AI creating or editing on the human's behalf). An agent acting on the human's instruction is still `agent`. Every mutation records actor, prior state, new state, timestamp. It is never a permission: either Actor may make any change (ADR-0012).
 
+## History
+Every recorded change to one thing, newest first.
+
+## Event
+One entry in a History, saying who changed what, and from what to what. An Edit session is one Event, however many saves it covers.
+
 ## Edit session
 A stretch of continuous editing of one thing by one Actor, recorded as a single entry in that
 thing's history rather than one entry per keystroke's worth of saving. What it remembers is the
