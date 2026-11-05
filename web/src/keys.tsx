@@ -49,15 +49,16 @@ const byKey = (e: Event | undefined) => e instanceof KeyboardEvent || (e instanc
  * moves or the board restacks; that is the same question, and it does not take the focus again. A
  * field holding the caret keeps it. A key's question comes into view; a pointer's opens where it is.
  */
-export function useFocusOnAsk(question: object | null, answer: RefObject<HTMLElement | null>, line: RefObject<HTMLElement | null>) {
+export function useFocusOnAsk(question: object | null, answer: RefObject<HTMLElement | null>, line: RefObject<HTMLElement | null>, asked?: { byPointer: boolean }) {
   useEffect(() => {
     if (question === null || focusedOnce.has(question)) return;
     focusedOnce.add(question);
     if (isTyping(document.activeElement)) return;
-    const pointer = byPointer(window.event);
+    // what arrives after a round trip has no press in flight, so it was told what asked
+    const pointer = asked?.byPointer ?? byPointer(window.event);
     answer.current?.focus({ preventScroll: pointer });
     if (!pointer) line.current?.scrollIntoView({ block: 'nearest' });
-  }, [question, answer, line]);
+  }, [question, answer, line, asked]);
 }
 
 /**

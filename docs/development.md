@@ -95,6 +95,9 @@ lifecycle is documented by the lifecycle.
 | refusals | `application/problem+json` on stderr, stdout empty. Exit `1` the API refused, `2` the invocation was wrong, `3` nothing answered |
 | long text | `--description`, `--design` and `design set` take the text inline, `@path` to read a file, or `-` to read stdin |
 | clearing | `null` as the value of a nullable flag on `update` clears the field (`--app null`, `--design null`) |
+| a Ticket's Worktree | `ticket start <key> --worktree` makes or adopts the Worktree, starts the Ticket and asks for a terminal, as one call for one key; `--branch` and `--base` imply it, and a bare `start` stays the plain Transition. `ticket terminal <key>` opens a terminal in a `building` or `review` Ticket's Worktree, making one first if it has none (`--branch`, `--base`), and changes no Status. Both answer with the Ticket and a `terminal` outcome, exit `0` whether or not a terminal opened |
+| a Checkout | `app create` and `app update` take `--checkout <folder\|null>`: an absolute folder inside the repository on this machine, and the repository's top level is what gets recorded. `app branches <app>` reads the Checkout's branches, its default and where its Worktrees are made; it fetches nothing |
+| settings | `settings` shows them; `settings set` changes any of `--ticket-prefix`, `--worktree-root <folder>` (absolute or under `~`) and `--terminal-step none\|herdr` |
 | filters | `ticket list` takes the board's own filter — `--app`, `--project`, `--status a,b`, `--label a,b`, `--q` — and `frontier` all but `--status`, which it has already answered. Same grammar as the board's address |
 | actor | `--actor agent`, or `GF_ACTOR`; the flag wins. A record of whose hands made the change, never a permission: either Actor makes every transition (ADR-0012, GLOSSARY.md *Actor*) |
 | address | tickets by key (`GF-12`, or a bare `12`); apps and projects by id or the GUI's `<slug>-<id>`. No name lookup |

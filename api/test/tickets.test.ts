@@ -315,7 +315,7 @@ describe('/api/tickets', () => {
     await req(`/api/tickets/${t.key}`, json('PATCH', { design: '# the plan' }));
 
     const [row] = await req('/api/tickets').then((r) => r.json());
-    expect(Object.keys(row).sort()).toEqual(['app_id', 'blocked_by', 'created_at', 'id', 'intent_written', 'key', 'labels', 'project_id', 'simple', 'status', 'title', 'trashed_at', 'updated_at']);
+    expect(Object.keys(row).sort()).toEqual(['app_id', 'blocked_by', 'created_at', 'id', 'intent_written', 'key', 'labels', 'project_id', 'simple', 'status', 'title', 'trashed_at', 'updated_at', 'worktree_branch', 'worktree_folder']);
     expect(row).toMatchObject({ key: 'GF-1', title: 'long one', status: 'backlog', simple: false, app_id: app.id, project_id: null, labels: ['needs-info'], blocked_by: [], trashed_at: null });
 
     expect(await req(`/api/tickets/${t.key}`).then((r) => r.json())).toMatchObject({ description: 'a body worth not listing', design: '# the plan' });
@@ -352,17 +352,17 @@ describe('/api/settings', () => {
 
     const res = await req('/api/settings', json('PATCH', { ticket_prefix: 'sr' }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ticket_prefix: 'SR' });
+    expect(await res.json()).toMatchObject({ ticket_prefix: 'SR' });
 
     const after = await req('/api/tickets/GF-1').then((r) => r.json());
     expect(after).toMatchObject({ id: 1, key: 'SR-1' });
-    expect(await req('/api/settings').then((r) => r.json())).toEqual({ ticket_prefix: 'SR' });
+    expect(await req('/api/settings').then((r) => r.json())).toMatchObject({ ticket_prefix: 'SR' });
   });
 
   test('a prefix that is not a letter followed by letters or digits is refused', async () => {
     const bad = await req('/api/settings', json('PATCH', { ticket_prefix: '1x' }));
     expect(bad.status).toBe(422);
     expect((await bad.json()).issues).toEqual([{ path: ['ticket_prefix'], message: 'a letter followed by up to 7 letters or digits' }]);
-    expect(await req('/api/settings').then((r) => r.json())).toEqual({ ticket_prefix: 'GF' });
+    expect(await req('/api/settings').then((r) => r.json())).toMatchObject({ ticket_prefix: 'GF' });
   });
 });

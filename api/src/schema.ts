@@ -2,7 +2,7 @@ import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } fro
 import { sql } from 'drizzle-orm';
 import { TICKET_STATUSES } from '@goblin/shared';
 
-/** Installation-wide settings; S1 holds only `ticket_prefix`. */
+/** Installation-wide settings: `ticket_prefix`, `worktree_root` and `terminal_step`. */
 export const setting = sqliteTable('setting', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
@@ -23,6 +23,8 @@ export const app = sqliteTable('app', {
   name: text('name').notNull(),
   repository_url: text('repository_url'),
   default_branch: text('default_branch'),
+  /** The Checkout: the folder on this machine that holds its repository. Always that repository's top level, absolute. */
+  checkout: text('checkout'),
   description: text('description').notNull().default(''),
   ...lifecycle,
 });
@@ -59,6 +61,9 @@ export const ticket = sqliteTable(
     design: text('design'),
     app_id: integer('app_id').references(() => app.id),
     project_id: integer('project_id').references(() => project.id),
+    /** The Worktree: where it is worked. Written with the `start` that made it, and no Transition clears it. */
+    worktree_branch: text('worktree_branch'),
+    worktree_folder: text('worktree_folder'),
     trashed_at: text('trashed_at'),
     trashed_via: text('trashed_via'),
     created_at: text('created_at').notNull(),

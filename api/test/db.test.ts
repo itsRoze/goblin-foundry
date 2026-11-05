@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq, sql } from 'drizzle-orm';
+import { createApp } from '../src/app';
 import { AtomicWriteError, atomically, openDb } from '../src/db';
 import { setting } from '../src/schema';
 
@@ -27,6 +28,60 @@ describe('openDb', () => {
       expect(rows[0]?.journal_mode).toBe('wal');
     } finally {
       handle.close();
+    }
+  });
+});
+
+/** `CREATE TABLE IF NOT EXISTS` passes over a table that already exists, and the running tracker's database is one. */
+describe('a database from before a column was added', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gf-older-'));
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  test("opening it adds an App's Checkout, keeps the Apps it holds, and doing it twice changes nothing", async () => {
+    const path = join(dir, 'older.db');
+    const older = await openDb(path);
+    await createApp(older.db).request('/api/apps', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Subway Reader' }) });
+    older.db.run(sql`ALTER TABLE app DROP COLUMN checkout`);
+    older.close();
+
+    for (let open = 0; open < 2; open++) {
+      const handle = await openDb(path);
+      try {
+        const res = await createApp(handle.db).request('/api/apps');
+        expect(res.status).toBe(200);
+        expect(await res.json()).toMatchObject([{ name: 'Subway Reader', checkout: null }]);
+      } finally {
+        handle.close();
+      }
+    }
+  });
+});
+
+describe('a database from before a Ticket had a Worktree', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gf-older-ticket-'));
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  test('opening it adds both columns and the Worktree root, and keeps the Tickets and the settings it holds', async () => {
+    const path = join(dir, 'older.db');
+    const older = await openDb(path);
+    const send = (method: string, body: unknown, at: string) => createApp(older.db).request(at, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    await send('POST', { title: 'Parse the feed' }, '/api/tickets');
+    await send('PATCH', { ticket_prefix: 'SR' }, '/api/settings');
+    older.db.run(sql`ALTER TABLE ticket DROP COLUMN worktree_branch`);
+    older.db.run(sql`ALTER TABLE ticket DROP COLUMN worktree_folder`);
+    older.db.run(sql`DELETE FROM setting WHERE key = 'worktree_root'`);
+    older.db.run(sql`DELETE FROM setting WHERE key = 'terminal_step'`);
+    older.close();
+
+    for (let open = 0; open < 2; open++) {
+      const handle = await openDb(path);
+      try {
+        const app = createApp(handle.db);
+        expect(await (await app.request('/api/tickets')).json()).toMatchObject([{ key: 'SR-1', title: 'Parse the feed', worktree_branch: null, worktree_folder: null }]);
+        expect(await (await app.request('/api/settings')).json()).toEqual({ ticket_prefix: 'SR', worktree_root: '~/.goblin/worktrees', terminal_step: 'none' });
+      } finally {
+        handle.close();
+      }
     }
   });
 });

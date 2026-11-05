@@ -36,7 +36,11 @@ test('a card drags from backlog to todo, and review refuses a drop back into bui
   await page.getByTestId('app-select').selectOption({ label: 'Lifecycle' });
   await page.getByTestId('simple-toggle').click();
   await expect(page.getByTestId('simple-toggle')).toBeChecked(); // the toggle follows the ticket, so wait for the write to land
-  for (const name of ['approve', 'start', 'submit']) await page.getByTestId(`move-${name}`).click();
+  await page.getByTestId('move-approve').click();
+  await page.getByTestId('move-start').click();
+  // this App has no Checkout, so Start offers only the plain Transition this walk is about
+  await page.getByTestId('start-plain').click();
+  await page.getByTestId('move-submit').click();
   await expect(page.getByTestId('state-tile')).toContainText('review');
 
   // there is no review → building arrow: the drop is refused in words and the card snaps back

@@ -57,6 +57,26 @@ Each one moves tickets differently. Find the one you are in.
   (`ready → building`), build it, open the PR, then follow "When you open a PR
   for a ticket". Its implementers each work in a worktree; see below.
 
+A bare `goblin ticket start` is still the agent's move, in every workflow here:
+the workflow brings its own worktrees, and a bare `start` only changes the
+Status. `goblin ticket start GF-n --worktree` also exists, for a script that
+wants the tracker to give a Ticket its place: it makes or adopts a git worktree
+of the App's Checkout, then starts the Ticket, and prints the Ticket with its
+`worktree_branch` and `worktree_folder`. `--branch` and `--base` choose, and
+either implies `--worktree`. It is refused when the App has no Checkout, and a
+failed worktree leaves the Ticket `ready` with git's reason. Its last step asks
+the installation's terminal step (`goblin settings set --terminal-step`) to open
+a terminal, and the output's `terminal` says how that went: `opened`, or not with
+a `reason` and the `folder`. A terminal that did not open is not a failure, and
+the exit code is 0. With the step set to `herdr`, the terminal is a plain shell in
+Herdr 2, and opening it brings that Ticket's tab to the front of the operator's
+window, so an agent that only wants the folder leaves `--worktree` off.
+
+`goblin ticket terminal GF-n` returns to the Worktree of a `building` or `review`
+Ticket. It changes no Status and writes no history. A Ticket with no Worktree
+gets one, with `--branch` and `--base` choosing as they do for `start`, recorded
+with one history event.
+
 #### An implementer in a worktree
 
 Hand each implementer a pointer to this section. In its worktree it:

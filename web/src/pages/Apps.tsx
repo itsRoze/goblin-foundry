@@ -17,6 +17,8 @@ export const appFormFields: Field[] = [
   // Not `branchWithoutRepository`: that asks whether the pair is illegal, this asks whether the
   // field can be used at all, which is true before anything has been typed into it.
   { name: 'default_branch', label: fieldLabel('default_branch'), placeholder: 'main', inertWhen: (v) => !v.repository_url?.trim() },
+  // the API finds out whether it is a repository; the sentence comes back under the field
+  { name: 'checkout', label: 'checkout', placeholder: '/path/to/repository' },
   { name: 'description', label: 'description', kind: 'textarea' },
 ];
 
@@ -25,6 +27,7 @@ export const appBody = (v: Record<string, string>) => ({
   name: v.name ?? '',
   repository_url: v.repository_url ? v.repository_url : null,
   default_branch: v.default_branch ? v.default_branch : null,
+  checkout: v.checkout?.trim() ? v.checkout : null,
   ...(v.description === undefined ? {} : { description: v.description }),
 });
 

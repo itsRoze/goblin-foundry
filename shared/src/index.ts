@@ -7,8 +7,13 @@ export {
   TICKET_PREFIX_SHAPE,
   DEFAULT_TICKET_PREFIX,
   TICKET_PREFIX_KEY,
+  DEFAULT_WORKTREE_ROOT,
+  WORKTREE_ROOT_KEY,
+  DEFAULT_TERMINAL_STEP,
+  TERMINAL_STEP_KEY,
   DEFAULT_PORT,
 } from './settings';
+export { TERMINAL_STEPS, TerminalStepSchema, type TerminalStepName, TerminalOutcomeSchema, type TerminalOutcome, TerminalAnswerSchema, opensTerminal, noTerminalAt } from './terminal';
 export { ACTOR_HEADER, ActorSchema, type Actor, DEFAULT_ACTOR } from './actor';
 export { JUDGED_HEADER, judgedField, judgement } from './judged';
 export { eventHistory, EventKindSchema, type EventKind, EntityKindSchema, type EntityKind, EventSchema, type Event } from './events';
@@ -122,3 +127,4 @@ export {
 } from './filters';
 
 export { ImplementationLinkSchema, AddImplementationLinkBodySchema, ticketBranchName, type ImplementationLink } from './implementation';
+export { StartWorktreeBodySchema, type StartWorktreeBody, CheckoutBranchSchema, type CheckoutBranch, AppBranchesSchema, type AppBranches, worktreeSlug, defaultWorktreeBranch, worktreeBase } from './worktree';

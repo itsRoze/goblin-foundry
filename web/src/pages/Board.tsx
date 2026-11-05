@@ -7,27 +7,31 @@ import {
   asksBeforeBlocked,
   blockedWarning,
   lifecycle,
+  opensTerminal,
   parseTicketFilter,
   serialiseTicketFilter,
   type TicketSummary,
   type TicketFilter,
   type TicketStatus,
   type Found,
+  type StartWorktreeBody,
   type Transition,
   type TransitionName,
 } from '@goblin/shared';
 import { ProblemError } from '../api';
-import { useBranchCopy } from '../branch-copy';
+import { useBranchCopy } from '../copy';
 import { commonMoves } from '../bulk';
 import { useOffersSelection, useOffersTicket } from '../current';
 import { useCursor, useEscape } from '../desk';
 import { FilterBar, type BadValues } from '../filters';
 import { ignoreHeldEnter, useFocusOnAsk, useKey, useKeyMap } from '../keys';
-import { usePatchTicket, useTicketIntent, useTicketList, useTransition } from '../queries';
+import { usePatchTicket, useStart, useTicketIntent, useTicketList, useTransition } from '../queries';
 import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type Landing, type Orientation } from '../sections';
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
 import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
 import { useCrumb, useOpenPalette } from '../shell';
+import { StartModal } from '../start-modal';
+import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
 import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
@@ -167,6 +171,8 @@ interface Notice {
   landing: Exclude<Landing, 'shown'>;
 }
 
+const cardOf = (key: string) => document.querySelector<HTMLElement>(`.gf-card[data-key="${key}"]`);
+
 /**
  * Every way the board moves a card, in one place, because they must agree:
  * dragging a card between columns *is* a transition (GLOSSARY.md), and so is
@@ -183,6 +189,8 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
   const [pending, setPending] = useState<Pending | null>(null);
+  /** The card the Start modal is open on, as it was when it opened: a poll must not change what is being decided about. */
+  const [starting, setStarting] = useState<TicketSummary | null>(null);
   const moved = useRef(onMoved);
   /** Whether a bulk action holds this card *now* — asked when the move goes, not when it was first pressed: a question may have stood open meanwhile. */
   const held = useRef(heldLine);
@@ -196,18 +204,20 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
       setPending(null);
       if (!found.ok) return setRefusal({ ...slot, text: found.refusal });
       const { edge } = found;
+      const ticket = lookup(card.key);
       const go = () => {
         setPending(null);
         const line = held.current(card.key);
         // after this click has finished bubbling: a refusal clears itself on the next click it hears (`useRefusal`),
         // and said inside the click that caused it, that would be this one
         if (line !== null) return void setTimeout(() => setRefusal({ ...slot, text: line }));
+        // one way to start a single Ticket, whichever gesture asked (a bulk start on a Selection never comes through here)
+        if (edge.name === 'start' && ticket) return setStarting(ticket);
         move.mutate(
           { key: card.key, name: edge.name, to: edge.to },
           { onError: (error) => setRefusal({ ...slot, text: refusalLine(error) }), onSuccess: () => moved.current(card, edge.to) },
         );
       };
-      const ticket = lookup(card.key);
       if (ticket && asksBeforeBlocked(edge.name, ticket)) return setPending({ ...slot, text: blockedWarning(ticket.blocked_by), go });
       go();
     },
@@ -255,7 +265,23 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, onMov
     [setRefusal],
   );
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []) };
+  const start = useStart();
+  const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
+  const { reporting } = terminal;
+  const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
+  const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
+    setStarting(null);
+    if (started) moved.current(ticket, 'building');
+  }, []);
+  /** The same hold a move is under: a bulk action that has this card has it for everything. */
+  const pressTerminal = (ticket: TicketSummary) => {
+    const line = held.current(ticket.key);
+    // after this click has finished bubbling, as a move's own refusal is (`run`)
+    if (line !== null) return void setTimeout(() => setRefusal({ status: ticket.status, key: ticket.key, text: line }));
+    terminal.press(ticket);
+  };
+
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => setPending(null), []), starting, startRun, startClosed, terminal, pressTerminal };
 }
 
 /**
@@ -353,7 +379,7 @@ export function BoardPage() {
     },
     [lookup, sending],
   );
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss } = useBoardMoves(lookup, onMoved, heldLine);
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, terminal, pressTerminal } = useBoardMoves(lookup, onMoved, heldLine);
   useKey('v', useCallback(() => setMenu((m) => !m), []));
 
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
@@ -410,6 +436,7 @@ export function BoardPage() {
           members,
           act,
           explainDependencies: () => report({ kind: 'said', text: 'dependencies are declared from one ticket — clear the selection first' }),
+          explainTerminal: () => report({ kind: 'said', text: 'a terminal opens on one ticket — clear the selection first' }),
         },
   );
   const selectFor = (t: TicketSummary): CardSelect => ({
@@ -431,6 +458,7 @@ export function BoardPage() {
     move: (name) => press(t, name),
     trash: () => inSlot(t, () => intent.mutateAsync({ key: t.key, intent: 'trash' })),
     blockedBy: () => blockedBy(t),
+    terminal: () => pressTerminal(t),
   });
 
   // `a s d` and the palette's actions act on the card under the Cursor — the card's own verbs, plus what only a key offers
@@ -463,6 +491,10 @@ export function BoardPage() {
     }
     if (notice !== null) {
       setNotice(null);
+      return true;
+    }
+    if (terminal.said !== null) {
+      terminal.dismiss();
       return true;
     }
     if (bulk.question !== null) {
@@ -550,6 +582,9 @@ export function BoardPage() {
     refusal: refusal?.status === column.status ? refusal : null,
     pending: pending?.status === column.status ? pending : null,
     notice: notice?.from === column.status ? notice : null,
+    // the card's own column once the poll has it there, and until then, or if the Filter leaves it off, where it was
+    terminal: terminal.said !== null && (lookup(terminal.said.key)?.status ?? terminal.said.from) === column.status ? terminal.said : null,
+    onDismissTerminal: terminal.dismiss,
     onDismiss: dismiss,
     onShow: show,
   });
@@ -583,6 +618,9 @@ export function BoardPage() {
           </Hint>
           <Hint k="d" on={verbCard !== undefined} onClick={() => verbCard && blockedBy(verbCard)}>
             deps
+          </Hint>
+          <Hint k="t" on={verbCard !== undefined && opensTerminal(verbCard.status)} onClick={() => verbCard && pressTerminal(verbCard)}>
+            terminal
           </Hint>
           <Hint k="a" on={verbCard !== undefined && lifecycle.named(verbCard.status, 'approve').ok} onClick={() => verbCard && press(verbCard, 'approve')}>
             approve
@@ -645,6 +683,15 @@ export function BoardPage() {
         </div>
       )}
       {tickets.data?.length === 0 && !create.form && <Empty>{filtered ? 'nothing matches this filter' : 'no tickets yet — press c'}</Empty>}
+      {starting && (
+        <StartModal
+          ticket={starting}
+          run={(worktree) => startRun(starting, worktree)}
+          onClose={(started) => startClosed(starting, started)}
+          focusAfter={() => cardOf(starting.key)}
+        />
+      )}
+      <ChooseWorktree terminal={terminal} />
     </Tile>
   );
 }
@@ -744,12 +791,15 @@ interface CardsProps {
   pending: Pending | null;
   /** A card that left this status for somewhere out of sight. */
   notice: Notice | null;
+  /** A terminal that did not open, for a card in this status: under the card when it is here, else at the foot. */
+  terminal: TerminalSaid | null;
+  onDismissTerminal: () => void;
   onDismiss: () => void;
   onShow: (notice: Notice) => void;
 }
 
 /** What the board has to say under a card, or at the foot of its column. */
-function Said({ status, refusal, pending, notice, onDismiss, onShow }: Pick<CardsProps, 'status' | 'refusal' | 'pending' | 'notice' | 'onDismiss' | 'onShow'>) {
+function Said({ status, refusal, pending, notice, terminal, onDismissTerminal, onDismiss, onShow }: Pick<CardsProps, 'status' | 'refusal' | 'pending' | 'notice' | 'terminal' | 'onDismissTerminal' | 'onDismiss' | 'onShow'>) {
   return (
     <>
       {refusal && (
@@ -757,6 +807,7 @@ function Said({ status, refusal, pending, notice, onDismiss, onShow }: Pick<Card
           {refusal.text}
         </p>
       )}
+      {terminal && <TerminalNotOpened said={terminal} onDismiss={onDismissTerminal} />}
       {pending && <Confirm asked={pending} text={pending.text} verb="start" onConfirm={pending.go} onDismiss={onDismiss} testId={`confirm-${status}`} />}
       {notice && (
         <p className="gf-confirm gf-notice" role="status" data-testid={`notice-${status}`}>
@@ -774,22 +825,23 @@ function Said({ status, refusal, pending, notice, onDismiss, onShow }: Pick<Card
 }
 
 /** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
-function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, onDismiss, onShow }: CardsProps) {
+function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, terminal, onDismissTerminal, onDismiss, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
     refusal: refusal?.key === key ? refusal : null,
     pending: pending?.key === key ? pending : null,
+    terminal: terminal?.key === key ? terminal : null,
   });
   const here = new Set(tickets.map((t) => t.key));
-  const atFoot = (said: Slot | null) => said !== null && (said.key === null || !here.has(said.key));
+  const atFoot = (said: { key: string | null } | null) => said !== null && (said.key === null || !here.has(said.key));
   return (
     <>
       {tickets.map((t) => (
         <TicketCard key={t.id} ticket={t} cursor={t.key === cursor} meta={meta ? meta(t) : null} showLabels={showLabels} updated={updated ? t.updated_at : null} at={at} menu={menuFor(t)} select={selectFor(t)} canDrag={canDrag}>
-          <Said status={status} {...under(t.key)} notice={null} onDismiss={onDismiss} onShow={onShow} />
+          <Said status={status} {...under(t.key)} notice={null} onDismissTerminal={onDismissTerminal} onDismiss={onDismiss} onShow={onShow} />
         </TicketCard>
       ))}
-      <Said status={status} refusal={atFoot(refusal) ? refusal : null} pending={atFoot(pending) ? pending : null} notice={notice} onDismiss={onDismiss} onShow={onShow} />
+      <Said status={status} refusal={atFoot(refusal) ? refusal : null} pending={atFoot(pending) ? pending : null} notice={notice} terminal={atFoot(terminal) ? terminal : null} onDismissTerminal={onDismissTerminal} onDismiss={onDismiss} onShow={onShow} />
     </>
   );
 }
@@ -841,7 +893,7 @@ function Column({
  * the card it is about.
  */
 function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: boolean; onToggle: () => void }) {
-  const { status, count, refusal, pending, notice, onDismiss, onShow } = cards;
+  const { status, count, refusal, pending, notice, terminal, onDismissTerminal, onDismiss, onShow } = cards;
   return (
     <section className={`gf-section${expanded ? ' is-open' : ''}`} data-testid={`section-${status}`} data-status={status} aria-label={status}>
       <button type="button" className="gf-col-head gf-section-head" aria-expanded={expanded} data-testid={`section-head-${status}`} onClick={onToggle}>
@@ -853,7 +905,7 @@ function Section({ expanded, onToggle, ...cards }: CardsProps & { expanded: bool
         </span>
         {count !== null && <b>{count}</b>}
       </button>
-      {expanded ? <Cards {...cards} /> : <Said status={status} refusal={refusal} pending={pending} notice={notice} onDismiss={onDismiss} onShow={onShow} />}
+      {expanded ? <Cards {...cards} /> : <Said status={status} refusal={refusal} pending={pending} notice={notice} terminal={terminal} onDismissTerminal={onDismissTerminal} onDismiss={onDismiss} onShow={onShow} />}
     </section>
   );
 }

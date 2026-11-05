@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, Fragment } from 'react';
 import { Link } from 'react-router';
 import { TRANSITION_PAST, type Event, type TransitionName } from '@goblin/shared';
 import { ProblemError, fieldLabel } from './api';
@@ -217,8 +217,10 @@ export function InlineForm({
   testId?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.name, initial[f.name] ?? ''])));
-  const [error, setError] = useState<string | null>(null);
+  /** The field it names, when it names one of these: the sentence goes under that field, with the words it refused (DESIGN.md Overview). */
+  const [error, setError] = useState<{ sentence: string; field: string | undefined } | null>(null);
   const [busy, setBusy] = useState(false);
+  const refused = useId();
   const first = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   useEffect(() => first.current?.focus(), []);
   const inert = inertFields(fields, values);
@@ -230,7 +232,9 @@ export function InlineForm({
     try {
       await onSubmit(submittedValues(fields, values));
     } catch (e) {
-      setError(e instanceof ProblemError ? e.sentence : e instanceof Error ? e.message : String(e));
+      const issues = e instanceof ProblemError ? e.problem.issues : undefined;
+      const named = issues?.length === 1 ? String(issues[0]?.path[0]) : undefined;
+      setError({ sentence: e instanceof ProblemError ? e.sentence : e instanceof Error ? e.message : String(e), field: fields.some((f) => f.name === named) ? named : undefined });
     } finally {
       setBusy(false);
     }
@@ -258,11 +262,14 @@ export function InlineForm({
           // a11y tree, and the keyboard reaches everything here (PRODUCT.md)
           readOnly: isInert,
           'aria-disabled': isInert || undefined,
+          'aria-invalid': error?.field === f.name || undefined,
+          'aria-describedby': error?.field === f.name ? refused : undefined,
           onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setValues({ ...values, [f.name]: e.target.value }),
           ref: i === 0 ? (first as never) : undefined,
         };
         return (
-          <label key={f.name} className="gf-field" htmlFor={id}>
+          <Fragment key={f.name}>
+          <label className="gf-field" htmlFor={id}>
             <span>{f.label}</span>
             {f.kind === 'textarea' ? (
               <textarea {...common} rows={3} placeholder={f.placeholder} />
@@ -281,15 +288,22 @@ export function InlineForm({
               <input {...common} type="text" placeholder={f.placeholder} autoComplete="off" spellCheck={false} autoCapitalize="off" autoCorrect="off" />
             )}
           </label>
+          {error?.field === f.name && (
+            <p id={refused} className="gf-refusal gf-field-refusal" role="alert">
+              {error.sentence}
+            </p>
+          )}
+          </Fragment>
         );
       })}
-      {error && (
+      {error && error.field === undefined && (
         <p className="gf-refusal" role="alert">
-          {error}
+          {error.sentence}
         </p>
       )}
       <div className="gf-form-actions">
-        <button type="submit" className="gf-btn is-primary" disabled={busy}>
+        {/* `aria-disabled`, not `disabled`: a disabled button drops the focus to `body`, and from there `esc` walks off the page with the typed words */}
+        <button type="submit" className="gf-btn is-primary" aria-disabled={busy || undefined}>
           {submitLabel} <Kbd>⌘⏎</Kbd>
         </button>
         <button type="button" className="gf-btn" onClick={onCancel}>
@@ -394,11 +408,24 @@ const str = (v: unknown) => (v === null || v === undefined || v === '' ? '—' :
 /** The name of a thing an event points at; `#3` once it is gone. */
 export type Namer = (id: unknown) => string;
 
+/** Both ends, because a cleared Checkout's folder is said nowhere else; an edit session can end where it began. */
+function checkoutMoved(from: unknown, to: unknown): string {
+  if (from === to) return to === null ? 'checkout set and cleared' : `checkout changed back to ${str(to)}`;
+  if (to === null) return `checkout cleared · was ${str(from)}`;
+  return from === null ? `checkout set to ${str(to)}` : `checkout ${str(from)} → ${str(to)}`;
+}
+
 /** One history line per event: what happened, not what it means (DESIGN.md Voice). */
 export function describeEvent(e: Event, appName: Namer): string {
+  if (e.kind === 'created' && e.new.checkout) return `created · checkout ${str(e.new.checkout)}`;
   if (e.kind !== 'updated') return e.kind;
   const keys = Object.keys(e.new);
   const prior = e.prior ?? {};
+  // who pointed the App at which folder is what the line is for, so it is said whatever else an edit session folded in with it (ADR-0008)
+  if (keys.includes('checkout')) {
+    const { checkout: _said, ...rest } = e.new;
+    return Object.keys(rest).length === 0 ? checkoutMoved(prior.checkout ?? null, e.new.checkout ?? null) : `${checkoutMoved(prior.checkout ?? null, e.new.checkout ?? null)} · ${describeEvent({ ...e, new: rest }, appName)}`;
+  }
   if (keys.length === 1 && keys[0] === 'name') return `renamed ${str(prior.name)} → ${str(e.new.name)}`;
   if (keys.length === 1 && keys[0] === 'app_id') return e.new.app_id === null ? `detached from ${appName(prior.app_id)}` : `moved to ${appName(e.new.app_id)}`;
   if (keys.length === 1 && keys[0] === 'project_id') return e.new.project_id === null ? 'left its project' : 'moved to a project';
@@ -410,13 +437,15 @@ export function describeEvent(e: Event, appName: Namer): string {
 
 const past = (name: unknown) => (typeof name === 'string' && name in TRANSITION_PAST ? TRANSITION_PAST[name as TransitionName] : String(name));
 
+const worktreeSaid = (fields: Event['new']) => `worktree ${str(fields.worktree_branch)} in ${str(fields.worktree_folder)}`;
+
 /**
  * A ticket's history. A description edit is one quiet line — the body is in
  * the event, never on screen here.
  */
 export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer }): string {
   // `approved · planning → ready`: the decision first, the state pair after it
-  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}`;
+  if (e.kind === 'transitioned') return `${past(e.new.transition)} · ${str(e.prior?.status)} → ${str(e.new.status)}${'worktree_branch' in e.new ? ` · ${worktreeSaid(e.new)}` : ''}`;
   // one edge, written on both its ends: each side's history says which end this ticket is (ADR-0009)
   if (e.kind === 'dependency_added' || e.kind === 'dependency_removed') {
     const undone = e.kind === 'dependency_removed' ? 'no longer ' : '';
@@ -425,6 +454,7 @@ export function describeTicketEvent(e: Event, name: { app: Namer; project: Namer
   if (e.kind === 'implementation_link_added') return `linked implementation · ${str(e.new.url)}`;
   if (e.kind === 'implementation_link_removed') return `removed implementation link · ${str(e.prior?.url)}`;
   if (e.kind === 'labelled') return describeLabels(e);
+  if (e.kind === 'worktree_recorded') return worktreeSaid(e.new);
   if (e.kind !== 'updated') return e.kind;
   const prior = e.prior ?? {};
   const parts: string[] = [];

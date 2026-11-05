@@ -145,6 +145,10 @@ test('a tap on start or trash opens the question on leave it, ⇧Tab reaches the
   await expect(page.getByTestId('confirm-start-dismiss')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
+  await expect(page.getByTestId('start-cancel')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByTestId('start-plain')).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('state-tile')).toContainText('building');
   expect((await read(page, key)).status).toBe('building');
 
@@ -242,6 +246,7 @@ for (const by of [3, 29, 40]) {
   test(`with start ${by}px above the top at 1366, a tap on start anyway leaves the page where it is and writes`, async ({ page }) => {
     const { key, rest } = await askedWithStartClipped(page, 'StayYes');
     await tap(page, page.getByTestId('confirm-start-yes'));
+    await page.getByTestId('start-plain').tap();
     await expect(page.getByTestId('state-tile')).toContainText('building');
     expect((await read(page, key)).status).toBe('building');
     expect(await scrollY(page)).toBe(rest);

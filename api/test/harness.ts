@@ -5,15 +5,17 @@ import { sql } from 'drizzle-orm';
 import type { EntityKind } from '@goblin/shared';
 import { openDb } from '../src/db';
 import { createApp } from '../src/app';
+import { noTerminal, type TerminalSteps } from '../src/terminal';
 
 /**
  * In-process API harness: a fresh temp SQLite file per test, the Hono app
  * called through `app.request` — no socket. Every later API test uses this.
  */
-export async function makeTestApp() {
+export async function makeTestApp({ terminals }: { terminals?: Partial<TerminalSteps> } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'gf-test-'));
   const handle = await openDb(join(dir, 'foundry.db'));
-  const app = createApp(handle.db);
+  // never the built `herdr`: a test that chooses it must not reach the Herdr on the machine running the suite
+  const app = createApp(handle.db, { terminals: { none: noTerminal, herdr: noTerminal, ...terminals } });
   return {
     app,
     /** The database file, for the one thing that is not a client: `goblin backup` copies the file itself. */

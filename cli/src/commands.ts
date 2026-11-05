@@ -105,6 +105,7 @@ const appFields = (creating: boolean): Flag[] => [
   { name: 'name', kind: 'string', required: creating, value: '<name>', summary: 'what it is called' },
   { name: 'repository-url', kind: 'string', nullable: true, value: '<remote|null>', summary: 'the git remote it lives at' },
   { name: 'default-branch', kind: 'string', nullable: true, value: '<branch|null>', summary: 'only alongside a repository url' },
+  { name: 'checkout', kind: 'string', nullable: true, value: '<folder|null>', summary: 'an absolute folder inside its repository on this machine; the repository is what gets recorded' },
   { name: 'description', kind: 'text', value: TEXT, summary: 'markdown' },
 ];
 
@@ -242,14 +243,42 @@ const ticketsOperand: Operand[] = [{ name: 'ticket', summary: 'its key, e.g. GF-
 const bulk = (ctx: Ctx, action: BulkAction) => ctx.api.post('/api/tickets/bulk', { tickets: ctx.args.operands, action });
 const oneOrAll = (one: (ctx: Ctx) => Promise<Response>, action: BulkAction) => (ctx: Ctx) => (ctx.args.operands.length === 1 ? one(ctx) : bulk(ctx, action));
 
+const START_FLAGS: Flag[] = [
+  { name: 'worktree', kind: 'boolean', summary: "make or adopt the Ticket's Worktree first, then start it and ask for a terminal; without this, start only changes the Status" },
+  { name: 'branch', kind: 'string', value: '<branch>', summary: 'the branch to work on, existing or new (default: its recorded Worktree branch, else its Branch Suggestion); implies --worktree' },
+  { name: 'base', kind: 'string', value: '<branch>', summary: "what a new branch is cut from (default: the App's default branch, else the Checkout's); implies --worktree" },
+];
+
+const TERMINAL_FLAGS: Flag[] = [
+  { name: 'branch', kind: 'string', value: '<branch>', summary: 'for a Ticket with no Worktree: the branch to work on, existing or new (default: its Branch Suggestion)' },
+  { name: 'base', kind: 'string', value: '<branch>', summary: "for a Ticket with no Worktree: what a new branch is cut from (default: the App's default branch, else the Checkout's)" },
+];
+
+/**
+ * A Start that asks for a Worktree is one request with a body; anything else
+ * is the Transition every other verb is. A batch is all-or-none and a folder on
+ * disk cannot be rolled back, so the two never meet.
+ */
+function start(plain: (ctx: Ctx) => Promise<Response>) {
+  return (ctx: Ctx) => {
+    const { worktree, ...named } = ctx.args.values;
+    if (worktree !== true && Object.keys(named).length === 0) return plain(ctx);
+    if (ctx.args.operands.length > 1) throw new UsageError('a Worktree is for one Ticket: --worktree, --branch and --base take one key');
+    return ctx.api.post(`${ticketAt(ctx)}/start`, named);
+  };
+}
+
 /** One verb per edge name in the table, with the statuses it leads out of read off the same rows. */
 const transitionCommands = (): Command[] =>
-  lifecycle.names.map((name) => ({
-    verb: name,
-    summary: `${lifecycle.transitions[name].from.join(', ')} → ${lifecycle.transitions[name].to}`,
-    operands: ticketsOperand,
-    run: oneOrAll((ctx) => ctx.api.post(`${ticketAt(ctx)}/${name}`), { kind: 'transition', name }),
-  }));
+  lifecycle.names.map((name) => {
+    const plain = oneOrAll((ctx) => ctx.api.post(`${ticketAt(ctx)}/${name}`), { kind: 'transition', name });
+    return {
+      verb: name,
+      summary: `${lifecycle.transitions[name].from.join(', ')} → ${lifecycle.transitions[name].to}`,
+      operands: ticketsOperand,
+      ...(name === 'start' ? { flags: START_FLAGS, run: start(plain) } : { run: plain }),
+    };
+  });
 
 /** Where `ticket move` may send a set: the four named places the API knows, and no field-by-field edit (ADR-0007, issue 03b). */
 const MOVE_FLAGS: Flag[] = [
@@ -292,7 +321,10 @@ export const NOUNS: Noun[] = [
   {
     name: 'app',
     summary: 'a product the factory works on; has at most one git repository',
-    commands: entityCommands('app', appFields, [ARCHIVED]),
+    commands: [
+      ...entityCommands('app', appFields, [ARCHIVED]),
+      { verb: 'branches', summary: 'the branches in its Checkout right now, the default, and where Worktrees are made; fetches nothing', operands: entityOperand('app'), run: (ctx) => ctx.api.get(`${entityAt('app')(ctx)}/branches`) },
+    ],
   },
   {
     name: 'project',
@@ -335,6 +367,7 @@ export const NOUNS: Noun[] = [
       { verb: 'link remove', summary: 'remove a saved reference, leaving the PR or commit untouched', operands: [...ticketOperand, { name: 'link-id', summary: 'the id from link list' }], run: (ctx) => ctx.api.del(`${ticketAt(ctx)}/implementation-links/${encodeURIComponent(ctx.args.operands[1] as string)}`) },
       ...LABEL_COMMANDS,
       ...designCommands('ticket', ticketAt, ticketOperand),
+      { verb: 'terminal', summary: "open a terminal in a building or review Ticket's Worktree, making one if it has none; changes no Status", operands: ticketOperand, flags: TERMINAL_FLAGS, run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/terminal`, ctx.args.values) },
       ...transitionCommands(),
     ],
   },
@@ -374,8 +407,15 @@ export const NOUNS: Noun[] = [
       {
         verb: 'set',
         summary: 'change a setting',
-        flags: [{ name: 'ticket-prefix', kind: 'string', required: true, value: '<prefix>', summary: 'the prefix in every ticket key (GF in GF-12)' }],
-        run: ({ args, api }) => api.patch('/api/settings', args.values),
+        flags: [
+          { name: 'ticket-prefix', kind: 'string', value: '<prefix>', summary: 'the prefix in every ticket key (GF in GF-12)' },
+          { name: 'worktree-root', kind: 'string', value: '<folder>', summary: 'where Worktrees are made: an absolute folder, or one under ~' },
+          { name: 'terminal-step', kind: 'string', value: '<step>', summary: 'what opens a terminal in a Worktree: none, or herdr' },
+        ],
+        run: ({ args, api }) => {
+          if (Object.keys(args.values).length === 0) throw new UsageError('say what to change: --ticket-prefix, --worktree-root or --terminal-step');
+          return api.patch('/api/settings', args.values);
+        },
       },
     ],
   },

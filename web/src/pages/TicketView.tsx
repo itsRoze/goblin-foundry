@@ -6,6 +6,7 @@ import {
   isBlocked,
   isTerminal,
   lifecycle,
+  opensTerminal,
   slugPath,
   type DependencyRef,
   type PatchTicketBody,
@@ -17,15 +18,19 @@ import { useOffersTicket } from '../current';
 import { useCursor, useEscape, useFocusTile } from '../desk';
 import { MarkdownField, Saving, focusEditor, useSaving } from '../editor';
 import { byPointer, formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '../keys';
-import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
+import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useStart, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
+import { StartModal } from '../start-modal';
+import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useRefusal } from '../ui';
 import { NotFound } from './Entity';
 import { ImplementationTile } from '../implementation';
 import { LabelsField } from '../labels';
-import { useBranchCopy } from '../branch-copy';
+import { useBranchCopy } from '../copy';
+
+const openTerminalButton = () => document.querySelector<HTMLElement>('[data-testid="open-terminal"]');
 
 export function TicketView() {
   const { key = '' } = useParams();
@@ -53,6 +58,8 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const patch = usePatchTicket();
   const intent = useTicketIntent();
   const transition = useTransition();
+  const start = useStart();
+  const [starting, setStarting] = useState(false);
   const about = useSaving();
   const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
@@ -116,9 +123,12 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   );
   useKey('Backspace', trash, { meta: true });
 
-  /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot. */
+  /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot, and then `start` asks where. */
   const runEdge = useCallback(
-    (edge: Transition) => void inState(() => guard(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to }))),
+    (edge: Transition) => {
+      if (edge.name === 'start') return setStarting(true);
+      void inState(() => guard(() => transition.mutateAsync({ key: ticket.key, name: edge.name, to: edge.to })));
+    },
     [inState, guard, transition, ticket.key],
   );
   const press = useCallback(
@@ -165,10 +175,14 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   };
   const trySave = (body: PatchTicketBody) => void save(body).catch(() => {});
 
-  // `a s d` and every `⌘K` action on this screen go through the same writes its buttons do
+  const terminal = useTerminal({ guard, refuse: (_, text, late) => (late ? setStateRefusal(text) : raiseInState(text)), home: openTerminalButton });
+  const { press: pressTerminal, said: terminalSaid, dismiss: dismissTerminal } = terminal;
+
+  // `a s d t` and every `⌘K` action on this screen go through the same writes its buttons do
   useOffersTicket({
     key: ticket.key,
     move: press,
+    terminal: () => pressTerminal(ticket),
     trash: () => void trash(),
     simple: (simple) => void inState(() => edit({ simple })),
     blockedBy: openBlockedBy,
@@ -183,6 +197,10 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   useEscape(() => {
     if (asking !== null) {
       setAsking(null);
+      return true;
+    }
+    if (terminalSaid !== null) {
+      dismissTerminal();
       return true;
     }
     if (picking === null) return false;
@@ -326,6 +344,9 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         }}
         refusal={state.refusal}
         said={said}
+        onTerminal={() => pressTerminal(ticket)}
+        terminalSaid={terminalSaid}
+        onDismissTerminal={dismissTerminal}
       />
 
       <ImplementationTile ticket={ticket} branchCopy={branchCopy} input={implementationInput} />
@@ -333,6 +354,16 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
       <Tile label="history" subtitle={events.data ? String(events.data.length) : undefined}>
         <History events={events.data} describe={(e) => describeTicketEvent(e, names)} quietActor />
       </Tile>
+
+      {starting && (
+        <StartModal
+          ticket={ticket}
+          run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree })).then(terminal.reporting(ticket))}
+          onClose={() => setStarting(false)}
+          focusAfter={() => document.querySelector<HTMLElement>('[data-testid="move-start"]')}
+        />
+      )}
+      <ChooseWorktree terminal={terminal} />
     </>
   );
 }
@@ -643,6 +674,9 @@ function StateTile({
   onDismissConfirm,
   refusal,
   said,
+  onTerminal,
+  terminalSaid,
+  onDismissTerminal,
 }: {
   ticket: TicketDetail;
   /** A verb, not an edge: the button and the key ask for the move the same way. */
@@ -656,6 +690,9 @@ function StateTile({
   onDismissConfirm: () => void;
   refusal: string | null;
   said: number;
+  onTerminal: () => void;
+  terminalSaid: TerminalSaid | null;
+  onDismissTerminal: () => void;
 }) {
   const edges = lifecycle.from(ticket.status);
   const start = useRef<HTMLButtonElement>(null);
@@ -692,12 +729,23 @@ function StateTile({
           <Hint k="d" onClick={onBlockedBy}>
             deps
           </Hint>
+          {opensTerminal(ticket.status) && (
+            <Hint k="t" onClick={onTerminal}>
+              terminal
+            </Hint>
+          )}
         </>
       }
       testId="state-tile"
     >
       <Kv rows={rows} />
       <div className="gf-actions">
+        {/* where a `ready` Ticket has `start`: the way back into the work comes before the ways of moving it on */}
+        {opensTerminal(ticket.status) && (
+          <button tabIndex={0} className="gf-btn" data-testid="open-terminal" onKeyDown={ignoreHeldEnter} onClick={onTerminal}>
+            open terminal
+          </button>
+        )}
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
@@ -706,6 +754,7 @@ function StateTile({
             </button>
           ))}
       </div>
+      {terminalSaid && <TerminalNotOpened said={terminalSaid} onDismiss={onDismissTerminal} />}
       {asking && <Confirm asked={asking} text={blockedWarning(ticket.blocked_by)} verb={asking.verb} testId="confirm-start" onDismiss={onDismissConfirm} onConfirm={onConfirm} />}
       {/* next to what it gates (approve, among the arrows above), not under the ways of stopping */}
       <label className="gf-toggle">

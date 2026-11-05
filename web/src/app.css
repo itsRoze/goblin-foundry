@@ -77,9 +77,11 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-kv-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--gf-s3); align-items: baseline; }
 .gf-kv dt { margin: 0; font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
 .gf-kv dd { margin: 0; overflow-wrap: anywhere; }
-/* a git remote is a path, and a path is mono (DESIGN.md Typography): the face is
-   what tells the linked value from the ink ones above and below it, not the hue */
-.gf-remote { font: var(--gf-t-meta); }
+/* a git remote or a Checkout is a path, and a path is mono (DESIGN.md Typography): the
+   face is what tells the value from the ink ones above and below it, not the hue */
+.gf-path { display: block; width: fit-content; max-width: 100%; font: var(--gf-t-meta); }
+/* underlined, because a Checkout two rows away is mono too and the hue alone is 1.29:1 against it */
+a.gf-path { text-decoration: underline; }
 
 /* the kanban: eight columns in lifecycle order, scrolling inside the tile (DESIGN.md Layout) */
 /* the board spans the desk, so the column tiers never narrow it — the cap is what stops an
@@ -170,7 +172,10 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
 .gf-field textarea { resize: vertical; }
 /* a select in a kv row (the Ticket view's app and project) wears the input's clothes too, or it renders in the UA's Arial and white */
 .gf-kv select { font: var(--gf-t-body); color: var(--gf-ink); background: var(--gf-page); border: 1px solid var(--gf-rule-2); border-radius: var(--gf-radius); padding: 2px 6px; max-width: 100%; }
-.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); scroll-margin-block: var(--gf-s3); }
+/* `anywhere`: git's reasons and a gone folder carry whole paths, which have no place to break on a phone */
+.gf-refusal { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); overflow-wrap: anywhere; scroll-margin-block: var(--gf-s3); }
+/* under its field's input, past `.gf-field`'s 100px label and its gap */
+.gf-field-refusal { margin-left: calc(100px + var(--gf-s3)); }
 /* the same line as a refusal, with a way through it */
 .gf-confirm { margin: 0; font: var(--gf-t-meta); color: var(--gf-mute); display: flex; gap: var(--gf-s2); align-items: center; flex-wrap: wrap; }
 .gf-toggle { font: var(--gf-t-meta); color: var(--gf-mute); display: flex; align-items: center; gap: var(--gf-s2); }
@@ -743,6 +748,31 @@ a.gf-row:hover { background: var(--gf-raised); text-decoration: none; }
  */
 .gf-palette .gf-picker-hit.is-on { background: none; }
 
+/*
+ * The Start modal wears the palette's clothes in the palette's place. Its own padding is on
+ * the panel inside, so a press on the dialog itself can only be a press on the backdrop.
+ */
+.gf-start {
+  position: fixed; inset: calc(32px + var(--gf-gap)) 0 auto; margin: 0 auto;
+  box-sizing: border-box; width: 520px; max-width: calc(100vw - 2 * var(--gf-gap)); max-height: calc(100dvh - 32px - 2 * var(--gf-gap));
+  overflow: hidden auto; padding: 0; color: var(--gf-ink);
+  background: var(--gf-raised); border: 1px solid var(--gf-rule); border-radius: var(--gf-radius);
+}
+.gf-start::backdrop { background: none; }
+.gf-start:focus { outline: none; }
+.gf-start-panel { display: flex; flex-direction: column; gap: var(--gf-s2); padding: var(--gf-s3); }
+.gf-start-title { margin: 0 0 var(--gf-s1); font: var(--gf-t-h); overflow-wrap: anywhere; }
+.gf-start-said { margin: 0; font: var(--gf-t-body); }
+/* under its field's input, past `.gf-field`'s 100px label and its gap */
+.gf-start-note { margin: 0 0 0 calc(100px + var(--gf-s3)); font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-start-hint { display: inline-flex; align-items: center; gap: var(--gf-s1); font: var(--gf-t-meta); color: var(--gf-mute); }
+.gf-start .gf-form-actions .gf-start-hint { margin-left: auto; }
+.gf-start-choices-head { display: flex; justify-content: space-between; align-items: center; padding-top: var(--gf-s1); border-top: 1px solid var(--gf-rule); }
+.gf-start-choices-head > span:first-child { font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute); }
+.gf-start-choices { max-height: 190px; overflow: hidden auto; }
+/* a fill would cost every accent on these rows its contrast, as it does in the palette */
+.gf-start .gf-picker-hit.is-on { background: none; }
+
 /* the key is the control: `⌘K` in the bar opens the panel the key opens (DESIGN.md Voice: hints are verbs with a key) */
 .gf-bar-key { display: inline-flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; }
 .gf-bar-key:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute); }
@@ -764,12 +794,19 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
 .gf-branch { display: flex; align-items: flex-start; gap: var(--gf-s3); }
 .gf-branch-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font: var(--gf-t-meta); user-select: all; }
 .gf-branch .gf-btn { flex-shrink: 0; }
+.gf-terminal-said { display: flex; flex-direction: column; gap: var(--gf-s2); font: var(--gf-t-meta); color: var(--gf-mute); animation: gf-refusal-in var(--gf-fast) var(--gf-ease); }
+/* a column can be 106px on a phone or 180px under a card, so a path takes the line and its button goes under it */
+.gf-terminal-said .gf-branch, .gf-kv .gf-branch { flex-direction: column; gap: var(--gf-s2); }
+.gf-terminal-said .gf-branch-name, .gf-kv .gf-branch-name { flex: none; }
+.gf-terminal-said .gf-branch-name { color: var(--gf-ink); }
 .gf-implementation-links { display: flex; flex-direction: column; gap: var(--gf-s2); margin: 0; padding: 0; list-style: none; }
 .gf-implementation-row { display: flex; align-items: baseline; gap: var(--gf-s2); }
 .gf-implementation-url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .gf-implementation-form { display: flex; flex-direction: column; align-items: stretch; gap: var(--gf-s2); }
 .gf-implementation-form .gf-field { grid-template-columns: auto minmax(0, 1fr); }
 .gf-implementation-form .gf-btn { align-self: flex-end; }
+/* the ring does not wait for :focus-visible: `cancel` and `copy folder` take the focus on a press too, and a press is what asked (DESIGN.md Refusal and confirm) */
+.gf-start .gf-btn:focus, .gf-terminal-said .gf-btn:focus { outline: 1px solid var(--gf-system); outline-offset: 1px; }
 .gf-implementation-notice { font: var(--gf-t-meta); color: var(--gf-mute); }
 .gf-implementation-notice:empty { display: none; }
 

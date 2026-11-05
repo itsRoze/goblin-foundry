@@ -22,6 +22,8 @@ export interface TicketActions {
   /** `d`: open the `blocked by` picker — on the Ticket view, or on the way to it. */
   blockedBy: () => void;
   copyBranch: () => void;
+  /** `t`: Open terminal, where the Status has one to open; refused in words where it has not. */
+  terminal: () => void;
   addImplementationLink: () => void;
   /** `add label…`: the about tile's label input — on the Ticket view, or on the way to it. */
   addLabel: () => void;
@@ -42,6 +44,8 @@ export interface SelectionActions {
   act: (action: BulkAction) => void;
   /** `d`: dependencies are declared from one Ticket; say so rather than guess which. */
   explainDependencies: () => void;
+  /** `t`: a terminal is for one Ticket too. */
+  explainTerminal: () => void;
 }
 
 interface Current {

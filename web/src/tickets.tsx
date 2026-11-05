@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { CREATABLE_STATUSES, isBlocked, isCreatable, lifecycle, type CreateTicketBody, type TicketSummary, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
+import { CREATABLE_STATUSES, isBlocked, isCreatable, lifecycle, opensTerminal, type CreateTicketBody, type TicketSummary, type TicketFilter, type TicketStatus, type TransitionName } from '@goblin/shared';
 import { useOpensCreate } from './creating';
 import { useCursor } from './desk';
 import { formKeys, useKey } from './keys';
@@ -63,6 +63,7 @@ export interface CardActions {
   move: (name: TransitionName) => void;
   trash: () => void;
   blockedBy: () => void;
+  terminal: () => void;
 }
 
 /** A card's part in the Selection (issue 03b): whether it is in, how it gets in or out, and whether any of that is on hold. */
@@ -330,6 +331,12 @@ function CardMenu({ ticket, actions, disabled }: { ticket: TicketSummary; action
           }}
         >
           <div className="gf-menu-group">
+            {/* where a `ready` card has `start`: a thumb that slips off it lands on a lateral move, not on an ending */}
+            {opensTerminal(ticket.status) && (
+              <button type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-terminal`} onClick={() => run(actions.terminal)}>
+                open terminal
+              </button>
+            )}
             {moves.map((name) => (
               <button key={name} type="button" role="menuitem" className="gf-menu-item" data-testid={`menu-${ticket.key}-${name}`} onClick={() => run(() => actions.move(name))}>
                 {name}

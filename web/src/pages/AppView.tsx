@@ -93,7 +93,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
         kind="app"
         entity={app}
         fields={appFormFields.filter((f) => f.name !== 'description')}
-        initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '' }}
+        initial={{ name: app.name, repository_url: app.repository_url ?? '', default_branch: app.default_branch ?? '', checkout: app.checkout ?? '' }}
         toBody={appBody}
         saving={about.state}
         patch={(b) => patch.mutateAsync({ body: b })}
@@ -103,6 +103,7 @@ function AppLoaded({ app }: { app: NonNullable<ReturnType<typeof useApp>['data']
               ['name', app.name],
               ['repository', <Repository remote={app.repository_url} />],
               ['branch', app.default_branch ?? '—'],
+              ['checkout', app.checkout ? <span className="gf-path">{app.checkout}</span> : '—'],
               ['description', <DescriptionField kind="app" entity={app} saving={about} patch={(body, judged) => patch.mutateAsync({ body, judged })} />],
             ]}
           />
@@ -125,11 +126,11 @@ function Repository({ remote }: { remote: string | null }) {
   const href = repositoryHref(remote);
   // mono because a remote is a path (DESIGN.md Do's), which is also what tells it
   // apart from the ink values stacked around it without leaning on hue alone
-  if (!href) return <span className="gf-remote">{remote}</span>;
+  if (!href) return <span className="gf-path">{remote}</span>;
   // `title` because an SSH remote's href is a derived string the row never shows,
   // and `_blank` because the tracker is what you had open (DESIGN.md Interaction)
   return (
-    <a className="gf-remote" href={href} title={href} target="_blank" rel="noreferrer">
+    <a className="gf-path" href={href} title={href} target="_blank" rel="noreferrer">
       {remote}
     </a>
   );

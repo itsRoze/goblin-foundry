@@ -28,6 +28,8 @@ export const eventHistory = defineHistory({
     'dependency_removed',
     'implementation_link_added',
     'implementation_link_removed',
+    // a Ticket in flight given its place by Open terminal; Start carries the same fields on its `transitioned`
+    'worktree_recorded',
     // the whole set before and after, one row per change: a label edit is a decision, never folded into an edit session (ADR-0008)
     'labelled',
   ],

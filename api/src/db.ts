@@ -10,7 +10,7 @@ import { drizzle, type BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { sql } from 'drizzle-orm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { DEFAULT_TICKET_PREFIX, TICKET_PREFIX_KEY } from '@goblin/shared';
+import { DEFAULT_TERMINAL_STEP, DEFAULT_TICKET_PREFIX, DEFAULT_WORKTREE_ROOT, TERMINAL_STEP_KEY, TICKET_PREFIX_KEY, WORKTREE_ROOT_KEY } from '@goblin/shared';
 import * as schema from './schema';
 import { defaultDbPath } from './db-path';
 
@@ -126,9 +126,24 @@ export function backupTo(source: string, destination: string): void {
 }
 
 /**
+ * `CREATE TABLE IF NOT EXISTS` passes over a table that is already there, so a
+ * running installation only gains a column this way. Leaving it to
+ * `db:push` is not just a crash waiting: SQLite reads the double-quoted name of
+ * a column it cannot find as a string, so every row would answer with its own
+ * column's name. Names are this file's own literals. Only for what
+ * `ADD COLUMN` can do: nullable text, with no constraint a table rebuild would need.
+ */
+function addColumn(db: Db, table: 'app' | 'ticket', column: string): void {
+  const columns = db.all<{ name: string }>(sql`SELECT name FROM pragma_table_info(${table})`);
+  if (columns.some((c) => c.name === column)) return;
+  db.run(sql`ALTER TABLE ${sql.identifier(table)} ADD COLUMN ${sql.identifier(column)} text`);
+}
+
+/**
  * Local schema management is `drizzle-kit push` (ADR-0001); at open we apply
  * the same schema idempotently so fresh dev and test databases just work.
- * Keep this in step with `schema.ts` — new tables land in both.
+ * Keep this in step with `schema.ts` — new tables land in both, and a column
+ * added to a table that already shipped lands in its `CREATE` and in `addColumn`.
  */
 async function ensureSchema(db: Db): Promise<void> {
   db.run(sql`CREATE TABLE IF NOT EXISTS setting (
@@ -140,6 +155,7 @@ async function ensureSchema(db: Db): Promise<void> {
     name text NOT NULL,
     repository_url text,
     default_branch text,
+    checkout text,
     description text DEFAULT '' NOT NULL,
     archived_at text,
     trashed_at text,
@@ -147,6 +163,7 @@ async function ensureSchema(db: Db): Promise<void> {
     created_at text NOT NULL,
     updated_at text NOT NULL
   )`);
+  addColumn(db, 'app', 'checkout');
   db.run(sql`CREATE TABLE IF NOT EXISTS project (
     id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     app_id integer REFERENCES app(id),
@@ -168,11 +185,15 @@ async function ensureSchema(db: Db): Promise<void> {
     design text,
     app_id integer REFERENCES app(id),
     project_id integer REFERENCES project(id),
+    worktree_branch text,
+    worktree_folder text,
     trashed_at text,
     trashed_via text,
     created_at text NOT NULL,
     updated_at text NOT NULL
   )`);
+  addColumn(db, 'ticket', 'worktree_branch');
+  addColumn(db, 'ticket', 'worktree_folder');
   db.run(sql`CREATE TABLE IF NOT EXISTS dependency (
     blocker_id integer NOT NULL REFERENCES ticket(id),
     blocked_id integer NOT NULL REFERENCES ticket(id),
@@ -206,6 +227,10 @@ async function ensureSchema(db: Db): Promise<void> {
   db.run(sql`CREATE INDEX IF NOT EXISTS event_entity ON event (entity_kind, entity_id, id)`);
   await db
     .insert(schema.setting)
-    .values({ key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX })
+    .values([
+      { key: TICKET_PREFIX_KEY, value: DEFAULT_TICKET_PREFIX },
+      { key: WORKTREE_ROOT_KEY, value: DEFAULT_WORKTREE_ROOT },
+      { key: TERMINAL_STEP_KEY, value: DEFAULT_TERMINAL_STEP },
+    ])
     .onConflictDoNothing();
 }
