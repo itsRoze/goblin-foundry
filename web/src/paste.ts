@@ -76,16 +76,38 @@ const isAutolink = (text: string | undefined, href: string): boolean => {
 
 const linkOf = (node?: JSONContent) => node?.marks?.find(({ type }) => type === 'link')?.attrs;
 
-/** Where a document holds a word: its text, a link's URL and title once however many runs the link has and after the last of them, as it is written, a fence's language, and the numbers of a list. A list from 1 shows only its order, which the pasted side leaves out too (see `markerSpans`). */
-const wordsHeld = (nodes: JSONContent[]): string[] =>
+/**
+ * Where prose text writes a list's order: a number opening a line after one that opens with a number, and 1 or one more than it.
+ * A list that opens a list item reads back as such text, and its numbers there stand in for the same number lost in a table
+ * inside it unless they count as order, as they did in the paste. The first line is left alone, since a text's start can be
+ * the middle of a line, so the paste's paragraphs and blocks of HTML, which read back as text, and the document's text find
+ * the same numbers.
+ */
+function orderInProse(text: string): [number, number][] {
+  const spans: [number, number][] = [];
+  let previous = Number.NaN;
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) {
+    const number = /^([ \t>]*(?:[-*+][ \t]+)*)(\d+)(?=[.)](?:[ \t]|$))/.exec(text.slice(at + 1));
+    const value = number ? Number(number[2]) : Number.NaN;
+    if (number && (value === 1 || value === previous + 1) && !Number.isNaN(previous)) spans.push([at + 1 + number[1]!.length, at + 1 + number[0].length]);
+    previous = value;
+  }
+  return spans;
+}
+
+const withoutOrder = (text: string): string => orderInProse(text).reduceRight((left, [start, end]) => left.slice(0, start) + ' ' + left.slice(end), text);
+
+/** Where a document holds a word: its text, a link's URL and title once however many runs the link has and after the last of them, as it is written, a fence's language, and the first number of a list. The rest of a list's numbers are its order, which the pasted side leaves out too (see `markerSpans`): counted, they stand in for the same number lost in a table inside the list. Text outside code leaves out the order it writes (see `orderInProse`). */
+const wordsHeld = (nodes: JSONContent[], asWritten = false): string[] =>
   nodes.flatMap((node, at) => {
     const link = linkOf(node);
     const next = linkOf(nodes[at + 1]);
     const sameLink = link && next && link.href === next.href && link.title === next.title;
     const ofLink = link && !sameLink ? [isAutolink(node.text, link.href) ? null : link.href, link.title] : [];
     const start = (node.attrs?.start as number | undefined) ?? 1;
-    const inside = node.type === 'orderedList' && start !== 1 ? (node.content ?? []).flatMap((item, number) => [String(start + number), ...wordsHeld([item])]) : wordsHeld(node.content ?? []);
-    return [...[node.text, node.attrs?.language, ...ofLink].flatMap((words) => wordsIn(words)), ...inside];
+    const inside = node.type === 'orderedList' && start !== 1 ? [String(start), ...wordsHeld(node.content ?? [])] : wordsHeld(node.content ?? [], asWritten || node.type === 'codeBlock');
+    const code = asWritten || node.marks?.some(({ type }) => type === 'code');
+    return [...[node.text && (code ? node.text : withoutOrder(node.text)), node.attrs?.language, ...ofLink].flatMap((words) => wordsIn(words)), ...inside];
   });
 
 type Token = { type: string; raw?: string; text?: string; href?: string; start?: number | ''; ordered?: boolean; checked?: boolean; items?: Token[]; tokens?: Token[]; nestedTokens?: Token[] };
@@ -134,11 +156,14 @@ function markerSpans(written: string, tokens: Token[]): [number, number][] {
         const found = box.exec(written);
         if (found) {
           cursor = found.index + found[0].length;
-          if (found[1] === 'x') spans.push([cursor - 2, cursor - 1]);
+          // a box only where nothing but indents, quotes and list markers comes before it on its line: the task list tokenizer also reads `` `- [x] a` `` and `x - [x] a` as a task, and that x is a word
+          const opensLine = /^[ \t>]*(?:(?:[-*+]|\d+[.)])[ \t]+)*$/.test(written.slice(written.lastIndexOf('\n', found.index) + 1, found.index));
+          if (found[1] === 'x' && opensLine) spans.push([cursor - 2, cursor - 1]);
         }
       }
       const place = token.raw ? locate(written, token.raw, cursor) : null;
       if (place) cursor = place[0];
+      if (place && (token.type === 'paragraph' || token.type === 'html' || (token.type === 'text' && inItem))) for (const [start, end] of orderInProse(written.slice(place[0], place[1]))) spans.push([place[0] + start, place[0] + end]);
       // a list that opens a list item is one the schema has no place for, and it comes back as text, number and all
       if (place && token.type === 'list' && token.ordered && !(inItem && at === 0)) {
         let previous = Number.NaN;
@@ -255,13 +280,21 @@ function pasteReadings(schema: Schema, shape: EditorShape, text: string): (() =>
     // the parser can misread even a code run: `` `- [ ] a` `` in an inline field reads back as a lone backtick
     return asBareWords(raw);
   };
+  /** The top-level blocks as written. A block the lexer starts mid-line goes with the one before it: `` `- [x] a` `` is a backtick and a task list, and neither reads back as written. */
+  const blocks = () => {
+    const raws: string[] = [];
+    let midLine = false;
+    for (const { type, raw = '' } of lexed(text.replace(/\r\n?/g, '\n'))) {
+      if (midLine && raws.length > 0) raws[raws.length - 1] += raw;
+      else if (type !== 'space') raws.push(raw);
+      if (raw !== '') midLine = !raw.endsWith('\n');
+    }
+    return raws;
+  };
   return [
     () => parse(text),
     ...(flat === text ? [] : [() => parse(flat)]),
-    () =>
-      lexed(text.replace(/\r\n?/g, '\n'))
-        .filter(({ type }) => type !== 'space')
-        .flatMap(({ raw = '' }) => readBlock(raw.trimEnd())),
+    () => blocks().flatMap((raw) => readBlock(raw.trimEnd())),
     () => asWritten(shape, text),
     () => asCodeRuns(text),
   ];

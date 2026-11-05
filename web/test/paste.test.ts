@@ -113,6 +113,47 @@ describe('a paste keeps every word', () => {
     expect(stored('block', '3. a\n1776. b')).toBe('```\n3. a\n1776. b\n```');
   });
 
+  test('a list numbered from above 1 holds its first number and its order, so a number lost beside it is not vouched for', () => {
+    for (const pasted of [
+      '3. a\n\n   | 4 |\n   |---|\n\n4. b',
+      '> 3. a\n>\n>    | 4 |\n>    |---|\n>\n> 4. b',
+      '2) a\n\n   | 3 |\n   |---|\n\n3) b',
+      '- y\n\n  7. a\n\n     | 8 |\n     |---|\n\n  8. b',
+    ])
+      expect(stored('block', pasted)).toBe(`\`\`\`\n${pasted}\n\`\`\``);
+  });
+
+  test('a list that opens a list item reads back as text, and its numbers in order there do not vouch for one lost in a table', () => {
+    // as the browser leaves `- aa` with a paste at its start: the item opens with an empty paragraph, then what was pasted
+    const atTheStartOfAnItem = (content: JSONContent[]): JSONContent => ({
+      type: 'doc',
+      content: [{ type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }, ...content.filter((node) => node.content), { type: 'paragraph', content: [{ type: 'text', text: 'aa' }] }] }] }],
+    });
+    for (const pasted of ['3. a\n\n   | 4 |\n   |---|\n\n4. b', '1. a\n\n   | 2 |\n   |---|\n\n2. b']) {
+      const blocks = chooseToPaste(getSchema(extensionsFor('block')), 'block', pasted, atTheStartOfAnItem);
+      expect(toMarkdown('block', atTheStartOfAnItem(blocks ?? []))).toContain(pasted.includes('4') ? '| 4 |' : '| 2 |');
+    }
+    // the same numbers in a paste's own text are order there too, so text that is no list still goes in as it is
+    expect(stored('block', 'one two\n3. three\n4. four')).toBe('one two\n3. three\n4. four');
+    expect(stored('block', '<one>\n3. two\n4. three')).toBe('&lt;one&gt;\n3. two\n4. three');
+  });
+
+  test('an x in a box that does not open its line is a word, where a box that does is a task', () => {
+    expect(stored('block', '`- [x] a`')).toBe('```\n`- [x] a`\n```');
+    expect(stored('block', 'x - [x] a')).toBe('```\nx - [x] a\n```');
+    expect(stored('block', '> b - [x] a')).toBe('```\n> b - [x] a\n```');
+    expect(stored('block', '> `- [x] a`')).toBe('```\n> `- [x] a`\n```');
+    expect(stored('block', '`- [x] done` and `- [ ] todo`')).toBe('```\n`- [x] done` and `- [ ] todo`\n```');
+    expect(stored('inline', 'x - [x] a')).toBe('`x - [x] a`');
+    expect(stored('block', '> - [x] a\n\n1. - [x] b')).toBe('> - [x] a\n\n1. - \\[x\\] b');
+    expect(stored('inline', '- [x] a')).toBe('a');
+  });
+
+  test('a block the lexer starts mid-line is read with the block before it', () => {
+    expect(stored('inline', '`- [x] a`')).toBe('x a');
+    expect(stored('inline', '**one**\n\n`- [x] a`')).toBe('**one**\n\nx a');
+  });
+
   test('a heading an inline field reads and cannot hold does not count as holding its words', () => {
     expect(canonical('inline', '`a` b\n===')).toBe('');
     expect(stored('inline', '> ```a``` b\n===')).toBe('`>  a  b`\n\n`===`');

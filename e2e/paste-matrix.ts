@@ -74,6 +74,25 @@ const LOST_BEFORE = [
   '1 more\n\n1. a\n2. b\n\n| 1 |\n|---|',
   'x\n\n- [x] a\n\n| x |\n|---|',
   'https://a.b/c\n\n[https://a.b/c](https://a.b/c)\n\n| a | b | c |\n|---|---|---|',
+  // a list from above 1 whose numbers in order stood in for the same number lost in a table inside it
+  '3. a\n\n   | 4 |\n   |---|\n\n4. b',
+  '> 3. a\n>\n>    | 4 |\n>    |---|\n>\n> 4. b',
+  '2) a\n\n   | 3 |\n   |---|\n\n3) b',
+  '- y\n\n  7. a\n\n     | 8 |\n     |---|\n\n  8. b',
+  // an x in a box that does not open its line, taken off as a task's
+  '`- [x] a`',
+  'x - [x] a',
+  '> b - [x] a',
+  '> `- [x] a`',
+  '- b - [x] a',
+  '1. `- [x] a`',
+  '`- [x] done` and `- [ ] todo`',
+  '`- [x] x`',
+  'y - [x] x',
+  '> y - [x] x',
+  '- y `- [x] x`',
+  '1. y - [x] x',
+  '3. x\n\n   | 4 |\n   |---|\n\n4. x\n\n> 2) 3\n> 3) y',
   '### Describe the bug\n\nAfter 2 days the cursor jumps to row 1.\n\n1. Go to https://example.com/board?x=1\n2. Press `j`\n\n- [x] I searched the issues\n- [ ] I can reproduce it on `main`\n\nSee [the **new** guide](https://example.com/guide) and https://example.com/docs.',
 ];
 
