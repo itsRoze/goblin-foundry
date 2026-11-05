@@ -31,7 +31,7 @@ import { cursorColumns, isExpanded, landing, toggleSection, type Expansion, type
 import { BulkStatus, useBulkAction, useSelecting, type BulkAsk } from '../selecting';
 import { EMPTY_SELECTION, isSelected, rangeOrder, rangeTo, selectAll, stepFrom, toggle as toggleSelected } from '../selection';
 import { useCrumb, useOpenPalette } from '../shell';
-import { StartModal } from '../start-modal';
+import { StartModal, useFocusAfterStart } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
@@ -304,10 +304,21 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
   const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
   const { reporting } = terminal;
   const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
-  const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
-    setStarting(null);
-    if (started) moved.current(ticket, 'building');
-  }, []);
+  // a card that has left the board has moved too, and takes the focus with it, as it takes the Cursor; a terminal
+  // line that took the focus moves with its card and is drawn again, so it is where the focus goes back to
+  const focusOnceStarted = useFocusAfterStart(
+    (key) => (terminal.said?.key === key ? document.querySelector<HTMLElement>('.gf-terminal-said button') : null) ?? cardOf(key),
+    (key) => lookup(key)?.status !== 'ready',
+  );
+  const startClosed = useCallback(
+    (ticket: TicketSummary, started: boolean) => {
+      setStarting(null);
+      if (!started) return;
+      moved.current(ticket, 'building');
+      focusOnceStarted(ticket.key);
+    },
+    [focusOnceStarted],
+  );
   /** The same hold a move is under: a bulk action that has this card has it for everything. */
   const pressTerminal = (ticket: TicketSummary) => {
     const line = held.current(ticket.key);
@@ -725,7 +736,7 @@ export function BoardPage() {
           ticket={starting}
           run={(worktree) => startRun(starting, worktree)}
           onClose={(started) => startClosed(starting, started)}
-          focusAfter={() => cardOf(starting.key)}
+          home={() => cardOf(starting.key)}
         />
       )}
       <ChooseWorktree terminal={terminal} />

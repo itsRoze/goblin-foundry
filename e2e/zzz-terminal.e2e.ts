@@ -266,6 +266,8 @@ test.describe('Open terminal', () => {
     const under = page.getByTestId('col-building').getByTestId(`card-${key}`).locator('..');
     await expect(under.getByTestId('terminal-said')).toContainText(NONE);
     await expect(under.getByTestId('terminal-folder')).toHaveText(join(worktrees, 'subway-reader', `${key.toLowerCase()}-board-start-${n}`));
+    // the line moved with its card, and the focus it took after the modal went moved with it (GF-131)
+    await expect(under.getByRole('button', { name: 'copy folder of this terminal' })).toBeFocused();
   });
 
   test('on the board: a Ticket with no Worktree gets the modal, and stays in its column', async ({ page }) => {

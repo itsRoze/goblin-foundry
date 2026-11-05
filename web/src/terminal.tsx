@@ -65,7 +65,7 @@ export function useTerminal({
 /** The Start modal's fields for a Ticket in flight with no Worktree to return to, while one is being chosen. */
 export function ChooseWorktree({ terminal: { choosing, choose, done, home } }: { terminal: ReturnType<typeof useTerminal> }) {
   if (!choosing) return null;
-  return <StartModal ticket={choosing} verb="terminal" run={(worktree) => choose(choosing, worktree)} onClose={done} focusAfter={() => home(choosing.key)} />;
+  return <StartModal ticket={choosing} verb="terminal" run={(worktree) => choose(choosing, worktree)} onClose={done} home={() => home(choosing.key)} />;
 }
 
 /**

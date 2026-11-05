@@ -22,7 +22,7 @@ import { byPointer, formKeys, ignoreHeldEnter, useFocusOnClose, useKey } from '.
 import { useApps, useDependencyEdges, useEvents, useProjects, usePatchTicket, useStart, useTicket, useTicketIntent, useTickets, useTransition } from '../queries';
 import { useBulkLock } from '../selecting';
 import { useCrumb } from '../shell';
-import { StartModal } from '../start-modal';
+import { StartModal, useFocusAfterStart } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { StatusChip, ticketPath, useNames } from '../tickets';
 import { Confirm, Empty, ForPointer, Hint, History, Kbd, Kv, Since, Tile, describeTicketEvent, refusalLine, useMinute, useQuestion, useRefusal, type LeftByQuestion } from '../ui';
@@ -32,6 +32,8 @@ import { LabelsField } from '../labels';
 import { useBranchCopy } from '../copy';
 
 const openTerminalButton = () => document.querySelector<HTMLElement>('[data-testid="open-terminal"]');
+/** Where a Start came from on this screen, however it was asked: `start`, and once the Ticket is in flight `open terminal`, which stands where it was. */
+const startHome = () => document.querySelector<HTMLElement>('[data-testid="move-start"]') ?? openTerminalButton();
 
 export function TicketView() {
   const { key = '' } = useParams();
@@ -61,6 +63,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
   const transition = useTransition();
   const start = useStart();
   const [starting, setStarting] = useState(false);
+  const focusOnceStarted = useFocusAfterStart(startHome, () => ticket.status !== 'ready');
   const about = useSaving();
   const design = useSaving();
   // two refusal lines, because a refused transition belongs under the state tile and a refused edit under the fields it names
@@ -362,8 +365,11 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         <StartModal
           ticket={ticket}
           run={(worktree) => guard(() => start.mutateAsync({ key: ticket.key, worktree })).then(terminal.reporting(ticket))}
-          onClose={() => setStarting(false)}
-          focusAfter={() => document.querySelector<HTMLElement>('[data-testid="move-start"]')}
+          onClose={(started) => {
+            setStarting(false);
+            if (started) focusOnceStarted(ticket.key);
+          }}
+          home={startHome}
         />
       )}
       <ChooseWorktree terminal={terminal} />
@@ -756,7 +762,8 @@ function StateTile({
         {edges
           .filter((e) => e.name !== 'cancel')
           .map((e) => (
-            <button key={e.name} ref={e.name === 'start' ? start : undefined} className="gf-btn" data-testid={`move-${e.name}`} onKeyDown={ignoreHeldEnter} onClick={() => onPress(e.name)}>
+            // a `tabindex` puts a button in WebKit's Tab order, and the focus comes back here when a question or the Start modal closes
+            <button key={e.name} ref={e.name === 'start' ? start : undefined} tabIndex={0} className="gf-btn" data-testid={`move-${e.name}`} onKeyDown={ignoreHeldEnter} onClick={() => onPress(e.name)}>
               {e.name}
             </button>
           ))}
@@ -771,7 +778,7 @@ function StateTile({
         {edges
           .filter((e) => e.name === 'cancel')
           .map((e) => (
-            <button key={e.name} className="gf-btn is-danger" data-testid="move-cancel" onClick={() => onPress(e.name)}>
+            <button key={e.name} tabIndex={0} className="gf-btn is-danger" data-testid="move-cancel" onClick={() => onPress(e.name)}>
               cancel
             </button>
           ))}

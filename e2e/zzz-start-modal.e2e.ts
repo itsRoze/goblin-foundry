@@ -329,6 +329,67 @@ test.describe('the Start modal', () => {
     expect(await read(page, key)).toMatchObject({ status: 'building', worktree_branch: null, worktree_folder: null });
   });
 
+  // GF-131: a Start with a Worktree hands the focus to the terminal line's `copy folder` (the `none` step this server runs), so a plain one shows where it goes
+  test('after a Start the focus goes to what stands where start was, and on the board to the card in its new column', async ({ page }) => {
+    const home = await page.request.post('/api/apps', { data: { name: `Plain App ${n}` } });
+    const app = ((await home.json()) as { id: number }).id;
+    const startPlain = async () => {
+      await modal(page).getByTestId('start-plain').click();
+      await expect(modal(page)).toHaveCount(0);
+    };
+
+    const key = await ready(page, `Startfocal view ${n}`, app);
+    // `s` and the palette's row come back to `start` as the button does
+    await page.goto(`/tickets/${key}`);
+    await expect(page.getByTestId('move-start')).toBeVisible();
+    await page.keyboard.press('s');
+    await page.getByTestId('run-move-start').waitFor();
+    await page.keyboard.press('Enter');
+    await expect(modal(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('move-start')).toBeFocused();
+    await page.getByTestId('move-start').click();
+    await startPlain();
+    await expect(page.getByTestId('move-start')).toHaveCount(0);
+    await expect(page.getByTestId('open-terminal')).toBeFocused();
+
+    // on the board every way in comes back to the card, a cancel where it stands and a Start in `building`
+    const title = `Startfocal board ${n}`;
+    const onBoard = await ready(page, title, app);
+    await page.goto('/?q=' + encodeURIComponent(title));
+    const card = page.getByTestId(`card-${onBoard}`);
+    await expect(card).toBeVisible();
+    await page.keyboard.press('j');
+    await expect(card).toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('s');
+    await page.getByTestId('run-move-start').waitFor();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    await expect(card).toBeFocused();
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByTestId('run-move-start').click();
+    await page.keyboard.press('Escape');
+    await expect(card).toBeFocused();
+    await card.dragTo(page.getByTestId('col-building'));
+    // a press outside the panel is a cancel, and its own focus change does not undo the hand back
+    await expect(modal(page)).toBeVisible();
+    await page.mouse.click(8, page.viewportSize()!.height - 8);
+    await expect(modal(page)).toHaveCount(0);
+    await expect(card).toBeFocused();
+    await page.getByTestId(`menu-${onBoard}`).click();
+    await page.getByTestId(`menu-${onBoard}-start`).click();
+    await expect(modal(page).getByTestId('start-cancel')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    // a held `⏎`: the press starts, and its repeats on the card that took the focus do not open it (GF-82)
+    await page.keyboard.down('Enter');
+    await expect(modal(page)).toHaveCount(0);
+    await expect(page.getByTestId('col-building').getByTestId(`card-${onBoard}`)).toBeFocused();
+    await page.keyboard.down('Enter');
+    await page.keyboard.up('Enter');
+    await expect(page.getByTestId('col-building').getByTestId(`card-${onBoard}`)).toBeFocused();
+    expect(new URL(page.url()).pathname).toBe('/');
+  });
+
   test('a Checkout with no commit yet says so, rather than forecasting a branch git cannot cut', async ({ page }) => {
     const empty = join(root, `fresh-${n}`);
     mkdirSync(empty);
