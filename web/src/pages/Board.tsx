@@ -34,7 +34,7 @@ import { StartModal } from '../start-modal';
 import { ChooseWorktree, TerminalNotOpened, useTerminal, type TerminalSaid } from '../terminal';
 import { TicketCard, asDraggedCard, homeLine, ticketPath, useBoardCreate, useNames, type CardActions, type CardSelect, type DraggedCard } from '../tickets';
 import { useTouchDrag } from '../touch-drag';
-import { Confirm, Empty, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
+import { Confirm, Empty, ForPointer, Hint, Kbd, Tile, refusalLine, useMinute, useRefusal } from '../ui';
 
 /**
  * Per-device display preferences, and nothing else: a View option decides how
@@ -683,7 +683,7 @@ export function BoardPage() {
           <span className="gf-card-title">{lookup(lift.card.key)?.title}</span>
         </div>
       )}
-      {tickets.data?.length === 0 && !create.form && <Empty>{filtered ? 'nothing matches this filter' : 'no tickets yet — press c'}</Empty>}
+      {tickets.data?.length === 0 && !create.form && <Empty>{filtered ? 'nothing matches this filter' : <ForPointer fine="no tickets yet — press c" coarse="no tickets yet — tap new" />}</Empty>}
       {starting && (
         <StartModal
           ticket={starting}

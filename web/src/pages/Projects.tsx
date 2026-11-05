@@ -5,7 +5,7 @@ import { useOpensCreate } from '../creating';
 import { useCursor } from '../desk';
 import { useApps, useCreateProject, useProjects } from '../queries';
 import { useCrumb } from '../shell';
-import { Chip, Empty, InlineForm, Plus, Row, Tile } from '../ui';
+import { Chip, Empty, ForPointer, InlineForm, Plus, Row, Tile } from '../ui';
 
 export const projectFormFields = (apps: App[] | undefined, withApp: boolean) => [
   { name: 'name', label: 'name' },
@@ -83,7 +83,7 @@ export function ProjectsPage() {
           }}
         />
       )}
-      {projects.data?.length === 0 && !creating && <Empty>no projects yet — click +</Empty>}
+      {projects.data?.length === 0 && !creating && <Empty><ForPointer fine="no projects yet — click +" coarse="no projects yet — tap +" /></Empty>}
       {groups.map((g) => (
         <div key={g.key} className="gf-group" data-testid={`group-${g.key}`}>
           <div className="gf-group-head">{g.label}</div>

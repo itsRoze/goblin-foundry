@@ -422,8 +422,8 @@ a.gf-path { text-decoration: underline; }
 /* `EditorContent` puts its own div between us and the document, so the growth has to be handed down through it */
 .gf-md.is-fill .gf-md-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .gf-md.is-fill .gf-md-content .gf-doc { flex: 1; }
-.gf-md.is-empty::before {
-  content: attr(data-placeholder); position: absolute; top: 0; left: 0; pointer-events: none;
+.gf-md-placeholder {
+  position: absolute; top: 0; left: 0; margin: 0; pointer-events: none;
   font: var(--gf-t-body); color: var(--gf-mute);
 }
 
@@ -685,6 +685,10 @@ a.gf-path { text-decoration: underline; }
   .gf-filter-clear { order: -1; }
 }
 
+/* help in two versions (`ForPointer`), a coarse pointer swapping them in the rule below; `contents`, so the version on show lays out as if nothing wrapped it */
+.gf-on-fine { display: contents; }
+.gf-on-coarse { display: none; }
+
 /*
  * A coarse pointer (issue 11): every control a finger is meant for is at least 32px tall — the box grows,
  * the drawn mark does not, so the house's 4px by 10px button reads as before and simply catches more —
@@ -692,6 +696,12 @@ a.gf-path { text-decoration: underline; }
  * (Voice). `j k ⏎` and `⌘n` go with them; they come back the moment the pointer is fine.
  */
 @media (pointer: coarse) {
+  .gf-on-fine { display: none; }
+  .gf-on-coarse { display: contents; }
+  /* said before the tap: with the caret in the field it asks for what was just done */
+  .gf-md.is-engaged .gf-md-placeholder .gf-on-coarse { display: none; }
+  /* the trace it names is drawn by a hover or Tab, and a tap goes straight to the ticket */
+  .gf-graph-trace-key { display: none; }
   .gf-btn, .gf-filter-chip, .gf-filter-clear, .gf-plus, .gf-dep-add, .gf-mode-btn { min-height: 32px; }
   /* the bar's own one height, above, would otherwise outrank this: it is under a thumb more than anything is */
   .gf-selection .gf-btn { min-height: 32px; }

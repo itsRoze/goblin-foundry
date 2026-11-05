@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { isBlocked, type ProjectGraph } from '@goblin/shared';
 import { DIAMOND, LABEL_TOP, NODE_H, layoutGraph, traceGraph, type LaidNode } from './graph';
 import { StatusChip, homeLine, statusTone, ticketPath } from './tickets';
-import { Empty } from './ui';
+import { Empty, ForPointer } from './ui';
 import { useGraphViewport } from './graph-viewport';
 
 /*
@@ -98,7 +98,7 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
     [cancel],
   );
 
-  if (layout.nodes.length === 0) return <Empty>no tickets — press c</Empty>;
+  if (layout.nodes.length === 0) return <Empty><ForPointer fine="no tickets — press c" coarse="no tickets" /></Empty>;
   const shown = viewport.panning ? undefined : layout.nodes.find((n) => n.key === active);
   const trace = traceGraph(shown?.key ?? null, layout.edges);
   const relation = (key: string) => key === shown?.key ? 'selected' : trace.upstream.nodes.has(key) ? 'upstream' : trace.downstream.nodes.has(key) ? 'downstream' : shown ? 'unrelated' : '';
@@ -138,10 +138,10 @@ export function DependencyGraph({ graph }: { graph: ProjectGraph }) {
       </div>
       {/* not a Tab stop: a tall popover makes this a scroller Chromium would Tab into, and the node's blur then empties it under the focus (GF-80) */}
       <div className="gf-graph-inspect" tabIndex={-1}>
-        {shown ? <Popover node={shown} upstream={trace.upstream.nodes.size} downstream={trace.downstream.nodes.size} /> : <p className="gf-graph-help">Hover a ticket to trace its paths. Tab explores; click opens the ticket.</p>}
+        {shown ? <Popover node={shown} upstream={trace.upstream.nodes.size} downstream={trace.downstream.nodes.size} /> : <p className="gf-graph-help"><ForPointer fine="Hover a ticket to trace its paths. Tab explores; click opens the ticket." coarse="Tap a ticket to open it." /></p>}
       </div>
       <div className="gf-graph-trace-key"><span className="is-upstream">prerequisites</span><span className="is-downstream">downstream</span></div>
-      <p className="gf-graph-help">drag or scroll to pan · pinch or ctrl-scroll to zoom</p>
+      <p className="gf-graph-help"><ForPointer fine="drag or scroll to pan · pinch or ctrl-scroll to zoom" coarse="drag to pan · pinch to zoom" /></p>
       <p className="gf-graph-legend" data-testid="graph-legend">
         {legendFor(layout.edges.length).replace('left to right', vertical ? 'top to bottom' : 'left to right')}
       </p>

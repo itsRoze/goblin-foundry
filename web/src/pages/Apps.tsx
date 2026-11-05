@@ -6,7 +6,7 @@ import { useOpensCreate } from '../creating';
 import { useCursor } from '../desk';
 import { useApps, useCreateApp } from '../queries';
 import { useCrumb } from '../shell';
-import { Chip, Empty, InlineForm, Plus, Row, Tile, type Field } from '../ui';
+import { Chip, Empty, ForPointer, InlineForm, Plus, Row, Tile, type Field } from '../ui';
 
 export const appFormFields: Field[] = [
   { name: 'name', label: 'name' },
@@ -63,7 +63,7 @@ export function AppsPage() {
           }}
         />
       )}
-      {apps.data?.length === 0 && !creating && <Empty>no apps yet — click +</Empty>}
+      {apps.data?.length === 0 && !creating && <Empty><ForPointer fine="no apps yet — click +" coarse="no apps yet — tap +" /></Empty>}
       <div className="gf-rows" data-testid="apps-list">
         {apps.data?.map((a) => (
           <Row
