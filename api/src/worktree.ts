@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { worktreeSlug } from '@goblin/shared';
+import { worktreeSlug, type AppBranches, type CheckoutBranch } from '@goblin/shared';
 import { expandHome } from './checkout';
 import { git } from './git';
 
@@ -76,6 +76,48 @@ function linkedFolder(listing: string, branch: string): string | undefined {
   return entry?.split('\n')[0]?.slice('worktree '.length);
 }
 
+/** `<root>/<repository folder name>`, which holds a Checkout's Worktrees. */
+const worktreesIn = (checkout: string, root: string) => join(expandHome(root), basename(checkout));
+
+/** Where each branch is checked out, by branch; a folder deleted by hand is still listed until it is pruned, and is nowhere. */
+function checkedOut(listing: string): Map<string, CheckoutBranch['checked_out']> {
+  const where = new Map<string, CheckoutBranch['checked_out']>();
+  listing.split('\n\n').forEach((block, at) => {
+    const lines = block.split('\n');
+    const branch = lines.find((line) => line.startsWith('branch refs/heads/'))?.slice('branch refs/heads/'.length);
+    const folder = lines[0]?.slice('worktree '.length);
+    if (branch !== undefined && folder !== undefined && existsSync(folder)) where.set(branch, { folder, linked: at > 0 });
+  });
+  return where;
+}
+
+/** What is in the Checkout right now, or the sentence saying why that cannot be read. Nothing is stored and nothing is fetched. */
+export async function readBranches(checkout: string, root: string): Promise<{ ok: true; branches: AppBranches } | { ok: false; reason: string }> {
+  if (!existsSync(checkout)) return { ok: false, reason: `the Checkout ${checkout} is not there` };
+  const refs = await git(checkout, ['for-each-ref', '--format=%(refname) %(symref)', 'refs/heads', 'refs/remotes']);
+  if (!refs.ran) return { ok: false, reason: `git is not on the tracker's PATH, so ${checkout} cannot be read` };
+  if (!refs.ok) return { ok: false, reason: refs.reason };
+  const listing = await git(checkout, ['worktree', 'list', '--porcelain']);
+  const where = listing.ran && listing.ok ? checkedOut(listing.out) : new Map();
+  const remotes = await remotesOf(checkout);
+
+  // a remote's HEAD is a pointer at one of its branches, not a branch
+  const names = refs.out.split('\n').filter((line) => line !== '' && line.endsWith(' ')).map((line) => line.trimEnd());
+  const local = names
+    .filter((ref) => ref.startsWith('refs/heads/'))
+    .map((ref) => ref.slice('refs/heads/'.length))
+    .map((name) => ({ name, kind: 'local' as const, local: name, checked_out: where.get(name) ?? null }));
+  const remote = remotes.flatMap((from) =>
+    names
+      .filter((ref) => ref.startsWith(`refs/remotes/${from}/`))
+      .map((ref) => {
+        const short = ref.slice(`refs/remotes/${from}/`.length);
+        return { name: `${from}/${short}`, kind: 'remote' as const, local: short, checked_out: null };
+      }),
+  );
+  return { ok: true, branches: { default: await checkoutDefaultBranch(checkout), worktrees_in: worktreesIn(checkout, root), branches: [...local, ...remote] } };
+}
+
 /**
  * Makes or adopts the worktree of `checkout` on `branch`, in
  * `<root>/<repository folder name>/<branch slug>`. An existing branch is checked
@@ -99,7 +141,7 @@ export async function makeWorktree({ checkout, branch: asked, base, root }: Work
 
   const slug = worktreeSlug(branch);
   if (/^\.*$/.test(slug)) return refuse(`${branch} leaves nothing to name a folder with`);
-  const folder = join(expandHome(root), basename(checkout), slug);
+  const folder = join(worktreesIn(checkout, root), slug);
 
   let how: string[];
   if (await hasRef(checkout, `refs/heads/${branch}`)) how = [folder, branch];

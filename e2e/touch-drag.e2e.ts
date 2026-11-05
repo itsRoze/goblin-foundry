@@ -150,6 +150,30 @@ test.describe('the horizontal board by finger', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
   });
 
+  test('a drop from ready to building opens the Start modal, inside the screen, and a tap there starts it', async ({ page }) => {
+    const title = `Started by finger ${test.info().project.name}`;
+    const key = await seed(page, title, { status: 'ready', app_id: app.id, simple: true });
+    await page.goto(`/?q=${encodeURIComponent(title)}`);
+    const from = await centre(page.getByTestId(`card-${key}`));
+    await finger.down(from);
+    await page.waitForTimeout(HOLD_MS);
+    await finger.moveTo(from, await centre(page.getByTestId('col-building')));
+    await finger.up();
+
+    const modal = page.getByTestId('start-modal');
+    await expect(modal).toBeVisible();
+    await expect(page.getByTestId('col-ready')).toContainText(title);
+    const box = (await modal.boundingBox())!;
+    const screen = page.viewportSize()!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(screen.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(screen.height);
+
+    await page.getByTestId('start-plain').tap();
+    await expect(modal).toHaveCount(0);
+    await expect(page.getByTestId('col-building')).toContainText(title);
+  });
+
   test('a finger at the edge scrolls the kanban to a column that was off screen', async ({ page }) => {
     const key = await seed(page, 'Shipped by finger', { status: 'review', app_id: app.id, simple: true });
     await page.goto('/?q=Shipped%20by%20finger');

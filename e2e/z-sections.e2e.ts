@@ -198,6 +198,7 @@ test('the blocked start asks first from the menu too, and the question does not 
   await expect(card(page, 'Waits on the menu')).toHaveCount(0);
   await expect(page.getByTestId('confirm-ready')).toBeVisible();
   await page.getByTestId('confirm-ready-yes').click();
+  await page.getByTestId('start-plain').click();
   await expect(count(page, 'building')).toHaveText('1');
   await expect(page.getByTestId('notice-ready')).toHaveCount(0); // building is open by default, so nothing to say
   await head(page, 'ready').click();
