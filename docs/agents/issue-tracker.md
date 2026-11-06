@@ -53,11 +53,23 @@ Each one moves tickets differently. Find the one you are in.
   spec's project, with its blockers (see "publish to the issue tracker"). If the
   approve guard refuses a create, the 422 names what is missing: create in
   `todo`, add it, then `approve`.
-- **implement-spec** works the ready frontier, without its human-only tickets
-  when unattended (see "When a skill asks what to work on next"): for each
-  ticket, `start` it (`ready → building`), build it, open the PR, then follow
-  "When you open a PR for a ticket". Its implementers each work in a worktree;
-  see below.
+- **implement-spec** works the spec's project and nothing else. Confirm the
+  project first with `goblin project show <project>`: an unknown one has an
+  empty frontier, which reads as done. Its queue is
+  `goblin frontier --project <project>` without the human-only labels (see
+  "When a skill asks what to work on next"). For each ticket, `start` it (`ready → building`), build it,
+  open the PR, then follow "When you open a PR for a ticket". Its implementers
+  each work in a worktree; see below.
+
+  A question only the human can answer (a product call, a glossary word, what
+  `DESIGN.md` means) becomes a ticket in the spec's project, created in `ready`
+  with `--labels ready-for-human` and the question as its description. The PR
+  body and the report name it by key. A finding or follow-up goes in the
+  spec's project in `backlog`, for the human to triage.
+
+  The run is done when that queue is empty and no ticket of the project is in
+  `building`: report and stop. Backlog tickets and other projects' tickets wait
+  for the human, however small they look.
 
 A bare `goblin ticket start` is still the agent's move, in every workflow here:
 the workflow brings its own worktrees, and a bare `start` only changes the
@@ -93,6 +105,11 @@ Hand each implementer a pointer to this section. In its worktree it:
    worktrees may be running at the same time.
 4. Edits every doc the spec names, `AGENTS.md` included. The spec is the
    operator's authorisation.
+5. Reproduces a failure only Linux shows (fonts draw wider there) on CI, which
+   runs on pull requests: push the probe to the ticket's open PR (open it first
+   if needed) and read the failed shard with
+   `gh run view <run> --log-failed`. Docker Desktop on this machine runs the
+   operator's own containers, so starting it is the operator's call.
 
 The integration branch is checked out in the main checkout, which
 the service runs from, so a merge there changes nothing live until
@@ -124,7 +141,13 @@ Then it submits the ticket:
 
     goblin ticket submit --actor agent <key>
 
-That moves it `building → review`. When you have verified the PR merged
+That moves it `building → review`. When the human has said to merge, arm the
+merge instead of watching CI:
+
+    gh pr merge --auto --merge <pr-url>
+
+`main` requires the `check` and `e2e` jobs, so GitHub merges the PR once both
+pass, and a PR with no CI run never merges. When you have verified the PR merged
 (`gh pr view <pr-url> --json state` says `MERGED`), ship it:
 
     goblin ticket ship --actor agent <key>
@@ -179,7 +202,10 @@ shows only the decisions that are open to take.
 ## When a skill says "publish to the issue tracker"
 
     goblin ticket create --actor agent --status <status> \
-      --title "<title>" --description @<path> --app goblin-foundry-2
+      --title "<title>" --description @<path> --project <project>
+
+`--project` is the project of the work you are in, and the app follows it. Only
+work with no project takes `--app goblin-foundry-2` in its place.
 
 `--status` is the workflow's: `ready` for to-tickets, `building` for poteto
 mode, `planning` to park it for the human's sign-off. Without it a ticket lands
@@ -208,7 +234,8 @@ new ticket reuses one rather than inventing a near-twin.
 ## When a skill asks what to work on next
 
 `goblin frontier` — the ready tickets with nothing in their way, stalest first,
-as the same summary rows. That is the queue, and it is the only queue.
+as the same summary rows. That is the queue, and it is the only queue. Work
+scoped to a spec or project reads it with `--project <project>`.
 
 An unattended run keeps human-only tickets out of it by naming their labels:
 
