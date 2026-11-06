@@ -38,8 +38,8 @@ export function StartModal({
   /**
    * The control the operator came from, as the screen finds it now: the state tile's `start` or `open terminal`, or
    * the card. Named by the screen and not read off the page, because a key, a menu's row, a drag and the palette
-   * leave the focus in four places, and in WebKit a click on a button leaves it on `body`. `null` leaves it to
-   * `onClose`.
+   * leave the focus in four places, and in WebKit a click on a button leaves it on `body`. `null` when the screen has
+   * put the focus somewhere itself, as the board does from a card that is not the Cursor's.
    */
   home: () => HTMLElement | null;
 }) {

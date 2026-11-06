@@ -24,7 +24,10 @@ export function useTerminal({
   /** What a bulk action's hold goes through, on a screen that has one. */
   guard?: <T>(write: () => Promise<T>) => Promise<T>;
   refuse: (ticket: Pick<Ticket, 'key' | 'status'>, text: string, late: boolean) => void;
-  /** Where the focus goes when the line that holds it is dismissed. */
+  /**
+   * Where the focus goes when the line that holds it is dismissed, and when the modal closes: `null` when the screen
+   * has put it somewhere itself.
+   */
   home: (key: string) => HTMLElement | null;
 }) {
   const write = useOpenTerminal();
