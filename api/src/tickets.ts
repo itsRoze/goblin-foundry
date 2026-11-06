@@ -6,6 +6,7 @@ import {
   PatchTicketBodySchema,
   UNCREATABLE_STATUSES,
   guardHold,
+  archivedAt,
   intentWritten,
   lifecycle,
   parseTicketKey,
@@ -18,6 +19,7 @@ import {
 } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { ActorEnv } from './actor';
+import { archiveClock, archivedAtOf } from './archive';
 import { bulkRoute } from './bulk';
 import { implementationLinkRoutes } from './implementation-links';
 import { judgeLabels, labelInserts, labelRoutes, labelsByTicket, labelsOf } from './labels';
@@ -40,18 +42,20 @@ type Parent = typeof appTable | typeof projectTable;
  * The wire ticket carries the canonical key and its labels; `trashed_via` is
  * bookkeeping and stays inside. `blocked_by` defaults to none for the reads
  * that do not ask — `/api/trash` has no use for a derived condition on
- * something nobody is working on.
+ * something nobody is working on. `archived_at` is derived too (ADR-0015), and
+ * defaults the same way: a new, trashed or `ready` ticket is never archived.
  */
-export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, labels: string[], blocked_by: string[] = []): Ticket => ({
+export const toTicket = ({ trashed_via: _, ...row }: TicketRow, prefix: string, labels: string[], blocked_by: string[] = [], archived_at: string | null = null): Ticket => ({
   ...row,
+  archived_at,
   key: ticketKey(prefix, row.id),
   labels,
   blocked_by,
 });
 
 /** A list read's row: the wire ticket less its bodies, with the guard's reading of them in their place. */
-export const toSummary = (row: TicketRow, prefix: string, labels: string[], blocked_by: string[] = []): TicketSummary => {
-  const { description, design, ...summary } = toTicket(row, prefix, labels, blocked_by);
+export const toSummary = (row: TicketRow, prefix: string, labels: string[], blocked_by: string[] = [], archived_at: string | null = null): TicketSummary => {
+  const { description, design, ...summary } = toTicket(row, prefix, labels, blocked_by, archived_at);
   return { ...summary, intent_written: intentWritten({ description, design }) };
 };
 
@@ -85,10 +89,10 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
     return rows[0];
   }
 
-  /** One live ticket on the wire, with the blockers still standing in its way. */
+  /** One live ticket on the wire, with the blockers still standing in its way and whether it is archived. */
   async function one(row: TicketRow): Promise<Ticket> {
     const p = await prefix();
-    return toTicket(row, p, await labelsOf(db, row.id), await openBlockersOf(db, row.id, p));
+    return toTicket(row, p, await labelsOf(db, row.id), await openBlockersOf(db, row.id, p), (await archivedAtOf(db, [row])).get(row.id) ?? null);
   }
 
   /** The single-ticket read: the ticket, plus every edge it has declared in either direction. */
@@ -97,20 +101,22 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
     return { ...(await one(row)), dependencies: await dependenciesOf(db, row.id, p) };
   }
 
-  /** The board's Filter, in full (issue 06), and `exclude_label`; with none of it given, every live ticket. */
+  /** The board's Filter, in full (issue 06), and `exclude_label`; with none of it given, every live ticket that is not archived. */
   r.get('/', async (c) => {
     const query = readQuery(c);
     if (query instanceof Response) return query;
+    // one clock for the whole read, so the rows it keeps and the `archived_at` they carry agree
+    const at = Date.now();
     const rows = await db
-      .select()
+      .select({ row: ticketTable, clock: archiveClock() })
       .from(ticketTable)
-      .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(query)))
+      .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(query, at)))
       .orderBy(...listOrder);
     const p = await prefix();
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);
     const labels = await labelsByTicket(db);
-    return c.json(rows.map((row) => toSummary(row, p, labels(row.id), blockers.get(row.id) ?? [])));
+    return c.json(rows.map(({ row, clock }) => toSummary(row, p, labels(row.id), blockers.get(row.id) ?? [], archivedAt(row.status, clock, at))));
   });
 
   r.post('/', async (c) => {
@@ -155,8 +161,9 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
       const p = await prefix();
       const blockers = await openBlockers(db, p);
       const labels = await labelsByTicket(db);
+      const archived = await archivedAtOf(db, rows);
       // a Ticket in the trash is nobody's blocked work (`toTicket`)
-      return rows.map((row) => toTicket(row, p, labels(row.id), row.trashed_at === null ? (blockers.get(row.id) ?? []) : []));
+      return rows.map((row) => toTicket(row, p, labels(row.id), row.trashed_at === null ? (blockers.get(row.id) ?? []) : [], row.trashed_at === null ? (archived.get(row.id) ?? null) : null));
     },
   });
 
@@ -245,6 +252,29 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
     return c.json(await one(written[0] as TicketRow));
   });
 
+  /**
+   * Back on the board for another month (ADR-0015): an `unarchived` event
+   * restarts the clock. There is no `archive` — a Ticket leaves on its own.
+   */
+  r.post('/:key/unarchive', async (c) => {
+    const row = await find(c, false);
+    if (!row) return missing(c);
+    const archived_at = (await archivedAtOf(db, [row])).get(row.id) ?? null;
+    if (archived_at === null) return conflict(c, `ticket ${ticketKey(await prefix(), row.id)} is not archived`);
+    const at = now();
+    const written = await commit(
+      c,
+      db,
+      [
+        pinnedTicketWrite(db, row, {}, at),
+        await eventWrite(db, { entity_kind: 'ticket', entity_id: row.id, actor: c.get('actor'), kind: 'unarchived', prior: { archived_at }, new: { archived_at: null }, at }),
+      ],
+      { rolledBack: 'the ticket was not unarchived', stale: () => changedUnderneath(c, db, row.id, 'unarchive') },
+    );
+    if (written instanceof Response) return written;
+    return c.json(await one(written[0] as TicketRow));
+  });
+
   implementationLinkRoutes(r, { db, find: (c) => find(c, false), missing });
 
   labelRoutes(r, { db, find: (c) => find(c, false), missing, toWire: (row) => one(row) });
@@ -253,7 +283,7 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
 
   const transitionDeps = { db, find: (c: Context) => find(c, false), missing, toWire: (row: TicketRow) => one(row), terminals };
   terminalRoute(r, transitionDeps);
-  // last: `:name` would otherwise swallow `/:key/restore`, `/:key/dependencies` and `/:key/terminal` (ADR-0004)
+  // last: `:name` would otherwise swallow `/:key/restore`, `/:key/unarchive`, `/:key/dependencies` and `/:key/terminal` (ADR-0004)
   transitionRoute(r, transitionDeps);
 
   async function inTrash(table: Parent, id: number | null): Promise<boolean> {

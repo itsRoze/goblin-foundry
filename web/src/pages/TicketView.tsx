@@ -126,6 +126,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
     [inState, guard, intent, nav, ticket.key],
   );
   useKey('Backspace', trash, { meta: true });
+  const unarchive = useCallback(() => inState(() => guard(() => intent.mutateAsync({ key: ticket.key, intent: 'unarchive' }))), [inState, guard, intent, ticket.key]);
 
   /** One arrow, from the same table the buttons read; the blocked `start` asks first, in the state tile's slot, and then `start` asks where. */
   const runEdge = useCallback(
@@ -339,6 +340,7 @@ function TicketLoaded({ ticket }: { ticket: TicketDetail }) {
         onPress={press}
         onSimple={(simple) => inState(() => edit({ simple }))}
         onTrash={() => void trash()}
+        onUnarchive={() => void unarchive()}
         onBlockedBy={openBlockedBy}
         asking={question}
         left={left}
@@ -677,6 +679,7 @@ function StateTile({
   onPress,
   onSimple,
   onTrash,
+  onUnarchive,
   onBlockedBy,
   asking,
   left,
@@ -695,6 +698,8 @@ function StateTile({
   onBlockedBy: () => void;
   onSimple: (simple: boolean) => Promise<void>;
   onTrash: () => void;
+  /** Back on the board for another month (ADR-0015); offered only while it is archived. */
+  onUnarchive: () => void;
   asking: { edge: Transition } | null;
   /** What is left where the question stood, for a refusal's lifetime. */
   left: LeftByQuestion | null;
@@ -715,6 +720,7 @@ function StateTile({
     line.current?.scrollIntoView({ block: 'nearest' });
   }, [said]);
   const rows: [string, React.ReactNode][] = [['status', <StatusChip status={ticket.status} />]];
+  if (ticket.archived_at !== null) rows.push(['archived', <span data-testid="state-archived">{ticket.archived_at.slice(0, 10)} — off the board</span>]);
   // the condition `start` asks about, said beside the verbs and not only in the dependencies tile further down
   if (isBlocked(ticket))
     rows.push([
@@ -753,6 +759,11 @@ function StateTile({
     >
       <Kv rows={rows} />
       <div className="gf-actions">
+        {ticket.archived_at !== null && (
+          <button tabIndex={0} className="gf-btn" data-testid="unarchive" onKeyDown={ignoreHeldEnter} onClick={onUnarchive}>
+            unarchive
+          </button>
+        )}
         {/* where a `ready` Ticket has `start`: the way back into the work comes before the ways of moving it on */}
         {opensTerminal(ticket.status) && (
           <button tabIndex={0} className="gf-btn" data-testid="open-terminal" onKeyDown={ignoreHeldEnter} onClick={onTerminal}>

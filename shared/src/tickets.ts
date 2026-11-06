@@ -27,6 +27,8 @@ export const TicketSchema = z.object({
   worktree_branch: z.string().nullable(),
   worktree_folder: z.string().nullable(),
   trashed_at: z.string().nullable(),
+  /** When it was Archived: worked out on every read, never written (ADR-0015). `null` while it is on the board. */
+  archived_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
   /** The keys of the blockers that are still *open* — a derived condition, never a status (GLOSSARY.md "Blocked"). */
@@ -76,6 +78,23 @@ export type AddDependencyBody = z.infer<typeof AddDependencyBodySchema>;
 /** The end of the line, however it got there. A terminal ticket has nowhere left to proceed to, which is what makes it neither blocked nor blocking. */
 export const TERMINAL_STATUSES = ['done', 'cancelled'] as const satisfies readonly TicketStatus[];
 export const isTerminal = (status: TicketStatus): boolean => (TERMINAL_STATUSES as readonly TicketStatus[]).includes(status);
+
+/** How long a finished Ticket stays on the board before it is Archived (ADR-0015). */
+export const ARCHIVE_AFTER_DAYS = 30;
+const ARCHIVE_AFTER_MS = ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+
+/** The oldest clock that still keeps a finished Ticket on the board at `now`, as the ISO string the clocks are compared in. */
+export const archiveCutoff = (now: number): string => new Date(now - ARCHIVE_AFTER_MS).toISOString();
+
+/**
+ * When a Ticket was Archived, or `null` while it is on the board. `clock` is
+ * the later of its finish time and its last `unarchive` (ADR-0015); a live
+ * Ticket, or one with no recorded finish, is never archived.
+ */
+export function archivedAt(status: TicketStatus, clock: string | null, now: number): string | null {
+  if (!isTerminal(status) || clock === null || clock >= archiveCutoff(now)) return null;
+  return new Date(Date.parse(clock) + ARCHIVE_AFTER_MS).toISOString();
+}
 
 /**
  * "A blocker is open unless it is `done`, `cancelled`, or Trashed"

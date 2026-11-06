@@ -215,3 +215,18 @@ test('a value the API refuses is shown, not corrected', async ({ page }) => {
   await expect(page).toHaveURL(/\/\?app_id=null&status=shipped$/);
   await expect(page.getByTestId('board')).not.toContainText('Paginate');
 });
+
+test('show archived is part of the address: it survives a reload and clearing it takes it out (ADR-0015)', async ({ page }) => {
+  await page.goto('/?q=nothing-matches');
+  const toggle = page.getByTestId('filter-archived');
+  await expect(toggle).not.toBeChecked();
+  // a click, not `check()`: the box is the address's, so it turns once the address has
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  await expect(page).toHaveURL(/[?&]q=nothing-matches&archived=1$/);
+  await page.reload();
+  await expect(page.getByTestId('filter-archived')).toBeChecked();
+  await page.getByTestId('filter-archived').click();
+  await expect(page.getByTestId('filter-archived')).not.toBeChecked();
+  await expect(page).toHaveURL(/\/\?q=nothing-matches$/);
+});

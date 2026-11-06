@@ -59,7 +59,7 @@ const query = (path: string, params: Record<string, string | undefined>) => {
 const filter = (value: Value | undefined) => (value === undefined ? undefined : value === null ? 'null' : String(value));
 
 /** Which flag a filter parameter arrived on, so a refusal names what was typed rather than a wire name. */
-const FILTER_FLAG: Record<QueryParam, string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', exclude_label: 'exclude-label', q: 'q' };
+const FILTER_FLAG: Record<QueryParam, string> = { app_id: 'app', project_id: 'project', status: 'status', label: 'label', exclude_label: 'exclude-label', q: 'q', archived: 'archived' };
 
 /**
  * What a list read narrows by (issue 06), read and written by the parser in
@@ -74,6 +74,7 @@ function filterQuery(args: Args): string {
     label: filter(args.values.label),
     exclude_label: filter(args.values.exclude_label),
     q: filter(args.values.q),
+    archived: args.values.archived ? '1' : undefined,
   });
   if (!parsed.ok) throw new UsageError(parsed.issues.map((i) => `--${FILTER_FLAG[i.path[0] as keyof typeof FILTER_FLAG]}: ${i.message}`).join(' · '));
   const qs = serialiseTicketQuery(parsed.query);
@@ -81,6 +82,7 @@ function filterQuery(args: Args): string {
 }
 
 const ARCHIVED: Flag = { name: 'archived', kind: 'boolean', summary: 'include archived ones (hidden by default)' };
+const ARCHIVED_TICKETS: Flag = { name: 'archived', kind: 'boolean', summary: 'include archived ones (hidden by default; --q finds them anyway)' };
 const CASCADE: Flag = { name: 'cascade', kind: 'boolean', summary: 'take the things inside it to the trash too' };
 const APP_FILTER: Flag = { name: 'app', kind: 'id', field: 'app_id', nullable: true, value: '<app|null>', summary: 'only this app, or `null` for the ones with none' };
 const PROJECT_FILTER: Flag = { name: 'project', kind: 'id', field: 'project_id', nullable: true, value: '<project|null>', summary: 'only this project, or `null` for the ones with none' };
@@ -339,8 +341,8 @@ export const NOUNS: Noun[] = [
     commands: [
       {
         verb: 'list',
-        summary: 'every live ticket, without its description or design (`ticket show` has them)',
-        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, EXCLUDE_LABEL_FILTER, TEXT_FILTER],
+        summary: 'every live ticket that is not archived, without its description or design (`ticket show` has them)',
+        flags: [APP_FILTER, PROJECT_FILTER, STATUS_FILTER, LABEL_FILTER, EXCLUDE_LABEL_FILTER, TEXT_FILTER, ARCHIVED_TICKETS],
         run: ({ args, api }) => api.get(`/api/tickets${filterQuery(args)}`),
       },
       {
@@ -363,6 +365,8 @@ export const NOUNS: Noun[] = [
         run: (ctx) => bulk(ctx, { kind: 'move', to: moveTarget(ctx.args) }),
       },
       { verb: 'restore', summary: 'take it back out of the trash', operands: ticketOperand, run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/restore`) },
+      // no `archive`: a finished ticket leaves the board on its own a month after it finishes (ADR-0015)
+      { verb: 'unarchive', summary: 'put an archived ticket back on the board for another month', operands: ticketOperand, run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/unarchive`) },
       { verb: 'history', summary: 'every recorded change, newest first', operands: ticketOperand, run: (ctx) => ctx.api.get(`${ticketAt(ctx)}/events`) },
       { verb: 'link list', summary: 'the saved PR and commit URLs', operands: ticketOperand, run: (ctx) => ctx.api.get(`${ticketAt(ctx)}/implementation-links`) },
       { verb: 'link add', summary: 'save a PR or commit URL without changing status', operands: ticketOperand, flags: [{ name: 'url', kind: 'string', required: true, value: '<url>', summary: 'the PR or commit URL' }], run: (ctx) => ctx.api.post(`${ticketAt(ctx)}/implementation-links`, { url: ctx.args.values.url }) },

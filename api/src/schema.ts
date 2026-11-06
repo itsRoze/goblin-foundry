@@ -43,8 +43,8 @@ export const project = sqliteTable('project', {
 export const statusList = () => sql.raw(TICKET_STATUSES.map((s) => `'${s}'`).join(','));
 
 /**
- * A ticket is never archived (GLOSSARY.md) — it is `cancelled` (a decision) or
- * trashed (a mistake). `status` is a checked text column, not an enum table
+ * A ticket has no `archived_at`: it archives itself a month after it finishes,
+ * and that is worked out from its History on every read (ADR-0015). `status` is a checked text column, not an enum table
  * (ADR-0003); `id` is the ticket's permanent number (ADR-0002) and the key
  * `GF-<id>` is derived at the edge from the installation prefix.
  */

@@ -169,7 +169,14 @@ export function TicketCard({
       >
         <span className="gf-card-id">
           <span className="gf-card-key">{ticket.key}</span>
-          <i>{ticket.status}</i>
+          {/* only a search or `show archived` puts one on the board, and it says so where the status is: its column already names that */}
+          {ticket.archived_at === null ? (
+            <i>{ticket.status}</i>
+          ) : (
+            <i title={`${ticket.status}, archived`} data-testid={`archived-${ticket.key}`}>
+              archived
+            </i>
+          )}
         </span>
         <span className="gf-card-title">
           {blocked && <BlockedMark ticket={ticket} testId={`blocked-${ticket.key}`} />}

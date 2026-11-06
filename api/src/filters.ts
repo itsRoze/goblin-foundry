@@ -8,6 +8,7 @@ import { asc, eq, inArray, isNull, not, or, sql, type SQL } from 'drizzle-orm';
 import { TERMINAL_STATUSES, parseTicketQuery, type TicketQuery } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { archivedWhere } from './archive';
 import { unprocessable } from './problems';
 import { event as eventTable, ticket as ticketTable, ticketLabel } from './schema';
 
@@ -32,9 +33,14 @@ const contains = (column: SQLiteColumn, text: string): SQL => {
 /** A Ticket carrying any of these names. They arrive normalised, which is how they are stored. */
 const carrying = (names: string[]): SQL => sql`${ticketTable.id} IN (SELECT ${ticketLabel.ticket_id} FROM ${ticketLabel} WHERE ${inArray(ticketLabel.name, names)})`;
 
-/** Every parameter ANDs with the others; a project outside the chosen app simply yields nothing. */
-export function ticketWhere(query: TicketQuery): SQL[] {
+/**
+ * Every parameter ANDs with the others; a project outside the chosen app simply
+ * yields nothing. An archived Ticket is left out unless the query asks for
+ * archived ones or is a text search, which finds them wherever they are (ADR-0015).
+ */
+export function ticketWhere(query: TicketQuery, now = Date.now()): SQL[] {
   const conditions: SQL[] = [];
+  if (!query.archived && query.q === undefined) conditions.push(not(archivedWhere(now)));
   for (const [name, column] of [
     ['app_id', ticketTable.app_id],
     ['project_id', ticketTable.project_id],

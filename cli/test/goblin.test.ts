@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { makeTestApp } from '@goblin/api/test/harness';
 import { createApp } from '@goblin/api/src/app';
 import { openDb } from '@goblin/api/src/db';
+import { event } from '@goblin/api/src/schema';
 import { REPOSITORY_WANTS, lifecycle } from '@goblin/shared';
 import { runGoblin, type GoblinDeps } from '../src/run';
 
@@ -582,6 +583,21 @@ describe('goblin', () => {
       expect(await titles(['ticket', 'list', '--q', 'RSS'])).toEqual(['parse a feed']);
       expect(await titles(['ticket', 'list', '--app', '1', '--status', 'backlog', '--q', 'feed'])).toEqual(['parse a feed']);
       expect(await titles(['ticket', 'list', '--app', 'null'])).toEqual(['orphan']);
+    });
+
+    test('`ticket list` hides a ticket finished a month ago, `--archived` and `--q` find it, and `ticket unarchive` brings it back (ADR-0015)', async () => {
+      await seed();
+      await json(['ticket', 'close', 'GF-1', '--actor', 'agent']);
+      // every event, a month back: nothing but the finish starts the clock
+      h.db.update(event).set({ at: new Date(Date.now() - 31 * 86_400_000).toISOString() }).run();
+      expect(await titles(['ticket', 'list'])).toEqual(['parse a feed', 'somebody else', 'ready to go']);
+      expect(await titles(['ticket', 'list', '--status', 'done'])).toEqual([]);
+      expect(await titles(['ticket', 'list', '--status', 'done', '--archived'])).toEqual(['orphan']);
+      expect(await titles(['ticket', 'list', '--q', 'orphan'])).toEqual(['orphan']);
+
+      expect((await json(['ticket', 'unarchive', 'GF-1', '--actor', 'agent'])).archived_at).toBeNull();
+      expect(await titles(['ticket', 'list', '--status', 'done'])).toEqual(['orphan']);
+      expect((await run(['ticket', 'unarchive', 'GF-1'])).code).toBe(1);
     });
 
     test('`ticket list` and `frontier` print the queue without the bodies; `ticket show` prints them', async () => {

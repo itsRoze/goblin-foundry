@@ -5,7 +5,7 @@
  * all read and write it here, so a parameter cannot mean one thing in the
  * address bar and another on the wire.
  *
- * Wire names are the API's own — `app_id`, `project_id`, `status`, `label`,
+ * Wire names are the API's own — `app_id`, `project_id`, `status`, `label`, `archived`,
  * `q` — and the browser uses them unchanged. The two endpoints and `goblin`
  * read a little more than the Filter; see `TicketQuery`.
  */
@@ -20,6 +20,8 @@ export interface TicketFilter {
   /** Any of these Labels (ADR-0013), the way `status` is any of those statuses. */
   label?: string[];
   q?: string;
+  /** Archived Tickets too (ADR-0015). Unset, a list leaves them out unless `q` is searching. */
+  archived?: true;
 }
 
 /** The same shape a 422 issue has (ADR-0004), made without zod so `shared` can hand one to the API. */
@@ -46,7 +48,7 @@ export type ParsedQuery = { ok: true; query: TicketQuery } | { ok: false; issues
 export type QueryParam = FilterParam | 'exclude_label';
 
 /** Canonical parameter order: empties are omitted, so equal filters make equal bookmarks. */
-export const FILTER_PARAMS = ['app_id', 'project_id', 'status', 'label', 'q'] as const;
+export const FILTER_PARAMS = ['app_id', 'project_id', 'status', 'label', 'q', 'archived'] as const;
 export type FilterParam = (typeof FILTER_PARAMS)[number];
 
 /**
@@ -107,6 +109,10 @@ export function parseTicketFilter(source: FilterSource, { slugs = false }: Parse
   const q = read(source, 'q')?.trim();
   if (q !== undefined && q !== '') filter.q = q;
 
+  const archived = read(source, 'archived')?.trim();
+  if (archived === '1') filter.archived = true;
+  else if (archived !== undefined && archived !== '') issues.push({ path: ['archived'], message: 'expected 1' });
+
   return issues.length > 0 ? { ok: false, issues } : { ok: true, filter };
 }
 
@@ -162,6 +168,7 @@ function filterParams(filter: TicketFilter): URLSearchParams {
   if (filter.status && filter.status.length > 0) params.set('status', canonicalStatuses(filter.status).join(','));
   if (filter.label && filter.label.length > 0) params.set('label', canonicalLabels(filter.label).join(','));
   if (filter.q !== undefined && filter.q.trim() !== '') params.set('q', filter.q.trim());
+  if (filter.archived) params.set('archived', '1');
   return params;
 }
 

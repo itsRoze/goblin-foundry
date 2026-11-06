@@ -178,10 +178,10 @@ export const usePatchTicket = () => {
 };
 /** The whole set a ticket should carry (ADR-0013); adding and removing a chip is this arithmetic done by the caller. */
 export const useSetLabels = () => useWrite(({ key, labels }: { key: string; labels: string[] }) => api.post(`/api/tickets/${key}/labels`, { labels }));
-/** A ticket is never archived (GLOSSARY.md): trash and restore are all it has. */
+/** Trash, restore, and `unarchive` — a Ticket archives itself, so there is no `archive` (ADR-0015). */
 export const useTicketIntent = () =>
-  useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' }) =>
-    intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/restore`),
+  useWrite(({ key, intent }: { key: string; intent: 'trash' | 'restore' | 'unarchive' }) =>
+    intent === 'trash' ? api.del(`/api/tickets/${key}`) : api.post(`/api/tickets/${key}/${intent}`),
   );
 
 /**

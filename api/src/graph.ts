@@ -8,11 +8,14 @@
  * (GLOSSARY.md), so both go together with their edges: a chain
  * A → C(cancelled) → B draws A and B with no edge between them, which is
  * accurate rather than a gap. Every other declared edge is drawn, satisfied
- * ones included (ADR-0009: an edge is a durable fact).
+ * ones included (ADR-0009: an edge is a durable fact) — except one between two
+ * Archived tickets, and an Archived ticket is drawn only while an edge ties it
+ * to one still on the board (ADR-0015).
  */
-import { and, asc, eq, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { descriptionLine, isOpenBlocker, ticketKey, type GraphEdge, type GraphNode, type ProjectGraph, type TicketStatus } from '@goblin/shared';
+import { archivedWhere } from './archive';
 import type { Db } from './db';
 import { batches } from './dependencies';
 import { app as appTable, dependency, project as projectTable, ticket as ticketTable } from './schema';
@@ -37,10 +40,20 @@ interface NodeRow {
   description: string;
   app_id: number | null;
   project_id: number | null;
+  /** SQLite's boolean: 1 when the ticket is Archived. */
+  archived: number;
 }
 
 /** The columns a node is built from, whichever side of the boundary the ticket is on. */
-const nodeColumns = (t: TicketTable) => ({ id: t.id, title: t.title, status: t.status, description: t.description, app_id: t.app_id, project_id: t.project_id });
+const nodeColumns = (t: TicketTable, at: number) => ({
+  id: t.id,
+  title: t.title,
+  status: t.status,
+  description: t.description,
+  app_id: t.app_id,
+  project_id: t.project_id,
+  archived: sql<number>`${archivedWhere(at, t)}`,
+});
 
 /** Drawn at all: not in the trash, and not `cancelled`. */
 const drawable = (t: TicketTable) => and(isNull(t.trashed_at), ne(t.status, 'cancelled'));
@@ -48,9 +61,10 @@ const drawable = (t: TicketTable) => and(isNull(t.trashed_at), ne(t.status, 'can
 export async function projectGraph(db: Db, projectId: number): Promise<ProjectGraph> {
   const { ticket_prefix: prefix } = await readSettings(db);
   const key = (row: NodeRow) => ticketKey(prefix, row.id);
+  const at = Date.now();
 
-  const mine: NodeRow[] = await db
-    .select(nodeColumns(ticketTable))
+  const drawn: NodeRow[] = await db
+    .select(nodeColumns(ticketTable, at))
     .from(ticketTable)
     .where(and(eq(ticketTable.project_id, projectId), drawable(ticketTable)))
     .orderBy(asc(ticketTable.id));
@@ -59,7 +73,7 @@ export async function projectGraph(db: Db, projectId: number): Promise<ProjectGr
   const blockerT = endOfEdge('blocker_end');
   const blockedT = endOfEdge('blocked_end');
   const declared = await db
-    .select({ blocker: nodeColumns(blockerT), blocked: nodeColumns(blockedT) })
+    .select({ blocker: nodeColumns(blockerT, at), blocked: nodeColumns(blockedT, at) })
     .from(dependency)
     .innerJoin(blockerT, eq(blockerT.id, dependency.blocker_id))
     .innerJoin(blockedT, eq(blockedT.id, dependency.blocked_id))
@@ -70,12 +84,17 @@ export async function projectGraph(db: Db, projectId: number): Promise<ProjectGr
   const outside = new Map<number, NodeRow>();
   /** Only the blockers still in the way, in blocker order — the same derived condition the rest of the app shows. */
   const blockedBy = new Map<number, string[]>();
+  /** The Archived tickets an edge still ties to the board. */
+  const tied = new Set<number>();
   for (const { blocker, blocked } of declared) {
+    if (blocker.archived && blocked.archived) continue;
+    for (const end of [blocker, blocked]) if (end.archived) tied.add(end.id);
     edges.push({ blocker: key(blocker), blocked: key(blocked) });
     for (const end of [blocker, blocked]) if (end.project_id !== projectId) outside.set(end.id, end);
     if (blocked.project_id === projectId && isOpenBlocker(blocker.status)) blockedBy.set(blocked.id, [...(blockedBy.get(blocked.id) ?? []), key(blocker)]);
   }
 
+  const mine = drawn.filter((row) => !row.archived || tied.has(row.id));
   const externals = [...outside.values()];
   const idsOf = (field: 'app_id' | 'project_id') => [...new Set(externals.map((row) => row[field]).filter((id): id is number => id !== null))];
   const appNames = await namesOf(db, appTable, idsOf('app_id'));

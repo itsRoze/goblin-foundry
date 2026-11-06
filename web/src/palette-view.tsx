@@ -50,7 +50,8 @@ export function Palette({ mode, onClose }: { mode: PaletteMode; onClose: () => v
   const ticket = detail.data ?? null;
   /** A Selection outranks the current Ticket here as it does on the keys: its actions replace the Ticket's, never sit beside them. */
   const selected = current.members.length > 0 ? current.members : null;
-  const tickets = useTickets();
+  // a search: an archived Ticket is found here as the board's text filter finds it (ADR-0015)
+  const tickets = useTickets({ archived: true });
   const apps = useApps();
   const projects = useProjects();
   const create = useCreate();
