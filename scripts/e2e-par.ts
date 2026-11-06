@@ -23,6 +23,7 @@ function parseArgs(argv: string[]): { shards: number; rest: string[] } {
     const arg = argv[i]!;
     if (arg === '--shards') shards = Number(argv[++i]);
     else if (arg.startsWith('--shards=')) shards = Number(arg.slice('--shards='.length));
+    else if (/^--(shard|output|reporter)\b/.test(arg)) throw new Error(`${arg.split('=')[0]} is the script's own; run playwright directly to choose it`);
     else rest.push(arg);
   }
   if (!Number.isInteger(shards) || shards < 1) throw new Error(`--shards takes a whole number above 0, got ${shards}`);
@@ -64,8 +65,10 @@ const ports = await freePorts(shards);
 
 const children: ReturnType<typeof Bun.spawn>[] = [];
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
-    for (const child of children) child.kill(signal);
+  process.on(signal, async () => {
+    // Playwright tears its server and browsers down on SIGINT only; a SIGTERM leaves them orphaned.
+    for (const child of children) child.kill('SIGINT');
+    await Promise.all(children.map((child) => child.exited));
     process.exit(signal === 'SIGINT' ? 130 : 143);
   });
 }
