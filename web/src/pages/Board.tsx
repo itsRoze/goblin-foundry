@@ -200,7 +200,13 @@ const keysToCursor = () => {
  * They differ only in which slot the sentence lands in — the column you
  * dropped on, or the card the key or the menu was about.
  */
-function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, boardRead: boolean, onMoved: (card: DraggedCard, to: TicketStatus) => void, heldLine: (key: string) => string | null) {
+function useBoardMoves(
+  lookup: (key: string) => TicketSummary | undefined,
+  boardRead: boolean,
+  onMoved: (card: DraggedCard, to: TicketStatus) => void,
+  heldLine: (key: string) => string | null,
+  cursorAt: string | null,
+) {
   const move = useTransition();
   const [dragging, setDragging] = useState<TicketStatus | null>(null);
   const { refusal, setRefusal } = useRefusal<Refusal>();
@@ -306,14 +312,28 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
     [setRefusal, ask],
   );
 
+  /**
+   * Where a modal or a line about one card hands the focus back to: the card, only if it is the Cursor's. A menu and
+   * a drag leave the Cursor where it was (DESIGN.md Card menu), and a ring on another card would have `⏎` open that
+   * one while `s` acts on the Cursor's. From any other card this moves the focus itself, to `body` where the Cursor's
+   * keys are, brings the Cursor on screen, and returns `null`, as every `home` takes it.
+   */
+  const handBack = useCallback(
+    (key: string) => {
+      if (key === cursorAt) return cardOf(key);
+      keysToCursor();
+      return null;
+    },
+    [cursorAt],
+  );
   const start = useStart();
-  const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: cardOf });
+  const terminal = useTerminal({ refuse: ({ key, status }, text) => setRefusal({ key, status, text }), home: handBack });
   const { reporting } = terminal;
   const startRun = useCallback((ticket: TicketSummary, worktree?: StartWorktreeBody) => start.mutateAsync({ key: ticket.key, worktree }).then(reporting(ticket)), [start, reporting]);
   // a card that has left the board has moved too, and takes the focus with it, as it takes the Cursor; a terminal
   // line that took the focus moves with its card and is drawn again, so it is where the focus goes back to
   const focusOnceStarted = useFocusAfterStart(
-    (key) => (terminal.said?.key === key ? document.querySelector<HTMLElement>('.gf-terminal-said button') : null) ?? cardOf(key),
+    (key) => (terminal.said?.key === key ? document.querySelector<HTMLElement>('.gf-terminal-said button') : null) ?? handBack(key),
     (key) => lookup(key)?.status !== 'ready',
   );
   const startClosed = useCallback((ticket: TicketSummary, started: boolean) => {
@@ -328,7 +348,7 @@ function useBoardMoves(lookup: (key: string) => TicketSummary | undefined, board
     terminal.press(ticket);
   };
 
-  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal };
+  return { dragging, setDragging, refusal, pending, drop, press, refuse: setRefusal, dismiss: useCallback(() => ask(null), [ask]), starting, startRun, startClosed, focusOnceStarted, handBack, terminal, pressTerminal };
 }
 
 /**
@@ -427,13 +447,13 @@ export function BoardPage() {
     [lookup, sending],
   );
   const boardRead = cards !== undefined;
-  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, focusOnceStarted, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine);
-  useKey('v', useCallback(() => setMenu((m) => !m), []));
-
   /** The board as the Cursor sees it: one column per status drawn — or, stacked, one column of what is open (sections.ts). */
   const drawn = useMemo(() => columns.map((status) => ({ status, tickets: (tickets.data ?? []).filter((t) => t.status === status) })), [columns, tickets.data]);
   const byKey = useMemo(() => cursorColumns(orientation, drawn.map((column) => ({ status: column.status, keys: column.tickets.map((t) => t.key) })), expansion), [orientation, drawn, expansion]);
   const cursor = useCursor({ tile: 'board', columns: byKey, pathOf: (key) => ticketPath({ key }) });
+  const { dragging, setDragging, refusal, pending, drop, press, refuse, dismiss, starting, startRun, startClosed, focusOnceStarted, handBack, terminal, pressTerminal } = useBoardMoves(lookup, boardRead, onMoved, heldLine, cursor.at);
+  useKey('v', useCallback(() => setMenu((m) => !m), []));
+
   const under = cursor.at === null ? undefined : lookup(cursor.at);
   const branchCopy = useBranchCopy(under);
 
@@ -736,13 +756,9 @@ export function BoardPage() {
         <StartModal
           ticket={starting}
           run={(worktree) => startRun(starting, worktree)}
-          // the card has the focus back only if it is the Cursor's: a menu and a drag leave the Cursor where it was
-          // (DESIGN.md Card menu), and a ring on another card would have `⏎` open that one while `s` acts on the
-          // Cursor's. Otherwise the focus goes where the Cursor's keys are, on `body`, and the Cursor is kept on screen
-          home={() => (starting.key === cursor.at ? cardOf(starting.key) : null)}
+          home={() => handBack(starting.key)}
           onClose={(started, keyed) => {
             startClosed(starting, started);
-            if (starting.key !== cursor.at) return keysToCursor();
             if (started) focusOnceStarted(starting.key, keyed);
           }}
         />

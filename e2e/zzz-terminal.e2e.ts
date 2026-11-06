@@ -286,6 +286,66 @@ test.describe('Open terminal', () => {
     expect((await read(page, key)).status).toBe('building');
   });
 
+  // GF-132: a card's menu leaves the Cursor where it was (DESIGN.md Card menu), so the terminal's modal from a card that
+  // is not the Cursor's leaves the focus where the Cursor's keys are, as the Start modal does (GF-131)
+  test('on the board: Open terminal from a card the Cursor is not on leaves the focus with the Cursor, on every close', async ({ page }) => {
+    const word = `Termcursal ${n}`;
+    const res = await page.request.post('/api/tickets', { data: { title: `${word} cursor`, status: 'planning', simple: true } });
+    const cursorKey = ((await res.json()) as { key: string }).key;
+    const cursorCard = page.getByTestId(`card-${cursorKey}`);
+    const key = await plainlyStarted(page, `${word} menu`);
+    await page.goto('/?q=' + encodeURIComponent(word));
+    await expect(cursorCard).toBeVisible();
+    await page.keyboard.press('j');
+    await expect(cursorCard).toHaveAttribute('aria-current', 'true');
+    const withCursor = async (close: string) => {
+      await expect(modal(page), close).toHaveCount(0);
+      await expect(page.locator('body'), close).toBeFocused();
+      await expect(cursorCard, close).toHaveAttribute('aria-current', 'true');
+      await expect(cursorCard, close).toBeInViewport();
+    };
+    const opened = async () => {
+      await page.getByTestId(`menu-${key}`).click();
+      await page.getByTestId(`menu-${key}-terminal`).click();
+      await expect(modal(page).getByLabel('branch')).toBeFocused();
+    };
+
+    await opened();
+    await modal(page).getByTestId('start-cancel').click();
+    await withCursor('cancel');
+    await opened();
+    await page.keyboard.press('Escape');
+    await withCursor('esc');
+    await opened();
+    await page.mouse.click(8, page.viewportSize()!.height - 8);
+    await withCursor('a press outside');
+    // the Checkout itself is on `main`, so git refuses it, and the refusal stays until `esc`
+    await opened();
+    await modal(page).getByLabel('branch').fill('main');
+    await page.keyboard.press('Enter');
+    await expect(modal(page).getByRole('alert')).toBeVisible();
+    // the typing opened the branch list, and the first `esc` shuts that
+    await page.keyboard.press('Escape');
+    await expect(modal(page).getByRole('listbox')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await withCursor('a refusal, then esc');
+    expect((await read(page, key)).worktree_branch).toBeNull();
+
+    // a Worktree made and a terminal not opened: the folder is the way forward, so its copy has the focus, and keeps it
+    await opened();
+    await page.keyboard.press('Enter');
+    await expect(modal(page)).toHaveCount(0);
+    await expect(said(page).getByRole('button', { name: 'copy folder of this terminal' })).toBeFocused();
+    await expect(cursorCard).toHaveAttribute('aria-current', 'true');
+    // and once the line goes, the focus does not go to the card it was about
+    await page.keyboard.press('Escape');
+    await expect(said(page)).toHaveCount(0);
+    await withCursor('the line let go');
+    // the Cursor's `⏎` opens the Cursor's Ticket
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/tickets/${cursorKey}$`));
+  });
+
   // This server has the built `herdr`, so nothing starts a Ticket while it is chosen.
   test('the terminal step is edited where the prefix is, and can be switched to herdr and back', async ({ page }) => {
     await page.goto('/settings');
