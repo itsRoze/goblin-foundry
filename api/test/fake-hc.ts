@@ -38,8 +38,12 @@ if (command === 'ls' && rest[0] === '--json') {
   console.log(JSON.stringify({ address: terminal.address, argv: ['/bin/zsh', '-l'], cwd: terminal.launched, foreground, labels: terminal.labels, state: 'live' }));
 } else if (command === 'label' && rest.length > 1) {
   const [address, ...pairs] = rest as [string, ...string[]];
-  // a terminal the window just made is in the core already, but nobody told this stand-in its folder
-  const terminal = core.terminals.find((t) => t.address === address) ?? (core.terminals.push({ address, launched: '/somewhere', live: null, labels: {} }), core.terminals.at(-1)!);
+  let terminal = core.terminals.find((t) => t.address === address);
+  if (!terminal) {
+    // a terminal the window just made is in the core already, but nobody told this stand-in its folder
+    terminal = { address, launched: '/somewhere', live: null, labels: {} };
+    core.terminals.push(terminal);
+  }
   for (const pair of pairs) {
     const [key, value] = pair.split(/=(.*)/s) as [string, string];
     terminal.labels[key] = value;

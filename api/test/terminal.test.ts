@@ -108,7 +108,7 @@ describe('Start and Open terminal ask the terminal step, against real git', () =
       const res = await post(`/api/tickets/${key}/start`, {});
       expect(res.status).toBe(200);
       expect(await res.json()).toMatchObject({ key, status: 'building', worktree_branch: branch, worktree_folder: folderOf(branch), terminal: { opened: true } });
-      expect(recorder.asked).toEqual([{ app: { id: app.id, name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: folderOf(branch) }]);
+      expect(recorder.asked).toEqual([{ app: { name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: folderOf(branch) }]);
     });
 
     test('a terminal that did not open is not an error: the Ticket is building with its Worktree, and the reason and folder come back', async () => {
@@ -185,7 +185,7 @@ describe('Start and Open terminal ask the terminal step, against real git', () =
       const res = await terminal(key);
       expect(res.status).toBe(200);
       expect(await res.json()).toMatchObject({ key, status: 'building', worktree_folder: ticket.worktree_folder, terminal: { opened: true } });
-      expect(recorder.asked).toEqual([{ app: { id: app.id, name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: ticket.worktree_folder }]);
+      expect(recorder.asked).toEqual([{ app: { name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: ticket.worktree_folder }]);
       expect(await events(key)).toEqual(before);
       expect((await read(key)).updated_at).toBe(ticket.updated_at);
     });
@@ -245,7 +245,7 @@ describe('Start and Open terminal ask the terminal step, against real git', () =
       expect(res.status).toBe(200);
       expect(await res.json()).toMatchObject({ key, status: 'building', worktree_branch: branch, worktree_folder: folderOf(branch), terminal: { opened: true } });
       expect(git(folderOf(branch), 'symbolic-ref', '--short', 'HEAD')).toBe(branch);
-      expect(recorder.asked).toEqual([{ app: { id: app.id, name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: folderOf(branch) }]);
+      expect(recorder.asked).toEqual([{ app: { name: 'Subway Reader', checkout: repo }, ticket: { key, title: 'Parse the feed' }, folder: folderOf(branch) }]);
       const after = await events(key);
       expect(after).toHaveLength(before.length + 1);
       expect(after[0]).toMatchObject({

@@ -6,8 +6,8 @@ import { app as appTable, type TicketRow } from './schema';
 import { readSettings } from './settings';
 
 export interface TerminalRequest {
-  /** The Checkout, when the App has one, is where its space goes, so a Ticket's space nests under it. */
-  app: { id: number; name: string; checkout: string | null };
+  /** The App's Checkout too, when it has one, for a terminal that shows a Ticket's Worktree beside the repository it came from. */
+  app: { name: string; checkout: string | null };
   ticket: { key: string; title: string };
   folder: string;
 }
@@ -44,7 +44,7 @@ export async function openTerminal(db: Db, steps: TerminalSteps, ticket: TicketR
   const app = await appOfTicket(db, ticket);
   if (!app) return { opened: false, reason: `${key} has no App, so no terminal was opened`, folder };
   try {
-    return await steps[terminal_step].open({ app: { id: app.id, name: app.name, checkout: app.checkout }, ticket: { key, title: ticket.title }, folder });
+    return await steps[terminal_step].open({ app: { name: app.name, checkout: app.checkout }, ticket: { key, title: ticket.title }, folder });
   } catch (e) {
     return { opened: false, reason: e instanceof Error ? e.message : String(e), folder };
   }

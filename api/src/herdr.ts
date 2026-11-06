@@ -100,9 +100,9 @@ async function topLevel(folder: string) {
  * is from the live folder of its first terminal that has one, else the folder it
  * was made in (`mods/spaces/main.js`, `place()`). So that is what counts here,
  * whatever the space is called: one on this machine whose place git calls the
- * Checkout. Whether the App wants one made, then, is whether no space is there.
+ * Checkout's working tree, which a linked worktree kept inside it is not.
  */
-async function wantsSpaceOn(checkout: string, spaces: Space[], liveFolder: (terminal: string) => Promise<string | null>) {
+async function noSpaceOn(checkout: string, spaces: Space[], liveFolder: (terminal: string) => Promise<string | null>) {
   const top = await topLevel(checkout);
   // nothing nests under a Checkout git cannot read, so a space made there would not help
   if (top === null) return false;
@@ -115,8 +115,7 @@ async function wantsSpaceOn(checkout: string, spaces: Space[], liveFolder: (term
         break;
       }
     }
-    // only a folder inside the Checkout can be on it; git then tells a linked worktree kept in there from the Checkout itself
-    if ((place === top || place.startsWith(`${top}/`)) && (await topLevel(place)) === top) return false;
+    if ((await topLevel(place)) === top) return false;
   }
   return true;
 }
@@ -142,10 +141,11 @@ async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Req
     const answer = await hc('get', terminal, '--json');
     return (answer.ok && read(answer.out, TerminalSchema)?.foreground?.cwd) || null;
   };
-  const windowDoes = async (command: string, args: Record<string, unknown>) => {
+  /** `what` names it in a refusal, since the App's space and the Ticket's are both a `space.new`. */
+  const windowDoes = async (command: string, args: Record<string, unknown>, what: string) => {
     const answer = await ran(tools['herdr-app'], ['do', command, JSON.stringify(args)], env, timeoutMs);
     if (answer.ok) return answer.out;
-    throw new Error(`Herdr refused ${command}: ${read(answer.out, RefusedSchema)?.error ?? answer.err}`);
+    throw new Error(`Herdr refused ${command} for ${what}: ${read(answer.out, RefusedSchema)?.error ?? answer.err}`);
   };
 
   // the Worktree as well, because a Ticket can leave a terminal in its old one, and two Tickets can share a folder;
@@ -153,13 +153,13 @@ async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Req
   const ticketLabels = [`goblin.ticket=${request.ticket.key}`, `goblin.worktree=${request.folder}`, 'goblin.space=ticket'];
   const live = (await carrying(...ticketLabels)).find(({ address }) => showing.has(address));
   if (live) {
-    await windowDoes('pane.focus', { terminal: live.address });
+    await windowDoes('pane.focus', { terminal: live.address }, "the Ticket's terminal");
     return;
   }
 
-  if (request.app.checkout && (await wantsSpaceOn(request.app.checkout, spaces, liveFolder))) await windowDoes('space.new', { name: request.app.name, folder: request.app.checkout });
+  if (request.app.checkout && (await noSpaceOn(request.app.checkout, spaces, liveFolder))) await windowDoes('space.new', { name: request.app.name, folder: request.app.checkout }, "the App's space");
 
-  const made = parsed('herdr-app do', await windowDoes('space.new', { name: `${request.ticket.key} ${request.ticket.title}`, folder: request.folder }), MadeSchema);
+  const made = parsed('herdr-app do', await windowDoes('space.new', { name: `${request.ticket.key} ${request.ticket.title}`, folder: request.folder }, "the Ticket's space"), MadeSchema);
 
   const tagged = await hc('label', made.terminal, ...ticketLabels);
   if (!tagged.ok) throw new Error(`Herdr made terminal ${made.terminal} but it could not be tagged, so it will not be found again: ${tagged.err}`);

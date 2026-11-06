@@ -27,7 +27,7 @@ const windowWith = (...spaces: Space[]) => ({
   },
 });
 
-const sh = (cwd: string, ...args: string[]) => expect(Bun.spawnSync(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd }).exitCode).toBe(0);
+const gitIn = (cwd: string, ...args: string[]) => expect(Bun.spawnSync(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd }).exitCode).toBe(0);
 
 describe('the Herdr terminal step, against stand-ins on a temporary PATH', () => {
   let scratch: string;
@@ -57,12 +57,17 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
     mkdirSync(installed);
     mkdirSync(checkout);
     writeFileSync(log, '');
-    sh(checkout, 'init', '-q', '-b', 'main');
-    sh(checkout, 'commit', '-q', '--allow-empty', '-m', 'first');
-    sh(checkout, 'worktree', 'add', '-q', '-b', 'gf-12', worktree);
-    subway = { app: { id: 7, name: 'Subway Reader', checkout }, ticket: { key: 'GF-12', title: 'Parse the feed' }, folder: worktree };
+    gitIn(checkout, 'init', '-q', '-b', 'main');
+    gitIn(checkout, 'commit', '-q', '--allow-empty', '-m', 'first');
+    gitIn(checkout, 'worktree', 'add', '-q', '-b', 'gf-12', worktree);
+    subway = { app: { name: 'Subway Reader', checkout }, ticket: { key: 'GF-12', title: 'Parse the feed' }, folder: worktree };
   });
   afterEach(() => rmSync(scratch, { recursive: true, force: true }));
+
+  /** The App's space, on the Checkout: its one terminal is t1, live there. */
+  const appSpace = (): [Space, CoreTerminal] => [{ id: 'sp-subway', name: 'Subway Reader', terminals: ['t1'] }, { address: 't1', live: checkout }];
+  /** A terminal the step made for GF-12, in its own space. */
+  const ticketTerminal = (address: string, folder = worktree): CoreTerminal => ({ address, live: folder, labels: { 'goblin.ticket': 'GF-12', 'goblin.worktree': folder, 'goblin.space': 'ticket' } });
 
   /**
    * A stand-in executable: writes its arguments down, then plays back the answer
@@ -135,7 +140,7 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
 
   describe('first open', () => {
     test("with the App's space on its Checkout, makes the Ticket a space of its own, named by Ticket Key and title, in the Worktree", async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t1'] }), [{ address: 't1', live: checkout }]);
+      herdr(windowWith(appSpace()[0]), [appSpace()[1]]);
       expect(await step().open(subway)).toEqual({ opened: true });
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
     });
@@ -147,7 +152,7 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
     });
 
     test('tags the terminal it made with the Ticket Key, the Worktree folder and that the space is the Ticket\'s', async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', terminals: ['t1'] }), [{ address: 't1', live: checkout }]);
+      herdr(windowWith(appSpace()[0]), [appSpace()[1]]);
       await step().open(subway);
       expect(labels()).toEqual(['t9', 'goblin.ticket=GF-12', `goblin.worktree=${worktree}`, 'goblin.space=ticket']);
     });
@@ -159,23 +164,15 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
     });
 
     test('a title that looks like JSON or a flag arrives as the name, untouched', async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', folder: checkout }));
+      herdr(windowWith(appSpace()[0]), [appSpace()[1]]);
       await step().open({ ...subway, ticket: { key: 'GF-12', title: '--confirmed "true" {"a":1}' } });
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 --confirmed "true" {"a":1}', folder: worktree } }]);
     });
   });
 
   describe('opening again', () => {
-    const ticketTerminal = (address: string, folder = worktree): CoreTerminal => ({ address, live: folder, labels: { 'goblin.ticket': 'GF-12', 'goblin.worktree': folder, 'goblin.space': 'ticket' } });
-    const appSpace: Space = { id: 'sp-subway', name: 'Subway Reader', terminals: ['t1'] };
-    const onCheckout: CoreTerminal = { address: 't1', live: '' };
-
-    beforeEach(() => {
-      onCheckout.live = checkout;
-    });
-
     test("the Ticket's live terminal is shown, and nothing is made", async () => {
-      herdr(windowWith(appSpace, { id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [onCheckout, ticketTerminal('t4')]);
+      herdr(windowWith(appSpace()[0], { id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [appSpace()[1], ticketTerminal('t4')]);
       expect(await step().open(subway)).toEqual({ opened: true });
       expect(done()).toEqual([{ 'pane.focus': { terminal: 't4' } }]);
       expect(labels()).toBeUndefined();
@@ -183,38 +180,42 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
 
     test('a tab the Ticket was opened in before it had a space of its own is left alone, and its space is made', async () => {
       const oldStyle: CoreTerminal = { address: 't4', live: worktree, labels: { 'goblin.ticket': 'GF-12', 'goblin.app': '7', 'goblin.worktree': worktree } };
-      herdr(windowWith({ ...appSpace, terminals: ['t1', 't4'] }), [onCheckout, oldStyle]);
+      herdr(windowWith({ ...appSpace()[0], terminals: ['t1', 't4'] }), [appSpace()[1], oldStyle]);
       expect(await step().open(subway)).toEqual({ opened: true });
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
       expect(labels()?.[0]).toBe('t9');
     });
 
     test("the Ticket's terminal in its old Worktree is left alone, and a fresh space opens in the recorded folder", async () => {
-      herdr(windowWith(appSpace, { id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [onCheckout, ticketTerminal('t4', `${worktree}-old`)]);
+      herdr(windowWith(appSpace()[0], { id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [appSpace()[1], ticketTerminal('t4', `${worktree}-old`)]);
       expect(await step().open(subway)).toEqual({ opened: true });
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
     });
 
     test('another Ticket sharing the Worktree folder does not take its terminal', async () => {
-      herdr(windowWith(appSpace, { id: 'sp-13', name: 'GF-13 Other', terminals: ['t4'] }), [onCheckout, { ...ticketTerminal('t4'), labels: { ...ticketTerminal('t4').labels, 'goblin.ticket': 'GF-13' } }]);
+      herdr(windowWith(appSpace()[0], { id: 'sp-13', name: 'GF-13 Other', terminals: ['t4'] }), [appSpace()[1], { ...ticketTerminal('t4'), labels: { ...ticketTerminal('t4').labels, 'goblin.ticket': 'GF-13' } }]);
       await step().open(subway);
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
     });
 
     test('a terminal the core still calls live but the window no longer shows counts as closed', async () => {
       // what `hc ls` says for a moment after a space is closed
-      herdr(windowWith(appSpace), [onCheckout, ticketTerminal('t4')]);
+      herdr(windowWith(appSpace()[0]), [appSpace()[1], ticketTerminal('t4')]);
       await step().open(subway);
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
     });
   });
 
   describe("which space is the App's: one Herdr nests the Ticket's under", () => {
-    /** Whether the step made a space for the App before the Ticket's, in a Herdr showing these spaces. */
+    /** Whether the step made the App a space on its Checkout before the Ticket's, in a Herdr showing these spaces. */
     const appSpaceMade = async ([spaces, terminals]: [Space[], CoreTerminal[]]) => {
       herdr(windowWith(...spaces), terminals);
       await step().open(subway);
-      return done().length === 2;
+      const made = done();
+      expect(made.at(-1)).toEqual({ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } });
+      if (made.length === 1) return false;
+      expect(made).toEqual([{ 'space.new': { name: 'Subway Reader', folder: checkout } }, made.at(-1)!]);
+      return true;
     };
 
     test("a space named after the App whose terminal is somewhere else is not the App's", async () => {
@@ -244,7 +245,7 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
 
     test("another Ticket's space, in a linked worktree, is not the App's, even one kept inside the Checkout's folder", async () => {
       const inside = join(checkout, '.worktrees', 'gf-11');
-      sh(checkout, 'worktree', 'add', '-q', '-b', 'gf-11', inside);
+      gitIn(checkout, 'worktree', 'add', '-q', '-b', 'gf-11', inside);
       expect(await appSpaceMade([[{ id: 'sp-11', name: 'GF-11 Other', terminals: ['t1'] }], [{ address: 't1', live: inside }]])).toBe(true);
     });
 
@@ -256,6 +257,12 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
       rmSync(join(checkout, '.git'), { recursive: true });
       herdr(windowWith());
       expect(await step().open(subway)).toEqual({ opened: true });
+      expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
+    });
+
+    test("a terminal the core cannot describe has no live folder, so its space's folder is its place", async () => {
+      herdr(windowWith({ id: 'sp-x', name: 'x', folder: checkout, terminals: ['t1'] }), [{ address: 't1', live: home }], {}, { get: { code: 3, err: 'no terminal "t1"\n' } });
+      await step().open(subway);
       expect(done()).toEqual([{ 'space.new': { name: 'GF-12 Parse the feed', folder: worktree } }]);
     });
 
@@ -312,24 +319,23 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
 
     test("Herdr refusing the App's space says what it said, and makes nothing for the Ticket", async () => {
       herdr(windowWith(), [], { 'do space.new*': { code: 1, out: { error: 'folder does not exist' } } });
-      expect(await whyNot()).toBe('Herdr refused space.new: folder does not exist');
+      expect(await whyNot()).toBe("Herdr refused space.new for the App's space: folder does not exist");
       expect(done()).toEqual([{ 'space.new': { name: 'Subway Reader', folder: checkout } }]);
     });
 
     test("Herdr refusing the Ticket's space says what it said", async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', folder: checkout }), [], { 'do space.new*': { code: 1, out: { error: 'folder does not exist' } } });
-      expect(await whyNot()).toBe('Herdr refused space.new: folder does not exist');
+      herdr(windowWith(appSpace()[0]), [appSpace()[1]], { 'do space.new*': { code: 1, out: { error: 'folder does not exist' } } });
+      expect(await whyNot()).toBe("Herdr refused space.new for the Ticket's space: folder does not exist");
     });
 
     test('a refusal that is not JSON gives what Herdr wrote to stderr', async () => {
-      herdr(windowWith({ id: 'sp-subway', name: 'Subway Reader', folder: checkout }), [], { 'do space.new*': { code: 2, raw: 'not json', err: 'herdr-app: no Herdr window\n' } });
-      expect(await whyNot()).toBe('Herdr refused space.new: herdr-app: no Herdr window');
+      herdr(windowWith(appSpace()[0]), [appSpace()[1]], { 'do space.new*': { code: 2, raw: 'not json', err: 'herdr-app: no Herdr window\n' } });
+      expect(await whyNot()).toBe("Herdr refused space.new for the Ticket's space: herdr-app: no Herdr window");
     });
 
     test('Herdr refusing to show the live terminal says what it said', async () => {
-      const t4: CoreTerminal = { address: 't4', live: worktree, labels: { 'goblin.ticket': 'GF-12', 'goblin.worktree': worktree, 'goblin.space': 'ticket' } };
-      herdr(windowWith({ id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [t4], { 'do pane.focus*': { code: 1, out: { error: 'no such terminal' } } });
-      expect(await whyNot()).toBe('Herdr refused pane.focus: no such terminal');
+      herdr(windowWith({ id: 'sp-12', name: 'GF-12 Parse the feed', terminals: ['t4'] }), [ticketTerminal('t4')], { 'do pane.focus*': { code: 1, out: { error: 'no such terminal' } } });
+      expect(await whyNot()).toBe("Herdr refused pane.focus for the Ticket's terminal: no such terminal");
     });
 
     test('a terminal that could not be tagged says so, since it could not be found again', async () => {
@@ -380,6 +386,17 @@ describe('the Herdr terminal step, against stand-ins on a temporary PATH', () =>
       expect(await post(`/api/tickets/${key}/terminal`, {})).toMatchObject({ status: 'building', terminal: { opened: true } });
       expect(done().map((command) => Object.keys(command)[0])).toEqual(['space.new', 'pane.focus']);
       expect(done().at(-1)).toEqual({ 'pane.focus': { terminal: 't9' } });
+    });
+
+    test("after a stop and a Start on another branch, the Ticket's terminal left in the old Worktree is not the one shown", async () => {
+      herdr(windowWith(appSpace()[0], { id: 'sp-t9', name: 'the Ticket', terminals: ['t9'] }), [appSpace()[1]]);
+      await trackerOn(installed);
+      await post(`/api/tickets/${key}/start`, {});
+      await post(`/api/tickets/${key}/stop`);
+      const moved = await post(`/api/tickets/${key}/start`, { branch: 'another' });
+      expect(moved).toMatchObject({ worktree_branch: 'another', terminal: { opened: true } });
+      expect(moved.worktree_folder).not.toBe(started);
+      expect(done()).toEqual([{ 'space.new': { name: `${key} Parse the feed`, folder: started } }, { 'space.new': { name: `${key} Parse the feed`, folder: moved.worktree_folder } }]);
     });
 
     test('Herdr missing leaves the Ticket building with its Worktree, and the outcome says what to start', async () => {
