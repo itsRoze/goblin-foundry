@@ -11,6 +11,11 @@ import type { TiptapEditorHTMLElement } from '@tiptap/core';
  * crowd.
  */
 
+// Its cases wait out real save timeouts, about five minutes in all. `parallel` lets `--shard`
+// deal them out one by one instead of handing the whole file to one shard; with one worker
+// per process they still run one at a time.
+test.describe.configure({ mode: 'parallel' });
+
 type Ticket = { key: string; title: string; description: string };
 type Named = { id: number; name: string };
 

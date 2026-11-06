@@ -101,8 +101,10 @@ Hand each implementer a pointer to this section. In its worktree it:
    has no `node_modules`, and the Agent tool's worktree can start on `main`.
 2. Leaves the live tracker alone except for reads. Tests get their own database
    from the API harness, and no test data goes into `127.0.0.1:4747`.
-3. Runs Playwright with its own `GF_E2E_PORT`, since the suites of other
-   worktrees may be running at the same time.
+3. Runs the browser suite with `bun run test:e2e:par`. It builds once and runs
+   eight shards at once, each on a free port of its own, so it takes about five
+   minutes and does not collide with the suites of other worktrees. A plain
+   `playwright test` needs its own `GF_E2E_PORT`.
 4. Edits every doc the spec names, `AGENTS.md` included. The spec is the
    operator's authorisation.
 5. Reproduces a failure only Linux shows (fonts draw wider there) on CI, which

@@ -46,9 +46,11 @@ A finding that contradicts a DESIGN.md section is refused with the section name:
 ## 4. Prove it and put the server away
 
 ```bash
-bun run lint && bun run typecheck && bun test && bun run test:e2e
+bun run lint && bun run typecheck && bun test && bun run test:e2e:par
 bun .claude/skills/ui-closeout/serve.ts stop
 ```
+
+`test:e2e:par` runs the browser suite in eight shards at once, in about five minutes, and prints each shard's counts and log path.
 
 Then `mattpocock-skills:code-review` and the commit, as `/implement` says. In the commit message or PR body, one short block per target: the critique's score and P0/P1 count, what polish changed, what was left and where it was written down.
 
