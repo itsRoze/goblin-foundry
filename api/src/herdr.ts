@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { git } from './git';
 import type { TerminalRequest, TerminalStep } from './terminal';
 
 /**
@@ -8,9 +9,12 @@ import type { TerminalRequest, TerminalStep } from './terminal';
  * window (spaces, tabs, what is shown) and `hc` is its core (the terminals and
  * their labels). `herdr`, Homebrew's Herdr 1, is another program and never asked.
  *
- * An App is one space and a Ticket is one tab in it. The step keeps no state:
- * the terminal carries the Ticket Key, the App and the Worktree folder as labels
- * in Herdr's core, so reuse is a lookup and a closed terminal simply is not found.
+ * A Ticket is a space of its own, its first terminal in the Worktree, so Herdr's
+ * sidebar nests it under the App's space on the Checkout. The step keeps no state:
+ * the terminal carries the Ticket Key, the Worktree folder and that the space is
+ * the Ticket's as labels in Herdr's core, so reuse is a lookup and a closed
+ * terminal simply is not found. A Ticket opened before, as a tab in its App's
+ * space, lacks the last label, so that tab is never shown, closed or moved.
  * The folder is the one it was opened in, since the operator may have `cd`ed
  * away from it and a Ticket may have moved to another Worktree. Herdr's app starts
  * the terminal rather than this process, so it has no parent to die with and
@@ -26,14 +30,18 @@ const WindowSchema = z.object({
     z.object({
       id: z.string(),
       name: z.string(),
+      folder: z.string(),
       machine: z.string().nullable(),
       tabs: z.array(z.object({ terminals: z.array(z.object({ terminal: z.string() })) })),
     }),
   ),
 });
 const LabelledSchema = z.object({ terminals: z.array(z.object({ address: z.string() })) });
+/** `hc get`: its JSON `cwd` is where the terminal was launched, and the folder it is in now is its foreground program's. */
+const TerminalSchema = z.object({ foreground: z.object({ cwd: z.string().nullish() }).nullish() });
 const MadeSchema = z.object({ terminal: z.string() });
 const RefusedSchema = z.object({ error: z.string() });
+type Space = z.infer<typeof WindowSchema>['spaces'][number];
 
 type Ran = { ok: true; out: string } | { ok: false; out: string; err: string };
 type Env = Record<string, string | undefined>;
@@ -80,6 +88,38 @@ function findTools(env: Env, appBundle: string): Record<(typeof TOOLS)[number], 
   throw new Error(`Herdr is installed but ${absent.join(' and ')} ${absent.length > 1 ? 'were' : 'was'} not found on PATH or in ~/.local/bin: open Herdr once so it puts ${absent.length > 1 ? 'them' : 'it'} there`);
 }
 
+/** The working tree a folder is in, as git names it: real paths, as a terminal's live folder is. */
+async function topLevel(folder: string) {
+  const answer = await git(folder, ['rev-parse', '--show-toplevel']);
+  return answer.ran && answer.ok ? answer.out : null;
+}
+
+/**
+ * Herdr's sidebar nests a space whose first terminal is in a linked worktree
+ * under a space on that repository's main working tree, and takes where a space
+ * is from the live folder of its first terminal that has one, else the folder it
+ * was made in (`mods/spaces/main.js`, `place()`). So that is what counts here,
+ * whatever the space is called: one on this machine whose place git calls the
+ * Checkout's working tree, which a linked worktree kept inside it is not.
+ */
+async function noSpaceOn(checkout: string, spaces: Space[], liveFolder: (terminal: string) => Promise<string | null>) {
+  const top = await topLevel(checkout);
+  // nothing nests under a Checkout git cannot read, so a space made there would not help
+  if (top === null) return false;
+  for (const space of spaces.filter(({ machine }) => machine === null)) {
+    let place = space.folder;
+    for (const { terminal } of space.tabs.flatMap((tab) => tab.terminals)) {
+      const live = await liveFolder(terminal);
+      if (live) {
+        place = live;
+        break;
+      }
+    }
+    if ((await topLevel(place)) === top) return false;
+  }
+  return true;
+}
+
 async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Required<HerdrOptions>) {
   const tools = findTools(env, appBundle);
   const hc = (...args: string[]) => ran(tools.hc, args, env, timeoutMs);
@@ -88,41 +128,40 @@ async function show(request: TerminalRequest, { env, appBundle, timeoutMs }: Req
   if (!inWindow.ok) throw new Error('Herdr is not open, so no terminal was opened: open the Herdr app and try again');
   const { spaces } = parsed('herdr-app ls', inWindow.out, WindowSchema);
   /** The window is the truth about what is shown: for a moment after a tab closes, the core still calls its terminal live. */
-  const spaceShowing = new Map(spaces.flatMap((space) => space.tabs.flatMap((tab) => tab.terminals.map(({ terminal }) => [terminal, space.id] as const))));
+  const showing = new Set(spaces.flatMap((space) => space.tabs.flatMap((tab) => tab.terminals.map(({ terminal }) => terminal))));
 
-  const carrying = async (label: string) => {
-    const answer = await hc('ls', '--json', '--label', label);
+  /** The live terminals carrying every one of these labels. */
+  const carrying = async (...labels: string[]) => {
+    const answer = await hc('ls', '--json', ...labels.flatMap((label) => ['--label', label]));
     if (!answer.ok) throw new Error(`Herdr's core is not running, so no terminal was opened: run \`hc server start\` and try again${answer.err && ` (${answer.err})`}`);
-    return parsed('hc ls', answer.out, LabelledSchema).terminals.map(({ address }) => address);
+    return parsed('hc ls', answer.out, LabelledSchema).terminals;
   };
-  const windowDoes = async (command: string, args: Record<string, unknown>) => {
+  /** Where a terminal is now; a terminal gone since the window was read is nowhere. */
+  const liveFolder = async (terminal: string) => {
+    const answer = await hc('get', terminal, '--json');
+    return (answer.ok && read(answer.out, TerminalSchema)?.foreground?.cwd) || null;
+  };
+  /** `what` names it in a refusal, since the App's space and the Ticket's are both a `space.new`. */
+  const windowDoes = async (command: string, args: Record<string, unknown>, what: string) => {
     const answer = await ran(tools['herdr-app'], ['do', command, JSON.stringify(args)], env, timeoutMs);
     if (answer.ok) return answer.out;
-    throw new Error(`Herdr refused ${command}: ${read(answer.out, RefusedSchema)?.error ?? answer.err}`);
+    throw new Error(`Herdr refused ${command} for ${what}: ${read(answer.out, RefusedSchema)?.error ?? answer.err}`);
   };
 
-  const ticketLabel = `goblin.ticket=${request.ticket.key}`;
-  const worktreeLabel = `goblin.worktree=${request.folder}`;
-  const forTicket = await carrying(ticketLabel);
-  // both, because a Ticket can leave a terminal in its old Worktree, and two Tickets can share a folder
-  const inWorktree = await carrying(worktreeLabel);
-  const live = forTicket.find((terminal) => spaceShowing.has(terminal) && inWorktree.includes(terminal));
+  // the Worktree as well, because a Ticket can leave a terminal in its old one, and two Tickets can share a folder;
+  // and its own space, because a Ticket opened as a tab in its App's space is left as it is
+  const ticketLabels = [`goblin.ticket=${request.ticket.key}`, `goblin.worktree=${request.folder}`, 'goblin.space=ticket'];
+  const live = (await carrying(...ticketLabels)).find(({ address }) => showing.has(address));
   if (live) {
-    await windowDoes('pane.focus', { terminal: live });
+    await windowDoes('pane.focus', { terminal: live.address }, "the Ticket's terminal");
     return;
   }
 
-  const appLabel = `goblin.app=${request.app.id}`;
-  // the App's own terminals first, so a space or App renamed since still gets its Tickets
-  const space = (await carrying(appLabel)).map((terminal) => spaceShowing.get(terminal)).find(Boolean) ?? spaces.find((s) => s.name === request.app.name && s.machine === null)?.id;
-  const tab = `${request.ticket.key} ${request.ticket.title}`;
-  const made = parsed(
-    'herdr-app do',
-    space ? await windowDoes('tab.new', { name: tab, space, folder: request.folder }) : await windowDoes('space.new', { name: request.app.name, folder: request.folder, tab }),
-    MadeSchema,
-  );
+  if (request.app.checkout && (await noSpaceOn(request.app.checkout, spaces, liveFolder))) await windowDoes('space.new', { name: request.app.name, folder: request.app.checkout }, "the App's space");
 
-  const tagged = await hc('label', made.terminal, ticketLabel, appLabel, worktreeLabel);
+  const made = parsed('herdr-app do', await windowDoes('space.new', { name: `${request.ticket.key} ${request.ticket.title}`, folder: request.folder }, "the Ticket's space"), MadeSchema);
+
+  const tagged = await hc('label', made.terminal, ...ticketLabels);
   if (!tagged.ok) throw new Error(`Herdr made terminal ${made.terminal} but it could not be tagged, so it will not be found again: ${tagged.err}`);
 }
 
