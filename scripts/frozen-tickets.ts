@@ -11,6 +11,9 @@ const DIR = 'docs/tickets';
 
 const lines = (out: string) => out.split('\n').filter(Boolean);
 
+// `git ls-files -- <path>` resolves the path against the working directory.
+process.chdir((await $`git rev-parse --show-toplevel`.text()).trim());
+
 if ((await $`git cat-file -e ${FROZEN_AT}^{commit}`.nothrow().quiet()).exitCode !== 0) {
   console.error(`frozen-tickets: commit ${FROZEN_AT} is missing; fetch the full history (a shallow clone lacks it)`);
   process.exit(1);

@@ -53,18 +53,19 @@ Each one moves tickets differently. Find the one you are in.
   spec's project, with its blockers (see "publish to the issue tracker"). If the
   approve guard refuses a create, the 422 names what is missing: create in
   `todo`, add it, then `approve`.
-- **implement-spec** works the spec's project and nothing else. Its queue is
-  `goblin frontier --project <project> --exclude-label ready-for-human`, plus
-  Wayfinder's human-only labels when unattended (see "When a skill asks what to
-  work on next"). For each ticket, `start` it (`ready → building`), build it,
+- **implement-spec** works the spec's project and nothing else. Confirm the
+  project first with `goblin project show <project>`: an unknown one has an
+  empty frontier, which reads as done. Its queue is
+  `goblin frontier --project <project>` without the human-only labels (see
+  "When a skill asks what to work on next"). For each ticket, `start` it (`ready → building`), build it,
   open the PR, then follow "When you open a PR for a ticket". Its implementers
   each work in a worktree; see below.
 
   A question only the human can answer (a product call, a glossary word, what
   `DESIGN.md` means) becomes a ticket in the spec's project, created in `ready`
   with `--labels ready-for-human` and the question as its description. The PR
-  body and the report name it by key. Findings and follow-ups go in the spec's
-  project too.
+  body and the report name it by key. A finding or follow-up goes in the
+  spec's project in `backlog`, for the human to triage.
 
   The run is done when that queue is empty and no ticket of the project is in
   `building`: report and stop. Backlog tickets and other projects' tickets wait
@@ -104,8 +105,9 @@ Hand each implementer a pointer to this section. In its worktree it:
    worktrees may be running at the same time.
 4. Edits every doc the spec names, `AGENTS.md` included. The spec is the
    operator's authorisation.
-5. Reproduces a failure only Linux shows (fonts draw wider there) on CI: push
-   the probe to the ticket's branch and read the failed shard with
+5. Reproduces a failure only Linux shows (fonts draw wider there) on CI, which
+   runs on pull requests: push the probe to the ticket's open PR (open it first
+   if needed) and read the failed shard with
    `gh run view <run> --log-failed`. Docker Desktop on this machine runs the
    operator's own containers, so starting it is the operator's call.
 
