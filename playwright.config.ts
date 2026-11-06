@@ -41,7 +41,8 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: `http://127.0.0.1:${port}` },
   webServer: {
-    command: 'bun run build && bun api/src/server.ts',
+    // `test:e2e:par` builds web/dist once before its shards start; each rebuilding it would race on the files.
+    command: `${process.env.GF_E2E_PREBUILT ? '' : 'bun run build && '}bun api/src/server.ts`,
     url: `http://127.0.0.1:${port}/api/settings`,
     reuseExistingServer: false,
     env: { GF_DB_PATH: dbPath, GF_PORT: String(port) },
