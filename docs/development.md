@@ -61,6 +61,7 @@ bun run build      # one-off GUI build
 bun test           # in-process API + CLI tests (fresh temp database per test); `patch-race.test.ts` alone spawns the server over a socket
 bun run test:e2e   # Playwright smoke (builds first; needs `bunx playwright install chromium webkit` once)
                    # set GF_E2E_PORT when another worktree is running its own suite
+bun scripts/paste-matrix.ts chromium   # or webkit: every paste shape at every place in a field. Not in CI; run both when paste changes
 bun run typecheck
 bun run lint       # stylelint (DESIGN.md as rules) + the dead-CSS check
 bun run db:push    # drizzle-kit push against the dev database

@@ -204,20 +204,34 @@ const BAR_BEFORE_GF_112 = `
   .gf-counts a { padding-inline: 6px !important; }
 `;
 
-test('the bar\'s links are a finger wide, and that does not widen the bar', async ({ page }) => {
-  // two-digit counts, the most the bar promises to fit at 360, whatever this database has by now
-  const rows = Array.from({ length: 12 }, (_, n) => ({
+/** The bar counts `apps` apps and `projects` projects, whatever this database has by now. */
+async function counting(page: Page, apps: number, projects: number) {
+  const rows = (length: number) => Array.from({ length }, (_, n) => ({
     id: n + 1, name: `n${n}`, app_id: null, repository_url: null, default_branch: null, checkout: null, description: '', design: null, archived_at: null, trashed_at: null,
     created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
   }));
-  await page.route(/\/api\/(apps|projects)(\?.*)?$/, (route) => route.fulfill({ json: rows }));
+  await page.route(/\/api\/apps(\?.*)?$/, (route) => route.fulfill({ json: rows(apps) }));
+  await page.route(/\/api\/projects(\?.*)?$/, (route) => route.fulfill({ json: rows(projects) }));
+}
+
+/**
+ * Where the bar's last control ends: the bar fits when nothing in it lies past the screen. Not the bar's `scrollWidth`, which
+ * for a bar that scrolls (GF-106) counts its 8px end padding too: Linux's Chromium draws the mono fallback whole pixels wide,
+ * so at 360 with two-digit counts ⌘K ends 1.2px into that padding there, 12px short of it on macOS, and the bar scrolls by padding alone.
+ */
+const barReach = (page: Page) => page.evaluate(() => Math.max(...[...document.querySelectorAll('.gf-ws a, .gf-counts > *')].map((control) => control.getBoundingClientRect().right)));
+
+test('the bar\'s links are a finger wide, and that does not widen the bar', async ({ page }) => {
+  // two-digit counts, the most the bar promises to fit at 360
+  await counting(page, 12, 12);
   await page.goto('/');
   await expect(page.locator('.gf-counts b')).toHaveText(['12', '12']);
   const barLinks = await shortfalls(await each(page.locator('.gf-ws a, .gf-bar-key')), BAR_LINK);
   expect(barLinks).toEqual({});
   const barWidth = () => page.evaluate(() => document.querySelector('.gf-bar')!.scrollWidth);
   await page.setViewportSize({ width: 360, height: 640 });
-  expect(await barWidth()).toBe(360);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  expect(await barReach(page)).toBeLessThanOrEqual(360);
   await page.setViewportSize({ width: 320, height: 640 });
   const withWideLinks = await barWidth();
   // a width in pixels would only hold on one renderer: Linux's Chromium hints `trash` and `settings` 5px wider than macOS draws them
@@ -226,6 +240,21 @@ test('the bar\'s links are a finger wide, and that does not widen the bar', asyn
   // 320 overflows, and did before these links: what is held here is that they add nothing to it
   expect(withWideLinks).toBeLessThanOrEqual(await barWidth());
 });
+
+// GF-106's run of the whole suite reached 100 apps before the WebKit phone ran, and the page grew 5px wider than it
+const COUNTS: [width: number, apps: number, projects: number, fits: boolean][] = [[390, 100, 12, true], [390, 100, 100, true], [360, 1000, 100, false], [320, 12, 12, false]];
+for (const [width, apps, projects, fits] of COUNTS) {
+  test(`at ${width}px, ${apps} apps and ${projects} projects ${fits ? 'fit the bar' : 'scroll the bar and not the page'}, and ⌘K is a tap away`, async ({ page }) => {
+    await counting(page, apps, projects);
+    await page.setViewportSize({ width, height: 640 });
+    await page.goto('/');
+    await expect(page.locator('.gf-counts b')).toHaveText([String(apps), String(projects)]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+    expect(await barReach(page) <= width).toBe(fits);
+    await page.getByTestId('open-palette').tap();
+    await expect(page.getByTestId('palette').locator('input')).toBeInViewport();
+  });
+}
 
 test('a long name in the create row leaves the page a phone wide on a fine pointer too', async ({ browser, baseURL }) => {
   const engine = test.info().project.name;

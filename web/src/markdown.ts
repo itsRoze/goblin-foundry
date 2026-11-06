@@ -27,8 +27,45 @@ export type EditorShape = 'block' | 'inline';
  */
 const LINK = { openOnClick: true, defaultProtocol: 'https' } as const;
 
+/** The first line of `src` with any text on it, or `null` if none has. */
+function firstLineWithText(src: string): string | null {
+  for (let from = 0; from <= src.length; ) {
+    const end = src.indexOf('\n', from);
+    const line = src.slice(from, end === -1 ? undefined : end);
+    if (line.trim() !== '') return line;
+    if (end === -1) return null;
+    from = end + 1;
+  }
+  return null;
+}
+
+/**
+ * TipTap's numbered and task list tokenizers split all of the text left to read into lines at every block they are
+ * tried at, which made a read of a long body quadratic: 87% of a 2,000-line paste (GF-106). Each takes only text whose
+ * first line, past any blank ones for a task list, opens an item, so each is tried there alone and reads the same.
+ */
+function triedOnlyWhere<T extends AnyExtension>(extension: T, opensAnItem: RegExp, pastBlankLines: boolean): T {
+  const tokenizer = extension.config.markdownTokenizer!;
+  const tokenize: typeof tokenizer.tokenize = (src, tokens, lexer) => {
+    const first = pastBlankLines ? firstLineWithText(src) : src.slice(0, src.indexOf('\n') >>> 0);
+    return first === null || opensAnItem.test(first) ? tokenizer.tokenize(src, tokens, lexer) : undefined;
+  };
+  return extension.extend({ markdownTokenizer: { ...tokenizer, tokenize } }) as T;
+}
+
+/** Looser than TipTap's own patterns, `\d+|[ivxlcdm]+|[a-zA-Z]{1,2}` and a box after a bullet, so it never turns down what they take. */
+const OPENS_A_NUMBERED_ITEM = /^\s*[0-9a-zA-Z]+[.)]\s/;
+const OPENS_A_TASK = /^\s*[-+*]\s+\[[ xX]\]\s/;
+
+const QuickTaskList = triedOnlyWhere(TaskList, OPENS_A_TASK, true);
+
 /** No tables (spec), and no slash menu: input rules are the whole authoring surface. */
-const blockKit = () => StarterKit.configure({ link: LINK });
+const blockKit = () =>
+  StarterKit.extend({
+    addExtensions() {
+      return this.parent!().map((extension) => (extension.name === 'orderedList' ? triedOnlyWhere(extension, OPENS_A_NUMBERED_ITEM, false) : extension));
+    },
+  }).configure({ link: LINK });
 
 /** Everything that would make a second kind of block is off, so an inline field stays one. */
 const inlineKit = () =>
@@ -166,7 +203,7 @@ const OpenFence = Extension.create({
 
 /** Leaves out TipTap's `Markdown` extension: it builds a `MarkdownManager` per editor, and each adds its tokenizers to marked's global list for good. `managerFor` does the parsing. */
 export const extensionsFor = (shape: EditorShape): AnyExtension[] =>
-  shape === 'block' ? [blockKit(), TaskList, TaskItem, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), WholeMarks, RevealSyntax];
+  shape === 'block' ? [blockKit(), QuickTaskList, TaskItem, WholeMarks, OpenFence, RevealSyntax] : [inlineKit(), WholeMarks, RevealSyntax];
 
 /**
  * marked's quote tokenizer re-reads a list it finds last in a quote, with the
@@ -196,7 +233,7 @@ function readListsAsLexed(instance: MarkdownManager['instance']): void {
 const managers = new Map<EditorShape, MarkdownManager>();
 
 /** The parser/serialiser pair for a shape. Extensions never change, so one manager each is enough. */
-function managerFor(shape: EditorShape): MarkdownManager {
+export function managerFor(shape: EditorShape): MarkdownManager {
   let manager = managers.get(shape);
   if (!manager) {
     manager = new MarkdownManager({ extensions: extensionsFor(shape) });
