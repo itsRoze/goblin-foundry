@@ -4,12 +4,12 @@
  * one grammar for the address bar, the wire and `goblin` — and what is here is
  * only the SQL half.
  */
-import { eq, inArray, isNull, not, or, sql, type SQL } from 'drizzle-orm';
-import { parseTicketQuery, type TicketQuery } from '@goblin/shared';
+import { asc, eq, inArray, isNull, not, or, sql, type SQL } from 'drizzle-orm';
+import { TERMINAL_STATUSES, parseTicketQuery, type TicketQuery } from '@goblin/shared';
 import type { Context } from 'hono';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { unprocessable } from './problems';
-import { ticket as ticketTable, ticketLabel } from './schema';
+import { event as eventTable, ticket as ticketTable, ticketLabel } from './schema';
 
 /** The query these parameters describe, or the 422 the handler returns instead. */
 export function readQuery(c: Context): TicketQuery | Response {
@@ -51,3 +51,20 @@ export function ticketWhere(query: TicketQuery): SQL[] {
   if (query.q !== undefined) conditions.push(or(contains(ticketTable.title, query.q), contains(ticketTable.description, query.q)) as SQL);
   return conditions;
 }
+
+/**
+ * A Ticket's finish time: the latest Transition into the terminal status it is
+ * in now, read from its History. Not `updated_at`, which any edit moves.
+ */
+const finishing = (column: SQLiteColumn) =>
+  sql`(SELECT MAX(${column}) FROM ${eventTable} WHERE ${eventTable.entity_kind} = 'ticket' AND ${eventTable.entity_id} = ${ticketTable.id} AND ${eventTable.kind} = 'transitioned' AND json_extract(${eventTable.new}, '$.status') = ${ticketTable.status})`;
+
+const terminal = inArray(ticketTable.status, [...TERMINAL_STATUSES]);
+const whenTerminal = (value: SQL) => sql`CASE WHEN ${terminal} THEN ${value} END DESC`;
+
+/**
+ * A list read's order: live Tickets by number, then the finished ones, the most
+ * recently finished first. Two finishes in one millisecond fall back on the
+ * order History wrote them in.
+ */
+export const listOrder: SQL[] = [asc(sql`CASE WHEN ${terminal} THEN 1 ELSE 0 END`), whenTerminal(finishing(eventTable.at)), whenTerminal(finishing(eventTable.id)), asc(ticketTable.id)];

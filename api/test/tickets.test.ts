@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { and, eq } from 'drizzle-orm';
 import { judgement } from '@goblin/shared';
 import { makeTestApp } from './harness';
+import { event } from '../src/schema';
 
 type Harness = Awaited<ReturnType<typeof makeTestApp>>;
 
@@ -307,6 +309,28 @@ describe('/api/tickets', () => {
     expect(await titles(`?app_id=${app.id}`)).toEqual(['in app', 'in project']);
     expect(await titles(`?project_id=${project.id}`)).toEqual(['in project']);
     expect(await titles('?app_id=null')).toEqual(['orphan']);
+  });
+
+  test('finished tickets come after the live ones, most recently finished first — by the transition, not by the last edit', async () => {
+    const walk = async (key: string, names: string[]) => {
+      for (const name of names) await post(`/api/tickets/${key}/${name}`);
+    };
+    const app = await newApp('A');
+    const first = await newTicket({ title: 'finished first', app_id: app.id, simple: true, status: 'ready' });
+    const second = await newTicket({ title: 'finished second', app_id: app.id });
+    await newTicket({ title: 'live' });
+    const dropped = await newTicket({ title: 'cancelled' });
+    await walk(first.key, ['start', 'submit', 'ship']);
+    // an hour ago, so the two finishes never share a millisecond
+    h.db.update(event).set({ at: new Date(Date.now() - 3_600_000).toISOString() }).where(and(eq(event.entity_id, first.id), eq(event.kind, 'transitioned'))).run();
+    await walk(second.key, ['close']);
+    await walk(dropped.key, ['cancel']);
+    // an edit moves `updated_at`, never the finish time
+    await req(`/api/tickets/${first.key}`, json('PATCH', { title: 'finished first, edited later' }));
+
+    const titles = (qs: string) => req(`/api/tickets${qs}`).then(async (r) => (await r.json()).map((t: { title: string }) => t.title));
+    expect(await titles('?status=done')).toEqual(['finished second', 'finished first, edited later']);
+    expect(await titles('')).toEqual(['live', 'cancelled', 'finished second', 'finished first, edited later']);
   });
 
   test('a list row is a summary: every field of the ticket but its description and design, which a single read still carries', async () => {

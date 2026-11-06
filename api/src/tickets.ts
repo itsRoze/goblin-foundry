@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { diff } from '@goblin/history';
 import {
   CreateTicketBodySchema,
@@ -25,7 +25,7 @@ import type { Db } from './db';
 import { dependenciesOf, dependencyRoutes, openBlockers, openBlockersOf } from './dependencies';
 import { changedUnderneath, commit, judgedRefusal, newestId, pinnedTicketWrite } from './commit';
 import { eventWrite, listEvents, now } from './events';
-import { readQuery, ticketWhere } from './filters';
+import { listOrder, readQuery, ticketWhere } from './filters';
 import { parseBody } from './http';
 import { resolvePlacement, wouldBreakGuard } from './placement';
 import { conflict, notFound, unprocessable, type Issue } from './problems';
@@ -105,7 +105,7 @@ export function ticketsRoutes(db: Db, terminals: TerminalSteps) {
       .select()
       .from(ticketTable)
       .where(and(isNull(ticketTable.trashed_at), ...ticketWhere(query)))
-      .orderBy(asc(ticketTable.id));
+      .orderBy(...listOrder);
     const p = await prefix();
     // one joined query for the whole list, never one per row
     const blockers = await openBlockers(db, p);
