@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
- * The browser suite split into CI's shards and run at once on this machine, each shard its own
+ * The browser suite split into shards and run at once on this machine, each shard its own
  * Playwright process, port and empty database: `bun run test:e2e:par [--shards N] [playwright args]`.
- * One worker over one database takes past ten minutes; four shards side by side fit well inside.
+ * One worker over one database takes about thirteen minutes; eight shards take about five. Twelve
+ * were faster still but failed two specs that pass alone, so eight is the default.
  */
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -17,7 +18,7 @@ type Shard = { index: number; log: string; report: string; exitCode: number; ms:
 
 function parseArgs(argv: string[]): { shards: number; rest: string[] } {
   const rest: string[] = [];
-  let shards = 4;
+  let shards = 8;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--shards') shards = Number(argv[++i]);
