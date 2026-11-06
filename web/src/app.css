@@ -10,6 +10,8 @@ a:hover { text-decoration: underline; }
   display: flex; align-items: center; gap: var(--gf-s5); height: 32px; padding: 0 var(--gf-s4);
   background: var(--gf-tile); border-bottom: 1px solid var(--gf-rule);
   font: var(--gf-t-label); letter-spacing: var(--gf-track); text-transform: uppercase; color: var(--gf-mute);
+  /* a bar wider than the screen (three-digit counts at 360px, or any at 320px) scrolls sideways inside itself, never the page */
+  overflow-x: auto;
 }
 .gf-ws { display: flex; gap: 2px; }
 .gf-ws a, .gf-counts a { padding: 3px 10px; border: 1px solid transparent; color: inherit; transition: color var(--gf-fast) var(--gf-ease); }
@@ -853,8 +855,8 @@ button.gf-hint:hover .gf-kbd { color: var(--gf-ink); border-color: var(--gf-mute
   .gf-toggle, .gf-check { min-height: 32px; }
 }
 
-/* the bar's links, a finger wide, leave no room under the width that fits two-digit counts, so its gaps pay for them; a 320px screen still overflows by the 7px it always did */
-@media (pointer: coarse) and (max-width: 389px) {
+/* the bar's links, a finger wide, leave a phone held upright no room for three-digit counts, so its gaps pay for them; past what that fits, the bar scrolls inside itself */
+@media (pointer: coarse) and (max-width: 429px) {
   .gf-ws { gap: 0; }
   .gf-bar, .gf-counts { gap: var(--gf-s2); }
   .gf-counts a { padding-inline: 3px; }
