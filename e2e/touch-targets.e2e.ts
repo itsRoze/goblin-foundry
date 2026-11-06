@@ -214,6 +214,13 @@ async function counting(page: Page, apps: number, projects: number) {
   await page.route(/\/api\/projects(\?.*)?$/, (route) => route.fulfill({ json: rows(projects) }));
 }
 
+/**
+ * Where the bar's last control ends: the bar fits when nothing in it lies past the screen. Not the bar's `scrollWidth`, which
+ * for a bar that scrolls (GF-106) counts its 8px end padding too: Linux's Chromium draws the mono fallback whole pixels wide,
+ * so at 360 with two-digit counts ⌘K ends 1.2px into that padding there, 12px short of it on macOS, and the bar scrolls by padding alone.
+ */
+const barReach = (page: Page) => page.evaluate(() => Math.max(...[...document.querySelectorAll('.gf-ws a, .gf-counts > *')].map((control) => control.getBoundingClientRect().right)));
+
 test('the bar\'s links are a finger wide, and that does not widen the bar', async ({ page }) => {
   // two-digit counts, the most the bar promises to fit at 360
   await counting(page, 12, 12);
@@ -223,7 +230,8 @@ test('the bar\'s links are a finger wide, and that does not widen the bar', asyn
   expect(barLinks).toEqual({});
   const barWidth = () => page.evaluate(() => document.querySelector('.gf-bar')!.scrollWidth);
   await page.setViewportSize({ width: 360, height: 640 });
-  expect(await barWidth()).toBe(360);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(360);
+  expect(await barReach(page)).toBeLessThanOrEqual(360);
   await page.setViewportSize({ width: 320, height: 640 });
   const withWideLinks = await barWidth();
   // a width in pixels would only hold on one renderer: Linux's Chromium hints `trash` and `settings` 5px wider than macOS draws them
@@ -242,7 +250,7 @@ for (const [width, apps, projects, fits] of COUNTS) {
     await page.goto('/');
     await expect(page.locator('.gf-counts b')).toHaveText([String(apps), String(projects)]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
-    expect(await page.evaluate(() => document.querySelector('.gf-bar')!.scrollWidth) === width).toBe(fits);
+    expect(await barReach(page) <= width).toBe(fits);
     await page.getByTestId('open-palette').tap();
     await expect(page.getByTestId('palette').locator('input')).toBeInViewport();
   });
