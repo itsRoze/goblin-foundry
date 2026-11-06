@@ -21,7 +21,9 @@ _Avoid_: repo path, clone
 A body of work (e.g. "Subway Reader MVP"), usually inside an App. May exist with no App (created before it is known where it belongs) and may be moved to another App later; its Tickets go with it. Has a Project Design and contains Tickets. Renamable; identity is an opaque id, not its name.
 
 ## Archived
-A reversible condition on an App or Project: out of the way, not gone. An archived thing is hidden from lists and pickers by default but still opens by its address; its Tickets are untouched and stay on the board. Archiving is about navigation, never workflow. A Ticket is never archived — it is `cancelled` (a workflow decision) or Trashed (a mistake).
+A reversible condition: out of the way, not gone. An archived thing is hidden from lists, pickers and the board by default but still opens by its address. Archiving is about navigation, never workflow.
+An App or Project is archived by hand; its Tickets are untouched and stay on the board.
+A Ticket archives itself a month after it finishes: once it has been `done` or `cancelled` for 30 days since it reached that Status, it leaves the board. An edit does not restart the month; finishing again (`done` to `cancelled`) does, and a reopened Ticket is live and never archived. A text search still finds it, the Filter brings archived Tickets back only when it asks for them, and an archived blocker is finished like any other terminal one. **Unarchive** puts it back on the board for another month. A Ticket is never archived by hand.
 
 ## Trashed
 A recoverable deletion of an App, Project or Ticket (something created by accident). A trashed thing is hidden everywhere and can be restored; after a grace period it is gone for good. Distinct from Archived (out of the way) and from `cancelled` (a decision not to do a Ticket).
@@ -100,7 +102,7 @@ Design. A human's session and an agent's session are always distinct, even back 
 A per-device display preference on the Kanban: which card properties are shown. It decides how the board shows what the Filter chose, never *which* Tickets are on it, so it never hides a Status.
 
 ## Filter
-Which Tickets are on the board: any combination of an App, a Project, a set of Statuses, a set of Labels (a Ticket carrying any of them), and text matched against title or description. Lives in the board's address, so a bookmarked URL is a saved view. The default Status set is the seven live statuses; `cancelled` is on the board only when the Filter names it. The Filter chooses, the View option dresses; the two never overlap. The list endpoints and `goblin` also take a set of Labels to leave out; the board does not read it, so it is not part of the Filter.
+Which Tickets are on the board: any combination of an App, a Project, a set of Statuses, a set of Labels (a Ticket carrying any of them), text matched against title or description, and whether Archived Tickets are included. Lives in the board's address, so a bookmarked URL is a saved view. The default Status set is the seven live statuses; `cancelled` is on the board only when the Filter names it. The Filter chooses, the View option dresses; the two never overlap. The list endpoints and `goblin` also take a set of Labels to leave out; the board does not read it, so it is not part of the Filter.
 
 ## Scope
 The App or Project a screen is narrowed to: the thing an App or Project view is about, or the App and Project a board Filter names. A new Ticket starts in the Scope on screen.

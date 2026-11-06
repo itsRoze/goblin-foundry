@@ -61,6 +61,12 @@ describe('parseTicketFilter', () => {
     expect(issues({ label: 'needs-info,needs info' })).toEqual([{ path: ['label'], message: 'needs info is not one word: a label has no spaces or commas' }]);
   });
 
+  test('archived is 1 or unset; anything else is refused, so a typo never silently hides the archive', () => {
+    expect(ok({ archived: '1' })).toEqual({ archived: true });
+    expect(ok({ archived: '' })).toEqual({});
+    expect(issues({ archived: 'true' })).toEqual([{ path: ['archived'], message: 'expected 1' }]);
+  });
+
   test('q is trimmed', () => {
     expect(ok({ q: '  e-ink  ' })).toEqual({ q: 'e-ink' });
   });
@@ -78,6 +84,10 @@ describe('serialiseTicketFilter', () => {
     expect(serialiseTicketFilter({ q: 'rss', label: ['wayfinder:research', 'needs-info'], status: ['ready', 'backlog'], project_id: 2, app_id: 1 })).toBe(
       'app_id=1&project_id=2&status=backlog,ready&label=needs-info,wayfinder:research&q=rss',
     );
+  });
+
+  test('archived goes last, as 1', () => {
+    expect(serialiseTicketFilter({ archived: true, q: 'rss' })).toBe('q=rss&archived=1');
   });
 
   test('nothing set is an empty string, not a bare ?', () => {

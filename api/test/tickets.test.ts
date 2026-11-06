@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { judgement } from '@goblin/shared';
 import { makeTestApp } from './harness';
 import { event } from '../src/schema';
@@ -333,13 +333,105 @@ describe('/api/tickets', () => {
     expect(await titles('')).toEqual(['live', 'cancelled', 'finished second', 'finished first, edited later']);
   });
 
+  describe('archived a month after it finishes (ADR-0015)', () => {
+    const DAY = 86_400_000;
+    /** Moves the finish (and any unarchive) `days` into the past, the way a month passing would. */
+    const finishedDaysAgo = (t: { id: number }, days: number) =>
+      h.db
+        .update(event)
+        .set({ at: new Date(Date.now() - days * DAY).toISOString() })
+        .where(and(eq(event.entity_kind, 'ticket'), eq(event.entity_id, t.id), inArray(event.kind, ['transitioned', 'unarchived'])))
+        .run();
+    const titles = (qs = '') => req(`/api/tickets${qs}`).then(async (r) => (await r.json()).map((t: { title: string }) => t.title));
+    const one = (key: string) => req(`/api/tickets/${key}`).then((r) => r.json());
+
+    test('done and cancelled both leave the list after 30 days; an edit does not restart the month; GF-n still opens', async () => {
+      const old = await newTicket({ title: 'old done' });
+      const recent = await newTicket({ title: 'recent done' });
+      const dropped = await newTicket({ title: 'old cancelled' });
+      await newTicket({ title: 'live' });
+      await post(`/api/tickets/${old.key}/close`);
+      await post(`/api/tickets/${recent.key}/close`);
+      await post(`/api/tickets/${dropped.key}/cancel`);
+      finishedDaysAgo(old, 31);
+      finishedDaysAgo(recent, 29);
+      finishedDaysAgo(dropped, 31);
+      await req(`/api/tickets/${old.key}`, json('PATCH', { title: 'old done, edited' }));
+
+      expect(await titles()).toEqual(['live', 'recent done']);
+      // naming the status is not asking for archived ones
+      expect(await titles('?status=done,cancelled')).toEqual(['recent done']);
+      expect(await titles('?archived=1')).toEqual(['live', 'recent done', 'old cancelled', 'old done, edited']);
+      // a text search finds them wherever they are
+      expect(await titles('?q=old')).toEqual(['old cancelled', 'old done, edited']);
+      expect((await req('/api/tickets?archived=yes')).status).toBe(422);
+
+      const read = await one(old.key);
+      expect(read.title).toBe('old done, edited');
+      expect(Date.parse(read.archived_at)).toBeLessThan(Date.now());
+      expect((await one(recent.key)).archived_at).toBeNull();
+      const [row] = await req('/api/tickets?q=old%20done').then((r) => r.json());
+      expect(row.archived_at).toBe(read.archived_at);
+    });
+
+    test('unarchive puts it back for another month, in History; a ticket on the board has nothing to unarchive', async () => {
+      const t = await newTicket({ title: 'old done' });
+      await post(`/api/tickets/${t.key}/close`);
+      finishedDaysAgo(t, 31);
+      expect((await post(`/api/tickets/${t.key}/unarchive`)).status).toBe(200);
+      expect(await titles()).toEqual(['old done']);
+      expect((await one(t.key)).archived_at).toBeNull();
+      const last = (await events(t.key)).find((e: { kind: string }) => e.kind === 'unarchived');
+      expect(last).toMatchObject({ kind: 'unarchived', new: { archived_at: null } });
+      expect(last.prior.archived_at).toEqual(expect.any(String));
+      expect((await post(`/api/tickets/${t.key}/unarchive`)).status).toBe(409);
+
+      // the unarchive's own month runs out too
+      finishedDaysAgo(t, 31);
+      expect(await titles()).toEqual([]);
+      expect((await post('/api/tickets/GF-99/unarchive')).status).toBe(404);
+    });
+
+    test('reopened is live, never archived; finishing again starts a new month', async () => {
+      const t = await newTicket({ title: 'came back' });
+      await post(`/api/tickets/${t.key}/cancel`);
+      finishedDaysAgo(t, 40);
+      expect(await titles()).toEqual([]);
+      await post(`/api/tickets/${t.key}/reopen`);
+      expect(await titles()).toEqual(['came back']);
+      expect((await one(t.key)).archived_at).toBeNull();
+
+      await post(`/api/tickets/${t.key}/close`);
+      expect(await titles()).toEqual(['came back']);
+    });
+
+    test('an archived blocker is finished: it blocks nothing, and the graph draws it only while it is tied to the board', async () => {
+      const project = await newProject('P');
+      const blocker = await newTicket({ title: 'archived blocker', project_id: project.id });
+      const waiting = await newTicket({ title: 'waiting', project_id: project.id });
+      const lonely = await newTicket({ title: 'archived alone', project_id: project.id });
+      const pair = await newTicket({ title: 'archived pair', project_id: project.id });
+      await post(`/api/tickets/${waiting.key}/dependencies`, { blocker: blocker.key });
+      await post(`/api/tickets/${pair.key}/dependencies`, { blocker: lonely.key });
+      for (const t of [blocker, lonely, pair]) {
+        await post(`/api/tickets/${t.key}/close`);
+        finishedDaysAgo(t, 31);
+      }
+
+      expect((await one(waiting.key)).blocked_by).toEqual([]);
+      const graph = await req(`/api/projects/${project.id}/graph`).then((r) => r.json());
+      expect(graph.nodes.map((n: { key: string }) => n.key)).toEqual([blocker.key, waiting.key]);
+      expect(graph.edges).toEqual([{ blocker: blocker.key, blocked: waiting.key }]);
+    });
+  });
+
   test('a list row is a summary: every field of the ticket but its description and design, which a single read still carries', async () => {
     const app = await newApp('A');
     const t = await newTicket({ title: 'long one', description: 'a body worth not listing', app_id: app.id, labels: ['needs-info'] });
     await req(`/api/tickets/${t.key}`, json('PATCH', { design: '# the plan' }));
 
     const [row] = await req('/api/tickets').then((r) => r.json());
-    expect(Object.keys(row).sort()).toEqual(['app_id', 'blocked_by', 'created_at', 'id', 'intent_written', 'key', 'labels', 'project_id', 'simple', 'status', 'title', 'trashed_at', 'updated_at', 'worktree_branch', 'worktree_folder']);
+    expect(Object.keys(row).sort()).toEqual(['app_id', 'archived_at', 'blocked_by', 'created_at', 'id', 'intent_written', 'key', 'labels', 'project_id', 'simple', 'status', 'title', 'trashed_at', 'updated_at', 'worktree_branch', 'worktree_folder']);
     expect(row).toMatchObject({ key: 'GF-1', title: 'long one', status: 'backlog', simple: false, app_id: app.id, project_id: null, labels: ['needs-info'], blocked_by: [], trashed_at: null });
 
     expect(await req(`/api/tickets/${t.key}`).then((r) => r.json())).toMatchObject({ description: 'a body worth not listing', design: '# the plan' });

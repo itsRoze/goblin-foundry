@@ -99,6 +99,19 @@ export function FilterBar({
       <StatusChipButton filter={filter} bad={bad.status} onChange={onChange} open={open === 'status'} onOpen={setOpen} onClose={close} />
       <LabelChipButton filter={filter} bad={bad.label} onChange={onChange} open={open === 'label'} onOpen={setOpen} onClose={close} />
       <TextFilter q={filter.q} onChange={(q) => onChange({ ...filter, q })} inputRef={text} />
+      {/* a finished Ticket leaves the board a month after it finishes (ADR-0015); a text search finds it without this */}
+      <label className="gf-toggle gf-filter-archived">
+        <input
+          type="checkbox"
+          data-testid="filter-archived"
+          checked={filter.archived === true}
+          onChange={(e) => {
+            const { archived: _, ...rest } = filter;
+            onChange(e.target.checked ? { ...rest, archived: true } : rest);
+          }}
+        />{' '}
+        show archived
+      </label>
       <button
         type="button"
         className="gf-filter-clear"
