@@ -50,7 +50,8 @@ describe('the filter parameters', () => {
 
   test('the API default is every status, cancelled included — a list is not a board', async () => {
     await seed();
-    expect(await titles('/api/tickets')).toEqual(['orphan', 'in app', 'in project', 'elsewhere', 'ready to go', 'already done', 'abandoned']);
+    // the finished ones last, the most recently finished first
+    expect(await titles('/api/tickets')).toEqual(['orphan', 'in app', 'in project', 'elsewhere', 'ready to go', 'abandoned', 'already done']);
   });
 
   test('each parameter alone', async () => {
@@ -64,7 +65,7 @@ describe('the filter parameters', () => {
   test('null is "has none", on either field', async () => {
     await seed();
     expect(await titles('/api/tickets?app_id=null')).toEqual(['orphan', 'abandoned']);
-    expect(await titles('/api/tickets?project_id=null')).toEqual(['orphan', 'in app', 'elsewhere', 'ready to go', 'already done', 'abandoned']);
+    expect(await titles('/api/tickets?project_id=null')).toEqual(['orphan', 'in app', 'elsewhere', 'ready to go', 'abandoned', 'already done']);
   });
 
   test('a status set is comma-separated, in any order', async () => {

@@ -920,7 +920,10 @@ function Said({ status, refusal, pending, notice, terminal, onDismissTerminal, o
   );
 }
 
-/** Cards are ordered by id ascending, so the 5 s poll never reshuffles them under the pointer. */
+/**
+ * Cards keep the API's order — by id, and `done`/`cancelled` most recently
+ * finished first — so the 5 s poll never reshuffles them under the pointer.
+ */
 function Cards({ status, tickets, cursor, meta, showLabels, updated, at, menuFor, selectFor, canDrag, refusal, pending, notice, terminal, onDismissTerminal, onDismiss, onShow }: CardsProps) {
   /** A sentence about a card that is here goes under that card; anything else goes at the foot. */
   const under = (key: string) => ({
