@@ -137,3 +137,4 @@ export {
 
 export { ImplementationLinkSchema, AddImplementationLinkBodySchema, ticketBranchName, type ImplementationLink } from './implementation';
 export { StartWorktreeBodySchema, type StartWorktreeBody, CheckoutBranchSchema, type CheckoutBranch, AppBranchesSchema, type AppBranches, worktreeSlug, defaultWorktreeBranch, worktreeBase } from './worktree';
+export { type Network, type ParsedAllow, parseAllow, formatAllow, notANetwork, admits } from './allow';
