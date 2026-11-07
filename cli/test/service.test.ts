@@ -140,10 +140,35 @@ describe('goblin service', () => {
       expect(plist).toContain('<key>KeepAlive</key>\n  <true/>');
       expect(plist).toContain(`<key>StandardOutPath</key>\n  <string>${LOGS}/service.out.log</string>`);
       expect(plist).toContain(`<key>StandardErrorPath</key>\n  <string>${LOGS}/service.err.log</string>`);
-      // no EnvironmentVariables at all: a LaunchAgent inherits no shell, so the server takes the default database and port
+      // without --allow, no EnvironmentVariables at all: a LaunchAgent inherits no shell, so the server takes the default database and port
       expect(plist).not.toContain('EnvironmentVariables');
       // launchd will not create the directory it is told to log into, so install does
       expect(laptop.dirs).toContain(LOGS);
+    });
+
+    test('--allow writes GF_ALLOW into the plist, canonical, and status reads it back', async () => {
+      const laptop = fake();
+      const status = await json(['service', 'install', '--allow', ' 192.168.64.0/24 , 100.64.0.0/10'], laptop);
+      expect(laptop.files.get(PLIST)).toContain(
+        ['  <key>StandardErrorPath</key>', `  <string>${LOGS}/service.err.log</string>`, '  <key>EnvironmentVariables</key>', '  <dict>', '    <key>GF_ALLOW</key>', '    <string>192.168.64.0/24,100.64.0.0/10</string>', '  </dict>', '</dict>'].join('\n'),
+      );
+      expect(status).toMatchObject({ loaded: true, allow: '192.168.64.0/24,100.64.0.0/10' });
+    });
+
+    test('installing again without --allow drops it: the plist says only what this install was told', async () => {
+      const laptop = fake();
+      await json(['service', 'install', '--allow', '192.168.64.0/24'], laptop);
+      expect(await json(['service', 'install'], laptop)).toMatchObject({ loaded: true, allow: null });
+      expect(laptop.files.get(PLIST)).not.toContain('EnvironmentVariables');
+    });
+
+    test('a malformed --allow is a usage refusal naming the entry, before anything is built or written', async () => {
+      const laptop = fake();
+      const refused = await run(['service', 'install', '--allow', '192.168.64.0/24,192.168.64.0/33'], laptop);
+      expect(refused.code).toBe(2);
+      expect(problemOf(refused).detail).toBe('--allow: "192.168.64.0/33" is not an IPv4 network like 192.168.64.0/24');
+      expect(laptop.commands).toEqual([]);
+      expect([...laptop.files.keys()]).toEqual([]);
     });
 
     test('running it twice is harmless: the plist is rewritten and the agent reloaded', async () => {
@@ -187,10 +212,10 @@ describe('goblin service', () => {
   });
 
   describe('status', () => {
-    test('is `{loaded, listening, checkout, db, pid}`, and exit 0 when nothing is installed', async () => {
+    test('is `{loaded, listening, checkout, allow, db, pid}`, and exit 0 when nothing is installed', async () => {
       const result = await run(['service', 'status'], fake());
       expect(result.code).toBe(0);
-      expect(JSON.parse(result.out)).toEqual({ loaded: false, listening: false, checkout: null, db: DB, pid: null });
+      expect(JSON.parse(result.out)).toEqual({ loaded: false, listening: false, checkout: null, allow: null, db: DB, pid: null });
     });
 
     test('reads the pid from launchctl and the checkout from the installed plist', async () => {
@@ -200,6 +225,7 @@ describe('goblin service', () => {
         listening: true,
         // what the agent runs against, which is not always the checkout this `goblin` was linked from
         checkout: elsewhere,
+        allow: null,
         db: DB,
         pid: 4242,
       });
@@ -272,6 +298,13 @@ describe('goblin service', () => {
       expect(await json(['service', 'restart'], laptop)).toMatchObject({ loaded: true, listening: true });
       expect(laptop.script()).toEqual(['build', 'launchctl bootout', 'launchctl bootstrap']);
       expect(laptop.files.get(PLIST)).toBe(plistWith(CHECKOUT));
+    });
+
+    test('restart keeps the networks the installed plist allows', async () => {
+      const allowing = `<plist><dict><key>WorkingDirectory</key>\n  <string>${CHECKOUT}</string><key>EnvironmentVariables</key><dict><key>GF_ALLOW</key><string>192.168.64.0/24</string></dict></dict></plist>`;
+      const laptop = installed({ files: { [PLIST]: allowing } });
+      expect(await json(['service', 'restart'], laptop)).toMatchObject({ loaded: true, allow: '192.168.64.0/24' });
+      expect(laptop.files.get(PLIST)).toBe(allowing);
     });
 
     test('a failed build aborts the restart and leaves the running process alone', async () => {

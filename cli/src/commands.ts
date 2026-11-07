@@ -5,7 +5,7 @@
  * later slice is a CLI verb the same day — and `--help` reads its statuses off
  * the same rows.
  */
-import { lifecycle, parseTicketQuery, serialiseTicketQuery, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type QueryParam, type Ticket } from '@goblin/shared';
+import { lifecycle, notANetwork, parseAllow, parseTicketQuery, serialiseTicketQuery, splitLabels, ticketLabels, type BulkAction, type BulkMoveTarget, type Network, type QueryParam, type Ticket } from '@goblin/shared';
 import { UsageError, article, entityId, readText, type Args, type Flag, type Io, type Operand, type Value } from './args';
 import { backupCommand } from './backup';
 import { installService, restartService, serviceLogs, serviceStatus, startService, stopService, uninstallService, type Host } from './service';
@@ -313,6 +313,20 @@ function logLines(args: Args): number {
   return lines;
 }
 
+const ALLOW: Flag = {
+  name: 'allow',
+  kind: 'string',
+  value: '<cidrs>',
+  summary: 'IPv4 networks answered beside loopback, comma-separated (192.168.64.0/24 lets in a VM on this Mac) — anyone in them has full write access; leave it off to answer loopback only',
+};
+
+/** Parsed here, before `install` touches the laptop, so a bad network writes nothing. */
+function allowFlag(args: Args): Network[] {
+  const parsed = parseAllow(String(args.values.allow ?? ''));
+  if (!parsed.ok) throw new UsageError(`--allow: ${notANetwork(parsed.entry)}`, 'name each network as a.b.c.d/n, comma-separated');
+  return parsed.networks;
+}
+
 const DEPENDENCY_FLAGS: Flag[] = [
   { name: 'blocker', kind: 'string', required: true, value: '<ticket>', summary: 'the ticket that must be done first' },
   { name: 'blocked', kind: 'string', required: true, value: '<ticket>', summary: 'the ticket that has to wait' },
@@ -443,12 +457,12 @@ export const NOUNS: Noun[] = [
     summary: 'the macOS LaunchAgent that keeps the tracker up',
     // no fallback: seven verbs that do different things, so a bare `goblin service` is a question, not a command
     commands: [
-      { verb: 'install', summary: 'build the GUI, write the agent, and load it; safe to run again', run: ({ host }) => installService(host) },
+      { verb: 'install', summary: 'build the GUI, write the agent, and load it; safe to run again', flags: [ALLOW], run: ({ args, host }) => installService(host, allowFlag(args)) },
       { verb: 'uninstall', summary: 'unload the agent and remove its plist — the permanent off', run: ({ host }) => uninstallService(host) },
       { verb: 'start', summary: 'load the installed agent', run: ({ host }) => startService(host) },
       { verb: 'stop', summary: 'unload it until the next login', run: ({ host }) => stopService(host) },
       { verb: 'restart', summary: 'rebuild the GUI and bounce the process — how a change reaches the running tracker', run: ({ host }) => restartService(host) },
-      { verb: 'status', summary: 'loaded? listening? which checkout and database?', run: ({ host }) => serviceStatus(host) },
+      { verb: 'status', summary: 'loaded? listening? which checkout, database and allowed networks?', run: ({ host }) => serviceStatus(host) },
       { verb: 'logs', summary: "the end of the agent's two log files", flags: [LOG_LINES], run: ({ args, host }) => serviceLogs(host, logLines(args)) },
     ],
   },
