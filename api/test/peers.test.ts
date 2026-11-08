@@ -66,7 +66,7 @@ describe('the server with GF_ALLOW', () => {
     expect((await fetch(`http://127.0.0.1:${port}/api/settings`)).status).toBe(200);
   });
 
-  /** macOS lets a 127.0.0.1 and a 0.0.0.0 listener share a port; a second server must still be told the port is taken. */
+  /** macOS lets a 127.0.0.1 and a 0.0.0.0 listener share a port and Linux does not; on both a second server must be told the port is taken. */
   test('a second server on its port is refused, not handed the loopback traffic', async () => {
     const { port } = await up('192.168.64.0/24');
     const second = start('', port);

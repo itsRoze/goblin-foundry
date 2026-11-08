@@ -11,9 +11,12 @@ import { DEFAULT_PORT, formatAllow, notANetwork, parseAllow, type Network } from
  * Binding the VM bridge's own address instead would fail whenever no VM is
  * running.
  *
- * The `127.0.0.1` listener stays even then, because macOS lets a `0.0.0.0` and
- * a `127.0.0.1` listener share a port: without it a `bun dev` beside an
- * allowing agent would bind cleanly and take every loopback request.
+ * On macOS the `127.0.0.1` listener stays even then, because macOS lets a
+ * `0.0.0.0` and a `127.0.0.1` listener share a port: without it a `bun dev`
+ * beside an allowing agent would bind cleanly and take every loopback request.
+ * Linux refuses that pair with EADDRINUSE, and its `0.0.0.0` listener alone
+ * already turns away a second server's `127.0.0.1` bind, so elsewhere the
+ * guarded listener is the only one (loopback is always admitted).
  *
  * The LaunchAgent (ticket 13) and `bun dev` are this same server on this same
  * port, so a taken port is not a crash to report but a choice to state: one of
@@ -21,8 +24,11 @@ import { DEFAULT_PORT, formatAllow, notANetwork, parseAllow, type Network } from
  */
 function serve(port: number, allow: Network[], fetch: (request: Request) => Response | Promise<Response>) {
   try {
+    if (allow.length === 0) return Bun.serve({ hostname: '127.0.0.1', port, fetch });
+    const guarded = admitOnly(allow, fetch);
+    if (process.platform !== 'darwin') return Bun.serve({ hostname: '0.0.0.0', port, fetch: guarded });
     const loopback = Bun.serve({ hostname: '127.0.0.1', port, fetch });
-    if (allow.length > 0) Bun.serve({ hostname: '0.0.0.0', port: loopback.port, fetch: admitOnly(allow, fetch) });
+    Bun.serve({ hostname: '0.0.0.0', port: loopback.port, fetch: guarded });
     return loopback;
   } catch (error) {
     if ((error as { code?: string }).code !== 'EADDRINUSE') throw error;
