@@ -15,15 +15,16 @@
  * - The plist pins `/opt/homebrew/bin/bun`, the stable symlink, and never the
  *   Cellar path a bun upgrade moves; and it pins this checkout, so a moved
  *   checkout is fixed by running `install` again.
- * - It carries no `EnvironmentVariables` at all. A LaunchAgent inherits no
- *   shell, so the server takes the default port and the default database — the
- *   one `goblin backup` reads — whatever this shell's `GF_DB_PATH` says. A
- *   different database means a server started by hand on another port.
+ * - Its only `EnvironmentVariables` is `GF_ALLOW`, and only when `install
+ *   --allow` names networks (GF-186). A LaunchAgent inherits no shell, so the
+ *   server takes the default port and the default database — the one `goblin
+ *   backup` reads — whatever this shell's `GF_DB_PATH` says. A different
+ *   database means a server started by hand on another port.
  */
 import { mkdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { DEFAULT_PORT } from '@goblin/shared';
+import { DEFAULT_PORT, formatAllow, type Network } from '@goblin/shared';
 import { UsageError } from './args';
 
 /** The agent's label, and so the name of its plist and its launchd service target. */
@@ -75,7 +76,7 @@ const logDir = (host: Host) => join(host.home, '.goblin-foundry', 'logs');
 /** stdout first, stderr second — the order `logs` prints them in, and the order they are written into the plist. */
 const logPaths = (host: Host): [out: string, err: string] => [join(logDir(host), 'service.out.log'), join(logDir(host), 'service.err.log')];
 const serverPath = (host: Host) => join(host.checkout, 'api', 'src', 'server.ts');
-/** Written out rather than taken from `defaultDbPath()`, which reads `GF_DB_PATH`: the agent has no environment, so it is always this one. */
+/** Written out rather than taken from `defaultDbPath()`, which reads `GF_DB_PATH`: the agent is given no `GF_DB_PATH`, so it is always this one. */
 const dbPath = (host: Host) => join(host.home, '.goblin-foundry', 'foundry.db');
 
 // ── the plist ────────────────────────────────────────────────────────────────
@@ -84,8 +85,8 @@ const dbPath = (host: Host) => join(host.home, '.goblin-foundry', 'foundry.db');
 const escaped = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const unescaped = (text: string) => text.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
 
-/** The agent, as launchd wants it. A pure function of the host's paths, so the test reads the real thing. */
-export function plistFor(host: Host): string {
+/** The agent, as launchd wants it. A pure function of the host's paths and the allowed networks, so the test reads the real thing. */
+export function plistFor(host: Host, allow: Network[]): string {
   const [out, err] = logPaths(host);
   const entry = (key: string, value: string) => [`  <key>${key}</key>`, `  ${value}`];
   const string = (value: string) => `<string>${escaped(value)}</string>`;
@@ -104,21 +105,28 @@ export function plistFor(host: Host): string {
     ...entry('KeepAlive', '<true/>'),
     ...entry('StandardOutPath', string(out)),
     ...entry('StandardErrorPath', string(err)),
+    ...(allow.length === 0 ? [] : ['  <key>EnvironmentVariables</key>', '  <dict>', '    <key>GF_ALLOW</key>', `    ${string(formatAllow(allow))}`, '  </dict>']),
     '</dict>',
     '</plist>',
     '',
   ].join('\n');
 }
 
+/** The `<string>` that follows `<key>key</key>` in a plist, or `null` when there is none. */
+const stringAt = (plist: string, key: string): string | null => {
+  const found = new RegExp(`<key>${key}</key>\\s*<string>([^<]*)</string>`).exec(plist);
+  return found ? unescaped(found[1] as string) : null;
+};
+
 /**
  * Which checkout the *installed* agent runs against, read back out of the
  * plist. It is not always this checkout — that is the whole point of reporting
  * it — so it is read rather than recomputed.
  */
-const checkoutIn = (plist: string): string | null => {
-  const found = /<key>WorkingDirectory<\/key>\s*<string>([^<]*)<\/string>/.exec(plist);
-  return found ? unescaped(found[1] as string) : null;
-};
+const checkoutIn = (plist: string): string | null => stringAt(plist, 'WorkingDirectory');
+
+/** The networks the installed agent answers beside loopback, read back the same way; `restart` keeps them because it never rewrites the plist. */
+const allowIn = (plist: string): string | null => stringAt(plist, 'GF_ALLOW');
 
 // ── launchctl ────────────────────────────────────────────────────────────────
 
@@ -238,7 +246,7 @@ async function buildGui(host: Host): Promise<void> {
 
 // ── the verbs ────────────────────────────────────────────────────────────────
 
-/** Every verb answers with this: what launchd holds, what the port says, and what the installed agent runs against. */
+/** Every verb answers with this: what launchd holds, what the port says, and what the installed agent runs against and lets in. */
 export async function serviceStatus(host: Host): Promise<{ text: string }> {
   macOnly(host);
   const { loaded, pid } = await launchdJob(host);
@@ -248,13 +256,15 @@ export async function serviceStatus(host: Host): Promise<{ text: string }> {
       loaded,
       listening: await host.answers(TRACKER_URL),
       checkout: plist === undefined ? null : checkoutIn(plist),
+      allow: plist === undefined ? null : allowIn(plist),
       db: dbPath(host),
       pid,
     }),
   };
 }
 
-export async function installService(host: Host): Promise<{ text: string }> {
+/** `allow` is already parsed: a bad network is refused before this touches anything. */
+export async function installService(host: Host, allow: Network[]): Promise<{ text: string }> {
   macOnly(host);
   if (!(await host.exists(BUN))) throw new UsageError(`there is no bun at ${BUN}`, 'the agent pins the Homebrew symlink so a bun upgrade cannot break it — install bun with brew, or change BUN in cli/src/service.ts');
   if (!(await host.exists(serverPath(host)))) throw new UsageError(`there is no server at ${serverPath(host)}`, 'the agent runs from the checkout `goblin` was linked from; `bun link` again from the one you moved to');
@@ -263,7 +273,7 @@ export async function installService(host: Host): Promise<{ text: string }> {
   await buildGui(host);
   // launchd creates neither the directory it is told to log into (it would refuse to spawn) nor, on a Mac that has never had an agent, the one agents live in
   for (const directory of [logDir(host), dirname(plistPath(host))]) await host.mkdir(directory);
-  await host.write(plistPath(host), plistFor(host));
+  await host.write(plistPath(host), plistFor(host, allow));
   await reload(host);
   return serviceStatus(host);
 }

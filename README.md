@@ -55,6 +55,8 @@ Open **http://127.0.0.1:4747**. Create an app, add a project, and start planning
 
 The server binds to localhost and has no authentication. It is intended for personal use on your machine.
 
+To let a VM on this Mac reach it, install the service with `goblin service install --allow 192.168.64.0/24`, then set `GF_URL=http://192.168.64.1:4747` inside the VM. Anything inside an allowed network gets full write access. See [Letting a VM in](docs/development.md#letting-a-vm-in).
+
 To install the CLI, open another terminal in the checkout:
 
 ```sh

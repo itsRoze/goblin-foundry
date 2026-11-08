@@ -32,15 +32,43 @@ comes back from any exit including a `kill -9` (`KeepAlive`), and logs to
 
 | | |
 |---|---|
-| `goblin service status` | loaded? listening? which checkout and database? — as JSON |
+| `goblin service status` | loaded? listening? which checkout, database and allowed networks? — as JSON |
 | `goblin service restart` | rebuild the GUI and bounce the process: how a change to Goblin reaches the running tracker |
 | `goblin service stop` | until the next login. `uninstall` is the permanent off |
 | `goblin service logs` | the end of both log files (`--lines <n>`) |
 
 The agent runs this checkout's `api/src/server.ts` with `/opt/homebrew/bin/bun` — the stable
-symlink, so a bun upgrade cannot break it — and carries no environment of its own, so it is
-always the default database and the default port. Move the checkout and run `goblin service
-install` again. macOS only; anywhere else, run `bun api/src/server.ts` yourself.
+symlink, so a bun upgrade cannot break it — and carries no environment of its own beyond
+`GF_ALLOW` (below), so it is always the default database and the default port. Move the
+checkout and run `goblin service install` again, with the same `--allow` if it had one. macOS only; anywhere else, run
+`bun api/src/server.ts` yourself.
+
+### Letting a VM in
+
+By default the tracker answers `127.0.0.1` only, so a VM on this Mac (Tart or Lume, on Apple's
+Virtualization NAT) cannot reach it. `GF_ALLOW` lists IPv4 networks to answer as well:
+
+```sh
+goblin service install --allow 192.168.64.0/24   # the NAT network the VMs sit on
+```
+
+Inside the VM, point the CLI at the Mac's side of that network. `ifconfig bridge100` on the Mac,
+while a VM is running, shows that address and so the network to allow, if yours differs:
+
+```sh
+export GF_URL=http://192.168.64.1:4747
+```
+
+With `GF_ALLOW` set the server also listens on `0.0.0.0`, which is every interface the Mac
+has, Wi-Fi included. That listener answers the listed networks and gives every other peer a
+`403` problem, so a peer on the same Wi-Fi can see that the tracker is there. There is no
+auth, so anything inside an allowed network has full write access, as you do (ADR-0003), and
+`0.0.0.0/0` lets in every IPv4 peer. `--allow` takes comma-separated CIDRs
+(`--allow 192.168.64.0/24,100.64.0.0/10` adds a Tailscale tailnet); a malformed one is
+refused before anything is written. `install` without `--allow` goes back to loopback only,
+`restart` keeps what the plist holds, and `goblin service status` reports it as `allow`. A
+server started by hand reads `GF_ALLOW` from its environment and names a bad entry in one line
+on stderr before it exits.
 
 ### Hacking on Goblin
 
@@ -84,7 +112,8 @@ shadows or blur, and opacity is never a state mark — and `scripts/unused-css.t
 the app no longer uses, which stylelint cannot see because it never reads the JSX.
 
 The database lives at `~/.goblin-foundry/foundry.db` (WAL). Set `GF_DB_PATH` to use another
-file (tests do), `GF_PORT` to change the port — the LaunchAgent reads neither.
+file (tests do), `GF_PORT` to change the port — the LaunchAgent reads neither. `GF_ALLOW`
+is the one it can carry, [above](#letting-a-vm-in).
 
 ## `goblin`
 
